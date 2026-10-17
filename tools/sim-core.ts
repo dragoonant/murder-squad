@@ -27,6 +27,8 @@ import { polygonBBox, round3 } from '@/engine/geometry'
 import { realSetup } from '@/engine/bundle'
 import { flatMap, terrainMap } from '../tests/fixtures/maps'
 import { makeSetup } from '../tests/fixtures/team'
+import { createAiDecider } from '../src/ai/decider'
+import type { Tier } from '../src/ai/tiers'
 
 export interface Violation {
   rule: string
@@ -302,6 +304,9 @@ function progressKey(s: GameState): string {
 export function playGame(setup: GameSetup, bundle: EngineBundle, seed: string, game = 0): GameReport {
   const violations: Violation[] = []
   const bots = { A: new RandomBot(`${seed}:A`), B: new RandomBot(`${seed}:B`) }
+  // `--decider easy|normal` (sim.ts passes argv through): both seats play with the AI instead of the random bot
+  const tierArg = process.argv.includes('--decider') ? (process.argv[process.argv.indexOf('--decider') + 1] as Tier) : null
+  const ai = tierArg ? { A: createAiDecider(tierArg, { seed: `${seed}:A` }), B: createAiDecider(tierArg, { seed: `${seed}:B` }) } : null
   let result = createGame(setup, seed, bundle)
   let state = result.state
   const hashes: string[] = [state.hash]
@@ -319,7 +324,7 @@ export function playGame(setup: GameSetup, bundle: EngineBundle, seed: string, g
     void pv // deciders only ever see the redacted view; the bot reads engine state through helpers above
     let action: Action
     try {
-      action = bots[pending.seat].decide(state, pending)
+      action = ai ? ai[pending.seat].decideSync(pv, pending, legalActions(state, pending)).action : bots[pending.seat].decide(state, pending)
     } catch (e) {
       violate('bot', (e as Error).message)
       break

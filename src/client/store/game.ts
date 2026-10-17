@@ -8,6 +8,8 @@ import {
   legalActions,
   save as engineSave,
   step,
+  view as seatView,
+  suggestPlacement,
   type Action,
   type GameEvent,
   type GameState,
@@ -20,9 +22,10 @@ import type { MissionData } from '@/data'
 import { buildGameSetup, dataBundle, engineBundle, type SeatBuild } from '../game/adapter'
 import { rejectionText } from '../game/labels'
 import { RandomBot } from '../bot/randomBot'
+import { AiWorkerClient, getBotTier, type BotTier } from '../bot/aiWorkerClient'
 import { clearAnims } from '../presentation/animStore'
-import { enqueueBatch, resetDirector } from '../presentation/director'
-import { clearFeed, pushToast } from '../presentation/feedStore'
+import { enqueueBatch, resetDirector, setDirectorPerspective } from '../presentation/director'
+import { clearFeed, clearToasts, pushToast } from '../presentation/feedStore'
 import { waitForPresentationIdle } from '../presentation/idleStore'
 import { isAnnouncementHolding } from '../presentation/announceStore'
 import { pushSnapshot, resetPresentation, usePresentedStore } from '../presentation/presentedStore'
@@ -45,6 +48,10 @@ export interface NewGameOptions {
   missionId: string
   layoutId: string
   mapId?: string | null
+  /** the human places objective and equipment markers on the board instead of the engine's suggestions */
+  manualPlacement?: boolean
+  /** AI tier for bot seats (random | easy | normal); defaults to the Start screen's choice (`getBotTier`) */
+  botTier?: BotTier
 }
 
 interface GameStore {
@@ -57,6 +64,7 @@ interface GameStore {
   events: GameEvent[]
   rejection: { code: string; reason: string; nonce: number } | null
   newGame(opts: NewGameOptions): void
+  /** Answer the pending decision. A rejection of a bot seat's action is only logged; a human's shows one toast. */
   dispatch(action: Action): Rejection | null
   /** answer the pending decision with the option whose id matches */
   choose(optionId: string): Rejection | null
@@ -73,6 +81,9 @@ const WATCHDOG_POLL_MS = 1000
 
 let generation = 0
 let bots: Record<Seat, RandomBot> | null = null
+let aiClient: AiWorkerClient | null = null
+let botTier: BotTier = 'normal'
+let botSeed = ''
 let botTimer: ReturnType<typeof setTimeout> | null = null
 let watchdog: ReturnType<typeof setInterval> | null = null
 let watchId: string | null = null
@@ -106,10 +117,11 @@ export const useGame = create<GameStore>((set, get) => {
   }
 
   /** Answer the pending decision for a bot seat. Tries the bot, then every legal action, then pass. */
-  function answerForBot(expectedId: string): void {
+  function answerForBot(expectedId: string, preferred: Action | null = null): void {
     const { state, pending } = get()
     if (!state || !pending || pending.id !== expectedId) return
     const candidates: Action[] = []
+    if (preferred) candidates.push(preferred)
     try {
       candidates.push(bots![pending.seat].decide(state, pending))
     } catch (e) {
@@ -117,14 +129,20 @@ export const useGame = create<GameStore>((set, get) => {
     }
     for (const a of legalActions(state, pending) ?? []) candidates.push(a)
     if (pending.canPass) candidates.push({ type: 'pass', seat: pending.seat, decisionId: pending.id, payload: {} })
+    for (const a of fallbackAnswers(state, pending)) candidates.push(a)
     for (const a of candidates) {
       const r = step(state, a)
       if (!r.rejection) {
         apply(r.state, r.events, r.pending)
         return
       }
+      // a bot's rejected guess is never shown to the player: log it and try the next candidate
+      console.debug(`[bot] ${pending.kind} rejected: ${r.rejection.code} ${r.rejection.reason}`)
     }
-    console.error(`[bot] no accepted answer for ${pending.kind}`)
+    // last resort so a stuck bot can never freeze the battle: it resigns
+    console.error(`[bot] no accepted answer for ${pending.kind}; resigning seat ${pending.seat}`)
+    const r = step(state, { type: 'resign', seat: pending.seat, decisionId: pending.id, payload: {} })
+    if (!r.rejection) apply(r.state, r.events, r.pending)
   }
 
   async function runBot(expectedId: string, gen: number): Promise<void> {
@@ -132,7 +150,19 @@ export const useGame = create<GameStore>((set, get) => {
     await waitForPresentationIdle(PRESENTATION_IDLE_TIMEOUT_MS + backlog * 150)
     await sleep(Math.round(BOT_DELAY_MS * speedFactor(useSettings.getState().animSpeed)))
     if (gen !== generation) return
-    answerForBot(expectedId)
+    // the AI answers in a Web Worker (3 s timeout, random fallback); the random bot below is the last resort
+    let preferred: Action | null = null
+    const { state, pending } = get()
+    if (aiClient && state && pending && pending.id === expectedId) {
+      try {
+        const answer = await aiClient.decide(seatView(state, pending.seat), pending, legalActions(state, pending), botTier, `${botSeed}:${pending.seat}`, `${botSeed}:${pending.seat}`)
+        preferred = answer.action
+      } catch (e) {
+        console.warn('[bot] ai failed', e)
+      }
+      if (gen !== generation) return
+    }
+    answerForBot(expectedId, preferred)
   }
 
   function startWatchdog(): void {
@@ -175,13 +205,18 @@ export const useGame = create<GameStore>((set, get) => {
       resetDirector()
       clearAnims()
       clearFeed()
+      setDirectorPerspective(opts.seats.A === 'human' ? 'A' : opts.seats.B === 'human' ? 'B' : null)
       const b = dataBundle()
       const mission = b.missions[opts.missionId]
       const layout = b.layouts[opts.layoutId]
       if (!mission || !layout) throw new Error(`unknown mission/layout: ${opts.missionId} / ${opts.layoutId}`)
-      const setup = buildGameSetup(b, opts.builds.A, opts.builds.B, { layoutId: layout.id, missionId: mission.id, mapId: opts.mapId })
+      const setup = buildGameSetup(b, opts.builds.A, opts.builds.B, { layoutId: layout.id, missionId: mission.id, mapId: opts.mapId, auto: opts.manualPlacement !== true })
       const r = createGame(setup, opts.seed, engineBundle())
       bots = { A: new RandomBot(`${opts.seed}:A`), B: new RandomBot(`${opts.seed}:B`) }
+      botTier = opts.botTier ?? getBotTier()
+      botSeed = opts.seed
+      aiClient ??= new AiWorkerClient()
+      aiClient.reset()
       set({
         state: null,
         pending: null,
@@ -209,8 +244,15 @@ export const useGame = create<GameStore>((set, get) => {
       if (!state) return null
       const r = step(state, action)
       if (r.rejection) {
+        if (get().seats[action.seat] === 'bot') {
+          // bots guess; their rejections are logged only, never shown
+          console.debug(`[bot] ${action.type} rejected: ${r.rejection.code} ${r.rejection.reason}`)
+          return r.rejection
+        }
         rejectionNonce++
         set({ rejection: { code: r.rejection.code, reason: r.rejection.reason, nonce: rejectionNonce } })
+        // at most one rejection toast per human action: the newest replaces the previous one
+        clearToasts()
         pushToast(rejectionText(r.rejection), r.rejection.code === 'E_TODO' ? 'warn' : 'error')
         return r.rejection
       }
@@ -247,6 +289,25 @@ export const useGame = create<GameStore>((set, get) => {
     },
   }
 })
+
+/**
+ * Answers a bot can still try when its own guess and the enumerated legal actions were all rejected: a deploy
+ * spot from the engine's placement search, the suggested spot for an equipment marker, a pass.
+ */
+function fallbackAnswers(state: GameState, pending: PendingDecision): Action[] {
+  const out: Action[] = []
+  if (pending.kind === 'setup.deploy') {
+    for (let skip = 0; skip < 40; skip += 5) {
+      const spot = suggestPlacement(state, pending, undefined, skip)
+      if (spot) out.push({ type: 'setup.deploy', seat: pending.seat, decisionId: pending.id, payload: { operativeId: spot.operativeId, x: spot.x, z: spot.z, y: spot.y } })
+    }
+  }
+  if (pending.kind === 'setup.equipMarker') {
+    const s = pending.context.suggestion as { x: number; z: number; yaw?: number } | undefined
+    if (s) out.push({ type: 'setup.equipMarker', seat: pending.seat, decisionId: pending.id, payload: { x: s.x, z: s.z, ...(s.yaw !== undefined ? { yaw: s.yaw } : {}) } })
+  }
+  return out
+}
 
 /** Seat whose decision is pending and who is a human (the UI may act for it). */
 export function humanToAct(): Seat | null {
