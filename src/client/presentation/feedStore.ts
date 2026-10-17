@@ -1,0 +1,53 @@
+// Event feed + dice log + toasts. Only the director writes feed / dice entries (so nothing shows early);
+// toasts are written by the store and UI directly (they report rejections, which have no engine events).
+import { create } from 'zustand'
+import type { Seat } from '@/engine'
+
+export interface FeedEntry {
+  id: number
+  seq: number
+  seat: Seat | null
+  text: string
+}
+export interface DiceEntry {
+  id: number
+  seq: number
+  seat: Seat | null
+  purpose: string
+  dice: (number | null)[]
+  kinds?: string[]
+}
+export interface Toast {
+  id: number
+  text: string
+  kind: 'info' | 'warn' | 'error'
+}
+
+interface FeedState {
+  feed: FeedEntry[]
+  dice: DiceEntry[]
+  toasts: Toast[]
+}
+
+let nextId = 1
+export const useFeedStore = create<FeedState>(() => ({ feed: [], dice: [], toasts: [] }))
+
+export function pushFeed(seq: number, seat: Seat | null, text: string): void {
+  useFeedStore.setState((s) => ({ feed: [...s.feed, { id: nextId++, seq, seat, text }].slice(-300) }))
+}
+
+export function pushDice(seq: number, seat: Seat | null, purpose: string, dice: (number | null)[], kinds?: string[]): void {
+  useFeedStore.setState((s) => ({ dice: [...s.dice, { id: nextId++, seq, seat, purpose, dice, ...(kinds ? { kinds } : {}) }].slice(-120) }))
+}
+
+export function pushToast(text: string, kind: Toast['kind'] = 'info', ttlMs = 4200): void {
+  const id = nextId++
+  useFeedStore.setState((s) => ({ toasts: [...s.toasts, { id, text, kind }].slice(-4) }))
+  if (typeof setTimeout !== 'undefined') {
+    setTimeout(() => useFeedStore.setState((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), ttlMs)
+  }
+}
+
+export function clearFeed(): void {
+  useFeedStore.setState({ feed: [], dice: [], toasts: [] })
+}

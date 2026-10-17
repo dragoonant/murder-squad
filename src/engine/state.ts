@@ -52,12 +52,19 @@ export function isInjured(op: Operative): boolean {
 
 /** Current APL: printed APL plus net modifiers clamped to +/-1 (R-9.6). */
 export function effectiveApl(op: Operative): number {
+  // M2b-game: Resolute and Shake It Off make an operative ignore every APL change.
+  if (op.flags.ignoreApl) return Math.max(0, op.apl)
   return Math.max(0, op.apl + Math.max(-1, Math.min(1, op.aplMods)))
+}
+
+/** Injured stat penalties apply (injured and not ignoring them, e.g. And They Shall Know No Fear). */
+export function hasInjuredPenalty(op: Operative): boolean {
+  return isInjured(op) && !op.flags.ignoreInjured
 }
 
 /** Current Move: injured operatives lose 2" with a 4" floor (R-7.3, R-9.6). */
 export function effectiveMove(op: Operative): number {
-  return isInjured(op) ? Math.max(4, op.move - 2) : op.move
+  return hasInjuredPenalty(op) ? Math.max(4, op.move - 2) : op.move
 }
 
 export function markerRadius(marker: Pick<Marker, 'kind'>): number {

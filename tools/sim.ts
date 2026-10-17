@@ -1,9 +1,11 @@
-// npm run sim -- --games 20 --seed 1 [--replay tools/out/sim-report.json [index]]
+// npm run sim -- --games 20 --seed 1 [--teams real] [--replay tools/out/sim-report.json [index]]
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
-import { replay, type Action } from '@/engine'
+import { replay, type Action, type EngineBundle } from '@/engine'
+import { bundleFromData } from '@/engine/bundle'
+import { loadBundle } from '../src/data'
 import { testBundle } from '../tests/fixtures/team'
-import { runSim, setupFor, type GameReport } from './sim-core'
+import { realSetupFor, runSim, setupFor, type GameReport } from './sim-core'
 
 function arg(name: string, fallback: string): string {
   const i = process.argv.indexOf(`--${name}`)
@@ -19,7 +21,9 @@ function replayMode(path: string, index: number): void {
     console.error(`no failing game at index ${index}`)
     process.exit(2)
   }
-  const r = replay(setupFor(g.game), g.seed, g.actions as Action[], testBundle)
+  const real = arg('teams', 'fixture') === 'real'
+  const bundle: EngineBundle = real ? bundleFromData(loadBundle()) : testBundle
+  const r = replay((real ? realSetupFor(bundle) : setupFor)(g.game), g.seed, g.actions as Action[], bundle)
   console.log(`replayed ${g.actions.length} actions of ${g.seed}: final hash ${r.state.hash}${r.rejection ? ` (rejected at ${r.failedAt}: ${r.rejection.reason})` : ''}`)
   for (const v of g.violations) console.log(`  [${v.decision}] ${v.rule}: ${v.message}`)
 }
@@ -30,7 +34,9 @@ if (replayPath) {
 } else {
   const games = Number(arg('games', '20'))
   const seed = arg('seed', '1')
-  const report = runSim({ games, seed, setupFor, bundle: testBundle })
+  const real = arg('teams', 'fixture') === 'real'
+  const bundle: EngineBundle = real ? bundleFromData(loadBundle()) : testBundle
+  const report = runSim({ games, seed, setupFor: real ? realSetupFor(bundle) : setupFor, bundle })
   mkdirSync(dirname(OUT), { recursive: true })
   writeFileSync(OUT, JSON.stringify({ ...report, failing: report.failing }, null, 1))
   const perSec = report.ms > 0 ? ((games / report.ms) * 1000).toFixed(1) : 'inf'

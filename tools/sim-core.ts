@@ -3,6 +3,7 @@
 // client store) is the only caller of `step`.
 import { act } from '@/engine/actions'
 import { effectiveApl } from '@/engine/state'
+import { chargeUnderConceal, maxRepeats } from '@/engine/abilities'
 import { enemiesInControlRange } from '@/engine/measure'
 import { placementProblem, terrainOf } from '@/engine/terrain'
 import {
@@ -23,6 +24,7 @@ import {
   type Waypoint,
 } from '@/engine'
 import { polygonBBox, round3 } from '@/engine/geometry'
+import { realSetup } from '@/engine/bundle'
 import { flatMap, terrainMap } from '../tests/fixtures/maps'
 import { makeSetup } from '../tests/fixtures/team'
 
@@ -80,8 +82,23 @@ export class RandomBot {
     if (legal) return legal[this.int(legal.length)]!
     if (pending.kind === 'setup.deploy') return this.deploy(state, pending)
     if (pending.kind === 'move.path') return this.move(state, pending)
+    if (pending.kind === 'setup.equipMarker') return this.equip(pending)
+    if (pending.kind === 'marker.place') return this.place(state, pending)
     if (pending.canPass) return act.pass(pending)
     throw new Error(`bot cannot answer ${pending.kind}`)
+  }
+
+  /** M2b-game: equipment placement answers with the engine's own suggestion (a legal spot at the time the decision was raised). */
+  private equip(pending: PendingDecision): Action {
+    const s = pending.context.suggestion as { x: number; z: number; yaw: number }
+    return { type: 'setup.equipMarker', seat: pending.seat, decisionId: pending.id, payload: { x: s.x, z: s.z, yaw: s.yaw } }
+  }
+
+  /** M2b-game: Place Marker puts the carried marker where the carrier stands, or cancels. */
+  private place(state: GameState, pending: PendingDecision): Action {
+    const op = state.operatives[String(pending.context.operativeId)]
+    if (!op || this.float() < 0.3) return act.pass(pending)
+    return { type: 'marker.place', seat: pending.seat, decisionId: pending.id, payload: { x: op.pos.x, z: op.pos.z } }
   }
 
   private deploy(state: GameState, pending: PendingDecision): Action {
@@ -198,7 +215,8 @@ export function checkInvariants(prev: GameState, next: GameState, action: Action
 
   for (const o of Object.values(next.operatives)) {
     if (o.wounds < 0 || o.wounds > o.maxWounds) add('wounds', `${o.id} has ${o.wounds}/${o.maxWounds}`)
-    if (o.status === 'active' && o.wounds <= 0) add('SIM-004', `${o.id} is on the board with ${o.wounds} wounds`)
+    // an incapacitated operative stays until the whole Shoot/Fight action has finished (R-5.14), i.e. while `attack` is open
+    if (o.status === 'active' && o.wounds <= 0 && !next.attack && !next.removal) add('SIM-004', `${o.id} is on the board with ${o.wounds} wounds`)
     if (o.status === 'active') {
       const problem = placementProblem(next, { id: o.id, pos: o.pos, radius: o.baseRadius, height: o.height })
       if (problem) add('SIM-007', `${o.id} at ${o.pos.x},${o.pos.y},${o.pos.z}: ${problem.reason}`)
@@ -210,12 +228,17 @@ export function checkInvariants(prev: GameState, next: GameState, action: Action
     const op = next.operatives[act_.operativeId]!
     const cap = act_.counteract ? 0 : effectiveApl(op)
     if (!act_.counteract && act_.apSpent > cap) add('SIM-005', `${op.id} spent ${act_.apSpent} AP with APL ${cap}`)
-    if (!act_.counteract && new Set(act_.performed).size !== act_.performed.length) {
-      add('ORD-005', `${op.id} repeated an action: ${act_.performed.join(',')}`)
+    // an action repeats only where a team rule allows it (ASTARTES, Krumpin' Time) or after a free action
+    if (!act_.counteract && !act_.frame) {
+      for (const a of new Set(act_.performed)) {
+        const n = act_.performed.filter((p) => p === a).length
+        if (n > maxRepeats(next, op, a, act_.performed) && !act_.performed.some((p) => p.startsWith('ability:'))) add('ORD-005', `${op.id} repeated an action: ${act_.performed.join(',')}`)
+      }
     }
     if (op.order === 'conceal' && !act_.counteract) {
-      if (act_.performed.includes('charge')) add('ORD-002', `${op.id} charged under Conceal`)
-      if (act_.performed.includes('shoot')) add('ORD-002', `${op.id} shot under Conceal`)
+      if (act_.performed.includes('charge') && !chargeUnderConceal(next, op)) add('ORD-002', `${op.id} charged under Conceal`)
+      const silent = op.weapons.some((w) => next.data.weapons[w]?.rules.some((r) => /silent$/i.test(r.rule)))
+      if (act_.performed.includes('shoot') && !silent) add('ORD-002', `${op.id} shot under Conceal`)
     }
   }
 
@@ -249,6 +272,8 @@ export function checkInvariants(prev: GameState, next: GameState, action: Action
       if (!next.pending.canPass) {
         if (next.pending.kind === 'setup.deploy') {
           if (!suggestPlacement(next, next.pending)) add('SIM-001', 'no legal deploy spot exists')
+        } else if (next.pending.kind === 'setup.equipMarker') {
+          if (!next.pending.context.suggestion) add('SIM-001', 'no suggested equipment spot')
         } else add('SIM-001', `${next.pending.kind} is continuous with no way to pass`)
       }
     } else {
@@ -382,4 +407,20 @@ export function setupFor(game: number): GameSetup {
   const sizes = [3, 3, 6, 4]
   const size = sizes[game % sizes.length]!
   return makeSetup({ map: game % 2 === 0 ? flatMap() : terrainMap(), sizeA: size, sizeB: size })
+}
+
+/**
+ * M2b-game: Angels of Death against Kommandos with the default rosters, built through the data adapter.
+ * Seats and killzone layouts rotate; the engine rolls the map and the crit op, and the bots place the
+ * objective markers and the equipment themselves.
+ */
+export function realSetupFor(bundle: EngineBundle): (game: number) => GameSetup {
+  const layouts = Object.keys(bundle.layouts ?? {}).sort()
+  return (game) => {
+    const swap = game % 2 === 1
+    return realSetup(bundle, {
+      teams: swap ? ['kommandos', 'angels-of-death'] : ['angels-of-death', 'kommandos'],
+      layoutId: layouts[game % layouts.length]!,
+    })
+  }
 }

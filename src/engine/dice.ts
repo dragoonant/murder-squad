@@ -113,3 +113,50 @@ export function expectedSuccesses(n: number, odds: DieOdds): { normals: number; 
 export function d3FromD6(v: number): number {
   return Math.ceil(v / 2)
 }
+
+// ---------------------------------------------------------------------------
+// M2b-attack: exact enumeration over the faces of n dice (used by query.* for expected damage).
+// ---------------------------------------------------------------------------
+
+export interface FaceOutcome {
+  /** the face of every die, ascending */
+  faces: number[]
+  p: number
+}
+
+const faceCache = new Map<number, FaceOutcome[]>()
+
+/** Every distinct multiset of n D6 results with its exact probability (multinomial). */
+export function faceDistribution(n: number): FaceOutcome[] {
+  const hit = faceCache.get(n)
+  if (hit) return hit
+  const out: FaceOutcome[] = []
+  if (n === 0) {
+    out.push({ faces: [], p: 1 })
+  } else {
+    const fact: number[] = [1]
+    for (let i = 1; i <= n; i++) fact[i] = fact[i - 1]! * i
+    const total = Math.pow(6, n)
+    const counts = [0, 0, 0, 0, 0, 0]
+    const rec = (face: number, left: number): void => {
+      if (face === 5) {
+        counts[5] = left
+        let coef = fact[n]!
+        const faces: number[] = []
+        for (let f = 0; f < 6; f++) {
+          coef /= fact[counts[f]!]!
+          for (let k = 0; k < counts[f]!; k++) faces.push(f + 1)
+        }
+        out.push({ faces, p: coef / total })
+        return
+      }
+      for (let c = 0; c <= left; c++) {
+        counts[face] = c
+        rec(face + 1, left - c)
+      }
+    }
+    rec(0, n)
+  }
+  faceCache.set(n, out)
+  return out
+}

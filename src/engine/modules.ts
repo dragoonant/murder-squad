@@ -29,6 +29,15 @@ export const ALL_MODULES: ModuleDef[] = [
   abilitiesModule,
 ]
 
+/**
+ * Decision kinds routed to a module other than their namespace owner (M2b-attack): the attack
+ * sequences own the re-roll windows because they are part of the dice flow of Shoot and Fight.
+ */
+const KIND_OVERRIDES: Record<string, ModuleDef> = {
+  'dice.reroll': weaponsModule,
+  'dice.commandReroll': weaponsModule,
+}
+
 let table: Map<string, ModuleDef> | null = null
 
 function build(): Map<string, ModuleDef> {
@@ -44,6 +53,8 @@ function build(): Map<string, ModuleDef> {
 
 /** The module that owns a decision kind such as `firefight.action`. */
 export function moduleFor(kind: string): ModuleDef {
+  const override = KIND_OVERRIDES[kind]
+  if (override) return override
   table ??= build()
   const ns = kind.split('.')[0]!
   const mod = table.get(ns)

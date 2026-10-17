@@ -29,6 +29,12 @@ export interface Solid {
   ceiling: boolean
   barred: boolean
   crTransparent: boolean
+  /** M2b-game: wall thickness (Breach), part tags ('obstructing', 'protective'), and the equipment feature data */
+  thickness: number | null
+  tags: string[]
+  equipmentId: string | null
+  /** ladders: the part id the ladder leans on */
+  leansOn: string | null
   /** surface heights an operative can pass over (the top plus Vantage floors) */
   walkable: number[]
   /** surface heights an operative may finish a move on */
@@ -71,6 +77,10 @@ export function terrainOf(map: MapDef): TerrainIndex {
         ceiling,
         barred: has('barred'),
         crTransparent: part.crTransparent === true,
+        thickness: part.thickness ?? null,
+        tags: part.tags ?? [],
+        equipmentId: feature.equipmentId ?? null,
+        leansOn: feature.leansOn ?? null,
         walkable: [part.height, ...extra],
         floors: [...(vantage ? [part.height] : []), ...extra],
       })

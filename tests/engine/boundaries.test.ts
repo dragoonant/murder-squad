@@ -14,7 +14,8 @@ describe('module boundaries', () => {
       for (const [i, line] of text.split('\n').entries()) {
         const code = line.replace(/\/\/.*$/, '')
         const importFrom = /from\s+'([^']+)'/.exec(code)?.[1]
-        if (importFrom && !importFrom.startsWith('./')) bad.push(`${f}:${i + 1} imports ${importFrom}`)
+        // the type-only data records are the one allowed import (00-architecture section 1)
+        if (importFrom && !importFrom.startsWith('./') && importFrom !== '../data/types') bad.push(`${f}:${i + 1} imports ${importFrom}`)
         if (/Math\.random\(|Date\.now\(|new Date\(|setTimeout\(|setInterval\(|document\.|window\./.test(code)) {
           bad.push(`${f}:${i + 1} uses a forbidden global: ${code.trim()}`)
         }

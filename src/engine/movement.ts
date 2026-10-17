@@ -14,7 +14,9 @@ import {
   round3,
   segmentPolygonIntervals,
 } from './geometry'
-import { bodyOf, inControlRange, type Body } from './measure'
+import { bodyOf, enemiesInControlRange, inControlRange, type Body } from './measure'
+import { chargeFromControlRange } from './abilities'
+import { getCodeHook, markFired } from './code-hooks'
 import { reject, type Handled, type ModuleDef } from './registry'
 import { effectiveMove, enemiesOf, friendsOf, getOp } from './state'
 import {
@@ -27,7 +29,7 @@ import {
   type Solid,
   type TerrainIndex,
 } from './terrain'
-import type { Action, GameState, MoveConstraints, Operative, Rejection, Vec2, Vec3, Waypoint } from './types'
+import type { Action, GameState, Marker, MoveConstraints, Operative, Rejection, Vec2, Vec3, Waypoint } from './types'
 
 export type MoveKind = 'reposition' | 'dash' | 'fallBack' | 'charge'
 
@@ -115,17 +117,36 @@ function solidsContaining(idx: TerrainIndex, p: Vec2): Set<string> {
  * Validate a whole path increment by increment and price it. Pure: used by `validate`, `step`
  * and by bots/AI to probe candidate paths.
  */
-export function planMove(state: GameState, op: Operative, kind: MoveKind, raw: unknown, counteract = false): PlanResult {
+export function planMove(
+  state: GameState,
+  op: Operative,
+  kind: MoveKind,
+  raw: unknown,
+  counteract = false,
+  /** M2b-game: a smaller limit set by the action (Move With Barricade: Move minus 2") */
+  limitOverride?: number,
+): PlanResult {
   const wps = parseWaypoints(raw)
   if (!wps) return fail('E_SCHEMA', `a path is 1 to ${MAX_WAYPOINTS} waypoints with numeric x and z`)
 
   const idx = terrainOf(state.map)
   const r = op.baseRadius
   const h = op.height
-  const maxInches = moveLimit(op, kind, counteract)
+  const maxInches = limitOverride === undefined ? moveLimit(op, kind, counteract) : Math.min(limitOverride, moveLimit(op, kind, counteract))
   const enemies = enemiesOf(state, op)
   const friends = friendsOf(state, op)
   const accessibles = idx.solids.filter((s) => s.accessible)
+  // M2b-game: Breach markers make thin parts of their feature Accessible near the marker (T-KOM.12); Razor Wire is
+  // Obstructing (+1" per crossing, M-5.4); a Ladder shortens one climb of the feature it leans on (M-5.9).
+  const breaches = state.markers.filter((m) => m.equipmentId === 'breach' && m.featureId)
+  const nearBreach = (p: Vec2): Marker | null => {
+    for (const m of breaches) if (dist2(p, m.pos) - r - 20 / 25.4 / 2 <= 1 + EPS) return m
+    return null
+  }
+  const thinParts = (m: Marker): Solid[] => idx.solids.filter((s) => s.featureId === m.featureId && s.thickness !== null && s.thickness <= 1 + EPS)
+  const wires = idx.solids.filter((s) => s.tags.includes('obstructing'))
+  const ladders = idx.solids.filter((s) => s.equipmentId === 'core.e.ladders')
+  let ladderUsed = false
   /** +1" for every Accessible part the centre line passes through (R-11.6) */
   const countAccessible = (a: Vec2, b: Vec2, level: number): number => {
     let n = 0
@@ -133,8 +154,27 @@ export function planMove(state: GameState, op: Operative, kind: MoveKind, raw: u
       if (level + 0.01 >= s.top) continue
       if (segmentPolygonIntervals(a, b, s.polygon).length > 0) n++
     }
+    const m = nearBreach(a) ?? nearBreach(b)
+    if (m) {
+      for (const s of thinParts(m)) {
+        if (level + 0.01 >= s.top || s.accessible) continue
+        if (segmentPolygonIntervals(a, b, s.polygon).length > 0) {
+          n++
+          markFired('breach')
+        }
+      }
+    }
+    for (const w of wires) {
+      if (level + 0.01 >= w.top) continue
+      if (segmentPolygonIntervals(a, b, w.polygon).length > 0) {
+        n++
+        markFired('razorWire')
+      }
+    }
     return n
   }
+  // Mobile: a Charge may start inside an enemy control range and leave it (T-AOD.16)
+  const exemptStart: Set<string> = kind === 'charge' && chargeFromControlRange(state, op) ? new Set(enemiesInControlRange(state, op, op.seat).map((e) => e.id)) : new Set()
   const me = (pos: Vec3): Body => ({ id: op.id, pos, baseRadius: r, height: h })
 
   const crOf = (pos: Vec3): Set<string> => {
@@ -157,7 +197,7 @@ export function planMove(state: GameState, op: Operative, kind: MoveKind, raw: u
           return { code: 'E_CONTROL_RANGE', reason: 'a Charge that enters a lone enemy control range cannot leave it', details: { enemy: id } }
         }
       }
-      for (const id of set) if (lone.get(id)) locked.add(id)
+      for (const id of set) if (lone.get(id) && !exemptStart.has(id)) locked.add(id)
       return null
     }
     for (const id of set) {
@@ -187,6 +227,15 @@ export function planMove(state: GameState, op: Operative, kind: MoveKind, raw: u
     if (doorFeatures) {
       skipSet = new Set(skip ?? [])
       for (const s of idx.solids) if (doorFeatures.has(s.featureId)) skipSet.add(s.partId)
+    }
+    // Breach: thin parts of the marked feature are Accessible while the base is within 1" of the marker
+    const bm = nearBreach(p)
+    if (bm) {
+      for (const s of thinParts(bm)) {
+        if (level + 0.01 >= s.top || distToPolygon(p, s.polygon) > r + EPS) continue
+        skipSet = new Set(skipSet ?? [])
+        skipSet.add(s.partId)
+      }
     }
     const blocker = discBlockedBy(idx, p, level, r, h, skipSet)
     if (blocker) return { code: 'E_OVERLAP', reason: 'the path is blocked by terrain', details: { part: blocker.partId } }
@@ -263,7 +312,24 @@ export function planMove(state: GameState, op: Operative, kind: MoveKind, raw: u
         const rej = checkSample(p, level, upper ? undefined : skip) ?? crCheck({ x: p.x, y: level, z: p.z })
         if (rej) return { ok: false, rejection: rej }
       }
-      if (!insignificantClimb) climbGroup += y1 - y0
+      if (!insignificantClimb) {
+        // a Ladder against the climbed feature, in control range throughout, makes one climb per action 1" (M-5.9)
+        const ladder = ladderUsed
+          ? undefined
+          : ladders.find(
+              (l) =>
+                l.leansOn !== null &&
+                idx.byPart.get(l.leansOn)?.featureId === s1.featureId &&
+                distToPolygon(cur, l.polygon) - r <= 1 + EPS &&
+                distToPolygon(next, l.polygon) - r <= 1 + EPS,
+            )
+        if (ladder) {
+          ladderUsed = true
+          closeClimb()
+          climbCost += 1
+          markFired('ladders')
+        } else climbGroup += y1 - y0
+      }
     } else if (isDrop) {
       kindOfSegment = 'drop'
       let s0: Solid | null = null
@@ -360,12 +426,15 @@ function handleMovePath(state: GameState, action: Action): Handled {
   const act = state.firefight.activation
   if (!act || !act.declared) return reject('E_WRONG_DECISION', 'no move is declared')
   const op = getOp(state, act.operativeId)
-  const kind = act.declared.action as MoveKind
+  // M2b-game: an action "treated as" a move (Move With Barricade) names the move kind and its own limit
+  const params = act.declared.params
+  const kind = ((params?.moveKind as string | undefined) ?? act.declared.action) as MoveKind
+  const limit = params?.maxInches as number | undefined
   if (action.type === 'pass') {
     return { run: (ctx) => cancelAction(ctx) }
   }
   if (action.type !== 'move.path') return reject('E_WRONG_DECISION', 'expected a path')
-  const plan = planMove(state, op, kind, action.payload.waypoints, act.counteract)
+  const plan = planMove(state, op, kind, action.payload.waypoints, act.counteract, limit)
   if (!plan.ok) return { rejection: plan.rejection }
   return {
     run(ctx) {
@@ -383,6 +452,8 @@ function handleMovePath(state: GameState, action: Action): Handled {
         cost: plan.cost,
         maxInches: plan.maxInches,
       })
+      const after = params?.afterMove
+      if (typeof after === 'string') getCodeHook(after)?.afterMove?.(ctx, o, from, params ?? {})
       finishAction(ctx)
     },
   }

@@ -1,0 +1,1015 @@
+{
+  "bodies": {
+    "aod-assault-intercessor-grenadier": {
+      "file": "bodies/aod-assault-intercessor-grenadier.glb",
+      "archetype": "aod-assault-intercessor-grenadier",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.43,
+          0.516,
+          0.106
+        ],
+        "handL": [
+          0.428,
+          0.532,
+          0.109
+        ],
+        "back": [
+          0.0,
+          0.78,
+          -0.351
+        ],
+        "beltR": [
+          -0.424,
+          0.6,
+          0.058
+        ],
+        "beltL": [
+          0.422,
+          0.6,
+          0.052
+        ],
+        "shoulderR": [
+          -0.354,
+          1.02,
+          -0.202
+        ],
+        "shoulderL": [
+          0.355,
+          1.02,
+          -0.176
+        ],
+        "head": [
+          0.004,
+          1.32,
+          0.112
+        ]
+      }
+    },
+    "aod-assault-intercessor-sergeant": {
+      "file": "bodies/aod-assault-intercessor-sergeant.glb",
+      "archetype": "aod-assault-intercessor-sergeant",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.382,
+          0.483,
+          0.097
+        ],
+        "handL": [
+          0.383,
+          0.467,
+          0.131
+        ],
+        "back": [
+          0.0,
+          0.808,
+          -0.337
+        ],
+        "beltR": [
+          -0.353,
+          0.62,
+          0.069
+        ],
+        "beltL": [
+          0.371,
+          0.62,
+          0.099
+        ],
+        "shoulderR": [
+          -0.236,
+          1.058,
+          -0.164
+        ],
+        "shoulderL": [
+          0.256,
+          1.058,
+          -0.163
+        ],
+        "head": [
+          0.011,
+          1.37,
+          0.184
+        ]
+      }
+    },
+    "aod-assault-intercessor-warrior": {
+      "file": "bodies/aod-assault-intercessor-warrior.glb",
+      "archetype": "aod-assault-intercessor-warrior",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.429,
+          0.54,
+          0.25
+        ],
+        "handL": [
+          0.431,
+          0.503,
+          0.333
+        ],
+        "back": [
+          0.0,
+          0.78,
+          -0.066
+        ],
+        "beltR": [
+          -0.429,
+          0.6,
+          0.226
+        ],
+        "beltL": [
+          0.432,
+          0.6,
+          0.267
+        ],
+        "shoulderR": [
+          -0.372,
+          1.02,
+          -0.095
+        ],
+        "shoulderL": [
+          0.438,
+          1.02,
+          -0.09
+        ],
+        "head": [
+          0.018,
+          1.32,
+          0.246
+        ]
+      }
+    },
+    "aod-eliminator-sniper": {
+      "file": "bodies/aod-eliminator-sniper.glb",
+      "archetype": "aod-eliminator-sniper",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 40,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.402,
+          0.473,
+          0.085
+        ],
+        "handL": [
+          0.385,
+          0.436,
+          -0.005
+        ],
+        "back": [
+          0.0,
+          0.78,
+          -0.199
+        ],
+        "beltR": [
+          -0.399,
+          0.6,
+          0.081
+        ],
+        "beltL": [
+          0.375,
+          0.6,
+          0.044
+        ],
+        "shoulderR": [
+          -0.293,
+          1.02,
+          -0.145
+        ],
+        "shoulderL": [
+          0.286,
+          1.02,
+          -0.138
+        ],
+        "head": [
+          0.001,
+          1.32,
+          0.093
+        ]
+      }
+    },
+    "aod-heavy-intercessor-gunner": {
+      "file": "bodies/aod-heavy-intercessor-gunner.glb",
+      "archetype": "aod-heavy-intercessor-gunner",
+      "heightIn": 1.47,
+      "figureHeightIn": 1.35,
+      "baseTopIn": 0.12,
+      "baseMm": 40,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.462,
+          0.604,
+          0.169
+        ],
+        "handL": [
+          0.462,
+          0.596,
+          0.164
+        ],
+        "back": [
+          0.0,
+          0.863,
+          -0.416
+        ],
+        "beltR": [
+          -0.48,
+          0.66,
+          0.182
+        ],
+        "beltL": [
+          0.48,
+          0.66,
+          0.213
+        ],
+        "shoulderR": [
+          -0.362,
+          1.133,
+          -0.172
+        ],
+        "shoulderL": [
+          0.355,
+          1.133,
+          -0.172
+        ],
+        "head": [
+          -0.003,
+          1.47,
+          0.132
+        ]
+      }
+    },
+    "aod-intercessor-gunner": {
+      "file": "bodies/aod-intercessor-gunner.glb",
+      "archetype": "aod-intercessor-gunner",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.393,
+          0.492,
+          0.14
+        ],
+        "handL": [
+          0.395,
+          0.471,
+          0.142
+        ],
+        "back": [
+          0.0,
+          0.78,
+          -0.285
+        ],
+        "beltR": [
+          -0.374,
+          0.6,
+          0.121
+        ],
+        "beltL": [
+          0.385,
+          0.6,
+          0.119
+        ],
+        "shoulderR": [
+          -0.264,
+          1.02,
+          -0.155
+        ],
+        "shoulderL": [
+          0.314,
+          1.02,
+          -0.185
+        ],
+        "head": [
+          0.191,
+          1.32,
+          0.031
+        ]
+      }
+    },
+    "aod-intercessor-sergeant": {
+      "file": "bodies/aod-intercessor-sergeant.glb",
+      "archetype": "aod-intercessor-sergeant",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.381,
+          0.498,
+          0.329
+        ],
+        "handL": [
+          0.38,
+          0.489,
+          0.327
+        ],
+        "back": [
+          0.0,
+          0.808,
+          -0.161
+        ],
+        "beltR": [
+          -0.354,
+          0.62,
+          0.298
+        ],
+        "beltL": [
+          0.365,
+          0.62,
+          0.305
+        ],
+        "shoulderR": [
+          -0.243,
+          1.058,
+          0.039
+        ],
+        "shoulderL": [
+          0.264,
+          1.058,
+          0.027
+        ],
+        "head": [
+          0.008,
+          1.37,
+          0.404
+        ]
+      }
+    },
+    "aod-intercessor-warrior": {
+      "file": "bodies/aod-intercessor-warrior.glb",
+      "archetype": "aod-intercessor-warrior",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.429,
+          0.536,
+          0.129
+        ],
+        "handL": [
+          0.429,
+          0.533,
+          0.13
+        ],
+        "back": [
+          0.0,
+          0.78,
+          -0.344
+        ],
+        "beltR": [
+          -0.43,
+          0.6,
+          0.09
+        ],
+        "beltL": [
+          0.425,
+          0.6,
+          0.072
+        ],
+        "shoulderR": [
+          -0.4,
+          1.02,
+          -0.286
+        ],
+        "shoulderL": [
+          0.4,
+          1.02,
+          -0.275
+        ],
+        "head": [
+          -0.01,
+          1.32,
+          0.118
+        ]
+      }
+    },
+    "aod-space-marine-captain": {
+      "file": "bodies/aod-space-marine-captain.glb",
+      "archetype": "aod-space-marine-captain",
+      "heightIn": 1.42,
+      "figureHeightIn": 1.3,
+      "baseTopIn": 0.12,
+      "baseMm": 40,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.478,
+          0.573,
+          0.07
+        ],
+        "handL": [
+          0.476,
+          0.578,
+          0.075
+        ],
+        "back": [
+          0.0,
+          0.835,
+          -0.289
+        ],
+        "beltR": [
+          -0.495,
+          0.64,
+          0.056
+        ],
+        "beltL": [
+          0.491,
+          0.64,
+          0.06
+        ],
+        "shoulderR": [
+          -0.389,
+          1.095,
+          -0.015
+        ],
+        "shoulderL": [
+          0.39,
+          1.095,
+          -0.166
+        ],
+        "head": [
+          0.012,
+          1.42,
+          0.09
+        ]
+      }
+    },
+    "kom-bomb-squig": {
+      "file": "bodies/kom-bomb-squig.glb",
+      "archetype": "kom-bomb-squig",
+      "heightIn": 0.87,
+      "figureHeightIn": 0.75,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.533,
+          -0.237
+        ],
+        "beltR": [
+          -0.278,
+          0.42,
+          0.116
+        ],
+        "beltL": [
+          0.277,
+          0.42,
+          0.155
+        ],
+        "shoulderR": [
+          -0.28,
+          0.683,
+          0.269
+        ],
+        "shoulderL": [
+          0.272,
+          0.683,
+          0.26
+        ],
+        "head": [
+          -0.002,
+          0.87,
+          0.164
+        ]
+      }
+    },
+    "kom-boss-nob": {
+      "file": "bodies/kom-boss-nob.glb",
+      "archetype": "kom-boss-nob",
+      "heightIn": 1.47,
+      "figureHeightIn": 1.35,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.644,
+          0.461,
+          -0.035
+        ],
+        "handL": [
+          0.644,
+          0.454,
+          -0.051
+        ],
+        "back": [
+          0.0,
+          0.863,
+          -0.36
+        ],
+        "beltR": [
+          -0.603,
+          0.66,
+          -0.135
+        ],
+        "beltL": [
+          0.607,
+          0.66,
+          -0.115
+        ],
+        "shoulderR": [
+          -0.436,
+          1.133,
+          -0.179
+        ],
+        "shoulderL": [
+          0.441,
+          1.133,
+          -0.172
+        ],
+        "head": [
+          0.0,
+          1.47,
+          0.116
+        ]
+      }
+    },
+    "kom-boy": {
+      "file": "bodies/kom-boy.glb",
+      "archetype": "kom-boy",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.51,
+          0.412,
+          0.147
+        ],
+        "handL": [
+          0.514,
+          0.404,
+          0.057
+        ],
+        "back": [
+          0.0,
+          0.752,
+          -0.495
+        ],
+        "beltR": [
+          -0.491,
+          0.58,
+          0.042
+        ],
+        "beltL": [
+          0.507,
+          0.58,
+          -0.017
+        ],
+        "shoulderR": [
+          -0.433,
+          0.982,
+          0.05
+        ],
+        "shoulderL": [
+          0.411,
+          0.982,
+          -0.001
+        ],
+        "head": [
+          0.007,
+          1.27,
+          -0.141
+        ]
+      }
+    },
+    "kom-breacha-boy": {
+      "file": "bodies/kom-breacha-boy.glb",
+      "archetype": "kom-breacha-boy",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.578,
+          0.433,
+          -0.159
+        ],
+        "handL": [
+          0.561,
+          0.486,
+          0.246
+        ],
+        "back": [
+          0.0,
+          0.752,
+          -0.49
+        ],
+        "beltR": [
+          -0.545,
+          0.58,
+          -0.194
+        ],
+        "beltL": [
+          0.591,
+          0.58,
+          0.162
+        ],
+        "shoulderR": [
+          -0.429,
+          0.982,
+          -0.123
+        ],
+        "shoulderL": [
+          0.416,
+          0.982,
+          0.091
+        ],
+        "head": [
+          0.003,
+          1.27,
+          -0.062
+        ]
+      }
+    },
+    "kom-burna-boy": {
+      "file": "bodies/kom-burna-boy.glb",
+      "archetype": "kom-burna-boy",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.506,
+          0.399,
+          0.16
+        ],
+        "handL": [
+          0.504,
+          0.419,
+          0.025
+        ],
+        "back": [
+          0.0,
+          0.752,
+          -0.496
+        ],
+        "beltR": [
+          -0.479,
+          0.58,
+          0.078
+        ],
+        "beltL": [
+          0.529,
+          0.58,
+          -0.231
+        ],
+        "shoulderR": [
+          -0.407,
+          0.982,
+          0.035
+        ],
+        "shoulderL": [
+          0.432,
+          0.982,
+          -0.257
+        ],
+        "head": [
+          0.095,
+          1.27,
+          -0.239
+        ]
+      }
+    },
+    "kom-comms-boy": {
+      "file": "bodies/kom-comms-boy.glb",
+      "archetype": "kom-comms-boy",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.371,
+          0.397,
+          0.048
+        ],
+        "handL": [
+          0.379,
+          0.405,
+          0.035
+        ],
+        "back": [
+          0.0,
+          0.752,
+          -0.328
+        ],
+        "beltR": [
+          -0.322,
+          0.58,
+          0.003
+        ],
+        "beltL": [
+          0.313,
+          0.58,
+          -0.098
+        ],
+        "shoulderR": [
+          -0.114,
+          0.982,
+          0.096
+        ],
+        "shoulderL": [
+          0.198,
+          0.982,
+          -0.208
+        ],
+        "head": [
+          0.158,
+          1.27,
+          -0.066
+        ]
+      }
+    },
+    "kom-dakka-boy": {
+      "file": "bodies/kom-dakka-boy.glb",
+      "archetype": "kom-dakka-boy",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.508,
+          0.404,
+          0.157
+        ],
+        "handL": [
+          0.508,
+          0.401,
+          0.114
+        ],
+        "back": [
+          0.0,
+          0.752,
+          -0.475
+        ],
+        "beltR": [
+          -0.478,
+          0.58,
+          0.046
+        ],
+        "beltL": [
+          0.492,
+          0.58,
+          -0.06
+        ],
+        "shoulderR": [
+          -0.32,
+          0.982,
+          0.05
+        ],
+        "shoulderL": [
+          0.394,
+          0.982,
+          -0.195
+        ],
+        "head": [
+          0.006,
+          1.27,
+          0.326
+        ]
+      }
+    },
+    "kom-grot": {
+      "file": "bodies/kom-grot.glb",
+      "archetype": "kom-grot",
+      "heightIn": 0.92,
+      "figureHeightIn": 0.8,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.297,
+          0.31,
+          -0.04
+        ],
+        "handL": [
+          0.296,
+          0.304,
+          -0.045
+        ],
+        "back": [
+          0.0,
+          0.56,
+          -0.222
+        ],
+        "beltR": [
+          -0.227,
+          0.44,
+          -0.124
+        ],
+        "beltL": [
+          0.236,
+          0.44,
+          -0.112
+        ],
+        "shoulderR": [
+          -0.279,
+          0.72,
+          -0.065
+        ],
+        "shoulderL": [
+          0.253,
+          0.72,
+          -0.061
+        ],
+        "head": [
+          0.003,
+          0.92,
+          0.065
+        ]
+      }
+    },
+    "kom-rokkit-boy": {
+      "file": "bodies/kom-rokkit-boy.glb",
+      "archetype": "kom-rokkit-boy",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.504,
+          0.411,
+          0.176
+        ],
+        "handL": [
+          0.509,
+          0.399,
+          0.07
+        ],
+        "back": [
+          0.0,
+          0.752,
+          -0.453
+        ],
+        "beltR": [
+          -0.487,
+          0.58,
+          0.052
+        ],
+        "beltL": [
+          0.488,
+          0.58,
+          0.032
+        ],
+        "shoulderR": [
+          -0.332,
+          0.982,
+          0.053
+        ],
+        "shoulderL": [
+          0.507,
+          0.982,
+          -0.126
+        ],
+        "head": [
+          -0.0,
+          1.27,
+          0.248
+        ]
+      }
+    },
+    "kom-slasha-boy": {
+      "file": "bodies/kom-slasha-boy.glb",
+      "archetype": "kom-slasha-boy",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.51,
+          0.409,
+          0.004
+        ],
+        "handL": [
+          0.508,
+          0.41,
+          -0.044
+        ],
+        "back": [
+          0.0,
+          0.752,
+          -0.31
+        ],
+        "beltR": [
+          -0.486,
+          0.58,
+          -0.092
+        ],
+        "beltL": [
+          0.499,
+          0.58,
+          -0.158
+        ],
+        "shoulderR": [
+          -0.347,
+          0.982,
+          -0.085
+        ],
+        "shoulderL": [
+          0.372,
+          0.982,
+          -0.084
+        ],
+        "head": [
+          0.279,
+          1.27,
+          -0.027
+        ]
+      }
+    },
+    "kom-snipa-boy": {
+      "file": "bodies/kom-snipa-boy.glb",
+      "archetype": "kom-snipa-boy",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.505,
+          0.38,
+          -0.269
+        ],
+        "handL": [
+          0.499,
+          0.401,
+          -0.027
+        ],
+        "back": [
+          0.0,
+          0.752,
+          -0.332
+        ],
+        "beltR": [
+          -0.497,
+          0.58,
+          -0.189
+        ],
+        "beltL": [
+          0.527,
+          0.58,
+          -0.083
+        ],
+        "shoulderR": [
+          -0.402,
+          0.982,
+          0.063
+        ],
+        "shoulderL": [
+          0.427,
+          0.982,
+          0.061
+        ],
+        "head": [
+          -0.005,
+          1.27,
+          0.13
+        ]
+      }
+    }
+  },
+  "attachments": {}
+}
