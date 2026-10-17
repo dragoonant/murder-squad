@@ -16,6 +16,21 @@ export { ReplayDecider } from './decider'
 export type { Decider } from './decider'
 export { ScriptedRng, SeededRng, sha256Hex, fnv1a } from './rng'
 export type { Rng } from './rng'
+// M2b-game: the data adapter, real-team setups and the mission view (query.mission)
+export {
+  bundleFromData,
+  defaultEquipmentFor,
+  defaultLoadoutFor,
+  defaultRosterFor,
+  defaultTeamChoicesFor,
+  enumerateLoadoutChoices,
+  layoutMap,
+  realSetup,
+  resolveLoadoutChoice,
+  validateLoadoutChoice,
+} from './bundle'
+export { missionView } from './missions'
+export type { MissionView } from './missions'
 
 /**
  * Enumerated answers for a finite decision (each passes `validate`); `null` for continuous
