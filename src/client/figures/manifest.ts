@@ -25,11 +25,20 @@ export interface BodyEntry {
   sockets?: Partial<Record<SocketName, V3>>
   poses?: Partial<Record<'long' | 'heavy' | 'melee2h' | 'shield', string>>
 }
+/** A point in the attachment's own frame: [x, y, z] or {x, y, z}. */
+export type PointLike = V3 | { x: number; y: number; z: number }
+export const pointOf = (p: PointLike | undefined): V3 => (!p ? [0, 0, 0] : Array.isArray(p) ? p : [p.x, p.y, p.z])
+
+/** One attachment GLB (docs/spec/30-figures.md section 3), keyed by slug (tools/models/attachments.json). The mesh
+ * is authored at its final size: +X along the barrel / blade, y up, origin at the grip point. */
 export interface AttachmentEntry {
   file: string
   holdClass: HoldClass
-  grip?: V3
-  support?: V3
+  /** length along +X, inches */
+  lengthIn?: number
+  grip?: PointLike
+  /** support-hand point (long / heavy classes), attachment frame */
+  support?: PointLike
   scale?: number
 }
 export interface ModelManifest {

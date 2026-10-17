@@ -20,3 +20,4 @@ test-results/
 tools/out/
 .claude/worktrees/
 scratch/
+tools/models/raw/

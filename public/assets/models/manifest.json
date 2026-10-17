@@ -1011,5 +1011,372 @@
       }
     }
   },
-  "attachments": {}
+  "attachments": {
+    "w-slugga": {
+      "file": "attachments/w-slugga.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.45,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-choppa": {
+      "file": "attachments/w-choppa.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.6,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-big-choppa": {
+      "file": "attachments/w-big-choppa.glb",
+      "holdClass": "melee2h",
+      "lengthIn": 0.8,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-power-klaw": {
+      "file": "attachments/w-power-klaw.glb",
+      "holdClass": "melee2h",
+      "lengthIn": 0.5,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-breacha-ram": {
+      "file": "attachments/w-breacha-ram.glb",
+      "holdClass": "melee2h",
+      "lengthIn": 0.6,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-burna": {
+      "file": "attachments/w-burna.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.9,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-shokka-pistol": {
+      "file": "attachments/w-shokka-pistol.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.45,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-dakka-shoota": {
+      "file": "attachments/w-dakka-shoota.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.9,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-rokkit-launcha": {
+      "file": "attachments/w-rokkit-launcha.glb",
+      "holdClass": "heavy",
+      "lengthIn": 1.0,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1,
+      "support": {
+        "x": 0.38,
+        "y": 0.217,
+        "z": 0
+      }
+    },
+    "w-scoped-big-shoota": {
+      "file": "attachments/w-scoped-big-shoota.glb",
+      "holdClass": "heavy",
+      "lengthIn": 1.1,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1,
+      "support": {
+        "x": 0.418,
+        "y": 0.152,
+        "z": 0
+      }
+    },
+    "w-throwing-knife": {
+      "file": "attachments/w-throwing-knife.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.3,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-grot-choppa": {
+      "file": "attachments/w-grot-choppa.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.4,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "e-dynamite": {
+      "file": "attachments/e-dynamite.glb",
+      "holdClass": "grenade",
+      "lengthIn": 0.2,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "e-harpoon": {
+      "file": "attachments/e-harpoon.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.9,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "e-stikkbomb": {
+      "file": "attachments/e-stikkbomb.glb",
+      "holdClass": "grenade",
+      "lengthIn": 0.2,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-hand-flamer": {
+      "file": "attachments/w-hand-flamer.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.45,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-heavy-bolt-pistol": {
+      "file": "attachments/w-heavy-bolt-pistol.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.5,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-plasma-pistol": {
+      "file": "attachments/w-plasma-pistol.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.45,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-auto-bolt-rifle": {
+      "file": "attachments/w-auto-bolt-rifle.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.9,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-bolt-rifle": {
+      "file": "attachments/w-bolt-rifle.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.9,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-stalker-bolt-rifle": {
+      "file": "attachments/w-stalker-bolt-rifle.glb",
+      "holdClass": "long",
+      "lengthIn": 1.0,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1,
+      "support": {
+        "x": 0.38,
+        "y": 0.127,
+        "z": 0
+      }
+    },
+    "w-auxiliary-grenade-launcher": {
+      "file": "attachments/w-auxiliary-grenade-launcher.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.6,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-bolt-pistol": {
+      "file": "attachments/w-bolt-pistol.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.45,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-heavy-bolter": {
+      "file": "attachments/w-heavy-bolter.glb",
+      "holdClass": "heavy",
+      "lengthIn": 1.1,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1,
+      "support": {
+        "x": 0.418,
+        "y": -0.003,
+        "z": 0
+      }
+    },
+    "w-bolt-sniper-rifle": {
+      "file": "attachments/w-bolt-sniper-rifle.glb",
+      "holdClass": "long",
+      "lengthIn": 1.2,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1,
+      "support": {
+        "x": 0.456,
+        "y": 0.096,
+        "z": 0
+      }
+    },
+    "w-chainsword": {
+      "file": "attachments/w-chainsword.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.7,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-power-fist": {
+      "file": "attachments/w-power-fist.glb",
+      "holdClass": "melee2h",
+      "lengthIn": 0.5,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-power-sword": {
+      "file": "attachments/w-power-sword.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.75,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "w-thunder-hammer": {
+      "file": "attachments/w-thunder-hammer.glb",
+      "holdClass": "melee2h",
+      "lengthIn": 0.85,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "e-frag-grenade": {
+      "file": "attachments/e-frag-grenade.glb",
+      "holdClass": "grenade",
+      "lengthIn": 0.2,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "e-krak-grenade": {
+      "file": "attachments/e-krak-grenade.glb",
+      "holdClass": "grenade",
+      "lengthIn": 0.2,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    }
+  }
 }

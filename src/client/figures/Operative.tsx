@@ -13,8 +13,9 @@ import { animPosition } from '../presentation/animStore'
 import { colors } from '../ui/theme'
 import { cuePose, deathAge, installCueFeed, isDying, cueActive, CUE_MS } from './cues'
 import { useGlbInstance } from './glbLoader'
-import { HOLDS, heaviestHold, holdClassOf, type HoldSpec } from './hold'
-import { modelManifest, slugOf, useModelManifest, type AttachmentEntry, type BodyEntry, type HoldClass, type V3 } from './manifest'
+import { attachmentFor } from './attachmentFor'
+import { HOLDS, SHEATHED, handRight, heaviestHold, holdClassOf, type HoldSpec } from './hold'
+import { modelManifest, pointOf, slugOf, useModelManifest, type BodyEntry, type HoldClass, type ModelManifest, type V3 } from './manifest'
 import { Procedural, type HslLike } from './Procedural'
 
 export interface FigureSpec {
@@ -24,6 +25,8 @@ export interface FigureSpec {
   major: HslLike
   minor: HslLike
   weaponIds: string[]
+  /** QC only: mount exactly these attachment slugs (by their hold class) instead of the loadout's weapons */
+  attachSlugs?: string[]
   seatColor: string
   dim?: boolean
 }
@@ -71,23 +74,32 @@ function Mount({ spec, socket, children }: { spec: HoldSpec; socket: V3; childre
   )
 }
 
-function Attachment({ entry, socket }: { entry: AttachmentEntry; socket: V3 }) {
-  const obj = useGlbInstance(slugOf(entry.file, 'attachments'))
-  if (!obj) return null
+/** One mounted weapon: a real GLB (slug) or the hold-class box (slug null / GLB missing or still loading). */
+interface Placed {
+  key: string
+  slug: string | null
+  hold: HoldClass
+  spec: HoldSpec
+}
+
+function Attachment({ slug, hold, spec, socket, color }: { slug: string | null; hold: HoldClass; spec: HoldSpec; socket: V3; color: Color }) {
+  const entry = slug ? modelManifest().attachments[slug] : undefined
+  const obj = useGlbInstance(entry ? slugOf(entry.file, 'attachments') : undefined)
+  if (!entry || !obj) return <PlaceholderWeapon hold={hold} spec={spec} socket={socket} color={color} />
   const s = entry.scale ?? 1
-  const g = entry.grip ?? [0, 0, 0]
+  const g = pointOf(entry.grip)
   return (
-    <Mount spec={HOLDS[entry.holdClass]} socket={socket}>
+    <Mount spec={spec} socket={socket}>
       <primitive object={obj} scale={s} position={[-g[0] * s, -g[1] * s, -g[2] * s]} />
     </Mount>
   )
 }
 
-/** Procedural placeholder for a weapon with no attachment GLB: a thin box of the class length, tinted by team. */
-function PlaceholderWeapon({ hold, socket, color }: { hold: HoldClass; socket: V3; color: Color }) {
+/** Procedural placeholder for a weapon with no attachment GLB (yet): a thin box of the class length, tinted by team. */
+function PlaceholderWeapon({ hold, spec, socket, color }: { hold: HoldClass; spec: HoldSpec; socket: V3; color: Color }) {
   const h = HOLDS[hold]
   return (
-    <Mount spec={h} socket={socket}>
+    <Mount spec={spec} socket={socket}>
       <mesh position={[(0.5 - h.gripAt) * h.box[0], 0, 0]} castShadow>
         <boxGeometry args={h.box} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.35} roughness={0.6} />
@@ -96,32 +108,59 @@ function PlaceholderWeapon({ hold, socket, color }: { hold: HoldClass; socket: V
   )
 }
 
+/**
+ * Which meshes go where for the shown weapons. Slugs come from attachmentFor (an empty list draws nothing, an
+ * unmapped id gets the box); the class from the manifest entry when it exists. A second slug of the same weapon
+ * (twin choppas) takes the free hand, else hangs at the belt.
+ */
+export function planAttachments(shown: { ranged: ShownWeapon | null; melee: ShownWeapon | null }, manifest: ModelManifest): Placed[] {
+  const out: Placed[] = []
+  let rightTaken = false
+  for (const w of [shown.ranged, shown.melee]) {
+    if (!w) continue
+    const slugs = attachmentFor(w.id) ?? [null]
+    slugs.forEach((slug, i) => {
+      const hold = (slug && manifest.attachments[slug]?.holdClass) || w.hold
+      let spec = HOLDS[hold]
+      if (i > 0) spec = rightTaken ? SHEATHED : handRight(spec)
+      if (spec.socket === 'handR') rightTaken = true
+      out.push({ key: `${w.id}#${i}`, slug, hold, spec })
+    })
+  }
+  return out
+}
+
+/** Gallery / QC: mount specific attachment slugs by their own hold class, ignoring the loadout. */
+export function planSlugs(slugs: string[], manifest: ModelManifest): Placed[] {
+  return slugs.map((slug, i) => {
+    const hold = manifest.attachments[slug]?.holdClass ?? 'rifle'
+    return { key: `${slug}#${i}`, slug, hold, spec: HOLDS[hold] }
+  })
+}
+
 export function GlbBody({ body, spec, ranged, melee }: { body: BodyEntry; spec: FigureSpec; ranged: HoldClass | null; melee: HoldClass | null }) {
   const manifest = useModelManifest()
   const obj = useGlbInstance(slugOf(body.file, 'bodies'))
   const shown = useMemo(() => shownWeapons(spec.weaponIds), [spec.weaponIds])
   const cols = useMemo(() => ({ ranged: hslColor(spec.minor, 0.1), melee: hslColor(spec.major, 0.12) }), [spec.major, spec.minor])
+  const placed = useMemo(() => (spec.attachSlugs ? planSlugs(spec.attachSlugs, manifest) : planAttachments(shown, manifest)), [spec.attachSlugs, shown, manifest])
   if (!obj) return <Procedural height={spec.height} baseRadius={spec.baseRadius} major={spec.major} minor={spec.minor} ranged={ranged} melee={melee} seatColor={spec.seatColor} dim={spec.dim} />
   const sockets = body.sockets ?? {}
   // natural weapons (no hand sockets, e.g. the bomb squig) draw nothing
   const armed = !!(sockets.handR || sockets.handL)
   const flip = body.facing === '-Z'
-  const place = (w: ShownWeapon | null, color: Color) => {
-    if (!w || !armed) return null
-    const entry: AttachmentEntry | undefined = manifest.attachments[w.id]
-    const hold = entry?.holdClass ?? w.hold
-    const sock = sockets[HOLDS[hold].socket]
-    if (!sock) return null
-    const at: V3 = sock // manifest sockets are in the displayed +Z-facing frame
-    return entry ? <Attachment key={w.id} entry={entry} socket={at} /> : <PlaceholderWeapon key={w.id} hold={hold} socket={at} color={color} />
-  }
   return (
     <group>
       <group rotation={[0, flip ? Math.PI : 0, 0]}>
         <primitive object={obj} />
       </group>
-      {place(shown.ranged, cols.ranged)}
-      {place(shown.melee, cols.melee)}
+      {armed &&
+        placed.map((p) => {
+          const sock = sockets[p.spec.socket]
+          if (!sock) return null
+          // manifest sockets are in the displayed +Z-facing frame
+          return <Attachment key={p.key} slug={p.slug} hold={p.hold} spec={p.spec} socket={sock} color={p.spec.socket === 'handL' ? cols.melee : cols.ranged} />
+        })}
     </group>
   )
 }
