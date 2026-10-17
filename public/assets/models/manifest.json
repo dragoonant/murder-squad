@@ -1378,5 +1378,79 @@
       },
       "scale": 1
     }
+  },
+  "terrain": {
+    "t-large-ruin": {
+      "file": "terrain/t-large-ruin.glb",
+      "footprint": {
+        "w": 6.0,
+        "d": 4.0
+      },
+      "heightIn": 4,
+      "origin": "centre-ground"
+    },
+    "t-small-ruin": {
+      "file": "terrain/t-small-ruin.glb",
+      "footprint": {
+        "w": 4.0,
+        "d": 3.0
+      },
+      "heightIn": 2.5,
+      "origin": "centre-ground"
+    },
+    "t-stronghold": {
+      "file": "terrain/t-stronghold.glb",
+      "footprint": {
+        "w": 4,
+        "d": 3
+      },
+      "heightIn": 3,
+      "origin": "centre-ground"
+    },
+    "t-heavy-rubble": {
+      "file": "terrain/t-heavy-rubble.glb",
+      "footprint": {
+        "w": 3.0,
+        "d": 1.8
+      },
+      "heightIn": 1.5,
+      "origin": "centre-ground"
+    },
+    "t-light-rubble": {
+      "file": "terrain/t-light-rubble.glb",
+      "footprint": {
+        "w": 3.0,
+        "d": 1.6
+      },
+      "heightIn": 1,
+      "origin": "centre-ground"
+    },
+    "t-barricade": {
+      "file": "terrain/t-barricade.glb",
+      "footprint": {
+        "w": 3.0,
+        "d": 0.6
+      },
+      "heightIn": 1,
+      "origin": "centre-ground"
+    },
+    "t-container": {
+      "file": "terrain/t-container.glb",
+      "footprint": {
+        "w": 3.0,
+        "d": 1.5
+      },
+      "heightIn": 2.5,
+      "origin": "centre-ground"
+    },
+    "t-pipes": {
+      "file": "terrain/t-pipes.glb",
+      "footprint": {
+        "w": 4.0,
+        "d": 0.6
+      },
+      "heightIn": 1,
+      "origin": "centre-ground"
+    }
   }
 }
