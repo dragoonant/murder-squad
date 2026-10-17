@@ -25,6 +25,7 @@ import {
   weaponOf,
   weaponUnusable,
 } from './attack-common'
+import { normalBlocksCrit } from './teams/angels-of-death'
 import { cancelAction, finishAction } from './firefight'
 import { runHook } from './hooks'
 import { bodyOf, visible } from './los'
@@ -434,10 +435,10 @@ function strike(ctx: Ctx, mine: DiceSide, theirs: DiceSide | null, i: number): v
 }
 
 /** Can a die of `mine` block a die of `kind` when the enemy weapon is `brutal`? */
-function canBlock(mine: AttackDie['kind'], theirs: AttackDie['kind'], brutal: boolean): boolean {
+function canBlock(mine: AttackDie['kind'], theirs: AttackDie['kind'], brutal: boolean, normalCrit = false): boolean {
   if (brutal && mine !== 'crit') return false
   if (mine === 'crit') return theirs !== 'fail'
-  return mine === 'normal' && theirs === 'normal'
+  return mine === 'normal' && (theirs === 'normal' || (theirs === 'crit' && normalCrit))
 }
 
 function isBrutal(ctx: Ctx, side: DiceSide | null, foeId: string): boolean {
@@ -480,6 +481,7 @@ STEPS.resolve = (ctx) => {
     const foeId = theirs.operativeId
     const dmg = weaponDmg(ctx, mine)
     const theirBrutal = isBrutal(ctx, theirs, mine.operativeId)
+    const duelist = normalBlocksCrit(s, mine.operativeId, theirBrutal)
     for (const kind of ['crit', 'normal'] as const) {
       const i = firstOfKind(mine, myIdx, kind)
       if (i === null) continue
@@ -492,7 +494,7 @@ STEPS.resolve = (ctx) => {
       })
       for (const tk of ['crit', 'normal'] as const) {
         const j = firstOfKind(theirs, theirIdx, tk)
-        if (j === null || !canBlock(kind, tk, theirBrutal)) continue
+        if (j === null || !canBlock(kind, tk, theirBrutal, duelist)) continue
         options.push({
           id: `block:${i}->${j}`,
           labelKey: 'fight.block',

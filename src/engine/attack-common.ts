@@ -762,9 +762,22 @@ export function coverForSelection(state: GameState, verdict: TargetVerdict, rule
   return parts.length > 0
 }
 
+/**
+ * `target.status` hook (OPTICS, Auspex, Smoke): handlers may change the obscured / cover status of the
+ * shooter-target pair after the terrain verdict. A forced cover-or-obscured choice that loses its
+ * obscured half stops being a choice; a status set by a hook is final for both choices.
+ */
+function applyTargetStatus(state: GameState, shooter: Operative, target: Operative, verdict: TargetVerdict): TargetVerdict {
+  const data = { obscured: verdict.obscured, inCover: verdict.inCover }
+  runHook('target.status', { seat: shooter.seat, state, operativeId: shooter.id, targetId: target.id, data })
+  if (data.obscured === verdict.obscured && data.inCover === verdict.inCover) return verdict
+  const both = { inCover: data.inCover, obscured: data.obscured }
+  return { ...verdict, inCover: data.inCover, obscured: data.obscured, forcedChoice: false, ifCover: { ...both }, ifObscured: { ...both } }
+}
+
 export function targetInfo(state: GameState, shooter: Operative, target: Operative, rules: RuleSet): TargetInfo {
   if (shooter.id === target.id) return selfInfo(state, shooter)
-  const verdict = targetVerdict(state, bodyOf(shooter), { ...bodyOf(target), order: target.order })
+  const verdict = applyTargetStatus(state, shooter, target, targetVerdict(state, bodyOf(shooter), { ...bodyOf(target), order: target.order }))
   const coverBlocks = target.order === 'conceal' && coverForSelection(state, verdict, rules)
   return {
     id: target.id,

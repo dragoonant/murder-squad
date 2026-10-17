@@ -472,6 +472,11 @@ export function startFreeAction(ctx: Ctx, o: FreeActionOpts): boolean {
   if (!op || op.status !== 'active' || freeActionProblem(s, op, o)) return false
   const data: Record<string, unknown> = { ...(o.data ?? {}), kind: o.action }
   if (o.pointBlank) data.pointBlank = true
+  // a ploy window that started this frame (KRUMP 'EM!, SSSSHHHH!) waits aside: the attack inside opens windows of its own
+  if (s.window) {
+    data.savedWindow = s.window
+    s.window = null
+  }
   if (o.weaponNameContains) {
     data.savedWeapons = op.weapons.slice()
     data.nameFilter = o.weaponNameContains.toLowerCase()
@@ -524,6 +529,8 @@ export function closeFrame(ctx: Ctx, outcome: 'finished' | 'cancelled'): void {
   }
   s.firefight.activation = (s.firefight.stack ?? []).pop() ?? null
   const queue = data.queue
+  const hasQueue = Array.isArray(queue) && queue.length > 0
+  if (!hasQueue && data.savedWindow) s.window = data.savedWindow as typeof s.window
   if (Array.isArray(queue) && queue.length > 0) {
     const carry = { ...data }
     for (const k of ['savedWeapons', 'nameFilter', 'queue', 'kind', 'pointBlank']) delete carry[k]
@@ -554,6 +561,7 @@ export function cancelAction(ctx: Ctx): void {
   const decl = act.declared!
   ctx.emit({ type: 'ActionCancelled', operativeId: act.operativeId, action: decl.action }, act.seat)
   act.declared = null
+  delete act.surcharge
   if (act.frame) {
     closeFrame(ctx, 'cancelled')
     return

@@ -40,7 +40,8 @@ import { distanceBetween } from './measure'
 import { bodyOf, visible } from './los'
 import { expectedDamage } from './query'
 import { reject, type Ctx, type Handled, type ModuleDef, type OptionInput } from './registry'
-import { getOp } from './state'
+import { repeatSurcharge } from './abilities'
+import { effectiveApl, getOp } from './state'
 import type {
   Action,
   Activation,
@@ -140,6 +141,8 @@ function raiseWeapon(ctx: Ctx): void {
   const op = getOp(s, a.operativeId)
   const options: OptionInput[] = []
   for (const { weaponId, targets } of shootableWeapons(s, op, act.performed, ctx)) {
+    // ASTARTES: repeating a bolt sniper rifle / heavy bolter costs 1 more AP, so it is only offered when affordable
+    if (!surchargeAffordable(s, op, act, weaponId)) continue
     const w = weaponOf(s, weaponId)
     options.push({
       id: weaponId,
@@ -164,8 +167,23 @@ function raiseWeapon(ctx: Ctx): void {
   })
 }
 
+/** The extra AP (ASTARTES) the declared Shoot costs with this weapon; a counteraction or free Shoot pays none. */
+function surchargeFor(state: GameState, op: Operative, act: Activation, weaponId: string): number {
+  if (act.counteract || act.frame || act.declared?.free) return 0
+  return repeatSurcharge(state, op, act, weaponId)
+}
+
+function surchargeAffordable(state: GameState, op: Operative, act: Activation, weaponId: string): boolean {
+  const extra = surchargeFor(state, op, act, weaponId)
+  return extra === 0 || act.apSpent + (act.declared?.cost ?? 1) + extra <= effectiveApl(op)
+}
+
 function selectWeapon(ctx: Ctx, weaponId: string): void {
   const a = attackOf(ctx)
+  const act = ctx.state.firefight.activation!
+  const extra = surchargeFor(ctx.state, getOp(ctx.state, a.operativeId), act, weaponId)
+  if (extra > 0) act.surcharge = extra
+  else delete act.surcharge
   a.weaponId = weaponId
   ctx.emit({ type: 'ShootStarted', operativeId: a.operativeId, weaponId }, a.seat)
   raiseTargets(ctx)
