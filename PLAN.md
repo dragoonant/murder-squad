@@ -18,6 +18,7 @@ Fan game: 3D Warhammer 40,000: Kill Team (2024 edition, mechanics 1:1, our own p
 | Engine | Mallet contracts, Fell-in module split, one pending decision, `legalActions` never empty, `view(state, seat)`, `query.*` owns numbers | default |
 | AI | Utility decider in a Web Worker, tiers random/easy/normal, bench gate normal >= 95% vs random | default |
 | Repo | Public, Pages from `main`, pushes after each stage pre-approved | owner |
+| Animation | v1 ships rigid whole-body cues (walk bob, recoil, lunge, flinch, topple). Target is **true skeletal rigging** (owner, 2026-10-17): after M7, pilot a local auto-rigger (UniRig) on two bodies, retarget a small clip set (idle, run, shoot, melee, hit, death), and roll it out if the skin holds on the fused MGSD meshes; part-split articulation is the fallback | owner |
 | Process | Lean stages, Sonnet implementers, about 2.5M tokens per push, check-ins <= 10 lines with a screenshot, no approval stops | owner |
 
 ## Architecture
@@ -40,7 +41,8 @@ tools        sim, ai-bench, validate-data, gen-audio (Audio Studio), model pipel
 | M5 | Look | Figure bodies + attachments via Gemini -> Hunyuan, terrain set, board, army painter, `?gallery` |
 | M6 | Sound | SFX/music/voice via Audio Studio, flavour map, trims, music director, `sounds.html` |
 | M7 | Polish | Narration pauses, hover help, settings, end screen, phone layout, perf |
-| M8+ | More teams, Approved Ops tac ops, Gallowdark, multiplayer | one worktree per team |
+| M8 | Skeletal animation | UniRig pilot on two bodies, clip retargeting, GLB skinned export, client animation mixer; fallback part-split articulation |
+| M9+ | More teams, Approved Ops tac ops, Gallowdark, multiplayer | one worktree per team |
 
 ## Definition of done for v1
 A human can play a full four-turning-point Preliminary Ops game as either team against the AI in the browser on Pages, with every datacard rule of both teams working; the sim plays 100 games with zero invariant failures; the AI beats the random bot >= 95%; figures and sounds are generated, not placeholders.
