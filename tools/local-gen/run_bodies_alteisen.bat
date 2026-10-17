@@ -15,6 +15,6 @@ set UV_SYSTEM_CERTS=1
 set VIRTUAL_ENV=E:\AI\Hunyuan3D-2.1\.venv
 set PYTHONPATH=E:\AI\Hunyuan3D-2.1;E:\AI\Hunyuan3D-2.1\.venv\Lib\site-packages
 cd /d E:\AI\Hunyuan3D-2
-"C:\Users\antho\AppData\Roaming\uv\python\cpython-3.10.22-windows-x86_64-none\python.exe" stage_finalize.py %W%\bodies %SLUGS% > %W%\finalize.log 2>&1
+"%APPDATA%\uv\python\cpython-3.10.22-windows-x86_64-none\python.exe" stage_finalize.py %W%\bodies %SLUGS% > %W%\finalize.log 2>&1
 echo done %date% %time% >> %W%\chain.log
 echo done > %W%\chain.done
