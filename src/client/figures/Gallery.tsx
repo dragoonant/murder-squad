@@ -49,9 +49,17 @@ const SOCKET_COLOR: Record<SocketName, string> = {
 
 function CameraPreset({ view, zoom }: { view: View; zoom: number }) {
   const camera = useThree((s) => s.camera)
+  const scene = useThree((s) => s.scene)
+  // e2e / QC probes measure bones, socket groups and attachments through the scene graph
+  useEffect(() => {
+    const ms = (window.__ms ?? (window.__ms = {} as NonNullable<typeof window.__ms>)) as unknown as Record<string, unknown>
+    ms.scene = () => scene
+  }, [scene])
   const controls = useThree((s) => s.controls) as { target: { set(x: number, y: number, z: number): void }; update(): void } | null
   useEffect(() => {
-    const v = VIEWS[view]
+    const q = new URLSearchParams(window.location.search)
+    // ?az=<radians>&el=<radians> override the preset (QC captures from the side or above)
+    const v = { ...VIEWS[view], az: q.has('az') ? Number(q.get('az')) : VIEWS[view].az, el: q.has('el') ? Number(q.get('el')) : VIEWS[view].el }
     camera.position.set(TARGET[0] + v.dist * zoom * Math.sin(v.az) * Math.cos(v.el), TARGET[1] + v.dist * zoom * Math.sin(v.el), TARGET[2] + v.dist * zoom * Math.cos(v.az) * Math.cos(v.el))
     camera.lookAt(...TARGET)
     controls?.target.set(...TARGET)

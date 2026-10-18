@@ -62,19 +62,22 @@ export interface HoldSpec {
 const FWD = -Math.PI / 2
 
 export const HOLDS: Record<HoldClass, HoldSpec> = {
-  // right-hand firearms: muzzle forward, a touch up; pistols angled up and slightly inward, long guns and
-  // heavy weapons carried lower (hip) and crossed a little toward the support hand
-  pistol: { socket: 'handR', offset: [0, 0.02, 0.04], rot: [0, FWD + 0.1, 0.22], gripAt: 0.2, box: [0.42, 0.12, 0.1] },
-  rifle: { socket: 'handR', offset: [0, 0.03, 0.04], rot: [0, FWD, 0.1], gripAt: 0.38, box: [0.95, 0.16, 0.12] },
-  long: { socket: 'handR', offset: [0, 0.03, 0.04], rot: [0, FWD + 0.18, 0.08], gripAt: 0.32, box: [1.35, 0.12, 0.1] },
-  heavy: { socket: 'handR', offset: [0, 0.02, 0.04], rot: [0, FWD + 0.28, 0.02], gripAt: 0.42, box: [1.05, 0.28, 0.26] },
-  // left-hand melee: held down and forward
-  melee1h: { socket: 'handL', offset: [0, 0.03, 0.03], rot: [0, FWD - 0.08, -0.5], gripAt: 0.12, box: [0.75, 0.07, 0.07] },
-  melee2h: { socket: 'handL', offset: [0, 0.03, 0.03], rot: [0, FWD - 0.08, -0.25], gripAt: 0.3, box: [0.85, 0.2, 0.2] },
+  // Attachments are authored with the origin at the BOTTOM of the grip (finalize-attachments.py) and the fists are
+  // about 0.2" across with the socket near the fist centre, so every hand-held class sinks the grip 0.08" below the
+  // socket: the handle then runs through the fist and the weapon body starts at the fist's top instead of floating
+  // above it. Right-hand firearms are carried at the hip: rifles and long guns muzzle down a little (a one-handed
+  // carry), pistols level, heavy weapons level and crossed toward the support hand.
+  pistol: { socket: 'handR', offset: [0, -0.08, 0], rot: [0, FWD + 0.08, 0.05], gripAt: 0.2, box: [0.42, 0.12, 0.1] },
+  rifle: { socket: 'handR', offset: [0, -0.08, 0], rot: [0, FWD, -0.3], gripAt: 0.38, box: [0.95, 0.16, 0.12] },
+  long: { socket: 'handR', offset: [0, -0.08, 0], rot: [0, FWD + 0.15, -0.32], gripAt: 0.32, box: [1.35, 0.12, 0.1] },
+  heavy: { socket: 'handR', offset: [0, -0.08, 0], rot: [0, FWD + 0.25, -0.1], gripAt: 0.42, box: [1.05, 0.28, 0.26] },
+  // left-hand melee: the handle in the fist, blade hanging down and forward
+  melee1h: { socket: 'handL', offset: [0, -0.08, 0], rot: [0, FWD - 0.08, -0.75], gripAt: 0.12, box: [0.75, 0.07, 0.07] },
+  melee2h: { socket: 'handL', offset: [0, -0.08, 0], rot: [0, FWD - 0.08, -0.45], gripAt: 0.3, box: [0.85, 0.2, 0.2] },
   shield: { socket: 'handL', offset: [-0.06, 0.12, 0.1], rot: [0, 0, 0], gripAt: 0.5, box: [0.7, 0.8, 0.08] },
   pack: { socket: 'back', offset: [0, 0, -0.12], rot: [0, 0, 0], gripAt: 0.5, box: [0.4, 0.5, 0.25] },
   grenade: { socket: 'beltR', offset: [0, 0, 0.04], rot: [0, 0, 0], gripAt: 0.5, box: [0.14, 0.14, 0.14] },
-  tool: { socket: 'handL', offset: [0, 0.02, 0.04], rot: [0, FWD, 0.3], gripAt: 0.3, box: [0.4, 0.12, 0.12] },
+  tool: { socket: 'handL', offset: [0, -0.08, 0], rot: [0, FWD, 0.3], gripAt: 0.3, box: [0.4, 0.12, 0.12] },
 }
 
 /** A second one-handed weapon of a pair, hanging at the right belt pointing down-forward. */
