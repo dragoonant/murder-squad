@@ -13,6 +13,37 @@ async function seq(page: Page): Promise<number> {
   return page.evaluate(() => (window.__ms!.getState() as { seq: number }).seq)
 }
 
+/** Pixels that differ between two PNG screenshots (decoded in the page), their bounding box and the share of the frame. */
+async function frameDiff(page: Page, a: Buffer, b: Buffer): Promise<{ count: number; share: number; box: [number, number, number, number] | null }> {
+  return page.evaluate(
+    async ([x, y]) => {
+      const load = async (b64: string) => {
+        const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+        const bmp = await createImageBitmap(new Blob([bytes], { type: 'image/png' }))
+        const c = document.createElement('canvas')
+        c.width = bmp.width
+        c.height = bmp.height
+        const g = c.getContext('2d')!
+        g.drawImage(bmp, 0, 0)
+        return g.getImageData(0, 0, bmp.width, bmp.height)
+      }
+      const [p, q] = [await load(x!), await load(y!)]
+      let count = 0
+      let box: [number, number, number, number] | null = null
+      for (let i = 0; i < p.data.length; i += 4) {
+        const d = Math.abs(p.data[i]! - q.data[i]!) + Math.abs(p.data[i + 1]! - q.data[i + 1]!) + Math.abs(p.data[i + 2]! - q.data[i + 2]!)
+        if (d < 60) continue
+        count++
+        const px = (i / 4) % p.width
+        const py = Math.floor(i / 4 / p.width)
+        box = box ? [Math.min(box[0], px), Math.min(box[1], py), Math.max(box[2], px), Math.max(box[3], py)] : [px, py, px, py]
+      }
+      return { count, share: count / (p.width * p.height), box }
+    },
+    [a.toString('base64'), b.toString('base64')],
+  )
+}
+
 /** Activate A6 on Engage and open its Reposition path prompt. */
 async function openReposition(page: Page, query: string): Promise<void> {
   await startBattle(page, query)
@@ -69,6 +100,14 @@ test('shoot-cover: the staged move shows what the end point sees, badges, panel,
   expect(['valid', 'cover', 'obscured']).toContain(byId.B11!.status)
   expect(byId.B3!.text).toMatch(/\d+\.\d″/)
   expect(rows.some((r) => r.status === 'unseen')).toBe(true)
+  // lines only for enemies the operative can see; unseen ones are listed (dimmed, at the bottom) without a line
+  const lineFlags = await page.locator('[data-testid^="sight-badge-"]').evaluateAll((els) =>
+    els.map((e) => ({ id: e.getAttribute('data-testid')!.replace('sight-badge-', ''), status: e.getAttribute('data-status')!, line: e.getAttribute('data-line')! })),
+  )
+  expect(lineFlags.length).toBeGreaterThan(0)
+  for (const f of lineFlags) expect(f.line).toBe(f.status === 'unseen' ? 'none' : f.status === 'threat' ? 'threat' : 'sight')
+  expect(lineFlags.some((f) => f.line === 'sight')).toBe(true)
+  expect(await list.locator('[data-testid="sight-unseen"]').count()).toBe(1)
   // sorted by expected damage, high to low (rows without a number sit last)
   const nums = rows.map((r) => {
     const m = /^(\d+\.\d) dmg$/.exec(r.dmg)
@@ -102,6 +141,17 @@ test('shoot-cover: the staged move shows what the end point sees, badges, panel,
   await expect(page.getByTestId('threat-block')).toBeVisible()
   await page.waitForTimeout(200)
   await screenshotRendered(page, 'e2e-out/sightlines-02.png')
+
+  // the pulses travel: two frames 300 ms apart differ, in a small area (along the lines), and the loop keeps running by itself
+  await page.evaluate(() => window.__ms?.camera.current?.repaint())
+  await page.waitForTimeout(120)
+  const frameA = await page.screenshot({ path: 'e2e-out/sightlines-anim-a.png' })
+  await page.waitForTimeout(300)
+  const frameB = await page.screenshot({ path: 'e2e-out/sightlines-anim-b.png' })
+  const diff = await frameDiff(page, frameA, frameB)
+  expect(diff.count).toBeGreaterThan(40)
+  expect(diff.share).toBeLessThan(0.08)
+  expect(diff.box).not.toBeNull()
 
   // looking never changes the game
   expect(await seq(page)).toBe(seq0)

@@ -119,7 +119,7 @@ function ThreatRow({ t, c }: { t: ThreatEntry; c: ThreatEntry | undefined }) {
 function UnseenChips({ entries }: { entries: SightEntry[] }) {
   if (entries.length === 0) return null
   return (
-    <div data-testid="sight-unseen" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', borderLeft: `4px solid ${SIGHT_COLOR.unseen}`, padding: '3px 6px', background: 'rgba(255,255,255,0.03)', borderRadius: 4 }}>
+    <div data-testid="sight-unseen" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', borderLeft: `4px solid ${SIGHT_COLOR.unseen}`, padding: '3px 6px', background: 'rgba(255,255,255,0.03)', borderRadius: 4, opacity: 0.6 }}>
       <span style={{ fontSize: 11, color: colors.muted }}>Not visible:</span>
       {entries.map((e) => (
         <span
@@ -170,7 +170,7 @@ function Body({ d, compact }: { d: SightData; compact: boolean }) {
             </Btn>
           </Tooltip>
           <span style={{ fontSize: 11, color: colors.muted, display: compact ? 'none' : undefined }}>
-            <span style={{ color: SIGHT_COLOR.valid }}>clear</span> · <span style={{ color: SIGHT_COLOR.cover }}>cover / obscured</span> · <span style={{ color: SIGHT_COLOR.unseen }}>unseen</span>
+            <span style={{ color: SIGHT_COLOR.valid }}>clear</span> · <span style={{ color: SIGHT_COLOR.cover }}>cover / obscured</span> · <span style={{ color: SIGHT_COLOR.unseen }}>unseen (no line)</span>
             {threatOn && <> · <span style={{ color: THREAT_COLOR }}>threat</span></>}
           </span>
         </div>
