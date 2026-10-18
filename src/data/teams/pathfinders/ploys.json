@@ -28,7 +28,7 @@
       "params": { "edgeWithin": 6, "endWithin": 6, "dash": true },
       "scope": { "side": "friendly", "keyword": "PATHFINDER" }
     },
-    "text": "Pick a killzone edge that is not your own. Each friendly Pathfinder wholly within 6 inches of it can take a free Dash, in the order you choose, but must end that move wholly within 6 inches of an edge that is not your own. Not in the first turning point.",
+    "text": "From the second turning point on: name one of the three killzone edges that are not yours. Pathfinders standing wholly within 6 inches of it may each make a free Dash, one at a time in any order, and a Pathfinder that does must finish wholly within 6 inches of some edge other than your own.",
     "source": "team-pathfinders.pdf (August '26 errata); docs/spec/13-teams.md T-PF.31"
   },
   {
@@ -44,7 +44,7 @@
       "duration": "turningPoint",
       "scope": { "side": "friendly", "keyword": "PATHFINDER" }
     },
-    "text": "For the turning point, when an enemy Shoots and its target (the primary target for Blast or Torrent) is not the closest valid target, your opponent cannot re-roll attack dice. Ignore friendly Pathfinders that have a Conceal order or are obscured when finding the closest.",
+    "text": "For this turning point an enemy that fires at anything but the nearest valid target (for Blast or Torrent, judged by the primary) gets no re-rolls on its attack dice. Your Pathfinders on Conceal, and any it would see only as obscured, do not count when deciding which target is nearest.",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.32"
   },
   {
@@ -60,7 +60,7 @@
       "duration": "turningPoint",
       "scope": { "side": "friendly", "keyword": "PATHFINDER" }
     },
-    "text": "For the turning point, a friendly Pathfinder (not a drone) that shoots, or retaliates with a ranged weapon through Point-Blank Fusillade, while within 3 inches of another friendly non-drone Pathfinder has Accurate 1 on its ranged weapons.",
+    "text": "For this turning point, non-drone Pathfinders fight as pairs: one standing within 3 inches of another non-drone Pathfinder gains Accurate 1 on its ranged weapons when it shoots, and when Point-Blank Fusillade lets it retaliate with one.",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.33"
   },
   {
@@ -76,7 +76,7 @@
       "duration": "turningPoint",
       "scope": { "side": "friendly", "keyword": "PATHFINDER" }
     },
-    "text": "For the turning point, when a friendly Pathfinder is shot and its player can retain a cover save, improve its Save by 1.",
+    "text": "For this turning point, a Pathfinder that is shot while a cover save is open to it also has its Save improved by 1.",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.34"
   },
   {
@@ -124,7 +124,7 @@
       "duration": "action",
       "scope": { "side": "friendly", "keyword": "PATHFINDER" }
     },
-    "text": "When a friendly Pathfinder Shoots, an enemy within 6 inches can be chosen as a target even though other friendly Pathfinders stand in its control range. Torrent secondary targets still cannot.",
+    "text": "During a friendly Pathfinder's Shoot, an enemy within 6 inches of the shooter stays a legal pick even with other friendly Pathfinders in its control range. This does not extend to Torrent secondary targets.",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.36"
   },
   {
@@ -139,7 +139,7 @@
       "params": { "within": 3, "noBlastOrTorrent": true },
       "scope": { "side": "friendly", "keyword": "PATHFINDER", "notKeywords": ["DRONE"] }
     },
-    "text": "When a friendly Pathfinder (not a drone) is the chosen target of a Shoot, pick a friendly Pathfinder drone that it can see within 3 inches; the drone becomes the target instead, even if it would not normally be valid. It counts as in cover or obscured only if the original target was. No effect against Blast or Torrent. Costs 0 CP with a Drone Controller in the killzone, or when the drone is the MV4 Shield Drone.",
+    "text": "When an enemy Shoot picks one of your non-drone Pathfinders, a friendly drone that Pathfinder can see within 3 inches throws itself in the way and takes the shot, legal target or not. The drone can benefit from cover or obscuring only where the original target had it. Useless against Blast or Torrent weapons. Free (0 CP) with a Drone Controller in the killzone or when the MV4 Shield Drone is the one that steps in.",
     "source": "team-pathfinders.pdf (August '26 errata); docs/spec/13-teams.md T-PF.37"
   },
   {
@@ -155,7 +155,7 @@
       "duration": "action",
       "scope": { "side": "friendly", "keyword": "PATHFINDER", "notKeywords": ["DRONE"] }
     },
-    "text": "When a friendly Pathfinder (not a drone) retaliates and was not in an enemy control range at the start of that activation or counteraction, it may use one of its ranged weapons (not a grenade) as its melee weapon for that fight. It cannot block, and Devastating, Piercing and Torrent do nothing on its weapons. If it is also ready, on Engage and uses a pulse weapon, its player resolves the first die instead of the attacker.",
+    "text": "A non-drone Pathfinder that is retaliating, and had no enemy in control range when that enemy activation or counteraction began, may fight back with one of its ranged weapons (grenades excluded) in place of a melee weapon. It then has no blocks, and its weapons lose Devastating, Piercing and Torrent for the fight. If it is still ready, on Engage and firing a pulse weapon, it strikes first rather than the attacker.",
     "source": "team-pathfinders.pdf (August '26 errata); docs/spec/13-teams.md T-PF.38"
   }
 ]

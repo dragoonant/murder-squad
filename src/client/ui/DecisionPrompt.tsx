@@ -2,7 +2,7 @@
 // kind (deploy, move path, activate, order, action bar); everything else (setup rolls, drop zones, gambits,
 // shoot/fight/ploy kinds the engine adds later) renders through the generic option list, never a crash.
 import { useEffect, useMemo, type ReactNode } from 'react'
-import { suggestPlacement, type DecisionOption, type GameState, type PendingDecision } from '@/engine'
+import { act, suggestPlacement, type DecisionOption, type GameState, type PendingDecision } from '@/engine'
 import * as firefight from '@/engine/firefight'
 import { effectiveApl } from '@/engine/state'
 import { ACTION_HELP, ACTION_LABEL, ACTION_ORDER_FALLBACK, contextFacts, decisionInfo, humanize, opName, optionDetail, optionLabel, ORDER_HELP, SEAT_NAME } from '../game/labels'
@@ -184,6 +184,7 @@ function DeployBody({ pending, state }: { pending: PendingDecision; state: GameS
           </Btn>
         ))}
       </div>
+      <HidingControl pending={pending} state={state} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Btn data-testid="deploy-auto" onClick={auto}>
           Auto-place {current ?? ''}
@@ -193,6 +194,37 @@ function DeployBody({ pending, state }: { pending: PendingDecision; state: GameS
         </span>
       </div>
     </>
+  )
+}
+
+/** Set-up option for teams that may start operatives out of the killzone (Wyrmblade HIDING): one button per operative the engine allows. */
+function HidingControl({ pending, state }: { pending: PendingDecision; state: GameState }) {
+  const dispatch = useGame((g) => g.dispatch)
+  const allowed = Array.isArray(pending.context.setAsideIds) ? (pending.context.setAsideIds as string[]) : []
+  const hidden = Object.values(state.operatives).filter((o) => o.seat === pending.seat && o.offboard !== undefined)
+  if (allowed.length === 0 && hidden.length === 0) return null
+  return (
+    <div data-testid="hiding-control" style={{ marginBottom: 8 }}>
+      <Muted style={{ marginBottom: 4 }}>
+        <KeywordText text="Instead of placing an operative you may start it in HIDING: out of the killzone, ready to Emerge near your drop zone later (it is incapacitated if it is still hiding when turning point 2 ends)." />
+      </Muted>
+      {hidden.length > 0 && (
+        <div data-testid="hiding-list" style={{ fontSize: 12, marginBottom: 4 }}>
+          <Keyword term="HIDING" />: {hidden.map((o) => o.name).join(', ')}
+        </div>
+      )}
+      {allowed.length > 0 ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {allowed.map((id) => (
+            <Btn key={id} data-testid={`hide-op-${id}`} onClick={() => dispatch(act.setAside(pending, id))}>
+              Hide {opName(state, id)}
+            </Btn>
+          ))}
+        </div>
+      ) : (
+        <Muted>No more operatives can start hiding (a third of the team at most, Neophytes only).</Muted>
+      )}
+    </div>
   )
 }
 

@@ -35,7 +35,7 @@ import {
 } from './abilities'
 import { smokeActivation, smokeTurningPointEnd } from './core-hooks'
 import { expireEffects, removeEffects } from './effects'
-import { providerAny, providerChain, providerCostDelta, providerGate, providerReactions } from './team-rules'
+import { providerAny, providerChain, providerCostDelta, providerGate, providerReactions, type ReactionOffer } from './team-rules'
 import { getFrameResume, registerFrameResume, runHook } from './hooks'
 import { tokensOnActivationEnd, tokensOnActivationStart, tokensOnTurningPointEnd } from './tokens'
 import { PICK_UP, PLACE } from './markers'
@@ -175,6 +175,8 @@ export function startFirefight(ctx: Ctx): void {
   s.phase = 'firefight'
   ctx.emit({ type: 'PhaseStarted', name: 'firefight' }, null)
   s.firefight = { turn: s.initiative!, activation: null }
+  // M9 shared: a ploy window as the phase begins (initiative seat first); strategy or firefight ploys may name it
+  if (openFirefightWindow(ctx, 'firefight.start', {}, 'firefightStart')) return
   advance(ctx)
 }
 
@@ -267,6 +269,11 @@ export function raiseAction(ctx: Ctx): void {
   const op = getOp(s, act.operativeId)
   const options: OptionInput[] = []
   const delegated = act.frame?.data?.delegated as DelegatedRules | undefined
+  // M9 shared: a rule ended this activation early; it ends now that the action is done
+  if (act.endsAfterAction && !act.frame && !act.counteract) {
+    endActivation(ctx)
+    return
+  }
   for (const id of ACTION_ORDER) {
     const def = ACTIONS[id]!
     if (!def.implemented) continue
@@ -326,6 +333,17 @@ function endActivation(ctx: Ctx): void {
   const act = s.firefight.activation!
   const op = getOp(s, act.operativeId)
   op.ready = false
+  // M9 shared: the owner's end-of-activation ploy window (Slink Into Darkness style), while the operative is still
+  // in its activation: "until the end of its activation" effects still apply and the activation.end hooks see
+  // what a ploy did. Only offered while the operative is in the killzone; resumes in finishEndActivation.
+  if (op.status === 'active' && !s.window && openFirefightWindow(ctx, 'firefight.activationEnded', { subjectId: op.id, counteracting: false }, 'activationEnded')) return
+  finishEndActivation(ctx)
+}
+
+function finishEndActivation(ctx: Ctx): void {
+  const s = ctx.state
+  const act = s.firefight.activation!
+  const op = getOp(s, act.operativeId)
   // M9 prep: "at the end of its activation" team rules, then holder-activation tokens
   runHook('activation.end', { seat: op.seat, state: s, engine: ctx, operativeId: op.id, data: { counteract: false } })
   tokensOnActivationEnd(ctx, op.id)
@@ -465,6 +483,12 @@ export function firefightResume(ctx: Ctx, token: string): void {
     case 'turningPointEnd':
       finishTurningPoint(ctx)
       return
+    case 'firefightStart':
+      advance(ctx)
+      return
+    case 'activationEnded':
+      if (ctx.state.firefight.activation) finishEndActivation(ctx)
+      return
     default:
       throw new Error(`unknown firefight resume token ${token}`)
   }
@@ -595,16 +619,48 @@ export function closeFrame(ctx: Ctx, outcome: 'finished' | 'cancelled'): void {
     op.weapons = (data.savedWeapons as string[]).filter((w) => keep.has(w) || !(s.data.weapons[w]?.name ?? '').toLowerCase().includes(filter))
   }
   s.firefight.activation = (s.firefight.stack ?? []).pop() ?? null
+  // M9 shared: a move made in the Strategy phase (a gambit's free Dash) and a finished Guard interrupt are reaction
+  // points too (Quicksilver Strike; Medic! when the save happened inside the interrupt)
+  if (op && outcome === 'finished' && frameReaction(ctx, op, String(data.kind ?? ''), info, data)) return
+  afterFrame(ctx, info.resume, outcome, data)
+}
+
+/** The rest of closing a frame: the next free action of its queue, or the frame's resume. */
+function afterFrame(ctx: Ctx, resume: string, outcome: 'finished' | 'cancelled', data: Record<string, unknown>): void {
+  const s = ctx.state
   const queue = data.queue
   const hasQueue = Array.isArray(queue) && queue.length > 0
   if (!hasQueue && data.savedWindow) s.window = data.savedWindow as typeof s.window
   if (Array.isArray(queue) && queue.length > 0) {
     const carry = { ...data }
     for (const k of ['savedWeapons', 'nameFilter', 'queue', 'kind', 'pointBlank']) delete carry[k]
-    startFreeSequence(ctx, { kind: data.kind as FreeActionOpts['action'], resume: info.resume, queue: queue as string[], data: carry })
+    startFreeSequence(ctx, { kind: data.kind as FreeActionOpts['action'], resume, queue: queue as string[], data: carry })
     return
   }
-  getFrameResume(info.resume)?.(ctx, outcome, data)
+  getFrameResume(resume)?.(ctx, outcome, data)
+}
+
+const MOVE_KINDS = ['reposition', 'dash', 'fallBack', 'charge']
+
+/**
+ * Reaction points at the end of a frame (team-rules `reactions`): a free move outside any activation in the
+ * Strategy phase (info.strategy = true), and a Guard interrupt that finished (info.interrupt = true; the seat
+ * whose activation was interrupted may react). The frame's closing waits in `firefight.reactionAfter`;
+ * reactionDone finishes it. Not offered for a frame that is itself part of a reaction. True when raised.
+ */
+function frameReaction(ctx: Ctx, actor: Operative, kind: string, frame: NonNullable<Activation['frame']>, data: Record<string, unknown>): boolean {
+  const s = ctx.state
+  if (s.firefight.reactionAfter || frame.resume === REACTION_DONE || actor.status !== 'active') return false
+  const strategy = s.phase === 'strategy' && !s.firefight.activation && MOVE_KINDS.includes(kind)
+  const interrupt = frame.kind === 'interrupt' && s.phase === 'firefight'
+  if (!strategy && !interrupt) return false
+  const seat = otherSeat(actor.seat)
+  const info = { actorId: actor.id, action: kind, activeSeat: actor.seat, moved: MOVE_KINDS.includes(kind), ...(strategy ? { strategy: true } : { interrupt: true }) }
+  const offers = providerReactions(s, seat, info)
+  if (offers.length === 0) return false
+  s.firefight.reactionAfter = { resume: frame.resume, outcome: 'finished', data }
+  raiseReaction(ctx, seat, actor.id, kind, offers, strategy ? 'strategy.gambit' : 'firefight.actionEnded')
+  return true
 }
 
 /**
@@ -757,11 +813,16 @@ function offerReactions(ctx: Ctx): boolean {
   const seat = otherSeat(act.seat)
   const offers = providerReactions(s, seat, { actorId: actor.id, action: last, activeSeat: act.seat, moved })
   if (offers.length === 0) return false
+  raiseReaction(ctx, seat, actor.id, last, offers, 'firefight.actionEnded')
+  return true
+}
+
+function raiseReaction(ctx: Ctx, seat: Seat, actorId: string, last: string, offers: ReactionOffer[], window: TimingWindowId): void {
   ctx.raise({
     kind: 'ability.choice',
     seat,
-    window: 'firefight.actionEnded',
-    context: { hook: 'reaction', reaction: true, actorId: actor.id, action: last, offers },
+    window,
+    context: { hook: 'reaction', reaction: true, actorId, action: last, offers },
     options: offers.map((r, i) => ({
       id: `react:${i}`,
       labelKey: r.labelKey,
@@ -771,7 +832,6 @@ function offerReactions(ctx: Ctx): boolean {
     })),
     canPass: true,
   })
-  return true
 }
 
 /** Name of the frame resume a reaction's free action uses; it carries on with the Guard interrupt stage. */
@@ -779,7 +839,15 @@ export const REACTION_DONE = 'reaction.done'
 
 /** The reaction is over (performed, impossible or declined): Guard interrupts, then the activation goes on. */
 export function reactionDone(ctx: Ctx): void {
-  if (ctx.state.firefight.activation) afterActionStages(ctx, 'guard')
+  const s = ctx.state
+  const after = s.firefight.reactionAfter
+  if (after) {
+    // a reaction at the end of a frame (Strategy-phase move, Guard interrupt): finish closing that frame
+    s.firefight.reactionAfter = null
+    afterFrame(ctx, after.resume, after.outcome, after.data)
+    return
+  }
+  if (s.firefight.activation) afterActionStages(ctx, 'guard')
 }
 
 registerFrameResume(REACTION_DONE, (ctx) => reactionDone(ctx))

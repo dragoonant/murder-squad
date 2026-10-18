@@ -68,8 +68,10 @@ describe('data schemas', () => {
   it('loadBundle indexes every record and exposes profile groups', () => {
     const bundle = loadBundle()
     expect(bundle.dataVersion).toMatch(/^\d+\.\d+\.\d+$/)
-    expect(playableTeamIds(bundle)).toEqual(['angels-of-death', 'kommandos'])
-    expect(Object.keys(bundle.teams)).toHaveLength(6)
+    const teamDirs = MANIFEST.filter((f) => /^teams\/[^/]+\/team\.json$/.test(f.path)).map((f) => f.path.split('/')[1]!).sort()
+    expect(Object.keys(bundle.teams).sort()).toEqual(teamDirs)
+    expect(playableTeamIds(bundle)).toEqual(Object.values(bundle.teams).filter((t) => t.playable !== false).map((t) => t.id).sort())
+    expect(playableTeamIds(bundle)).toEqual(expect.arrayContaining(['angels-of-death', 'kommandos']))
     expect(Object.keys(bundle.missions)).toHaveLength(3)
     expect(Object.keys(bundle.layouts)).toHaveLength(3)
     expect(bundle.byId['core.wr.piercing']).toBeDefined()

@@ -19,6 +19,8 @@ import { AP_DARK, AP_LIT, ORDER_COLOR, apTip, orderTip, woundTip } from './marke
 import { colors, fontStack, panel } from './theme'
 import { Keyword, KeywordText, WeaponRules } from './Keyword'
 import { Tooltip } from './Tooltip'
+import { TokenChips } from './TokenChips'
+import { tokenDef } from './tokenDefs'
 import { useUi, type DrawerId } from './uiStore'
 import { Btn, Die, Dot, Muted, seatColor } from './widgets'
 
@@ -138,6 +140,7 @@ export function OperativeCard({ docked }: { docked?: boolean }) {
         <span>
           <Keyword term="Save" /> <b>{op.save}+</b>
         </span>
+        <TokenChips tokens={op.tokens} />
         {op.flags.guard && <b style={{ color: colors.accent }}><Keyword term="On Guard" /></b>}
         {op.flags.injured && <b style={{ color: colors.danger }}><Keyword term="Injured" /></b>}
       </div>
@@ -212,7 +215,7 @@ export function OperativeCard({ docked }: { docked?: boolean }) {
         style={{ ...floatStyle, position: 'absolute', top: 62, right: 8, padding: '3px 10px', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: 'calc(100% - 16px)', zIndex: 20, pointerEvents: 'none' }}
       >
         <Dot seat={op.seat} />
-        <b>{op.name}</b> <span style={{ color: colors.muted }}>{op.id}</span> &middot; W <b>{op.wounds}/{op.maxWounds}</b> &middot; Save <b>{op.save}+</b> &middot; <OrderGlyph order={op.order} /> {humanize(op.order)} {op.ready ? '' : '(expended)'}
+        <b>{op.name}</b> <span style={{ color: colors.muted }}>{op.id}</span> &middot; W <b>{op.wounds}/{op.maxWounds}</b> &middot; Save <b>{op.save}+</b> &middot; <OrderGlyph order={op.order} /> {humanize(op.order)} {op.ready ? '' : '(expended)'}{(op.tokens ?? []).some((t) => t.count > 0) ? ` · ${(op.tokens ?? []).filter((t) => t.count > 0).map((t) => `${tokenDef(t.kind).label}${t.count > 1 ? ` x${t.count}` : ''}`).join(', ')}` : ''}
       </div>
     )
   }

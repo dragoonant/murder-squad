@@ -149,8 +149,32 @@ function hiddenness(view: GameState, op: Operative, pos: Vec2, from: Vec2[]): nu
   return from.length ? total / from.length : 0
 }
 
+/**
+ * Start some operatives out of the killzone when the engine offers it (Wyrmblade HIDING): the ambush pieces, i.e. the
+ * ones with the weakest guns, never the Leader or the Icon Bearer, and about half of what the rule allows so the
+ * team still has a front line. Hidden operatives emerge near the drop zone later (moves.ts).
+ */
+export function hideChoice(ctx: AiCtx): Action | null {
+  const { pending, view } = ctx
+  const allowed = Array.isArray(pending.context.setAsideIds) ? (pending.context.setAsideIds as string[]) : []
+  if (allowed.length === 0) return null
+  const mine = Object.values(view.operatives).filter((o) => o.seat === ctx.seat)
+  const hidden = mine.filter((o) => o.offboard !== undefined).length
+  const cap = Math.floor(mine.length / 3)
+  const want = Math.max(1, Math.ceil(cap / 2))
+  if (hidden >= want) return null
+  const keys = (id: string): string[] => view.data.datacards[view.operatives[id]?.datacardId ?? '']?.keywords ?? []
+  const pool = allowed.filter((id) => !keys(id).includes('LEADER') && !keys(id).includes('ICON BEARER'))
+  if (pool.length === 0) return null
+  pool.sort((a, b) => rangedRating(view, view.operatives[a]!) - rangedRating(view, view.operatives[b]!) || (a < b ? -1 : 1))
+  const a = act.setAside(pending, pool[0]!)
+  return validate(view, a) ? null : a
+}
+
 export function deploy(ctx: AiCtx): Action | null {
   const { pending, view } = ctx
+  const aside = hideChoice(ctx)
+  if (aside) return aside
   const c = pending.constraints
   if (!c?.region || !c.operativeIds?.length) return null
   // guns first into the best cover; blades later nearer the front

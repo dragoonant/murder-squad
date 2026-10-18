@@ -231,11 +231,10 @@ registerHook(
         } else if (m.stat === 'atk') data.atk += m.value
       }
     }
-    // And They Shall Know No Fear: the injured Hit penalty is ignored, weapons included
-    if (op.flags.ignoreInjured && isInjured(op)) {
-      data.hitDelta -= 1
-      markFired('ignoreInjuredChanges')
-    }
+    // And They Shall Know No Fear (and team equivalents such as Plague Bells): the injured Hit penalty is
+    // ignored, weapons included. attackStats already leaves the +1 out (hasInjuredPenalty), so ignoring the
+    // penalty only removes it; it never improves Hit past the printed value (core rules: injured worsens Hit by 1).
+    if (op.flags.ignoreInjured && isInjured(op)) markFired('ignoreInjuredChanges')
     // Ammo Cache: one attack die may be re-rolled when shooting with a datacard weapon (M-5.3)
     if (data.kind === 'shoot' && state.effects.some((e) => e.source === ID.ammo && e.operativeId === op.id)) {
       const card = state.data.datacards[op.datacardId]

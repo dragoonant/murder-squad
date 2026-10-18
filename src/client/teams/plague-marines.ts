@@ -92,4 +92,17 @@ export const PRESENTATION: TeamPresentation = {
     'pm-malignant-plaguecaster',
     'pm-plague-marine-warrior',
   ],
+  // Keywords and rule terms in our own wording (game/glossary.ts merges them over the generic fallbacks).
+  glossary: [
+    { term: 'CHAOS', kind: 'keyword', body: 'Allegiance keyword carried by every Plague Marine. No current rule names it, so it only identifies the operative.' },
+    { term: 'HERETIC ASTARTES', kind: 'keyword', body: 'Traitor Space Marine keyword carried by every Plague Marine. Astartes lets a Plague Marine take two Shoot or two Fight actions in one activation.' },
+    { term: 'CHAMPION', kind: 'keyword', body: 'The Plague Marine Leader. Grandfather\'s Blessing heals it whenever a poisoned enemy near it loses wounds.' },
+    { term: 'BOMBARDIER', kind: 'keyword', body: 'Plague Marine grenadier: it carries its own blight and krak grenades, and its blight grenades are Toxic.' },
+    { term: 'FIGHTER', kind: 'keyword', body: 'Melee bruiser. Its Flail hits every other operative it can see within 2 inches, friend or foe.' },
+    { term: 'HEAVY GUNNER', kind: 'keyword', body: 'Heavy-weapon role: the Plague Marine with the team\'s big gun, or a Wyrmblade Neophyte with a heavy stubber, mining laser or seismic cannon (capped at two).' },
+    { term: 'ICON BEARER', kind: 'keyword', body: 'Banner carrier. It counts as one APL higher for control of markers; the Plague Marine one also makes Contagion free while it stands in the enemy territory, and the Wyrmblade one lets a Neophyte strike back when it falls.' },
+    { term: 'PSYKER', kind: 'keyword', body: 'Marks an operative that can use psychic powers. Psychic weapons are tagged PSYCHIC, which Astartes reads to allow two Shoots.' },
+    { term: 'MALIGNANT PLAGUECASTER', kind: 'keyword', body: 'Plague Marine sorcerer. Poisonous Miasma plants Poison tokens at range and Putrescent Vitality restores wounds to a friend.' },
+    { term: 'Poison token', kind: 'status', aliases: ['Poison tokens', 'Poisoned'], body: 'Placed on an enemy by a poisoning attack, power or ploy, at most one per enemy. Whenever the holder activates it takes 1 damage, and Plague Marine rules punish a poisoned enemy further: Toxic, Contagion, Nurglings, Grandfather\'s Blessing.' },
+  ],
 }

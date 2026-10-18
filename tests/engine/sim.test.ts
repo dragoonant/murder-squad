@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { flatMap, terrainMap } from '../fixtures/maps'
 import { makeSetup, testBundle } from '../fixtures/team'
-import { playGame, runSim, setupFor } from '../../tools/sim-core'
+import { checkInvariants, playGame, runSim, setupFor } from '../../tools/sim-core'
+import { edit, openReal, opOf } from '../fixtures/real'
+import type { Action, GameEvent } from '@/engine'
 
 describe('SIM invariants', () => {
   it('SIM-003 twenty seeded games end within four turning points with no violations, no rejections and matching replay hashes', () => {
@@ -27,5 +29,31 @@ describe('SIM invariants', () => {
     expect(JSON.stringify(a.actions)).toBe(JSON.stringify(b.actions))
     const c = playGame(makeSetup({ map: terrainMap() }), testBundle, 'other')
     expect(JSON.stringify(c.actions)).not.toBe(JSON.stringify(a.actions))
+  })
+
+  it('SIM-008 VP may fall only by the kill op VP a returning operative takes back; ORD-002 checks the weapon fired under Conceal', () => {
+    const s = openReal()
+    const ev = (e: Record<string, unknown>) => ({ seq: s.seq + 1, turningPoint: 1, phase: 'firefight', ...e }) as unknown as GameEvent
+    const act = { type: 'pass', seat: 'A', decisionId: 'd:0', payload: {} } as unknown as Action
+    const prev = edit(s, (x) => {
+      x.players.A.vp = 3
+    })
+    const next = edit(prev, (x) => {
+      x.players.A.vp = 2
+      x.seq = prev.seq + 1
+    })
+    const vp = (events: GameEvent[]) => checkInvariants(prev, next, act, events).filter((v) => v.startsWith('vp'))
+    expect(vp([])).toHaveLength(1)
+    expect(vp([ev({ type: 'OperativeReturned', operativeId: 'B1', seat: 'B' }), ev({ type: 'VpScored', amount: -1, vp: 2, ruleId: 'k', seat: 'A' })])).toEqual([])
+    expect(vp([ev({ type: 'VpScored', amount: -1, vp: 2, ruleId: 'k', seat: 'A' })])).toHaveLength(1) // no return
+    // ORD-002: a Conceal shooter firing a non-Silent weapon is flagged on the ShootStarted step only
+    const w = opOf(s, 'A', 'aod.intercessor-warrior')
+    const hidden = edit(next, (x) => {
+      x.operatives[w]!.order = 'conceal'
+    })
+    const weapon = hidden.operatives[w]!.weapons.find((id) => hidden.data.weapons[id]?.type === 'ranged' && !hidden.data.weapons[id]!.rules.some((r) => /silent$/.test(r.rule)))!
+    const ord = (events: GameEvent[]) => checkInvariants(prev, hidden, act, events).filter((v) => v.startsWith('ORD-002'))
+    expect(ord([ev({ type: 'ShootStarted', operativeId: w, weaponId: weapon, seat: 'A' })])).toHaveLength(1)
+    expect(ord([])).toEqual([])
   })
 })

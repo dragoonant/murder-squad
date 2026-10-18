@@ -7,6 +7,7 @@
 // matched segments). Pure TS, no React. The index and the matching regex are built once, lazily.
 import { ACTION_HELP, ACTION_LABEL, humanize } from './labels'
 import { dataBundle } from './adapter'
+import { TEAM_PRESENTATION } from '../teams'
 
 export type GlossaryKind = 'stat' | 'status' | 'rule' | 'weaponRule' | 'keyword' | 'ability' | 'ploy' | 'equipment' | 'action'
 
@@ -156,13 +157,13 @@ function actionEntries(): GlossaryEntry[] {
 interface RecordLike { id: string; name?: string; text?: string; kind?: string; param?: string; ap?: number; cost?: number; type?: string; scope?: string; count?: number; critsVariant?: boolean; team?: string; stats?: unknown; keywords?: string[] }
 
 const ROLE_KEYWORD: Record<string, string> = {
-  LEADER: 'Role keyword: the one commander each kill team must include. Angels of Death take a Captain or a Sergeant, Kommandos take the Boss Nob. Leader abilities such as Heroic Leader build on it.',
+  LEADER: 'Role keyword: the one commander each kill team must include. Angels of Death take a Captain or a Sergeant, Kommandos the Boss Nob, Pathfinders the Shas\'ui, Plague Marines the Champion, Wyrmblade the Neophyte Leader. Leader abilities such as Heroic Leader build on it.',
   SERGEANT: 'Squad-leader role. Angels of Death Sergeants can fill the Leader slot and carry Doctrine Warfare and Chapter Veteran.',
   'SPACE MARINE CAPTAIN': 'The Angels of Death Captain: a Leader with Iron Halo and Heroic Leader, able to bend the team\'s ploys.',
   GRENADIER: 'Role keyword of the Assault Intercessor Grenadier, whose Grenadier ability sharpens frag and krak grenades.',
-  WARRIOR: 'Basic trooper role. Warriors are the Angels of Death selections that may be taken more than once.',
-  GUNNER: 'Heavy-weapon role (Intercessor and Heavy Intercessor Gunners). It identifies the operative type for roster selection; no rule refers to it directly.',
-  SNIPER: 'Long-range marksman role: the Eliminator Sniper, who has Camo Cloak and the Optics action.',
+  WARRIOR: 'Basic trooper role. Angels of Death and Wyrmblade Warriors may be taken more than once; a Plague Marine Warrior is a single selection.',
+  GUNNER: 'Heavy-weapon role (Intercessor, Heavy Intercessor and Wyrmblade Neophyte Gunners, who are capped at two). It identifies the operative type for roster selection; no rule refers to it directly.',
+  SNIPER: 'Long-range marksman role: the Eliminator Sniper (Camo Cloak, Optics) and the Wyrmblade Sanctus Sniper (Target Vulnerability, Soulsight).',
   'ASSAULT INTERCESSOR': 'Operative type: close-range Intercessors. Identifies the datacard for roster selection; no rule refers to it directly.',
   INTERCESSOR: 'Operative type: bolt-rifle Intercessors. Identifies the datacard for roster selection; no rule refers to it directly.',
   'HEAVY INTERCESSOR': 'Operative type: Heavy Intercessors. Identifies the datacard for roster selection; no rule refers to it directly.',
@@ -206,6 +207,18 @@ function keywordEntries(): GlossaryEntry[] {
     }
   }
   return [...out.values()]
+}
+
+/** Team-supplied entries (teams/<team>.ts `glossary`) replace the generic entry of the same kind and term, else are added. */
+function mergeTeamGlossary(all: GlossaryEntry[]): void {
+  for (const p of Object.values(TEAM_PRESENTATION)) {
+    for (const e of p.glossary ?? []) {
+      const key = e.term.toLowerCase()
+      const at = all.findIndex((x) => x.kind === e.kind && x.term.toLowerCase() === key)
+      if (at >= 0) all[at] = e
+      else all.push(e)
+    }
+  }
 }
 
 /** "Piercing" -> body text with a parameter slot x; derived per use in lookupTerm. */
@@ -294,6 +307,7 @@ function build(): Index {
     ...recordEntries(),
     ...keywordEntries(),
   ]
+  mergeTeamGlossary(all)
   const byKey = new Map<string, GlossaryEntry[]>()
   const add = (key: string, e: GlossaryEntry) => {
     const k = bare(norm(key))

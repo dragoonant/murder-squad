@@ -21,10 +21,18 @@ const data = loadBundle()
 describe('data adapter: bundleFromData(loadBundle())', () => {
   it('ADAPT-001 maps every record type onto the engine shapes', () => {
     const b = realBundle
-    // the v1 teams have 20 datacards; scaffolded teams (playable: false) add their leader placeholders
+    // the v1 teams have 20 datacards; every team in the data maps over, and the playable set is whatever the
+    // team.json files say (data-driven, so adding a team never edits this test)
     expect(Object.values(b.datacards).filter((c) => ['angels-of-death', 'kommandos'].includes(c.teamId))).toHaveLength(20)
-    expect(playableTeams(b)).toEqual(['angels-of-death', 'kommandos'])
-    expect(Object.keys(b.teams).sort()).toEqual(['angels-of-death', 'hierotek-circle', 'kommandos', 'pathfinders', 'plague-marines', 'wyrmblade'])
+    const playable = Object.values(data.teams).filter((t) => t.playable !== false).map((t) => t.id).sort()
+    expect(playable).toEqual(expect.arrayContaining(['angels-of-death', 'kommandos']))
+    expect(playableTeams(b)).toEqual(playable)
+    expect(Object.keys(b.teams).sort()).toEqual(Object.keys(data.teams).sort())
+    for (const team of playable) {
+      const cards = Object.values(data.byId).filter((r) => (r as { team?: string }).team === team && 'stats' in r && 'base' in r)
+      expect(cards.length, `${team} datacards in the data`).toBeGreaterThan(0)
+      expect(Object.values(b.datacards).filter((c) => c.teamId === team), `${team} datacards mapped`).toHaveLength(cards.length)
+    }
     expect(Object.keys(b.missions ?? {}).sort()).toEqual(['mission.prelim-loot', 'mission.prelim-secure', 'mission.prelim-transmission'])
     expect(Object.keys(b.layouts ?? {})).toHaveLength(3)
     // strategy ploys become gambits, firefight ploys stay ploys

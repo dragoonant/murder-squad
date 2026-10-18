@@ -1029,6 +1029,11 @@ function processRemovals(ctx: Ctx): boolean {
         runHook('operative.incapacitated', { seat: op.seat, state: s, engine: ctx, operativeId: id })
         if (s.pending) return false
       }
+      // M9 shared: then the owner's `operative.incapacitated` ploy window (Poisonous Demise style), before removal
+      if (!(r.windowed ?? []).includes(id)) {
+        r.windowed = [...(r.windowed ?? []), id]
+        if (removalWindow?.(ctx, op)) return false
+      }
       op.status = 'removed'
       op.ready = false
       op.flags.guard = false
@@ -1041,6 +1046,15 @@ function processRemovals(ctx: Ctx): boolean {
 }
 
 let removalsDone: ((ctx: Ctx) => void) | null = null
+let removalWindow: ((ctx: Ctx, op: Operative) => boolean) | null = null
+
+/**
+ * ploys.ts registers the `operative.incapacitated` ploy window of the removal queue: true when it raised a
+ * decision (the queue then waits; closing the window calls continueRemovals).
+ */
+export function registerRemovalWindow(fn: ((ctx: Ctx, op: Operative) => boolean) | null): void {
+  removalWindow = fn
+}
 
 /** shoot.ts registers what happens once every removal is finished (finishAction). */
 export function registerRemovalsDone(fn: (ctx: Ctx) => void): void {

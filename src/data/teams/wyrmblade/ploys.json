@@ -16,7 +16,7 @@
         "keyword": "WYRMBLADE"
       }
     },
-    "text": "For the turning point, whenever a friendly Wyrmblade operative is activated and its order is switched from Conceal to Engage, until the end of that activation its ranged weapons have Rending and its melee weapons get +1 Atk (never above 5).",
+    "text": "This turning point, an operative whose order flips from Conceal to Engage when it is activated fights dirty until that activation ends: Rending on its ranged weapons and one extra attack die (5 at most) on its melee weapons.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
   },
   {
@@ -36,7 +36,7 @@
         "keyword": "WYRMBLADE"
       }
     },
-    "text": "For the turning point, when a friendly Wyrmblade operative shoots an enemy that a different friendly Wyrmblade operative has already shot this turning point, the shooter's ranged weapons have Accurate 1.",
+    "text": "This turning point, a Wyrmblade shooting an enemy that a different Wyrmblade has already shot this turning point gains Accurate 1 on its ranged weapons.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
   },
   {
@@ -56,7 +56,7 @@
         "keyword": "WYRMBLADE"
       }
     },
-    "text": "For the turning point, when an operative shoots a friendly Wyrmblade operative with a Conceal order, intervening Light terrain makes the target obscured, unless that Light terrain is within 1 inch of either operative.",
+    "text": "This turning point, a Conceal Wyrmblade that is shot counts as obscured behind intervening Light terrain, unless that terrain lies within 1 inch of the shooter or the target.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
   },
   {
@@ -77,7 +77,7 @@
         "keyword": "WYRMBLADE"
       }
     },
-    "text": "Up to three friendly Wyrmblade operatives, one at a time, make a free Dash or a free Charge (the Charge up to 3 inches). A Cult Agent counts as two of the three and may instead make a free Fall Back of up to 3 inches, in which case it has -1 APL until the end of its next activation.",
+    "text": "Shuffle up to three Wyrmblade operatives in turn: each takes a free Dash or a free Charge capped at 3 inches. A Cult Agent uses two of the three places and may take a free 3-inch Fall Back instead, at the price of -1 APL until its next activation ends.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
   },
   {
@@ -97,7 +97,7 @@
         "keyword": "WYRMBLADE"
       }
     },
-    "text": "At the end of a friendly Wyrmblade operative's activation, if it has an Engage order, change it to Conceal. You can choose each friendly operative for this only once per battle.",
+    "text": "When a Wyrmblade operative's activation ends on an Engage order, flip it to Conceal. Each operative can be the subject only once per battle.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
   },
   {
@@ -120,7 +120,7 @@
         "keyword": "WYRMBLADE"
       }
     },
-    "text": "When a friendly Wyrmblade operative shoots or fights, after you roll your attack dice: if its order was switched from Conceal to Engage at the start of this activation and this is its first Shoot or Fight of the activation, keep one normal success as a critical success. Once per activation.",
+    "text": "In the first Shoot or Fight of an activation that began with a Conceal-to-Engage switch, after your attack dice are rolled, upgrade one normal success to a critical. Once per activation.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
   },
   {
@@ -143,7 +143,7 @@
         "keyword": "WYRMBLADE"
       }
     },
-    "text": "When a friendly Cult Agent or Leader is chosen as the target of a Shoot or as the opponent in a Fight, pick another friendly Neophyte (not the Leader) that can see and is within 3 inches of it; that Neophyte becomes the target or opponent instead, even if it would not normally qualify. In a Fight it counts as in the fighter's control range; in a Shoot it is in cover or obscured only if the original target was. No effect against Blast or Torrent weapons.",
+    "text": "When a Cult Agent or the Leader is picked as a Shoot target or Fight opponent, a different Neophyte (not the Leader) within 3 inches that it can see throws itself in the way and takes its place, valid or not. In a Fight the stand-in counts as within the attacker's control range; in a Shoot it is in cover or obscured only if the original target was. Useless against Blast and Torrent.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
   },
   {
@@ -163,7 +163,7 @@
         "keyword": "WYRMBLADE"
       }
     },
-    "text": "When a friendly Wyrmblade Neophyte is incapacitated, before it is removed it can make one free mission action.",
+    "text": "A Neophyte that is incapacitated may carry out one free mission action before it is removed.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
   }
 ]

@@ -14,7 +14,7 @@
     "scope": "faction",
     "team": "hierotek-circle",
     "count": 1,
-    "text": "Once per turning point, when an operative shoots a friendly Cryptek, at the start of the Roll Defence Dice step worsen the attacker's Piercing x by 1 for the rest of that sequence. Not usable for the Apprentek.",
+    "text": "Once per turning point, as a friendly Cryptek (never the Apprentek) is about to roll defence dice against a shot, it phases partly out of reality: the attacker's Piercing value drops by 1 for that sequence.",
     "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.39"
   },
   {
@@ -23,7 +23,7 @@
     "scope": "faction",
     "team": "hierotek-circle",
     "count": 1,
-    "text": "In the Ready step, when you gain CP, if your Cryptek is in the killzone, outside enemy control ranges and was not reanimated this turning point, roll a D6: on a 1 the Cube is disabled for the battle, on 4+ gain 1 CP. After it has given 2 CP it is disabled for the battle.",
+    "text": "When CP are gained in the Ready step and your Cryptek is on the table, clear of enemy control ranges and has not come back through reanimation this turning point, roll a D6: a 1 burns the Cube out for good, a 4+ adds 1 CP. Once it has produced 2 CP in total it stops working.",
     "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.40"
   },
   {
@@ -32,7 +32,7 @@
     "scope": "faction",
     "team": "hierotek-circle",
     "count": 1,
-    "text": "Once per turning point, when an enemy operative ends a Charge action with one or more friendly Hierotek Circle operatives in its control range, it takes D3+1 damage.",
+    "text": "Once per turning point, an enemy whose Charge finishes in the control range of any of your Hierotek Circle operatives is struck by arcing tesla energy for D3+1 damage.",
     "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.41"
   }
 ]

@@ -300,7 +300,8 @@ registerHook(
   (c) => {
     const s = c.state
     const op = s && c.operativeId ? s.operatives[c.operativeId] : undefined
-    if (!s || !c.engine || !op || op.status !== 'active' || !operativeEffect(s, SLINK_FX, op.id)) return null
+    // "if that operative has an Engage order" is read as the activation ends
+    if (!s || !c.engine || !op || op.status !== 'active' || op.order !== 'engage' || !operativeEffect(s, SLINK_FX, op.id)) return null
     setOrder(c.engine, op, 'conceal')
     return null
   },
@@ -683,7 +684,9 @@ registerCodeHook({
 })
 
 // SLINK INTO DARKNESS (T-WYR.34). RULING: the engine has no end-of-activation ploy window, so it is offered after the
-// action that spends the operative's last AP.
+// action that spends the operative's last AP and takes effect when the activation ends (activation.end above). An
+// activation ended early with AP unspent gets no offer (offering it after every action would prompt after every
+// Wyrmblade action); the exact fix is a shared end-of-activation ploy window.
 registerCodeHook({
   name: 'slinkIntoDarkness',
   ploy: {
@@ -691,7 +694,7 @@ registerCodeHook({
       const op = info.subjectId ? state.operatives[info.subjectId] : undefined
       const act = state.firefight.activation
       if (!op || op.seat !== seat || op.status !== 'active' || !isWyr(state, op) || op.order !== 'engage') return []
-      if (op.oncePerBattleUsed.includes('wyr.slink')) return []
+      if (op.oncePerBattleUsed.includes('wyr.slink') || operativeEffect(state, SLINK_FX, op.id)) return []
       if (!act || act.operativeId !== op.id || act.counteract || act.frame || act.apSpent < Math.max(0, op.apl + Math.max(-1, Math.min(1, op.aplMods)))) return []
       return [{}]
     },
@@ -963,8 +966,10 @@ const PLOY_RULE: PloyRule = {
     }
     // Creeping Shadow (T-WYR.20): a free Dash or Fall Back of up to 3" after any Fight, Assassinate's included
     if ((last === 'fight' || last === `ability:${A('assassinate')}`) && hasAbility(state, op, CREEPING) && !used.includes(CREEPING)) {
-      if (canStartFreeAction(state, { operativeId: op.id, action: 'dash', resume: '' })) {
-        out.push({ id: `${CREEPING}:dash`, ployId: CREEPING, name: 'Creeping Shadow: free Dash', param: 'dash', cost: 0, via: 'wyr.creeping', seed: { param: 'dash' }, operativeId: op.id })
+      // a counteracting operative never moves more than 2", a free Dash included
+      const dashCap = info.counteracting ? { maxMove: 2 } : {}
+      if (canStartFreeAction(state, { operativeId: op.id, action: 'dash', ...dashCap, resume: '' })) {
+        out.push({ id: `${CREEPING}:dash`, ployId: CREEPING, name: `Creeping Shadow: free Dash${info.counteracting ? ' (2")' : ''}`, param: 'dash', cost: 0, via: 'wyr.creeping', seed: { param: 'dash' }, operativeId: op.id })
       }
       if (canStartFreeAction(state, { operativeId: op.id, action: 'fallBack', maxMove: cap, resume: '' })) {
         out.push({ id: `${CREEPING}:fallBack`, ployId: CREEPING, name: `Creeping Shadow: free Fall Back (${cap}")`, param: 'fallBack', cost: 0, via: 'wyr.creeping', seed: { param: 'fallBack' }, operativeId: op.id })
@@ -998,7 +1003,8 @@ const PLOY_RULE: PloyRule = {
       const cap = info.counteracting ? 2 : 3
       ctx.emit({ type: 'AbilityUsed', operativeId: op.id, abilityId: CREEPING }, seat)
       const fall = offer.param === 'fallBack'
-      startFreeAction(ctx, { operativeId: op.id, action: fall ? 'fallBack' : 'dash', ...(fall ? { maxMove: cap } : {}), resume: 'ploy.freeAction' })
+      const capped = fall || info.counteracting
+      startFreeAction(ctx, { operativeId: op.id, action: fall ? 'fallBack' : 'dash', ...(capped ? { maxMove: cap } : {}), resume: 'ploy.freeAction' })
     }
   },
 }

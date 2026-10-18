@@ -241,9 +241,10 @@ export function updateControl(ctx: Ctx): void {
   const s = ctx.state
   const seen = new Set<string>()
   processRemovals(ctx, seen)
+  // limited-weapon uses are counted in the step the weapon is picked, which is inside the declared Shoot
+  noteWeaponUses(ctx)
   if (s.firefight.activation?.declared) return
   syncCarried(s)
-  noteWeaponUses(ctx)
   const before = ctx.events.length
   triggerMines(ctx)
   if (ctx.events.length > before) processRemovals(ctx, seen)

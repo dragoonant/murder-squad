@@ -434,6 +434,8 @@ export interface Activation {
   chained?: boolean
   /** M9 prep: performed.length when reactions were last offered (one reaction window per action) */
   reactedAt?: number
+  /** M9 shared: a rule ended the activation early (Medic!): it ends once the current action is done, AP untouched */
+  endsAfterAction?: boolean
 }
 
 export interface ActivationFrame {
@@ -451,6 +453,11 @@ export interface FirefightState {
   chain?: { seat: Seat; ids: string[]; from: string } | null
   /** M9 prep: operatives a rule stopped from activating at this activate decision (Vision of Madness) */
   gated?: string[]
+  /**
+   * M9 shared: a reaction offered after a Strategy-phase move (no activation to go back to) is in progress;
+   * firefight.reactionDone finishes closing the mover's frame with these (resume name, outcome, frame data)
+   */
+  reactionAfter?: { resume: string; outcome: 'finished' | 'cancelled'; data: Record<string, unknown> } | null
 }
 
 export interface GameResult {
@@ -492,7 +499,7 @@ export interface GameState {
   /** the Shoot or Fight sequence in progress (M2b-attack); absent or null between actions */
   attack?: AttackState | null
   /** incapacitated operatives waiting for their "before removal" hooks and removal (R-5.18); M2b-attack */
-  removal?: { ids: string[]; hooked: string[] } | null
+  removal?: { ids: string[]; hooked: string[]; /** M9 shared: ids whose operative.incapacitated ploy window was offered */ windowed?: string[] } | null
   // M2b-game
   /** team configuration per seat: Chapter Tactics, Adaptive Tactics, Combat Doctrine */
   config: Record<Seat, TeamConfig>
@@ -733,6 +740,8 @@ export type TimingWindowId =
   | 'setup.*'
   | 'turningPoint.start'
   | 'strategy.gambit'
+  // M9 shared: the Firefight phase begins, before the first activation (A Worthy Cause)
+  | 'firefight.start'
   | 'firefight.activationStart'
   | 'firefight.actionDeclared'
   | 'firefight.actionEnded'
@@ -743,6 +752,10 @@ export type TimingWindowId =
   | 'fight.weaponsSelected'
   | 'fight.rolled'
   | 'fight.resolved'
+  // M9 shared: right after the dice are rolled, before any re-roll (Curse of Rot): the attacker after the defence
+  // roll of a Shoot; both fighters after the fight roll
+  | 'shoot.beforeDefenceRerolls'
+  | 'fight.beforeRerolls'
   | 'operative.incapacitated'
   | 'firefight.activationEnded'
   | 'turningPoint.end'

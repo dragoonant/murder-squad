@@ -93,6 +93,13 @@ export function shootAvailability(state: GameState, op: Operative, activation: A
   for (const w of usable) {
     if (validTargets(state, op, w).length > 0) return null
   }
+  // a viewpoint a team rule offers (team-rules shootViewpoints: Magnify proxies) counts too, as in raiseWeapon
+  for (const w of usable) {
+    for (const vpId of providerViewpoints(state, op, w)) {
+      const vp = state.operatives[vpId]
+      if (vp && vp.status === 'active' && validTargets(state, op, w, undefined, vp).length > 0) return null
+    }
+  }
   return { code: 'E_INVALID_TARGET', reason: 'no valid target for any usable weapon' }
 }
 
@@ -657,8 +664,11 @@ function rollDefence(ctx: Ctx, mode: string): void {
   )
   void s
   void a
-  advanceWindow(ctx, 'def')
+  // M9 shared: the attacker's window on the fresh defence roll, before any re-roll (Curse of Rot)
+  proceed(ctx, 'defenceRerolls', 'shoot.beforeDefenceRerolls')
 }
+
+STEPS.defenceRerolls = (ctx) => advanceWindow(ctx, 'def')
 
 STEPS.afterDefenceWindow = (ctx) => {
   if (!runAfterRoll(ctx, 'def', 'afterDefenceWindow')) return

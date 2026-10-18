@@ -6,7 +6,7 @@
     "team": "plague-marines",
     "count": 1,
     "effect": { "code": "plagueBells", "params": { "ignoreInjured": true } },
-    "text": "Friendly Plague Marines ignore the injured stat changes: they keep their Move and the printed Hit of their weapons.",
+    "text": "Injury does not slow the warband: friendly Plague Marines keep their full Move and their weapons' printed Hit while injured.",
     "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.28"
   },
   {
@@ -19,7 +19,7 @@
       { "grantWeaponRule": { "rule": "pm.a.wr-poison", "filter": { "weaponIds": ["pm.w.boltgun-bombardier", "pm.w.boltgun-warrior", "pm.w.bolt-pistol"] } } },
       { "grantWeaponRule": { "rule": "core.wr.severe", "filter": { "weaponIds": ["pm.w.boltgun-bombardier", "pm.w.boltgun-warrior", "pm.w.bolt-pistol"] } } }
     ],
-    "text": "Every boltgun and bolt pistol carried by a friendly Plague Marine gains Poison and Severe.",
+    "text": "Poison and Severe are added to the team's boltguns and bolt pistols.",
     "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.29"
   },
   {
@@ -40,7 +40,7 @@
     "team": "plague-marines",
     "count": 1,
     "effect": { "code": "poisonVents", "params": { "inches": 3, "tokenOn": 3 } },
-    "text": "When an enemy is activated within 3 inches of a friendly Plague Marine (no visibility needed): if it has none of your Poison tokens, roll a D3 and on a 3 it gains one; if it already has one, its Poison damage this activation is D3 instead of 1.",
+    "text": "An enemy that starts its activation within 3 inches of a Plague Marine (sight not needed) breathes the fumes: a poisoned one loses D3 wounds to Poison that activation instead of 1; an unpoisoned one is poisoned on a D3 roll of 3.",
     "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.31"
   }
 ]

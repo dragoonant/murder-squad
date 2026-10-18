@@ -2,7 +2,7 @@
 // team rule provider (team-rules.ts registerTeamRules) and its hook handlers (hooks.ts registerHook). The generic
 // machinery lives in tokens.ts, reserve.ts, effects.regainWounds and firefight.startDelegatedAction; this file is
 // the team's own rules on top of them.
-import { applyAplEffect, ruleSetFor, targetInfo, type TargetInfo } from '../attack-common'
+import { applyAplEffect, ruleSetFor } from '../attack-common'
 import { markFired, registerCodeHook, type OfferSeed, type PloyOfferSeed } from '../code-hooks'
 import { hasAbility, hasKeyword, paramsOf } from '../conditions'
 import {
@@ -21,7 +21,8 @@ import {
   usedThisTp,
   usesOf,
 } from '../effects'
-import { cancelAction, finishAction, startDelegatedAction, startFreeSequence } from '../firefight'
+import { cancelAction, finishAction, startDelegatedAction, startFreeAction } from '../firefight'
+import { resumeGambit } from '../strategy'
 import { dist2, baseGap2D, round3 } from '../geometry'
 import { registerFrameResume, registerHook, type BeforeShootTargetSelectData, type OnDamageInflictedData } from '../hooks'
 import { bodyOf, targetVerdict, visible } from '../los'
@@ -132,8 +133,10 @@ registerHook(
     }
     if (!isHie(s, op) || op.oncePerBattleUsed.includes(REANIMATED_ONCE)) return null
     op.oncePerBattleUsed.push(REANIMATED_ONCE)
-    const act = s.firefight.activation
-    const expended = !op.ready || act?.operativeId === op.id || op.flags.counteractedThisTP
+    // already expended this turning point: expended, counteracted, or struck down during its own activation (that
+    // activation may sit under a frame, such as an enemy Guard interrupt)
+    const ownActivation = [s.firefight.activation, ...(s.firefight.stack ?? [])].some((x) => !!x && !x.frame && !x.counteract && x.operativeId === op.id)
+    const expended = !op.ready || ownActivation || op.flags.counteractedThisTP
     s.ledger[op.seat].uses[`hie.expended:${op.id}`] = expended ? s.turningPoint : 0
     // the marker lies beside the base, toward the middle of the killzone, inside the control range
     const len = Math.hypot(op.pos.x, op.pos.z)
@@ -246,9 +249,23 @@ function livingMetal(ctx: Ctx, seat: Seat): void {
   hurt.forEach((o, i) => regainWounds(ctx, o.id, d3(dice[i]!) + 1, 'hie.a.living-metal'))
 }
 
-/** RULING: the engine tries the markers oldest first; the roll stops at the first 3+ that can be set up. */
+/** How much the owner wants an operative back (the Ready step raises no decision): the Cryptek, then the Apprentek,
+ * then the operative with the most starting wounds. */
+function returnPriority(state: GameState, opId: string | undefined): number {
+  const op = opId ? state.operatives[opId] : undefined
+  if (!op) return 0
+  return (has(state, op, 'CRYPTEK') ? 1000 : 0) + (has(state, op, 'APPRENTEK') ? 500 : 0) + op.maxWounds
+}
+
+/** RULING: the engine tries the markers in the owner's likely order (returnPriority, oldest first on a tie); the roll
+ * stops at the first 3+ that can be set up. */
 function reanimationRolls(ctx: Ctx, seat: Seat): void {
-  for (const m of markersOf(ctx.state, seat, M.reanimation)) {
+  const all = markersOf(ctx.state, seat, M.reanimation)
+  const ordered = all
+    .map((m, i) => ({ m, i, p: returnPriority(ctx.state, m.placedBy ?? undefined) }))
+    .sort((x, y) => y.p - x.p || x.i - y.i)
+    .map((x) => x.m)
+  for (const m of ordered) {
     const [r] = ctx.roll('hie.reanimation', 1)
     if (r! < 3) continue
     if (reanimate(ctx, m.id)) return
@@ -393,6 +410,21 @@ function shroudAffects(state: GameState, op: Operative): boolean {
   return false
 }
 
+/** Scuttler (T-HIE.17): on Conceal and in cover it cannot be picked, whatever else applies (Seek, Vantage), except by a
+ * shooter within 2". With Magnify the proxy is the active operative for cover and that 2" (designer's commentary). */
+function scuttlerFilter(s: GameState, op: Operative, data: BeforeShootTargetSelectData): void {
+  if (data.secondary) return
+  const a = s.attack
+  const vp = a && a.kind === 'shoot' && a.operativeId === op.id && a.viewpointId ? s.operatives[a.viewpointId] : undefined
+  const from = bodyOf(vp ?? op)
+  for (let i = data.candidates.length - 1; i >= 0; i--) {
+    const t = s.operatives[data.candidates[i]!]
+    if (!t || !hasAbility(s, t, 'hie.a.scuttler') || t.order !== 'conceal') continue
+    const v = targetVerdict(s, from, { ...bodyOf(t), order: t.order })
+    if (v.inCover && !v.within2) data.candidates.splice(i, 1)
+  }
+}
+
 registerHook(
   'beforeShootTargetSelect',
   (c) => {
@@ -400,50 +432,32 @@ registerHook(
     const op = s && c.operativeId ? s.operatives[c.operativeId] : undefined
     const data = c.data as unknown as BeforeShootTargetSelectData
     if (!s || !op) return null
-    // Scuttler: in cover under Conceal it cannot be chosen, except from within 2" (T-HIE.17)
-    if (!data.secondary) {
-      for (let i = data.candidates.length - 1; i >= 0; i--) {
-        const t = s.operatives[data.candidates[i]!]
-        if (!t || !hasAbility(s, t, 'hie.a.scuttler') || t.order !== 'conceal') continue
-        const v = targetVerdict(s, bodyOf(op), { ...bodyOf(t), order: t.order })
-        if (v.inCover && !v.within2) {
-          data.candidates.splice(i, 1)
-        }
-      }
-    }
-    if (data.secondary || !isHie(s, op) || op.status !== 'active') return null
-    const rules = ruleSetFor(s, op, data.weaponId, 'shoot')
-    const weapon = s.data.weapons[data.weaponId]
-    if (weapon?.type !== 'ranged') return null
-    const sb = bodyOf(op)
-    const addable = (e: Operative): boolean =>
-      e.status === 'active' && e.wounds > 0 && !data.candidates.includes(e.id) && (rules.range === null || isWithin(sb, bodyOf(e), rules.range)) && enemiesInControlRange(s, e, e.seat).length === 0
-    // Deathmarked (T-HIE.21): a Deathmark shooting a marked enemy has Seek, applied when validity is checked
-    if (has(s, op, 'DEATHMARK')) {
-      for (const e of enemiesOf(s, op)) {
-        if (!hasToken(s, e.id, T.deathmarked, op.seat) || !addable(e)) continue
-        if (targetVerdict(s, sb, { ...bodyOf(e), order: e.order }).visible) data.candidates.push(e.id)
-      }
-    }
-    // Magnify (T-HIE.28): while the action list is built (no sequence yet) an enemy only a proxy can target counts as
-    // a target, so the Shoot action is offered; the viewpoint options of the weapon list then decide (RULING)
-    if (!s.attack && weaponHas(s, data.weaponId, 'magnify')) {
-      const proxies = magnifyProxies(s, op)
-      if (proxies.length > 0) {
-        for (const e of enemiesOf(s, op)) {
-          if (!addable(e) || !visible(s, sb, bodyOf(e))) continue
-          const ok = proxies.some((p) => {
-            const info: TargetInfo = targetInfo(s, op, e, rules, p)
-            return info.verdict.visible && !info.coverBlocks
-          })
-          if (ok) data.candidates.push(e.id)
-        }
-      }
-    }
+    addHieCandidates(s, op, data)
+    // last, so no rule of this team that adds candidates (Deathmarked Seek) can bring a Scuttler back
+    scuttlerFilter(s, op, data)
     return null
   },
   'hie.beforeShootTargetSelect',
 )
+
+function addHieCandidates(s: GameState, op: Operative, data: BeforeShootTargetSelectData): void {
+  if (data.secondary || !isHie(s, op) || op.status !== 'active') return
+  const rules = ruleSetFor(s, op, data.weaponId, 'shoot')
+  const weapon = s.data.weapons[data.weaponId]
+  if (weapon?.type !== 'ranged') return
+  const sb = bodyOf(op)
+  const addable = (e: Operative): boolean =>
+    e.status === 'active' && e.wounds > 0 && !data.candidates.includes(e.id) && (rules.range === null || isWithin(sb, bodyOf(e), rules.range)) && enemiesInControlRange(s, e, e.seat).length === 0
+  // Deathmarked (T-HIE.21): a Deathmark shooting a marked enemy has Seek, applied when validity is checked
+  if (has(s, op, 'DEATHMARK')) {
+    for (const e of enemiesOf(s, op)) {
+      if (!hasToken(s, e.id, T.deathmarked, op.seat) || !addable(e)) continue
+      if (targetVerdict(s, sb, { ...bodyOf(e), order: e.order }).visible) data.candidates.push(e.id)
+    }
+  }
+  // Magnify (T-HIE.28): targets only a proxy can pick come from the proxy viewpoints themselves (shoot.ts
+  // shootAvailability and raiseWeapon ask providerViewpoints), so nothing is added to the shooter's own list here
+}
 
 registerHook(
   'modifyWeaponRules',
@@ -570,10 +584,15 @@ registerHook(
     if (!a || !seq || !attacker || !a.weaponId) return null
     const rules = ruleSetFor(s, attacker, a.weaponId, 'shoot', op.id)
     if (seq.cover && !rules.saturate && seq.collected >= 1) return null
-    const f = data.dice.find((d) => d.kind === 'fail' && d.value !== null && !d.used)
+    // one die is kept as a normal success instead of being rolled: the dice are independent, so turning the last
+    // die rolled into an unrolled normal success (whatever it showed) is the same as rolling one die fewer
+    const rolled = data.dice.filter((d) => d.value !== null && !d.used && d.tag !== 'undying')
+    if (data.dice.some((d) => d.tag === 'undying')) return null
+    const f = rolled[rolled.length - 1]
     if (!f) return null
     f.value = null
     f.kind = 'normal'
+    f.rerolled = false
     f.tag = 'undying'
     markFired('hieUndying')
     c.engine?.emit({ type: 'AbilityUsed', operativeId: op.id, abilityId: P.undying }, op.seat)
@@ -693,7 +712,12 @@ registerTeamRules({
   },
 
   shootInControlRange(state, op) {
-    return isHie(state, op) && magnifyConditionsFromProxy(state) && hasMagnifyWeapon(state, op) && inCr(state, op) && magnifyProxies(state, op).length > 0
+    if (!(isHie(state, op) && magnifyConditionsFromProxy(state) && hasMagnifyWeapon(state, op) && inCr(state, op) && magnifyProxies(state, op).length > 0)) return false
+    // the proxy supplies the Shoot conditions only for a shot taken through it: once the Shoot is under way,
+    // a weapon picked without a viewpoint (the plain weapon list) gets no exemption from the control-range ban
+    const a = state.attack
+    if (a && a.kind === 'shoot' && a.operativeId === op.id && !a.viewpointId) return false
+    return true
   },
 
   guardUnderConceal(state, op) {
@@ -1346,9 +1370,42 @@ registerCodeHook({
       return (['cryptek', 'apprentek'] as const).filter((o) => underlingsQueue(state, seat, o).length > 0).map((o) => ({ param: o }))
     },
     apply(ctx, seat, _ploy, seed) {
-      const queue = underlingsQueue(ctx.state, seat, seed.param === 'apprentek' ? 'apprentek' : 'cryptek')
-      // RULING: the dashes run in id order (the player does not choose the order)
-      startFreeSequence(ctx, { kind: 'dash', resume: 'ploy.freeMoves', queue })
+      // the eligible operatives are fixed when the ploy is used; the player then picks who dashes next (or stops)
+      underlingsNext(ctx, seat, underlingsQueue(ctx.state, seat, seed.param === 'apprentek' ? 'apprentek' : 'cryptek'))
     },
   },
+  choice(ctx, _op, option, context) {
+    const seat = context.seat as Seat
+    const remaining = ((context.remaining as string[] | undefined) ?? []).filter((id) => id !== option)
+    if (option === 'done') {
+      resumeGambit(ctx)
+      return
+    }
+    if (!startFreeAction(ctx, { operativeId: option, action: 'dash', resume: 'hie.underlings', data: { seat, remaining } })) underlingsNext(ctx, seat, remaining)
+  },
 })
+
+/** Offer the next free Dash of COMMAND UNDERLINGS: any eligible operative not yet done, in the order the player picks. */
+function underlingsNext(ctx: Ctx, seat: Seat, remaining: string[]): void {
+  const s = ctx.state
+  const live = remaining.filter((id) => {
+    const o = s.operatives[id]
+    return !!o && o.status === 'active' && !inCr(s, o)
+  })
+  if (live.length === 0) {
+    resumeGambit(ctx)
+    return
+  }
+  ctx.raise({
+    kind: 'ability.choice',
+    seat,
+    window: 'strategy.gambit',
+    context: { hook: 'hieUnderlings', operativeId: live[0], seat, remaining: live },
+    options: [
+      ...live.map((id) => choiceOpt(id, 'hie.underlings.dash', { name: s.operatives[id]!.name })),
+      choiceOpt('done', 'hie.underlings.done'),
+    ],
+  })
+}
+
+registerFrameResume('hie.underlings', (ctx, _outcome, data) => underlingsNext(ctx, data.seat as Seat, (data.remaining as string[] | undefined) ?? []))

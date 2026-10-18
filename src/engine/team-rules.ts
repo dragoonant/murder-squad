@@ -33,6 +33,10 @@ export interface ReactionInfo {
   activeSeat: Seat
   /** the action moved the actor or set it up (move actions, Grappling Hook, emerging) */
   moved: boolean
+  /** M9 shared: a free move made in the Strategy phase (a gambit's Dash), outside any activation */
+  strategy?: boolean
+  /** M9 shared: a Guard interrupt (actorId = the guarding operative) has just finished; activeSeat is the guard's seat */
+  interrupt?: boolean
 }
 
 export interface TeamRuleProvider {

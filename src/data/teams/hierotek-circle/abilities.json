@@ -20,7 +20,7 @@
       "side": "friendly",
       "keyword": "HIEROTEK CIRCLE"
     },
-    "text": "In each Ready step, before every other rule of this team in that step, each friendly Hierotek Circle operative regains up to D3+1 lost wounds, rolled separately.",
+    "text": "Necron bodies knit themselves back together: at the very start of each Ready step, ahead of this team's other Ready-step rules, every Hierotek Circle operative in the killzone rolls its own D3+1 and recovers that many lost wounds.",
     "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.29"
   },
   {
@@ -53,7 +53,7 @@
     "kind": "ability",
     "name": "Apprentek Assistance",
     "team": "hierotek-circle",
-    "text": "This operative has every unique action of the Cryptek in your kill team, but may perform only one of them per turning point. Distances and expiry on such an action are measured from and tied to the Apprentek. It is not a Cryptek for any other rule.",
+    "text": "Borrows the toolkit of the Cryptek leading your team: it can use any of that Cryptek's unique actions, but just one such use each turning point, with every distance and expiry counted from the Apprentek itself. No other rule treats it as a Cryptek.",
     "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.20"
   },
   {
@@ -61,7 +61,7 @@
     "kind": "ability",
     "name": "Deathmarked",
     "team": "hierotek-circle",
-    "text": "When this operative finishes a Shoot action, the target (the primary target if there were several) gains your Deathmarked token if it was not incapacitated. The token lasts the battle. A friendly Deathmark shooting an enemy with the token has Seek on its ranged weapons.",
+    "text": "Every survivor of its fire is tagged: after this operative's Shoot, a target still standing (the primary one for multi-target weapons) carries your Deathmarked token for the rest of the battle. Any friendly Deathmark firing at a tagged enemy gains Seek on its ranged weapons.",
     "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.21"
   },
   {
@@ -69,7 +69,7 @@
     "kind": "ability",
     "name": "Steadfast",
     "team": "hierotek-circle",
-    "text": "When control of a marker is worked out you may count this operative's APL as 3, ignoring all changes to its APL. Terror or Despair modifiers on the total still apply afterwards.",
+    "text": "Holds ground like a squad: for marker control it may count as APL 3 no matter how its APL has been changed. Rules that lower the whole side's total (Terror, Despair) still come off afterwards.",
     "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.23"
   },
   {
@@ -165,7 +165,7 @@
         "range": 5
       }
     },
-    "text": "Pick another friendly Hierotek Circle operative that is expended and visible to and within 5 inches of this operative. Remove it and set it up again anywhere it can be placed that is visible to and within 5 inches (horizontally) of this operative. Only once per turning point for the whole team, never in the first turning point, not in an enemy control range.",
+    "text": "Rewind a comrade's position: an already expended friendly Hierotek Circle operative this one can see within 5 inches is lifted and put down at any legal spot this operative can see within 5 inches horizontally. One use per turning point across the whole team, none in the first turning point, and not while an enemy has this operative in control range.",
     "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.8"
   },
   {
@@ -184,7 +184,7 @@
         "range": 8
       }
     },
-    "text": "Place your Nanomine marker within 8 inches of this operative, visible to it or on Vantage terrain of a visible terrain feature. While an enemy operative is within 4 inches of the marker its Move is 2 inches lower. The marker goes when this operative next activates, when it is incapacitated, or when a friendly operative performs this action again. Not in an enemy control range.",
+    "text": "Seed a time-slowing field: put your Nanomine marker down up to 8 inches away, somewhere this operative can see or on the Vantage level of terrain it can see. Enemies within 4 inches of the marker lose 2 inches of Move. It lasts until this operative activates again or falls, or until a friendly operative uses this action again. Unavailable in an enemy control range.",
     "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.9"
   },
   {
@@ -422,7 +422,7 @@
     "effect": {
       "code": "hieVision"
     },
-    "text": "Until the start of this operative's next activation, enemies it shoots cannot be obscured. Not in an enemy control range.",
+    "text": "Slips its sight into another dimension: up to its next activation, nothing it fires at can be obscured. Unavailable in an enemy control range.",
     "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.22"
   }
 ]

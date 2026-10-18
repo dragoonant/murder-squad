@@ -5,6 +5,7 @@ import { act } from '@/engine/actions'
 import { effectiveApl } from '@/engine/state'
 import { chargeUnderConceal, maxRepeats } from '@/engine/abilities'
 import { enemiesInControlRange } from '@/engine/measure'
+import { providerAny } from '@/engine/team-rules'
 import { placementProblem, terrainOf } from '@/engine/terrain'
 import {
   createGame,
@@ -228,8 +229,13 @@ export function checkInvariants(prev: GameState, next: GameState, action: Action
   const act_ = next.firefight.activation
   if (act_) {
     const op = next.operatives[act_.operativeId]!
-    const cap = act_.counteract ? 0 : effectiveApl(op)
-    if (!act_.counteract && act_.apSpent > cap) add('SIM-005', `${op.id} spent ${act_.apSpent} AP with APL ${cap}`)
+    // AP must be within the APL when it is spent: an APL that drops later in the activation (Medic!'s -1 on the saved
+    // operative) does not make earlier spending illegal, so only a step that spends AP is checked, against the
+    // higher of the APL before and after the step
+    const before = prev.operatives[op.id]
+    const cap = act_.counteract ? 0 : Math.max(effectiveApl(op), before ? effectiveApl(before) : 0)
+    const spent = events.some((e) => e.type === 'ApSpent' && e.operativeId === op.id)
+    if (!act_.counteract && spent && act_.apSpent > cap) add('SIM-005', `${op.id} spent ${act_.apSpent} AP with APL ${cap}`)
     // an action repeats only where a team rule allows it (ASTARTES, Krumpin' Time) or after a free action
     if (!act_.counteract && !act_.frame) {
       for (const a of new Set(act_.performed)) {
@@ -239,12 +245,23 @@ export function checkInvariants(prev: GameState, next: GameState, action: Action
     }
     if (op.order === 'conceal' && !act_.counteract) {
       if (act_.performed.includes('charge') && !chargeUnderConceal(next, op)) add('ORD-002', `${op.id} charged under Conceal`)
-      const silent = op.weapons.some((w) => next.data.weapons[w]?.rules.some((r) => /silent$/i.test(r.rule)))
-      if (act_.performed.includes('shoot') && !silent) add('ORD-002', `${op.id} shot under Conceal`)
     }
   }
 
   for (const ev of events) {
+    // ORD-002: a Conceal operative shoots only with a Silent weapon, or through a viewpoint / team rule that lets it
+    // (Magnify). Checked once, on the step the weapon is picked, against the weapon actually used: the old check
+    // (any Silent weapon carried, on every later step of the activation) both missed a non-Silent profile fired next
+    // to a Silent one and flagged Magnify shots after the proxy had moved on.
+    if (ev.type === 'ShootStarted') {
+      const op = next.operatives[ev.operativeId]
+      const silent = !!next.data.weapons[ev.weaponId]?.rules.some((r) => /silent$/i.test(r.rule))
+      const viewpoint = (action.type === 'shoot.weapon' && action.payload.viewpointId) || next.attack?.viewpointId
+      const counteract = next.firefight.activation?.counteract && next.firefight.activation.operativeId === op?.id
+      if (op && op.order === 'conceal' && !silent && !counteract && !viewpoint && !providerAny(next, op, 'shootUnderConceal')) {
+        add('ORD-002', `${op.id} shot ${ev.weaponId} under Conceal`)
+      }
+    }
     if (ev.type === 'DiceRolled') {
       for (const d of ev.dice) if (!Number.isInteger(d) || d < 1 || d > 6) add('dice', `die ${d} out of range`)
     }
@@ -258,7 +275,14 @@ export function checkInvariants(prev: GameState, next: GameState, action: Action
 
   for (const seat of ['A', 'B'] as const) {
     if (next.players[seat].cp < 0) add('SIM-005', `${seat} has ${next.players[seat].cp} CP`)
-    if (next.players[seat].vp < prev.players[seat].vp) add('vp', `${seat} lost VP`)
+    // VP only falls when an incapacitated operative returns (Reanimation Protocols, reserve returns): the kill
+    // grade drops and missions.onOperativeReturned takes the kill op VP back with a negative VpScored. Any other
+    // loss, or a loss bigger than those events, is a bug.
+    const returned = events.some((e) => e.type === 'OperativeReturned')
+    const takenBack = returned
+      ? events.reduce((n, e) => (e.type === 'VpScored' && e.seat === seat && e.amount < 0 ? n - e.amount : n), 0)
+      : 0
+    if (next.players[seat].vp < prev.players[seat].vp - takenBack) add('vp', `${seat} lost VP (${prev.players[seat].vp} -> ${next.players[seat].vp}${returned ? `, ${takenBack} taken back by a return` : ''})`)
     if (next.players[seat].vp > 99) add('vp', `${seat} has implausible VP`)
   }
   if (next.seq !== prev.seq + 1) add('seq', `seq jumped from ${prev.seq} to ${next.seq}`)
@@ -286,7 +310,6 @@ export function checkInvariants(prev: GameState, next: GameState, action: Action
       }
     }
   }
-  void action
   return out
 }
 

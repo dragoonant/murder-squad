@@ -1,0 +1,144 @@
+// Plague Marines rules-verification fixes (M9 review), named by checklist id (docs/spec/12-rules-test-checklist.md).
+// Seat A is Plague Marines against the default Kommandos on open ground, as in plague-marines.test.ts.
+import { describe, expect, it } from 'vitest'
+import { step } from '@/engine'
+import { abilityOffers, maxRepeats } from '@/engine/abilities'
+import { offersFor } from '@/engine/ploys'
+import { runHook } from '@/engine/hooks'
+import { ScriptedRng } from '@/engine/rng'
+import { POISON, fightLike, inTerritory } from '@/engine/teams/plague-marines'
+import { tokenCount } from '@/engine/tokens'
+import type { Action, GameState, Marker, Operative, PendingDecision } from '@/engine/types'
+import { play } from '../../fixtures/attack'
+import { expectOk, place } from '../../fixtures/helpers'
+import { activateOp, edit, openReal, opOf, take } from '../../fixtures/real'
+
+const MATCH = { teams: ['plague-marines', 'kommandos'] as [string, string] }
+const open = (): GameState => openReal({ ...MATCH })
+const A = (s: GameState, card: string): string => opOf(s, 'A', `pm.${card}`)
+const B = (s: GameState, card: string): string => opOf(s, 'B', `kom.${card}`)
+const pass = (p: { seat: 'A' | 'B'; id: string }) => ({ type: 'pass' as const, seat: p.seat, decisionId: p.id, payload: {} as Record<string, never> })
+const ones = (n: number) => Array<number>(n).fill(1)
+
+describe('TEAM-PM rules verification', () => {
+  it('TEAM-PM-010 FLAIL shares the Astartes two-Fight allowance: Fight or FLAIL in any mix, two at most, one after two Shoots', () => {
+    let s = open()
+    const fighter = A(s, 'fighter')
+    const boy = B(s, 'boy')
+    s = place(place(s, fighter, 0, 0), boy, 1.4, 0)
+    const t = activateOp(s, fighter)
+    const op = t.operatives[fighter]!
+    const F = 'ability:pm.a.flail'
+    // a FLAIL is recorded as the ability plus a shadow `fight` entry: count the real actions only
+    expect(fightLike([F, 'fight'])).toBe(1)
+    expect(fightLike([F, 'fight', 'fight'])).toBe(2)
+    expect(fightLike(['fight', F])).toBe(2)
+    expect(fightLike([F, 'fight', F])).toBe(2)
+    // FLAIL after one FLAIL is within the allowance (the shared unique-action bar still applies, see RULING)
+    expect(maxRepeats(t, op, F, [F, 'fight'])).toBe(2)
+    expect(maxRepeats(t, op, F, ['fight'])).toBe(1)
+    expect(maxRepeats(t, op, 'fight', [F, 'fight', F])).toBe(1)
+    // after two Shoots only one Fight-like action is left
+    const offered = (performed: string[]) => {
+      const u = edit(t, (st) => (st.firefight.activation!.performed = performed))
+      return abilityOffers(u, u.operatives[fighter]!, u.firefight.activation).some((o) => o.abilityId === 'pm.a.flail')
+    }
+    expect(offered(['shoot', 'shoot'])).toBe(true)
+    expect(offered(['shoot', 'shoot', 'fight'])).toBe(false)
+    expect(offered(['fight'])).toBe(true)
+    expect(offered(['fight', 'fight'])).toBe(false)
+    expect(offered(['ability:pm.a.flail', 'fight', 'fight'])).toBe(false)
+  })
+
+  it('TEAM-PM-023 CURSE OF ROT locks the defence 3s before the defender may re-roll them', () => {
+    const curse = (q: PendingDecision): Action => q.options?.find((o) => o.id === 'pm.p.curse-of-rot')?.action ?? pass(q)
+    let s = open()
+    const hg = A(s, 'heavy-gunner')
+    const boy = B(s, 'boy')
+    s = edit(place(place(s, hg, 0, 0), boy, 3, 0), (st) => (st.players.B.cp = 3))
+    // attack 6 1 1 1, defence 3 3 6: the Boy holds CP for a Command Re-roll
+    let seen: { p: PendingDecision; dice: (number | null)[] } | null = null
+    play(
+      take(take(activateOp(s, hg), 'shoot').state, 'pm.w.bolt-pistol').state,
+      new ScriptedRng([6, 1, 1, 1, 3, 3, 6, ...ones(12)]),
+      {
+        'ploy.firefight': (q) => (q.seat === 'A' ? curse(q) : pass(q)),
+        'dice.commandReroll': (q, st) => {
+          if (q.seat === 'B' && !seen) seen = { p: q, dice: st.attack!.seq!.def!.dice.map((d) => d.value) }
+          return pass(q)
+        },
+      },
+      ['firefight.action'],
+    )
+    expect(seen).not.toBeNull()
+    const p = seen!.p
+    const def = { dice: seen!.dice.map((value) => ({ value })) }
+    const threes = def.dice.map((d, i) => (d.value === 3 ? i : -1)).filter((i) => i >= 0)
+    expect(threes).toHaveLength(2)
+    expect((p.options ?? []).length).toBeGreaterThan(0)
+    // no re-roll option touches a cursed 3
+    for (const o of p.options ?? []) {
+      const dice = ((o.action.payload as { dice?: number[] }).dice ?? []) as number[]
+      for (const i of threes) expect(dice).not.toContain(i)
+    }
+  })
+
+  it('TEAM-PM-022 POISONOUS DEMISE is the owner\'s choice when an attack kills the Plague Marine', () => {
+    let s = open()
+    const warrior = A(s, 'warrior')
+    const ender = A(s, 'bombardier')
+    const boy = B(s, 'boy')
+    const nob = B(s, 'boss-nob')
+    s = edit(place(place(place(place(s, warrior, 0, 0), boy, 5.5, 0), nob, -2.6, 0), ender, -12, 8), (st) => {
+      st.operatives[warrior]!.wounds = 1
+      st.operatives[warrior]!.order = 'engage'
+    })
+    s = take(activateOp(s, ender), 'end').state
+    let g = take(activateOp(s, boy), 'shoot').state
+    g = take(g, g.pending!.options![0]!.id).state
+    const rng = new ScriptedRng([6, 6, 6, 6, ...ones(30)])
+    g = expectOk(step(g, g.pending!.options!.find((o) => o.id === warrior)!.action, rng)).state
+    g = play(g, rng, { 'ploy.firefight': (q) => pass(q) }, ['ability.choice', 'firefight.action']).state
+    expect(g.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { hook: 'poisonousDemise', operativeId: warrior } })
+    expect(g.pending!.options!.map((o) => o.id)).toEqual(['use', 'none'])
+    const cp = g.players.A.cp
+    const used = take(g, 'use', rng).state
+    expect(tokenCount(used, nob, POISON, 'A')).toBe(1)
+    expect(used.players.A.cp).toBe(cp - 1)
+    expect(used.operatives[warrior]!.status).toBe('removed')
+    const kept = take(g, 'none', rng).state
+    expect(tokenCount(kept, nob, POISON)).toBe(0)
+    expect(kept.players.A.cp).toBe(cp)
+    expect(kept.operatives[warrior]!.status).toBe('removed')
+  })
+
+  it('TEAM-PM-012 Icon of Contagion counts the Icon Bearer as in the territory when any part of its base is inside', () => {
+    const square = [
+      { x: -1, z: -1 },
+      { x: 1, z: -1 },
+      { x: 1, z: 1 },
+      { x: -1, z: 1 },
+    ]
+    const at = (x: number) => ({ pos: { x, y: 0, z: 0 }, baseRadius: 0.63 }) as Operative
+    expect(inTerritory(at(0), square)).toBe(true)
+    expect(inTerritory(at(1.4), square)).toBe(true) // centre outside, base edge 0.23" inside
+    expect(inTerritory(at(1.7), square)).toBe(false)
+  })
+
+  it('TEAM-PM-018 CLOUD OF FLIES offers a spot between two touching Plague Marines, and it obscures both', () => {
+    let s = open()
+    const w = A(s, 'warrior')
+    const f = A(s, 'fighter')
+    const boy = B(s, 'boy')
+    s = place(place(place(s, w, 0, 0), f, 1.26, 0), boy, 8, 0)
+    const spots = offersFor(s, 'A', 'strategy.gambit', { window: 'strategy.gambit' }).filter((o) => o.ployId === 'pm.p.cloud-of-flies').map((o) => o.param)
+    expect(spots).toContain('0.65,0')
+    const marker: Marker = { id: 'flies-test', kind: 'equipment', pos: { x: 0.63, z: 0 }, owner: 'A', carriedBy: null, controller: null, equipmentId: 'pm.p.cloud-of-flies' }
+    const t = edit(s, (st) => st.markers.push(marker))
+    for (const id of [w, f]) {
+      const data = { obscured: false, inCover: false }
+      runHook('target.status', { seat: 'B', state: t, operativeId: boy, targetId: id, data })
+      expect(data.obscured).toBe(true)
+    }
+  })
+})

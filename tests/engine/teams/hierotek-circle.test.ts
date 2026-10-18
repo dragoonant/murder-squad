@@ -22,10 +22,10 @@ import { step } from '@/engine'
 import { cloneState } from '@/engine/state'
 import type { GameState } from '@/engine/types'
 import { loadBundle } from '../../../src/data'
-import { activateOp, edit, passIt, pick, realBundle, take, withCtx } from '../../fixtures/real'
+import { activateOp, edit, openReal, passIt, pick, realBundle, roster, take, withCtx } from '../../fixtures/real'
 import { hookFireCount } from '@/engine/code-hooks'
 import { CODE_HOOKS } from '../../../src/data'
-import { a, act, at, b, FULL, hie, kill, magnifyArena, markerOf, raise, scenarios, underlingsGame, usePloyOn, WALL } from './hierotek-circle.hooks'
+import { a, act, at, b, FULL, HIE, hie, kill, magnifyArena, markerOf, raise, scenarios, underlingsGame, usePloyOn, WALL } from './hierotek-circle.hooks'
 import { gambitOffers } from '@/engine/ploys'
 
 const data = loadBundle()
@@ -794,17 +794,32 @@ describe('hierotek-circle ploys and equipment', () => {
     const offers = gambitOffers(s, 'A').map((o) => o.id)
     expect(offers).toContain('hie.p.command-underlings:cryptek')
     expect(offers).toContain('hie.p.command-underlings:apprentek')
+    // the player picks who dashes next among the operatives still waiting (the option list), or stops
     const dashers = (st: GameState, id: string): string[] => {
       let u = take(st, id).state
       const seen: string[] = []
-      while (u.pending?.kind === 'move.path') {
-        seen.push(String(u.pending.context.operativeId))
+      while (u.pending?.kind === 'ability.choice' && u.pending.context.hook === 'hieUnderlings') {
+        const next = u.pending.options!.find((o) => o.id !== 'done')!.id
+        seen.push(next)
+        u = take(u, next).state
+        expect(u.pending!.kind).toBe('move.path')
+        expect(String(u.pending!.context.operativeId)).toBe(next)
         u = passIt(u).state
       }
       expect(u.pending!.kind).toBe('strategy.gambit')
       return seen.sort()
     }
     expect(dashers(s, 'hie.p.command-underlings:cryptek')).toEqual([desp, g].sort())
+    // any order: the last-listed operative may go first, and the player may stop before everyone has moved
+    const first = take(s, 'hie.p.command-underlings:cryptek').state
+    const listed = first.pending!.options!.map((o) => o.id)
+    expect(listed.filter((o) => o !== 'done').sort()).toEqual([desp, g].sort())
+    const last = listed.filter((o) => o !== 'done').at(-1)!
+    const moved = take(first, last).state
+    expect(String(moved.pending!.context.operativeId)).toBe(last)
+    const rest = passIt(moved).state
+    expect(rest.pending!.options!.map((o) => o.id)).toEqual([listed.filter((o) => o !== 'done')[0], 'done'])
+    expect(take(rest, 'done').state.pending!.kind).toBe('strategy.gambit')
     // the Apprentek option reaches 3": the Deathmark beside it (and never a Cryptek)
     expect(dashers(s, 'hie.p.command-underlings:apprentek')).toEqual([dm2])
     // nobody in reach: the options are not offered
@@ -909,5 +924,95 @@ describe('hierotek-circle code hooks', () => {
     expect(Object.keys(scenarios).sort()).toEqual([...mine].sort())
     for (const name of mine) scenarios[name]!()
     for (const name of mine) expect(hookFireCount(name), `${name} never fired`).toBeGreaterThan(0)
+  })
+})
+
+describe('hierotek-circle rules verification fixes', () => {
+  it('TEAM-HIE-005 an operative struck down in its own activation, also under an enemy Guard interrupt, counts as already expended when it returns', () => {
+    let s = hie()
+    const [g, boy] = [a(s, 'hie.immortal-guardian'), b(s, 'kom.boy')]
+    s = activateOp(at(s, [g, 0, 0], [boy, 6, 0]), g)
+    expect(s.firefight.activation?.operativeId).toBe(g)
+    // the Kommando's Guard interrupt is a frame on top of the Guardian's activation
+    const interrupted = edit(s, (st) => {
+      st.firefight.stack = [st.firefight.activation]
+      st.firefight.activation = { operativeId: boy, seat: 'B', counteract: false, stage: 'action', apSpent: 0, performed: [], declared: null, frame: { kind: 'interrupt', resume: 'test' } }
+    })
+    const dead = kill(interrupted, g)
+    expect(dead.operatives[g]!.status).toBe('removed')
+    expect(dead.ledger.A.uses[`hie.expended:${g}`]).toBe(dead.turningPoint)
+    // brought back the same turning point, it is set up expended and cannot activate twice
+    const back = withCtx(dead, (ctx) => {
+      expect(reanimate(ctx, markerOf(dead, g)!.id, { pos: { x: -3, y: 0, z: 0 }, order: 'engage' })).toBe(true)
+    }).state
+    expect(back.operatives[g]).toMatchObject({ status: 'active', ready: false })
+  })
+
+  it('TEAM-HIE-006 Magnify in an enemy control range: only shots through the proxy are offered, never the plain weapon', () => {
+    const { s, cx, app, boy } = magnifyArena()
+    const foe = Object.values(s.operatives).find((o) => o.seat === 'B' && o.id !== boy)!.id
+    // the Boy stands in the open on Engage, so the Chronomancer could pick it itself; another Kommando is in its control range
+    const engaged = edit(at(s, [foe, -4.4, 0], [boy, 2, 3]), (st) => {
+      st.operatives[foe]!.status = 'active'
+      st.operatives[boy]!.order = 'engage'
+    })
+    const t = take(activateOp(engaged, cx), 'shoot').state
+    expect(t.pending!.kind).toBe('shoot.weapon')
+    const ids = t.pending!.options!.map((o) => o.id)
+    expect(ids).toContain(`hie.w.aeonstave-ranged@${app}`)
+    expect(ids.every((id) => id.includes('@'))).toBe(true)
+    // out of the control range the plain weapon is back
+    const free = at(engaged, [foe, -12, 9])
+    expect(take(activateOp(free, cx), 'shoot').state.pending!.options!.map((o) => o.id)).toContain('hie.w.aeonstave-ranged')
+  })
+
+  it('TEAM-HIE-014 Scuttler beats Deathmarked Seek: a marked Plasmacyte on Conceal in cover cannot be picked beyond 2"', () => {
+    let s = openReal({ teams: [HIE, HIE], rosterA: roster(FULL), rosterB: roster(FULL) })
+    const dm = a(s, 'hie.deathmark')
+    const acc = b(s, 'hie.plasmacyte-accelerator')
+    const g = b(s, 'hie.immortal-guardian')
+    s = edit(at(s, [dm, -6, 0], [acc, 2, 0], [g, 2, 3]), (st) => {
+      st.map = { ...st.map, features: [WALL] }
+      st.operatives[acc]!.order = 'conceal'
+      st.operatives[g]!.order = 'conceal'
+      for (const o of Object.values(st.operatives)) if (o.id !== dm && o.id !== acc && o.id !== g) o.status = 'reserve'
+    })
+    s = withCtx(s, (ctx) => {
+      addToken(ctx, acc, { kind: T.deathmarked, owner: 'A', sourceId: dm }, 'test')
+      addToken(ctx, g, { kind: T.deathmarked, owner: 'A', sourceId: dm }, 'test')
+    }).state
+    const ids = validTargets(s, s.operatives[dm]!, 'hie.w.synaptic-disintegrator').map((t) => t.id)
+    // Seek makes the Conceal Guardian in cover a target, but never the Scuttler
+    expect(ids).toContain(g)
+    expect(ids).not.toContain(acc)
+  })
+
+  it('TEAM-HIE-016 Undying Androids: the kept die is set aside unrolled, so only the other dice are rolled (exact, also when they all succeed)', () => {
+    let s = hie()
+    const [g, app, boy] = [a(s, 'hie.immortal-guardian'), a(s, 'hie.apprentek'), b(s, 'kom.boy')]
+    s = at(s, [g, 0, 0], [boy, 4, 0])
+    const fire = (st: GameState) => shootAs(bTurn(st, app), boy, 'kom.w.slugga', g, [6, 6, 6, 6], [6, 6, 6, 1, 1, 1, 1, 1])
+    // four crits against three rolled crits: one crit (4) gets through
+    expect(fire(s).operatives[g]!.wounds).toBe(10 - 4)
+    // with the ploy only two dice are really rolled (two crits) plus a normal, which cannot stop a crit: two get through
+    expect(fire(usePloyOn(s, 'hie.p.undying-androids')).operatives[g]!.wounds).toBe(10 - 8)
+  })
+
+  it('TEAM-HIE-003 Ready step: the markers are tried in the owner\'s likely order, the Cryptek before an earlier-fallen Deathmark', () => {
+    let s = hie({}, FULL)
+    const [cx, d1] = [a(s, 'hie.chronomancer'), a(s, 'hie.deathmark')]
+    s = at(s, [d1, 6, 0], [cx, -6, 0])
+    // the Deathmark fell first, so its marker is the older one
+    s = kill(kill(s, d1), cx)
+    const out = withCtx(
+      s,
+      (ctx) => {
+        runHook('turningPoint.start', { seat: 'A', state: ctx.state, engine: ctx, data: { turningPoint: 2 } })
+      },
+      new ScriptedRng([5, 5, 5, 5]),
+    ).state
+    expect(out.operatives[cx]!.status).toBe('active')
+    expect(out.operatives[d1]!.status).toBe('removed')
+    expect(markerOf(out, d1)).toBeDefined()
   })
 })

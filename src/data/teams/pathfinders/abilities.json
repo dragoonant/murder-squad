@@ -68,10 +68,10 @@
     "team": "pathfinders",
     "ap": 1,
     "keywords": ["SUPPORT"],
-    "conditions": { "notInEnemyControlRange": true, "notCounteracting": true },
+    "conditions": { "notInEnemyControlRange": true },
     "target": { "side": "friendly", "keyword": "PATHFINDER", "visible": true, "withinInches": 6, "notSelf": true },
     "effect": { "code": "pfSignal", "params": { "range": 6, "aplDelta": 1, "comms": true } },
-    "text": "Pick another friendly Pathfinder (a drone counts) that is visible and within 6 inches; add 1 to its APL until the end of its next activation. Not in an enemy control range and not while counteracting.",
+    "text": "Choose a different friendly Pathfinder (drones included) that this operative can see within 6 inches: it has +1 APL until its next activation is over. Cannot be used while an enemy has this operative in its control range.",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.10"
   },
   {
@@ -80,7 +80,7 @@
     "name": "Drone Controller",
     "team": "pathfinders",
     "effect": { "code": "droneController", "params": { "moveBonus": 2, "ploy": "pf.p.saviour-protocols" } },
-    "text": "While this operative is in the killzone, friendly Pathfinder drones get +2 inches of Move and the Saviour Protocols ploy costs you no CP.",
+    "text": "As long as this operative is on the table, your Pathfinder drones move 2 inches further and Saviour Protocols is free to use.",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.11"
   },
   {
@@ -91,7 +91,7 @@
     "ap": 1,
     "conditions": { "notInEnemyControlRange": true },
     "effect": { "code": "remotePilot", "params": { "maxMove": 2 } },
-    "text": "One friendly Pathfinder drone immediately takes one free action of any kind, even one its Drone rule forbids, but cannot move more than 2 inches during it. Not in an enemy control range. This can be done several times in an activation, but the same drone cannot take the same free action twice in one activation.",
+    "text": "The controller takes direct charge of a friendly Pathfinder drone, which acts at once with one free action of any kind (its Drone restrictions are lifted for it) and travels at most 2 inches doing so. Unavailable in an enemy control range. Repeatable within the activation, though a given drone never repeats the same free action in it.",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.12"
   },
   {
@@ -110,7 +110,7 @@
     "team": "pathfinders",
     "window": "operative.incapacitated",
     "effect": { "code": "medic", "params": { "range": 3, "wounds": 1, "aplDelta": -1 } },
-    "text": "The first time each turning point that another friendly Pathfinder (not a drone) that is visible and within 3 inches would be incapacitated, and neither it nor this operative is in an enemy control range, it is left on 1 wound and cannot be incapacitated for the rest of that action. Afterwards it may take a free Dash that must end in this operative's control range. Both operatives get -1 APL until the end of their next activations, and if it happened in that operative's own activation, the activation ends. Not if this operative is down, or is a target of that Shoot.",
+    "text": "Once per turning point, at the first moment another friendly non-drone Pathfinder this operative can see within 3 inches is about to go down, the medic steps in (provided neither of them has an enemy in control range): the casualty stays in play on 1 wound and nothing can take it down for the rest of that action. Once the action is over it may make a free Dash that finishes in the medic's control range. Each of the two then has -1 APL until its next activation is over, and if this happened during the casualty's own activation, that activation stops. Not available while the medic is down, or when the medic is itself a target of that Shoot.",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.14"
   },
   {
@@ -121,7 +121,7 @@
     "ap": 1,
     "conditions": { "notInEnemyControlRange": true },
     "effect": { "code": "medikit", "params": { "dice": "2D3" } },
-    "text": "One friendly Pathfinder (not a drone) in this operative's control range regains up to 2D3 lost wounds, never above its starting wounds. It cannot be an operative that Medic! saved this turning point. Not in an enemy control range.",
+    "text": "Patch up a friendly Pathfinder (never a drone) standing in this operative's control range: it gets back up to 2D3 lost wounds, to no more than its starting wounds. Anyone Medic! already saved this turning point cannot be treated. Unavailable in an enemy control range.",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.15"
   },
   {
@@ -139,7 +139,7 @@
     "name": "Fearless on the Frontline",
     "team": "pathfinders",
     "effect": { "costDelta": { "actions": ["fall-back"], "delta": -1 } },
-    "text": "This operative can use Markerlight even in an enemy control range, and its Fall Back action costs 1 less AP.",
+    "text": "Keeps marking targets with an enemy right on top of it (Markerlight is allowed in an enemy control range) and Falls Back for 1 AP less.",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.17"
   },
   {
@@ -159,7 +159,7 @@
     "name": "Multi-Dimensional Vision",
     "team": "pathfinders",
     "effect": { "code": "multiDimensionalVision", "params": { "noObscured": true } },
-    "text": "Whenever this operative is shooting, enemy operatives cannot be obscured.",
+    "text": "Its sensors cut through haze and debris: no enemy counts as obscured against this operative's shots.",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.19"
   },
   {
@@ -240,7 +240,7 @@
     "name": "Analyse",
     "team": "pathfinders",
     "effect": { "code": "analyse", "params": { "radius": 3, "exemptFromLink": true } },
-    "text": "When this drone uses Markerlight, every other enemy operative that it can see within 3 inches of the chosen enemy also gains one Markerlight token (up to 4). It is not bound by the Shoot and Markerlight target link.",
+    "text": "Its wide-angle scanner spills over: a Markerlight from this drone also hands one token (cap 4 as usual) to each further enemy it can see within 3 inches of the one it picked. The Shoot and Markerlight same-target rule does not bind it.",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.21"
   },
   {
@@ -258,7 +258,7 @@
     "name": "High-intensity Markerlight",
     "team": "pathfinders",
     "effect": { "code": "mv7Markerlight", "params": { "tokens": 2 } },
-    "text": "When this drone uses Markerlight, the chosen enemy gains two tokens instead of one (up to 4).",
+    "text": "Its beam is strong enough to mark twice: each Markerlight it makes puts a pair of tokens on the picked enemy (cap 4).",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.23"
   },
   {
@@ -268,7 +268,7 @@
     "team": "pathfinders",
     "ap": 1,
     "effect": { "code": "pulseAccelerator", "params": { "radius": 3, "lethal": "5+", "rule": "severe" } },
-    "text": "Until the start of this drone's next activation or until it is incapacitated, whenever another friendly Pathfinder shoots with a pulse weapon (burst cannon, pulse carbine, suppressed or twin pulse carbine) within 3 inches of this drone, that weapon has Lethal 5+ and Severe.",
+    "text": "The drone charges nearby pulse weapons: until it next activates or is taken out, any other friendly Pathfinder firing a pulse weapon (burst cannon, pulse carbine, suppressed or twin pulse carbine) from within 3 inches of it gains Lethal 5+ and Severe on that weapon.",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.24"
   },
   {
@@ -277,7 +277,7 @@
     "name": "Grav-inhibitor",
     "team": "pathfinders",
     "effect": { "code": "gravInhibitor", "params": { "radius": 6, "surcharge": 2, "meleeHitWorse": 1 } },
-    "text": "When an enemy takes an action that moves it (not Dash) and the move would take it somewhere this drone can see within 6 inches, the move costs an extra 2 inches and it ignores the extra cost of Obstructing and Accessible terrain for that action. Enemies fighting or retaliating while this drone can see them within 6 inches worsen the Hit of their melee weapons by 1, on top of any injury penalty.",
+    "text": "A heavy gravity field: an enemy moving (other than by Dash) into a spot this drone can see within 6 inches pays 2 inches more for that action, though Obstructing and Accessible terrain then add nothing to it. An enemy this drone can see within 6 inches also fights and retaliates with its melee Hit 1 worse, stacking with injury.",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.25, T-PF.26"
   },
   {

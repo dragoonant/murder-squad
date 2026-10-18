@@ -738,3 +738,56 @@ function drive(s: GameState): GameState {
   }
   return t
 }
+
+describe('pathfinders rules verification fixes', () => {
+  it('TEAM-PF-007 Medic! in the saved operative\'s own activation: the activation ends, also under an enemy Guard interrupt, and the free Dash is still offered after the action', () => {
+    const base = pfOpen()
+    const v = A(base, 'pf.shasla')
+    const m = A(base, 'pf.medical-technician')
+    const boy = B(base, 'kom.boy')
+    const s = activateOp(place(place(place(base, v, 0, 0), m, 2.2, 0), boy, 8, 0), v)
+    expect(s.firefight.activation?.operativeId).toBe(v)
+    // struck down in its own activation: saved, its activation can spend no more AP, the Dash waits for the action's end
+    const own = withCtx(s, (ctx) => inflict(ctx, { targetId: v, attackerId: boy, weaponId: null, amount: 99, source: 'direct' })).state
+    expect(own.operatives[v]!.wounds).toBe(1)
+    expect(own.firefight.activation!.endsAfterAction).toBe(true)
+    expect(own.effects.some((e) => e.kind === 'pf.medicDash' && e.operativeId === v)).toBe(true)
+    // the Pathfinder player is the active one, so the Dash comes as a 0 CP offer in the action-ended window
+    const info = { window: 'firefight.actionEnded', subjectId: v }
+    const offer = offersFor(own, 'A', 'firefight.actionEnded', info).find((o) => o.ployId === 'pf.medicDash')
+    expect(offer).toMatchObject({ cost: 0, operativeId: v })
+    const dash = withCtx(edit(own, (st) => void (st.pending = null)), (ctx) => usePloy(ctx, 'A', offer!, info)).state
+    expect(dash.pending?.kind).toBe('move.path')
+    expect(dash.pending!.constraints!.mustEndInControlRangeOfId).toBe(m)
+    expect(dash.effects.some((e) => e.kind === 'pf.medicDash')).toBe(false)
+    // the opponent's window never offers it
+    expect(offersFor(own, 'B', 'firefight.actionEnded', info).some((o) => o.ployId === 'pf.medicDash')).toBe(false)
+    // under an enemy Guard interrupt the activation underneath is the saved operative's own: it ends too
+    const interrupted = edit(s, (st) => {
+      st.firefight.stack = [st.firefight.activation]
+      st.firefight.activation = { operativeId: boy, seat: 'B', counteract: false, stage: 'action', apSpent: 0, performed: [], declared: null, frame: { kind: 'interrupt', resume: 'test' } }
+    })
+    const guard = withCtx(interrupted, (ctx) => inflict(ctx, { targetId: v, attackerId: boy, weaponId: null, amount: 99, source: 'direct' })).state
+    expect(guard.operatives[v]!.wounds).toBe(1)
+    expect(guard.firefight.stack![0]!.endsAfterAction).toBe(true)
+    expect(guard.firefight.activation!.apSpent).toBe(0)
+  })
+
+  it('TEAM-PF-017 SIGNAL: may be done in a counteraction (no such ban is printed), needs sight of the friend and stays within 6"', () => {
+    let s = pfOpen()
+    expect(s.data.abilities['pf.a.signal']!.conditions).toEqual({ notInEnemyControlRange: true })
+    const c = A(s, 'pf.comms-specialist')
+    const sh = A(s, 'pf.shasui')
+    const sla = A(s, 'pf.shasla')
+    s = place(place(place(s, c, 0, 0), sh, 3, 0), sla, 0, 7.5)
+    const counteract = { operativeId: c, seat: 'A' as const, counteract: true, stage: 'action' as const, apSpent: 0, performed: [], declared: null }
+    const ids = abilityOffers(s, s.operatives[c]!, counteract).filter((o) => o.abilityId === 'pf.a.signal').map((o) => o.params.targetId)
+    expect(ids).toContain(sh)
+    // beyond 6": not offered
+    expect(ids).not.toContain(sla)
+    // a blocking wall between them: the Comms Specialist cannot see the Shas'ui, so it cannot signal it
+    const blocked = withTerrain(s, wall(1.2, 1.8, ['heavy', 'blocking'], 4))
+    const seen = abilityOffers(blocked, blocked.operatives[c]!, null).filter((o) => o.abilityId === 'pf.a.signal').map((o) => o.params.targetId)
+    expect(seen).not.toContain(sh)
+  })
+})

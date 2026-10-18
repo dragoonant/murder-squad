@@ -56,6 +56,7 @@ export type TerrainTrait =
 export type TimingWindowId =
   | 'turningPoint.start'
   | 'strategy.gambit'
+  | 'firefight.start'
   | 'firefight.activationStart'
   | 'firefight.actionDeclared'
   | 'firefight.actionEnded'
@@ -66,6 +67,8 @@ export type TimingWindowId =
   | 'fight.weaponsSelected'
   | 'fight.rolled'
   | 'fight.resolved'
+  | 'shoot.beforeDefenceRerolls'
+  | 'fight.beforeRerolls'
   | 'operative.incapacitated'
   | 'firefight.activationEnded'
   | 'turningPoint.end'

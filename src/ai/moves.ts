@@ -15,6 +15,7 @@ import { distanceField, gridFor, routeTo, type Field } from './nav'
 import { terrainOf } from '@/engine/terrain'
 import { approachTerm, bestShot, exactShot, memo, missionActionValue, objectiveTargets, objectiveValue, overlay, posKey, shotsFrom, withOrder, type ShotEst } from './eval'
 import { bestFight } from './fight'
+import { teamActionCandidates } from './teamActions'
 import { passAction, randomMove } from './random'
 import { threatAt, threatPenalty } from './threat'
 import { exhausted, spend, type ActivationPlan, type AiCtx, type PlanStep } from './tiers'
@@ -328,18 +329,34 @@ function expandMoves(ctx: AiCtx, n: Node, apl: number, counteract: boolean, dept
   }
 }
 
-/** Mission and equipment actions available at a node near an objective. */
-function expandAbilities(ctx: AiCtx, n: Node, apl: number, counteract: boolean, out: Node[]): void {
-  if (!ctx.params.tacAware && ctx.view.turningPoint < 2) return
+function missionNearby(ctx: AiCtx, n: Node): boolean {
   const near = objectiveTargets(ctx, n.v).some((t) => Math.hypot(t.x - n.op.pos.x, t.z - n.op.pos.z) <= 3.6)
   const hasAmmo = n.v.markers.some((m) => m.equipmentId === 'core.e.ammo-cache' && m.owner === ctx.seat && Math.hypot(m.pos.x - n.op.pos.x, m.pos.z - n.op.pos.z) <= 3.6)
-  if (!near && !hasAmmo) return
+  return near || hasAmmo
+}
+
+/** Mission and equipment actions available at a node near an objective, plus the team's own unique actions. */
+function expandAbilities(ctx: AiCtx, n: Node, apl: number, counteract: boolean, out: Node[]): void {
+  const mission = (ctx.params.tacAware || ctx.view.turningPoint >= 2) && missionNearby(ctx, n)
   let offers
   try {
     offers = abilityOffers(n.v, n.op, hypAct(ctx, n, counteract))
   } catch {
     return
   }
+  // team unique actions (Markerlight, Signal, Medikit, Reanimate, Flail...): the few worth an AP, then the attack they enable
+  for (const c of teamActionCandidates(ctx, n.v, n.op, offers, n.performed)) {
+    const o = c.offer
+    if (n.ap + o.cost > apl) continue
+    const performed = [...n.performed, o.action]
+    const m = node(ctx, { ...n, performed, ap: n.ap + o.cost, steps: [...n.steps, { action: o.id }], acc: n.acc + c.value })
+    out.push(m)
+    if (ctx.params.depth >= 2) {
+      const a = withAttack(ctx, m, apl, counteract)
+      if (a) out.push(a)
+    }
+  }
+  if (!mission) return
   for (const o of offers) {
     if (n.ap + o.cost > apl) continue
     const id = o.abilityId
@@ -569,10 +586,23 @@ function bestOrderPlan(ctx: AiCtx, opId: string, share: number, o: PlanOpts = {}
 /** firefight.activate: the ready operative whose best plan gains the most; a counteraction only when it is worth it. */
 export function activate(ctx: AiCtx): Action | null {
   const { pending, view } = ctx
-  const ready = (pending.context.ready as string[]) ?? []
+  let ready = [...((pending.context.ready as string[]) ?? [])]
   const counter = (pending.context.counteract as string[]) ?? []
   const opt = (id: string): Action | null => pending.options?.find((o) => o.id === id)?.action ?? null
   if (ready.length > 0) {
+    // operatives out of the killzone (Wyrmblade HIDING) cannot be planned from a position: they emerge before the
+    // end of turning point 2 (or they are lost), and otherwise wait until nothing else is ready
+    const hidden = ready.filter((id) => view.operatives[id]?.status === 'reserve')
+    if (hidden.length > 0) {
+      const onBoard = ready.filter((id) => !hidden.includes(id))
+      if (onBoard.length === 0 || view.turningPoint >= 2) {
+        const pick = hidden[0]!
+        resetActivation(ctx, pick)
+        ctx.memory.plan = null
+        return opt(pick)
+      }
+      ready = onBoard
+    }
     let ids = ready
     if (ready.length === 1) {
       const a = opt(ready[0]!)
@@ -631,6 +661,11 @@ export function order(ctx: AiCtx): Action | null {
   const { pending, view } = ctx
   const opId = String(pending.context.operativeId)
   const opts = pending.options ?? []
+  // a hiding operative has no position to plan from: Engage, so that emerging and attacking both stay open
+  if (view.operatives[opId]?.status === 'reserve') {
+    resetActivation(ctx, opId)
+    return opts.find((o) => o.id === 'engage')?.action ?? opts[0]?.action ?? null
+  }
   const plan = ctx.memory.plan
   let want: 'engage' | 'conceal' | null = null
   if (plan && plan.operativeId === opId && plan.turningPoint === view.turningPoint) want = plan.order
@@ -651,12 +686,28 @@ export function action(ctx: AiCtx): Action | null {
   const opts = pending.options ?? []
   const endOpt = opts.find((o) => o.id === 'end')?.action ?? null
   if (!a || a.operativeId !== opId) return null
-  resetActivation(ctx, opId)
+  // a free-action frame (Remote Pilot, Interstitial Command) is part of its controller's activation: keep the controller's memory
+  if (!a.frame) resetActivation(ctx, opId)
   const mem = ctx.memory
+  // out of the killzone (HIDING): the only thing to do is the emerge action the engine offers
+  if (view.operatives[opId]?.status === 'reserve') {
+    const emerge = opts.find((o) => /^ability:/.test(o.id) && /emerge/i.test(o.id))
+    return emerge?.action ?? endOpt
+  }
   mem.activationDecisions++
   if (mem.activationDecisions > 24) return endOpt
   if (a.frame) {
-    // a free action granted by a ploy: take the best attack or move on
+    // a free action granted by a ploy or a rule (Remote Pilot, Support): take the best attack in it, else move on
+    const self = view.operatives[opId]
+    if (self && self.status === 'active') {
+      const shoot = opts.find((o) => o.id === 'shoot')
+      if (shoot && !a.performed.includes('shoot')) {
+        const s = bestShot(shotsFrom(ctx, view, self, a.performed))
+        if (s && s.score > 0.05) return shoot.action
+      }
+      const fightOpt = opts.find((o) => o.id === 'fight')
+      if (fightOpt && !a.performed.includes('fight') && enemiesInControlRange(view, self, self.seat).length > 0) return fightOpt.action
+    }
     return endOpt ?? opts[0]?.action ?? null
   }
   const performed = a.performed
@@ -671,7 +722,11 @@ export function action(ctx: AiCtx): Action | null {
   if (plan && plan.operativeId === opId && plan.turningPoint === view.turningPoint && onPlan(plan, performed)) {
     if (stepIndex(plan, performed) >= plan.steps.length) return endOpt
     const next = optionFor(plan)
-    if (next) return next.option
+    if (next) {
+      // a unique action is taken at most once per activation, whether or not the engine counts it as performed
+      if (next.step.action.startsWith('ability:')) mem.banned.push(next.step.action)
+      return next.option
+    }
   }
   // re-plan from here
   const op = view.operatives[opId]!
@@ -679,7 +734,10 @@ export function action(ctx: AiCtx): Action | null {
   mem.plan = plan = p
   if (p.steps.length === 0) return endOpt
   const next = optionFor(p)
-  if (next) return next.option
+  if (next) {
+    if (next.step.action.startsWith('ability:')) mem.banned.push(next.step.action)
+    return next.option
+  }
   return endOpt
 }
 

@@ -3,6 +3,7 @@
 // WEAPON_SOUND and ATTACHMENT_FOR at module load (teams/index.ts). Type-only imports, so no cycles.
 import type { SoundId } from '../audio/ids'
 import type { WeaponVfx } from '../vfx/families'
+import type { GlossaryEntry } from '../game/glossary'
 import type { WeaponFlavour } from '../weaponFlavour'
 
 export interface TeamPresentation {
@@ -16,4 +17,6 @@ export interface TeamPresentation {
   attachments?: Record<string, string[]>
   /** figure archetypes drawn as procedural stand-ins until their body GLB exists (figures test skips them) */
   standIns?: string[]
+  /** keyword and rule-term entries for this team (game/glossary.ts merges them over the generic ones) */
+  glossary?: GlossaryEntry[]
 }

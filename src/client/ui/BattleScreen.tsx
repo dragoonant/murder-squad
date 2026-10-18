@@ -10,6 +10,7 @@ import { DecisionPrompt } from './DecisionPrompt'
 import { EndScreen } from './EndScreen'
 import { useBoardTip } from './markerInfo'
 import { PointTooltip } from './Tooltip'
+import { HiddenTray } from './HiddenTray'
 import { Hud } from './Hud'
 import { DiceLog, EventFeed, MissionPanel, OperativeCard, SettingsPanel } from './Panels'
 import { RotatePrompt } from './RotatePrompt'
@@ -142,6 +143,7 @@ export function BattleScreen() {
             <OperativeCard />
           </>
         )}
+        <HiddenTray />
         <SettingsPanel />
         <DecisionPrompt />
         <Banner />

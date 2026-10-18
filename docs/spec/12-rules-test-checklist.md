@@ -159,6 +159,7 @@ MISSION-010 | M-4.1 | No crit op action or crit op VP in TP1.
 MISSION-011 | M-5.2 | A Mines marker triggers on the first operative CR contact: removed and D3+3 damage dealt.
 MISSION-012 | M-5.5 | Stun Grenade: D6 3+ for the target and every operative within 1" of it gives APL -1; smoke obscures operatives wholly inside it to those more than 2" away and lasts a D3 count of activations.
 MISSION-013 | M-5.6 | Frag and krak grenades are limited by the number picked and use the printed profiles.
+MISSION-013b | M-5.6 | A real Shoot with a team-limited grenade counts the use when the weapon is picked and strips the spent grenade from the team after the action.
 
 ## TEAM-AOD - Angels of Death
 
@@ -220,6 +221,14 @@ GEN-027 | team-rules moveSurcharge | A surcharge adds to a move's cost and can p
 GEN-028 | team-rules actionForbidden | An action a team rule forbids cannot be taken as a free action either.
 GEN-029 | markers.isMine, ignoresMine, equipment excludes | Equipment with the mines code is a mine; a rule can exempt operatives; excluded options are rejected together.
 GEN-030 | team-rules stealthyCover | Stealthy-style cover sources from team rules add to the defender's level.
+GEN-031 | team-rules shootViewpoints, shootAvailability | The Shoot action is available when only a team-rule viewpoint (Magnify) has a valid target.
+GEN-032 | window firefight.activationEnded | The owner gets a ploy window at the end of an activation, before the operative is expended; nothing is asked without a usable ploy.
+GEN-033 | window operative.incapacitated | An operative incapacitated by an attack gives its owner a ploy window before removal; code ploys without ploy handlers are not offered there.
+GEN-034 | team-rules reactions (strategy) | A free move in the Strategy phase is a reaction point for the other seat; the gambit step and the free-move queue go on afterwards.
+GEN-035 | abilities maxRepeats | A unique action is taken once per activation unless a team rule's maxRepeats allows more.
+GEN-036 | windows shoot.beforeDefenceRerolls, fight.beforeRerolls | The attacker gets a ploy window on the fresh defence roll before any re-roll (both fighters on the fresh fight rolls).
+GEN-037 | window firefight.start | The Firefight phase opens with a ploy window; strategy and firefight ploys may name it.
+GEN-038 | team-rules reactions (interrupt) | A finished Guard interrupt is a reaction point for the interrupted seat; its activation goes on afterwards.
 ## TEAM-PF - Pathfinders
 
 TEAM-PF-000 | registration | The team is registered with the engine and the data, is `playable`, and every code hook its data names is registered and fires in a real game (the scenarios in `tests/engine/teams/pathfinders.hooks.ts`).
@@ -239,6 +248,7 @@ TEAM-PF-013 | T-PF.39 to T-PF.42 | Equipment limits (TAO 1/TP, HIML 2/TP, Photon
 TEAM-PF-014 | T-PF.22, T-PF.24 | MV4 ignores Piercing and Piercing Crits and one Normal Dmg per TP; Pulse Accelerator gives pulse weapons within 3" Lethal 5+ and Severe until the drone's next activation or death.
 TEAM-PF-015 | stat tables | Every operative stat, base size and weapon profile matches 3.2 and 3.3 (dart round 3/4, fusion grenade 4/3).
 TEAM-PF-016 | T-PF.31, T-PF.35 | Recon Sweep (not in TP1, never the own edge, order chosen by the player, Dash refused unless it ends wholly within 6" of a non-own edge) and A Worthy Cause (a free mission action only).
+TEAM-PF-017 | T-PF.10 | SIGNAL may be done in a counteraction (no ban is printed), needs sight of the friendly operative and stays within 6".
 
 ## TEAM-HIE - Hierotek Circle
 
@@ -326,3 +336,4 @@ SIM-004 | R-7.2 | No operative with 0 or fewer wounds remains in the killzone af
 SIM-005 | R-3.6, R-2.4 | AP spent never exceeds APL (with R-3.15 exception) and CP never go negative.
 SIM-006 | R-9.2 | The same seed and the same action list reproduce the same state and event log.
 SIM-007 | R-8.1 | After every action no two bases overlap and none lies outside the killzone or inside terrain.
+SIM-008 | R-8.x kill op, R-3.4 | VP falls only by the kill op VP a returning operative takes back; a Conceal shooter firing a non-Silent weapon without a viewpoint or team rule is flagged.

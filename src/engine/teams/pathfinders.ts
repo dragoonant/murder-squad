@@ -319,7 +319,8 @@ registerCodeHook({
       for (const f of friendsOf(state, op)) {
         if (f.wounds <= 0 || !isPf(state, f)) continue
         if (distanceBetween(bodyOf(op), bodyOf(f)) > range + 1e-6) continue
-        if (!visible(state, bodyOf(op), bodyOf(f)) && !visible(state, bodyOf(f), bodyOf(op))) continue
+        // "visible to this operative": the Comms Specialist must see the operative it signals
+        if (!visible(state, bodyOf(op), bodyOf(f))) continue
         out.push({ key: f.id, params: { targetId: f.id } })
       }
       return out
@@ -527,14 +528,14 @@ registerHook(
     markUsedTp(s, medic.seat, `pf.medic:${medic.id}`)
     markUsedTp(s, medic.seat, `pf.medic.saved:${victim.id}`)
     addEffect(ctx, { source: 'pf.a.medic', seat: victim.seat, kind: 'pf.medicFloor', operativeId: victim.id, expires: 'action' })
-    const act = s.firefight.activation
-    const own = act && !act.frame && !act.counteract && act.operativeId === victim.id
-    if (own) {
-      // used in its own activation: that activation ends once the action is done (no AP left to spend)
-      act.apSpent = Math.max(act.apSpent, 99)
-    } else {
-      addEffect(ctx, { source: 'pf.a.medic', seat: victim.seat, kind: 'pf.medicDash', operativeId: victim.id, expires: 'activation', data: { medicId: medic.id } })
-    }
+    // the activation the rule was used in: the one under a frame (an enemy Guard interrupt, a free action) counts
+    const under = activeActivationOf(s)
+    const own = !!under && !under.counteract && under.operativeId === victim.id
+    // used in its own activation: that activation ends once the action is done (no AP left to spend)
+    if (own) under.endsAfterAction = true
+    // the free Dash after the action: a reaction when the other player is active, a 0 CP offer in the
+    // action-ended window when the Pathfinder player is (pfPloyRule.extraOffers)
+    addEffect(ctx, { source: 'pf.a.medic', seat: victim.seat, kind: 'pf.medicDash', operativeId: victim.id, expires: 'activation', data: { medicId: medic.id } })
     applyAplEffect(ctx, victim.id, -1, 'pf.a.medic')
     applyAplEffect(ctx, medic.id, -1, 'pf.a.medic')
     ctx.emit({ type: 'AbilityUsed', operativeId: medic.id, abilityId: 'pf.a.medic', detail: victim.id }, medic.seat)
@@ -739,6 +740,15 @@ function droneControllerActive(s: GameState, seat: Seat): boolean {
 
 const pfPloyRule = {
   extraOffers(state: GameState, seat: Seat, window: string, info: { subjectId?: string; action?: string }): PloyOffer[] {
+    // Medic!'s free Dash once the action is over, while the Pathfinder player is the active one (T-PF.14); when
+    // the opponent is active the reaction offer below carries it instead
+    if (window === 'firefight.actionEnded') {
+      const act = state.firefight.activation
+      if (!act || act.seat !== seat) return []
+      return state.effects
+        .filter((e) => e.kind === 'pf.medicDash' && e.seat === seat && !!e.operativeId && state.operatives[e.operativeId]?.status === 'active')
+        .map((e) => ({ id: `pf.medicDash@${e.operativeId}`, ployId: 'pf.medicDash', name: 'Medic! free Dash', cost: 0, via: 'pf.medicDash', seed: { param: e.operativeId! }, operativeId: e.operativeId! }))
+    }
     // Target Analysis Optic: once per TP as a friendly non-drone Pathfinder declares a Shoot (T-PF.39)
     if (window !== 'firefight.actionDeclared' || info.action !== 'shoot') return []
     const op = info.subjectId ? state.operatives[info.subjectId] : undefined
@@ -755,6 +765,14 @@ const pfPloyRule = {
     return null
   },
   onUsed(ctx: Ctx, seat: Seat, offer: PloyOffer, info: { subjectId?: string }) {
+    if (offer.via === 'pf.medicDash') {
+      const id = offer.operativeId
+      const fx = id ? effectFor(ctx.state, 'pf.medicDash', id) : undefined
+      if (!id || !fx) return
+      removeEffects(ctx, (e) => e.id === fx.id)
+      startFreeAction(ctx, { operativeId: id, action: 'dash', endWithinCrOf: fx.data?.medicId as string, resume: 'ploy.freeAction' })
+      return
+    }
     if (offer.via === 'pf.tao') {
       const id = offer.operativeId ?? info.subjectId
       if (id) addEffect(ctx, { source: TAO, seat, kind: 'equipment', operativeId: id, expires: 'action' })

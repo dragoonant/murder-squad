@@ -69,7 +69,7 @@
         "damage": "D3+3"
       }
     },
-    "text": "Gives you two Mines markers instead of one, and you cannot also take the normal Mines option. Friendly Wyrmblade operatives never trigger your mines and are never hurt by them.",
+    "text": "Two Mines markers in one pick (the universal Mines cannot be added for a third). Your own Wyrmblade operatives cross them safely: they neither set them off nor take their damage.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
   },
   {
@@ -78,7 +78,7 @@
     "scope": "faction",
     "team": "wyrmblade",
     "count": 1,
-    "text": "When a friendly Wyrmblade operative shoots, the target cannot be obscured if it is visible to and within 6 inches of a friendly Neophyte that is not in an enemy control range.",
+    "text": "Lit targets cannot hide: when a Wyrmblade shoots, its target loses obscured if a friendly Neophyte with no enemy in its control range can see that target within 6 inches.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
   }
 ]

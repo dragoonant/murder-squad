@@ -2,13 +2,13 @@
 // its team rule provider (team-rules.ts) and its hook handlers (hooks.ts). Poison tokens (tokens.ts) are the
 // spine: Poison puts them on, the activation hook burns them, Toxic, Grandfather's Blessing, Contagion,
 // Nurglings, Virulent Poison, Poisonous Demise and Curse of Rot read them.
-import { applyAplEffect, effectiveRules, hasRule, inflict, validTargets, weaponDamage } from '../attack-common'
+import { applyAplEffect, continueRemovals, effectiveRules, hasRule, inflict, validTargets, weaponDamage } from '../attack-common'
 import { markFired, registerCodeHook, type OfferSeed, type PloyOfferSeed } from '../code-hooks'
 import { codeParams, hasAbility, hasKeyword } from '../conditions'
 import { addEffect, addUse, directDamage, markUsedTp, regainWounds, removeEffects, spendCp, usedThisTp, usesOf } from '../effects'
 import { territoryOf } from '../equipment'
 import { cancelAction, finishAction } from '../firefight'
-import { dist2, pointInPolygon } from '../geometry'
+import { dist2, distToPolygon, pointInPolygon } from '../geometry'
 import { registerHook } from '../hooks'
 import { bodyOf, visible } from '../los'
 import { newMarkerId, removeMarker } from '../markers'
@@ -114,6 +114,21 @@ function firstPm(state: GameState, seat: Seat): Operative | undefined {
   return pmsOf(state, seat)[0]
 }
 
+/**
+ * Fight-like actions in an activation: real Fights plus FLAILs. finishAction records a FLAIL as
+ * `ability:pm.a.flail` followed by a `fight` entry (its treatedAs) unless a `fight` is already listed,
+ * so a `fight` right after a FLAIL entry is that FLAIL's shadow, not a second action.
+ */
+export function fightLike(performed: string[]): number {
+  const flail = 'ability:pm.a.flail'
+  let n = 0
+  for (let i = 0; i < performed.length; i++) {
+    if (performed[i] === flail) n++
+    else if (performed[i] === 'fight' && performed[i - 1] !== flail) n++
+  }
+  return n
+}
+
 // ---------------------------------------------------------------------------
 // Team rule provider: ASTARTES, Plague Bells, Icon Bearer, Contagion
 // ---------------------------------------------------------------------------
@@ -146,13 +161,15 @@ registerTeamRules({
       if (count('shoot') >= 1) markFired('pmAstartes')
       return 2
     }
-    if (actionId === 'fight') {
-      if (count('shoot') >= 2) return 1
-      // FLAIL counts as a Fight (T-PM.10): when it came after a real Fight the performed list holds only one entry for both
-      const flail = performed.indexOf(`ability:${ID.flail}`)
-      const extra = flail >= 0 && performed.indexOf('fight') >= 0 && performed.indexOf('fight') < flail ? 1 : 0
-      if (count('fight') >= 1) markFired('pmAstartes')
-      return 2 - extra
+    // FLAIL is treated as a Fight for action restrictions and Astartes (T-PM.10): Fight and FLAIL share the
+    // allowance of two (one after two Shoots), so Fight + FLAIL, FLAIL + Fight and FLAIL + FLAIL are all legal
+    const flailId = `ability:${ID.flail}`
+    if (actionId === 'fight' || actionId === flailId) {
+      const cap = count('shoot') >= 2 ? 1 : 2
+      const left = Math.max(0, cap - fightLike(performed))
+      if (left < cap) markFired('pmAstartes')
+      // the check upstream is "entries of this id >= maxRepeats", so answer that count plus what is left
+      return count(actionId) + left
     }
     return null
   },
@@ -160,9 +177,13 @@ registerTeamRules({
     return isPm(state, op) ? 'any' : null
   },
   actionForbidden(state, op, actionId) {
+    // unique actions are offered through abilities.ts, which does not consult maxRepeats: bar FLAIL here once
+    // the Fight allowance is spent (a counteraction is a single action, so it never applies there)
     if (actionId !== `ability:${ID.flail}` || !isPm(state, op)) return null
-    const performed = state.firefight.activation?.operativeId === op.id ? state.firefight.activation.performed : []
-    if (performed.filter((a) => a === 'fight').length >= 2) return 'two Fight actions are already spent (FLAIL counts as a Fight)'
+    const act = state.firefight.activation
+    if (!act || act.operativeId !== op.id || act.counteract) return null
+    const cap = act.performed.filter((a) => a === 'shoot').length >= 2 ? 1 : 2
+    if (fightLike(act.performed) >= cap) return 'the Fight allowance is already spent (FLAIL counts as a Fight)'
     return null
   },
   flags(state, op) {
@@ -175,6 +196,20 @@ registerTeamRules({
   injuredEquivalent(state, op) {
     return contagionApplies(state, op)
   },
+  // Curse of Rot when shooting (T-PM.27): the armed curse locks every defence 3 as soon as the dice are rolled,
+  // before the defender's re-roll window (this is the first rule read on the fresh dice), so a 3 can never be
+  // re-rolled away; afterDefenceRoll then turns the locked 3s into fails and deals the damage. Bans nothing.
+  rerollsBanned(state, side, attack) {
+    if (attack.kind !== 'shoot' || side.operativeId === attack.operativeId) return false
+    const armed = state.effects.some((e) => e.source === ID.curse && e.operativeId === attack.operativeId && e.data?.targetId === side.operativeId)
+    if (!armed) return false
+    for (const d of side.dice) {
+      if (d.value !== 3 || d.tag) continue
+      d.rerolled = true
+      d.tag = 'pm.curse.locked'
+    }
+    return false
+  },
   controlApl(state, op, _marker, apl) {
     if (!hasAbility(state, op, ID.iconBearer)) return null
     markFired('iconBearer')
@@ -185,6 +220,12 @@ registerTeamRules({
 // Icon of Contagion (T-PM.12): CONTAGION costs 0 CP while an Icon Bearer stands in the opponent's territory.
 // The ploy rule registers when a game with an Icon Bearer is created (ploys.ts is still loading when this
 // module is first evaluated through the abilities.ts import cycle).
+/** "Within" a territory: any part of the base is inside it (not the centre only). */
+export function inTerritory(o: Operative, terr: { x: number; z: number }[]): boolean {
+  const c = { x: o.pos.x, z: o.pos.z }
+  return pointInPolygon(c, terr) || distToPolygon(c, terr) < o.baseRadius - EPS
+}
+
 let ployRuleRegistered = false
 function registerPloyCosts(): void {
   if (ployRuleRegistered) return
@@ -194,7 +235,7 @@ function registerPloyCosts(): void {
       if (ploy.id !== ID.contagion) return null
       const terr = territoryOf(state, otherSeat(seat))
       if (!terr) return null
-      const there = pmsOf(state, seat).some((o) => hasAbility(state, o, ID.iconOfContagion) && pointInPolygon({ x: o.pos.x, z: o.pos.z }, terr))
+      const there = pmsOf(state, seat).some((o) => hasAbility(state, o, ID.iconOfContagion) && inTerritory(o, terr))
       return there ? { cost: 0, via: 'pm.iconOfContagion' } : null
     },
     onUsed(_ctx, _seat, offer) {
@@ -432,26 +473,10 @@ registerHook(
 )
 
 // ---------------------------------------------------------------------------
-// BLIGHT GRENADES (T-PM.30): the team may throw it twice a battle. The team-wide limit bookkeeping
-// (equipment.ts noteWeaponUses) only reads the ShootStarted event of the step that picks the weapon, which
-// the declared action hides from it, so the uses are counted here when the Shoot is resolved.
+// BLIGHT GRENADES (T-PM.30): the team may throw it twice a battle. The equipment's `limits` (2 per battle,
+// team scope) are counted by the shared team-limit bookkeeping (equipment.ts noteWeaponUses, ledger key
+// `limit:pm.w.blight-grenade`), which strips the grenade from the team once both uses are spent.
 // ---------------------------------------------------------------------------
-
-const BLIGHT = 'pm.w.blight-grenade'
-const BLIGHT_USES = 'pm.blight-uses'
-
-registerHook(
-  'afterShootResolved',
-  (c) => {
-    const ctx = c.engine
-    const op = ctx && c.operativeId ? ctx.state.operatives[c.operativeId] : undefined
-    if (!ctx || !op || c.weaponId !== BLIGHT) return null
-    addUse(ctx.state, op.seat, BLIGHT_USES)
-    if (usesOf(ctx.state, op.seat, BLIGHT_USES) >= 2) for (const o of Object.values(ctx.state.operatives)) if (o.seat === op.seat) o.weapons = o.weapons.filter((w) => w !== BLIGHT)
-    return null
-  },
-  'pm.afterShootResolved',
-)
 
 // ---------------------------------------------------------------------------
 // Cloud of Flies: the marker obscures the Plague Marines it covers (T-PM.22)
@@ -492,15 +517,43 @@ registerHook(
 )
 
 // ---------------------------------------------------------------------------
-// Poisonous Demise (T-PM.26): played for the team when a Plague Marine is incapacitated
+// Poisonous Demise (T-PM.26): offered when a Plague Marine is incapacitated, before it is removed
 // ---------------------------------------------------------------------------
+
+/** Enemies Poisonous Demise would reach, or null when the ploy cannot be used for this operative now. */
+function demiseVictims(state: GameState, pm: Operative): Operative[] | null {
+  const ploy = state.data.ploys?.[ID.demise]
+  if (!ploy || state.players[pm.seat].teamId !== TEAM_ID || usedThisTp(state, pm.seat, ploy.id) || state.players[pm.seat].cp < ploy.cost) return null
+  const victims = enemiesOf(state, pm).filter((e) => live(e) && within(pm, e, 3) && visible(state, bodyOf(pm), bodyOf(e)))
+  return victims.length > 0 ? victims : null
+}
+
+function playDemise(ctx: Ctx, pm: Operative): void {
+  const state = ctx.state
+  const ploy = state.data.ploys?.[ID.demise]
+  const victims = demiseVictims(state, pm)
+  if (!ploy || !victims) return
+  spendCp(ctx, pm.seat, ploy.cost, ploy.id)
+  markUsedTp(state, pm.seat, ploy.id)
+  ctx.emit({ type: 'PloyUsed', ployId: ploy.id }, pm.seat)
+  markFired('poisonousDemise')
+  for (const e of victims) {
+    if (hasToken(state, e.id, POISON, pm.seat)) directDamage(ctx, e.id, 1, pm.id, 'pm.poisonousDemise')
+    else addToken(ctx, e.id, { kind: POISON, owner: pm.seat }, 'pm.poisonousDemise')
+  }
+}
 
 registerCodeHook({
   name: 'poisonousDemise',
   ploy: {
-    // the engine opens no window for an incapacitation, so the ploy is never offered; the hook below plays it
+    // no ploy window opens at an incapacitation: the hook below asks (or plays it) instead
     offers: () => [],
     apply: () => undefined,
+  },
+  // the owner's answer while the removal queue waits (attack removals)
+  choice(ctx, op, option) {
+    if (option === 'use' && op.status === 'active') playDemise(ctx, op)
+    continueRemovals(ctx)
   },
 })
 
@@ -510,19 +563,23 @@ registerHook(
     const ctx = c.engine
     const state = c.state
     const pm = state && c.operativeId ? state.operatives[c.operativeId] : undefined
-    if (!ctx || !state || !pm || !isPm(state, pm)) return null
-    const ploy = state.data.ploys?.[ID.demise]
-    if (!ploy || state.players[pm.seat].teamId !== TEAM_ID || usedThisTp(state, pm.seat, ploy.id) || state.players[pm.seat].cp < ploy.cost) return null
-    const victims = enemiesOf(state, pm).filter((e) => live(e) && within(pm, e, 3) && visible(state, bodyOf(pm), bodyOf(e)))
-    if (victims.length === 0) return null
-    spendCp(ctx, pm.seat, ploy.cost, ploy.id)
-    markUsedTp(state, pm.seat, ploy.id)
-    ctx.emit({ type: 'PloyUsed', ployId: ploy.id }, pm.seat)
-    markFired('poisonousDemise')
-    for (const e of victims) {
-      if (hasToken(state, e.id, POISON, pm.seat)) directDamage(ctx, e.id, 1, pm.id, 'pm.poisonousDemise')
-      else addToken(ctx, e.id, { kind: POISON, owner: pm.seat }, 'pm.poisonousDemise')
+    if (!ctx || !state || !pm || !isPm(state, pm) || !demiseVictims(state, pm)) return null
+    if (state.removal && !state.pending) {
+      // an attack's removal queue can wait for the owner's decision (R-5.18: the owner orders its own rules)
+      ctx.raise({
+        kind: 'ability.choice',
+        seat: pm.seat,
+        window: 'operative.incapacitated',
+        context: { hook: 'poisonousDemise', operativeId: pm.id },
+        options: [
+          { id: 'use', labelKey: 'removal.free', type: 'ability.choice' as const, payload: { option: 'use' }, data: { name: 'Poisonous Demise (1 CP): poison or hurt every enemy it sees within 3"' } },
+          { id: 'none', labelKey: 'removal.free', type: 'ability.choice' as const, payload: { option: 'none' }, data: { name: 'Keep the CP' } },
+        ],
+      })
+      return null
     }
+    // direct damage removes at once and cannot wait for an answer: the ploy is played for its owner (RULING)
+    playDemise(ctx, pm)
     return null
   },
   'pm.operative.incapacitated',
@@ -639,15 +696,26 @@ flagPloy('lumberingDeath')
 registerCodeHook({
   name: 'cloudOfFlies',
   ploy: {
-    // one candidate spot per distinct Plague Marine position: the marker goes under (and around) the warband
+    // candidate spots: under each Plague Marine, and between any two whose bases one marker can cover together
+    // (the marker covers a base wholly within 1", so one marker reaches at most two touching Plague Marines)
     offers(state, seat): PloyOfferSeed[] {
       const seen = new Set<string>()
       const out: PloyOfferSeed[] = []
-      for (const pm of pmsOf(state, seat)) {
-        const key = `${Math.round(pm.pos.x * 2) / 2},${Math.round(pm.pos.z * 2) / 2}`
-        if (seen.has(key)) continue
+      const add = (x: number, z: number) => {
+        const key = `${Math.round(x * 20) / 20},${Math.round(z * 20) / 20}`
+        if (seen.has(key)) return
         seen.add(key)
         out.push({ param: key })
+      }
+      const pms = pmsOf(state, seat)
+      for (const pm of pms) add(pm.pos.x, pm.pos.z)
+      for (let i = 0; i < pms.length; i++) {
+        for (let j = i + 1; j < pms.length; j++) {
+          const a = pms[i]!
+          const b = pms[j]!
+          const mid = { kind: 'equipment' as const, pos: { x: (a.pos.x + b.pos.x) / 2, z: (a.pos.z + b.pos.z) / 2 } } as Marker
+          if (cloudCovers(mid, a) && cloudCovers(mid, b)) add(mid.pos.x, mid.pos.z)
+        }
       }
       return out
     },

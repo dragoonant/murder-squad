@@ -13,7 +13,7 @@
         "keyword": "HIEROTEK CIRCLE"
       }
     },
-    "text": "For the turning point, when a friendly Hierotek Circle operative shoots an enemy within 8 inches of it, its ranged weapons have Balanced. With Magnify the 8 inches is measured from the real shooter.",
+    "text": "For this turning point, a Hierotek Circle operative firing at a target no more than 8 inches from itself gains Balanced on its ranged weapons. Through Magnify the 8 inches is still taken from the operative actually shooting.",
     "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.30"
   },
   {
@@ -30,7 +30,7 @@
         "keyword": "HIEROTEK CIRCLE"
       }
     },
-    "text": "For the turning point, when an operative shoots a friendly Hierotek Circle operative and you cannot retain any cover save, you may retain one defence die as a normal success without rolling it.",
+    "text": "For this turning point, a Hierotek Circle operative that is shot with no cover save open to it sets one defence die aside as an automatic normal success and rolls the others.",
     "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.31"
   },
   {
@@ -47,7 +47,7 @@
         "keyword": "HIEROTEK CIRCLE"
       }
     },
-    "text": "For the turning point, friendly Hierotek Circle melee weapons have Accurate 1, or Accurate 2 while fighting in an activation in which the operative has not moved more than its Move stat in total, or while retaliating.",
+    "text": "For this turning point, Hierotek Circle melee weapons gain Accurate 1. It rises to Accurate 2 when retaliating, or when fighting in an activation where the operative has so far covered no more ground than its Move stat.",
     "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.32"
   },
   {
@@ -98,7 +98,7 @@
         "keyword": "HIEROTEK CIRCLE"
       }
     },
-    "text": "When control of a marker is being worked out, pick one of your Reanimation markers: until the next turning point starts it counts as a friendly Hierotek Circle operative with APL 1 for control purposes.",
+    "text": "As control of a marker is settled, choose one of your Reanimation markers: up to the start of the next turning point it contests markers as if it were a friendly Hierotek Circle operative of APL 1.",
     "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.35"
   },
   {
@@ -118,7 +118,7 @@
         "keyword": "HIEROTEK CIRCLE"
       }
     },
-    "text": "When a friendly Hierotek Circle Immortal performs a Shoot action and selects a tesla carbine, until the action ends the carbine loses the 2 inches from its Devastating and gains Blast 2 inches.",
+    "text": "An Immortal opening fire with a tesla carbine can let the lightning leap: for that Shoot the carbine trades the 2 inch reach of its Devastating for Blast 2 inches.",
     "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.36"
   },
   {

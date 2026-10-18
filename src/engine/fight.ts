@@ -262,8 +262,11 @@ STEPS.roll = (ctx) => {
   a.seq = seq
   f.passes = 0
   f.turn = s.initiative ?? attacker.seat
-  startTurn(ctx)
+  // M9 shared: both fighters' window on the fresh rolls, before any re-roll (Curse of Rot)
+  proceed(ctx, 'rerolls', 'fight.beforeRerolls')
 }
+
+STEPS.rerolls = (ctx) => startTurn(ctx)
 
 // --- alternating re-rolls (R-6.4, R-9.3) ------------------------------------
 

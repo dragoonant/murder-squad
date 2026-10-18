@@ -252,10 +252,10 @@ describe('TEAM-PM Plague Marines', () => {
     expect(weaponUnusable(spent, spent.operatives[bomb]!, 'pm.w.blight-grenade', [], 'shoot')).toBeNull()
     // the team's second use strips the grenade from everyone
     const fighter = A(s, 'fighter')
-    let t = edit(place(place(s, fighter, 0, 0), boy, 5, 0), (st) => addUse(st, 'A', 'pm.blight-uses', 1))
+    let t = edit(place(place(s, fighter, 0, 0), boy, 5, 0), (st) => addUse(st, 'A', 'limit:pm.w.blight-grenade', 1))
     t = take(take(activateOp(t, fighter), 'shoot').state, 'pm.w.blight-grenade').state
     const r = play(t, new ScriptedRng([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]), noPloys)
-    expect(usesOf(r.state, 'A', 'pm.blight-uses')).toBe(2)
+    expect(usesOf(r.state, 'A', 'limit:pm.w.blight-grenade')).toBe(2)
     expect(Object.values(r.state.operatives).filter((o) => o.seat === 'A' && o.weapons.includes('pm.w.blight-grenade'))).toEqual([])
   })
 

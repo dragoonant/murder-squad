@@ -3,8 +3,10 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { act } from '@/engine/actions'
 import { step, view } from '@/engine'
-import { allowedOrders } from '@/engine/abilities'
-import { attackStats, inflict, redirectAttack, rerollOptions, weaponDamage } from '@/engine/attack-common'
+import { abilityOffers, allowedOrders } from '@/engine/abilities'
+import { attackStats, inflict, redirectAttack, rerollOptions, validTargets, weaponDamage } from '@/engine/attack-common'
+import { shootAvailability } from '@/engine/shoot'
+import { feature, part, rect } from '../fixtures/maps'
 import { registerCodeHook } from '@/engine/code-hooks'
 import { directDamage, regainWounds, removeNow } from '@/engine/effects'
 import { actionAvailability, actionCost, raiseAction, reactionDone, startDelegatedAction, startFreeAction } from '@/engine/firefight'
@@ -439,6 +441,207 @@ describe('GEN generic team capabilities', () => {
     expect(evs(withCtx(mined, (ctx) => updateControl(ctx)).events, 'MineTriggered')).toHaveLength(1)
     const setup = { equipment: { A: ['test.e.traps', 'core.e.mines'], B: [] } } as unknown as Parameters<typeof selectionProblem>[0]
     expect(selectionProblem(setup, 'A', { equipment: mined.data.equipment!, teamId: 'x', limit: 4 })).toMatch(/cannot be taken with/)
+  })
+
+  it('GEN-031 the Shoot action is available when only a team-rule viewpoint has a valid target (Magnify)', () => {
+    const { s, w, cap, boy } = open()
+    // the Boy is on Conceal behind light cover from the shooter; the viewpoint looks at it from the flank
+    const st = edit(s, (x) => {
+      x.map = { ...x.map, features: [feature('low', part('low.a', rect(6.8, 7.0, -1.5, 1.5), 1, ['light']))] }
+      x.operatives[w]!.pos = { x: 0, y: 0, z: 0 }
+      x.operatives[w]!.order = 'engage'
+      x.operatives[cap]!.pos = { x: 8, y: 0, z: 6 }
+      x.operatives[boy]!.pos = { x: 8, y: 0, z: 0 }
+      x.operatives[boy]!.order = 'conceal'
+      // the Boy is the only enemy that could be a target (validTargets skips operatives at 0 wounds)
+      for (const o of Object.values(x.operatives)) if (o.seat === 'B' && o.id !== boy) o.wounds = 0
+    })
+    const shooter = st.operatives[w]!
+    const weapon = shooter.weapons.find((id) => st.data.weapons[id]?.type === 'ranged')!
+    expect(validTargets(st, shooter, weapon).map((t) => t.id)).not.toContain(boy)
+    expect(shootAvailability(st, shooter, null)?.code).toBe('E_INVALID_TARGET')
+    provide({ shootViewpoints: (_s, op) => (op.id === w ? [cap] : []) })
+    expect(validTargets(st, shooter, weapon, undefined, st.operatives[cap]).map((t) => t.id)).toContain(boy)
+    expect(shootAvailability(st, shooter, null)?.reason ?? null).toBeNull()
+  })
+
+  it('GEN-032 end-of-activation ploy window: offered to the owner before the operative is expended', () => {
+    const { s, w } = open()
+    const ploy = { id: 'test.p.at-end', name: 'AT END', team: 'angels-of-death', type: 'firefight', cost: 0, window: 'firefight.activationEnded', effect: { cp: 1 }, text: 't', source: 's' }
+    const st = edit(s, (x) => {
+      x.data.ploys = { ...(x.data.ploys ?? {}), [ploy.id]: ploy as never }
+    })
+    const r = expectOk(step(activateOp(st, w), (activateOp(st, w).pending!.options!.find((o) => o.id === 'end'))!.action))
+    expect(r.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'A', window: 'firefight.activationEnded' })
+    expect(r.pending!.options!.map((o) => o.id)).toContain('test.p.at-end')
+    expect(evs(r.events, 'OperativeExpended')).toEqual([])
+    expect(r.state.firefight.activation?.operativeId).toBe(w)
+    const used = take(r.state, 'test.p.at-end')
+    expect(evs(used.events, 'PloyUsed').map((e) => e.ployId)).toContain('test.p.at-end')
+    expect(evs(used.events, 'OperativeExpended').map((e) => e.operativeId)).toEqual([w])
+    expect(used.state.pending?.kind).toBe('firefight.activate')
+    // without such a ploy nothing is asked
+    const fresh = open()
+    const started = activateOp(fresh.s, fresh.w)
+    const plain = expectOk(step(started, started.pending!.options!.find((o) => o.id === 'end')!.action))
+    expect(evs(plain.events, 'OperativeExpended').map((e) => e.operativeId)).toEqual([fresh.w])
+  })
+
+  it('GEN-033 incapacitation ploy window: the owner of an attack victim is asked before removal; hook-only code ploys are not', () => {
+    const { s, w, boy } = open()
+    const ploy = { id: 'test.p.demise', name: 'DEMISE', team: 'kommandos', type: 'firefight', cost: 0, window: 'operative.incapacitated', effect: { cp: 1 }, text: 't', source: 's' }
+    const hookOnly = { ...ploy, id: 'test.p.hook-only', name: 'HOOK ONLY', effect: { code: 'test.noPloyMember' } }
+    let st = edit(s, (x) => {
+      x.data.ploys = { ...(x.data.ploys ?? {}), [ploy.id]: ploy as never, [hookOnly.id]: hookOnly as never }
+      x.operatives[w]!.pos = { x: 0, y: 0, z: 0 }
+      x.operatives[boy]!.pos = { x: 6, y: 0, z: 0 }
+      x.operatives[boy]!.order = 'engage'
+      x.operatives[boy]!.wounds = 1
+    })
+    st = take(activateOp(st, w), 'shoot').state
+    st = take(st, st.pending!.options![0]!.id).state
+    const atk = st.data.weapons[st.attack!.weaponId!]!.atk
+    const rng = new ScriptedRng(Array(atk).fill(6).concat(Array(60).fill(1)))
+    st = take(st, st.pending!.options!.find((o) => (o.action.payload as { targetId?: string }).targetId === boy)!.id, rng).state
+    let seen: string[] | null = null
+    for (let i = 0; i < 40 && st.pending && st.operatives[boy]!.status === 'active'; i++) {
+      const p = st.pending
+      if (p.kind === 'ploy.firefight' && p.window === 'operative.incapacitated') {
+        seen = p.options!.map((o) => o.id)
+        expect(p.seat).toBe('B')
+        expect(st.operatives[boy]!.wounds).toBe(0)
+        st = take(st, 'test.p.demise').state
+        continue
+      }
+      if (p.kind === 'firefight.action') break
+      st = expectOk(step(st, defaultAnswer(st), rng)).state
+    }
+    expect(seen).toEqual(['test.p.demise'])
+    expect(st.operatives[boy]!.status).toBe('removed')
+    expect(st.ledger.B.tp).toContain('test.p.demise')
+  })
+
+  it('GEN-034 a free move in the Strategy phase is a reaction point; the gambit step goes on afterwards', () => {
+    registerCodeHook({ name: 'test.stratReact', choice: (ctx) => reactionDone(ctx) })
+    const seen: { actorId: string; strategy?: boolean }[] = []
+    provide({
+      reactions: (_s, seat, info) => {
+        if (seat !== 'A' || !info.strategy) return []
+        seen.push({ actorId: info.actorId, strategy: info.strategy })
+        return [{ hook: 'test.stratReact', operativeId: Object.values(_s.operatives).find((o) => o.seat === 'A' && o.status === 'active')!.id, option: 'x', labelKey: 'test' }]
+      },
+    })
+    let s = drive(newRealGame({}, 'gen34').state, (st) => st.pending?.kind === 'strategy.gambit', 800, new ScriptedRng([6, 1, 6, 1]))
+    s = edit(s, (st) => {
+      st.turningPoint = 2
+      st.players.B.cp = 3
+    })
+    s = passIt(s).state // A passes
+    s = take(s, 'kom.p.ssssshhhh').state
+    expect(s.pending?.kind).toBe('move.path')
+    const mover = s.pending!.context.operativeId as string
+    const at = s.operatives[mover]!.pos
+    let moved = false
+    for (const [dx, dz] of [[0, 1], [0, -1], [1, 0], [-1, 0], [0.5, 0.5]] as const) {
+      const r = step(s, act.path(s.pending!, [{ x: at.x + dx, z: at.z + dz }]))
+      if (!r.rejection) {
+        s = r.state
+        moved = true
+        break
+      }
+    }
+    expect(moved).toBe(true)
+    expect(s.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', window: 'strategy.gambit' })
+    expect(s.pending!.context).toMatchObject({ reaction: true, actorId: mover })
+    expect(seen.at(-1)).toEqual({ actorId: mover, strategy: true })
+    s = take(s, 'react:0').state
+    expect(s.firefight.reactionAfter ?? null).toBeNull()
+    // the next free Dash of the queue (or the gambit step) carries on
+    expect(['move.path', 'strategy.gambit']).toContain(s.pending?.kind)
+    while (s.pending?.kind === 'move.path') s = passIt(s).state
+    expect(s.pending?.kind).toBe('strategy.gambit')
+  })
+
+  it('GEN-035 a unique action repeats in one activation only as often as maxRepeats allows (default once)', () => {
+    registerCodeHook({ name: 'test.twice', action: { offers: () => [{ key: '', params: {} }], perform: () => undefined } })
+    const { s, w } = open()
+    const st = edit(s, (x) => {
+      x.data.abilities = { ...x.data.abilities, 'test.a.twice': { id: 'test.a.twice', name: 'TWICE', kind: 'uniqueAction', ap: 1, code: 'test.twice', effect: { code: 'test.twice' } } as never }
+      const card = x.data.datacards[x.operatives[w]!.datacardId]!
+      x.data.datacards = { ...x.data.datacards, [card.id]: { ...card, uniqueActions: [...(card.uniqueActions ?? []), 'test.a.twice'] } }
+    })
+    const op = st.operatives[w]!
+    const act = (performed: string[]) => ({ operativeId: w, seat: 'A', counteract: false, stage: 'action', apSpent: 0, performed }) as never
+    const has = (performed: string[]) => abilityOffers(st, op, act(performed)).some((o) => o.abilityId === 'test.a.twice')
+    expect(has([])).toBe(true)
+    expect(has(['ability:test.a.twice'])).toBe(false)
+    provide({ maxRepeats: (_s, _op, id) => (id === 'ability:test.a.twice' ? 2 : null) })
+    expect(has(['ability:test.a.twice'])).toBe(true)
+    expect(has(['ability:test.a.twice', 'ability:test.a.twice'])).toBe(false)
+  })
+
+  it('GEN-036 attacker window on the fresh defence roll, before re-rolls; both fighters on the fresh fight rolls', () => {
+    const { s, w, boy } = open()
+    const shootPloy = { id: 'test.p.before-def', name: 'BEFORE DEF', team: 'angels-of-death', type: 'firefight', cost: 0, window: 'shoot.beforeDefenceRerolls', effect: { cp: 1 }, text: 't', source: 's' }
+    let st = edit(s, (x) => {
+      x.data.ploys = { ...(x.data.ploys ?? {}), [shootPloy.id]: shootPloy as never }
+      x.operatives[w]!.pos = { x: 0, y: 0, z: 0 }
+      x.operatives[boy]!.pos = { x: 6, y: 0, z: 0 }
+      x.operatives[boy]!.order = 'engage'
+    })
+    st = take(activateOp(st, w), 'shoot').state
+    st = take(st, st.pending!.options![0]!.id).state
+    const kinds: string[] = []
+    const r = play(st, new ScriptedRng(Array(40).fill(4)), { 'ploy.firefight': (p) => (kinds.push(p.window), null) }, ['firefight.action'])
+    void r
+    expect(kinds).toContain('shoot.beforeDefenceRerolls')
+    expect(kinds.indexOf('shoot.beforeDefenceRerolls')).toBeLessThan(kinds.indexOf('shoot.defenceRolled') === -1 ? 99 : kinds.indexOf('shoot.defenceRolled'))
+    const at = r.events.findIndex((e) => e.type === 'DefenceDiceRolled')
+    const used = r.events.findIndex((e) => e.type === 'PloyUsed' && e.ployId === 'test.p.before-def')
+    expect(at).toBeGreaterThanOrEqual(0)
+    expect(used).toBeGreaterThan(at)
+    expect(r.events.slice(at, used).some((e) => e.type === 'DiceRerolled')).toBe(false)
+  })
+
+  it('GEN-037 the Firefight phase opens with a ploy window for strategy and firefight ploys that name it', () => {
+    const strat = { id: 'test.p.ff-start', name: 'FF START', team: 'angels-of-death', type: 'strategy', cost: 0, window: 'firefight.start', effect: { cp: 1 }, text: 't', source: 's' }
+    let s = newRealGame({}, 'gen37').state
+    s = edit(s, (x) => {
+      x.data.ploys = { ...(x.data.ploys ?? {}), [strat.id]: strat as never }
+    })
+    s = drive(s, (st) => st.pending?.kind === 'ploy.firefight' || st.pending?.kind === 'firefight.activate', 800, new ScriptedRng([6, 1, 6, 1]))
+    expect(s.pending).toMatchObject({ kind: 'ploy.firefight', window: 'firefight.start', seat: 'A' })
+    expect(s.phase).toBe('firefight')
+    expect(s.pending!.options!.map((o) => o.id)).toContain('test.p.ff-start')
+    s = take(s, 'test.p.ff-start').state
+    expect(s.pending?.kind).toBe('firefight.activate')
+  })
+
+  it('GEN-038 a finished Guard interrupt is a reaction point for the interrupted seat; its activation goes on', () => {
+    registerCodeHook({ name: 'test.afterGuard', choice: (ctx) => reactionDone(ctx) })
+    const seen: string[] = []
+    provide({ reactions: (_s, seat, info) => (info.interrupt && seat === 'B' ? (seen.push(info.actorId), [{ hook: 'test.afterGuard', operativeId: info.actorId, option: 'x', labelKey: 'test' }]) : []) })
+    let s = openReal({ teamChoices: { A: { 'primary-tactic': 'aod.a.ct-mobile', 'secondary-tactic': 'aod.a.ct-hardy' }, B: {} }, rosterA: [{ datacardId: 'aod.intercessor-warrior', loadout: { weaponIds: ['aod.w.bolt-rifle'] } }, ...roster(['aod.eliminator-sniper'])] })
+    const marine = opOf(s, 'A', 'aod.intercessor-warrior')
+    const boy = opOf(s, 'B', 'kom.boy')
+    s = edit(s, (x) => {
+      x.operatives[marine]!.pos = { x: 0, y: 0, z: 0 }
+      x.operatives[boy]!.pos = { x: 9, y: 0, z: 0 }
+    })
+    s = take(take(activateOp(s, marine), 'guard').state, 'end').state
+    s = take(activateOp(s, boy), 'reposition').state
+    s = expectOk(step(s, act.path(s.pending!, [{ x: 6, z: 0 }]))).state
+    while (s.pending?.kind === 'ploy.firefight') s = passIt(s).state
+    expect(s.pending?.kind).toBe('guard.interrupt')
+    s = take(s, `${marine}:shoot`).state
+    const r = play(s, new ScriptedRng(Array(40).fill(1)), { 'ploy.firefight': (p) => act.pass(p) }, ['ability.choice', 'firefight.action', 'firefight.activate'])
+    expect(r.state.pending).toMatchObject({ kind: 'ability.choice', seat: 'B' })
+    expect(r.state.pending!.context).toMatchObject({ reaction: true, actorId: marine })
+    expect(seen).toEqual([marine])
+    const after = take(r.state, 'react:0').state
+    expect(after.firefight.reactionAfter ?? null).toBeNull()
+    expect(after.pending).toMatchObject({ kind: 'firefight.action', seat: 'B' })
+    expect(after.firefight.activation?.operativeId).toBe(boy)
   })
 
   it('GEN-030 Stealthy-style cover sources from team rules add to the defender level', () => {

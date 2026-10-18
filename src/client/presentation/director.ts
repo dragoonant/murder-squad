@@ -163,6 +163,8 @@ function isDiceLine(ev: GameEvent): boolean {
 async function playEvent(ev: GameEvent, state: GameState, gen: number): Promise<void> {
   const f = speedFactor(useSettings.getState().animSpeed)
   let text = describeEvent(ev, state)
+  // the opponent's hidden operatives (HIDING) stay secret: no feed line for their set-up
+  if (ev.type === 'OperativeSetAside' && perspective && ev.seat !== perspective) text = null
   const wait = (ms: number) => sleep(Math.round(ms * f))
   const fx = f > 0
   if (fx) playEventSounds((id, o) => audio.play(id, o), [ev], soundContext(state))

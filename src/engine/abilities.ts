@@ -234,7 +234,12 @@ function genericProblem(state: GameState, op: Operative, def: RuntimeAbility, ac
   if (cond && !evalCondition(cond, { state, seat: op.seat, subjectId: op.id, actorId: op.id, activation: act, counteracting: act?.counteract })) {
     return `conditions of ${def.name} are not met`
   }
-  if (act && !act.counteract && act.performed.includes(`${ABILITY_PREFIX}${def.id}`)) return `${def.name} cannot be performed twice in one activation`
+  // R-3.7: once per activation unless a team rule allows more (team-rules maxRepeats; e.g. FLAIL sharing a two-Fight allowance)
+  if (act && !act.counteract) {
+    const actionId = `${ABILITY_PREFIX}${def.id}`
+    const done = act.performed.filter((p) => p === actionId).length
+    if (done > 0 && done >= maxRepeats(state, op, actionId, act.performed)) return `${def.name} cannot be performed again in this activation`
+  }
   const stoop = actionForbidden(state, op, `${ABILITY_PREFIX}${def.id}`)
   if (stoop) return stoop
   return null

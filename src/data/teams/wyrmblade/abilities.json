@@ -20,7 +20,7 @@
       "side": "friendly",
       "keyword": "WYRMBLADE"
     },
-    "text": "When any operative shoots a friendly Cult Agent, Piercing and Saturate are ignored, and if the Cult Agent keeps cover saves it keeps one more, or turns one into a critical save. This does not stack with the improved cover save from Vantage terrain.",
+    "text": "Shots at a Cult Agent lose Piercing and Saturate. If it may keep cover saves it keeps one extra, or keeps one as a critical save instead; this does not add to the improved cover of Vantage terrain.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -32,7 +32,7 @@
       "side": "friendly",
       "keyword": "WYRMBLADE"
     },
-    "text": "A friendly Wyrmblade operative that shoots or fights during its own activation has Ceaseless on its weapons if its order was switched from Conceal to Engage at the start of that activation, or if no enemy could see it at that moment.",
+    "text": "Ambush bonus: during its own activation, a Wyrmblade operative has Ceaseless on its weapons if that activation began with a Conceal-to-Engage switch, or with no enemy able to see it.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -47,7 +47,7 @@
         "oncePerTurningPoint": true
       }
     },
-    "text": "Once per turning point, Slink Into Darkness or Coiled Serpent costs 0 CP when the operative it names is another Neophyte the Leader can see.",
+    "text": "One free ploy a turning point: Slink Into Darkness or Coiled Serpent costs nothing when it is played on a different Neophyte within the Leader's sight.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -55,7 +55,7 @@
     "kind": "ability",
     "name": "Expert Gunslinger",
     "team": "wyrmblade",
-    "text": "The Kelermorph can take the Shoot action twice in one activation.",
+    "text": "The Kelermorph may take two Shoot actions in the same activation.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -63,7 +63,7 @@
     "kind": "ability",
     "name": "Heroic Inspiration",
     "team": "wyrmblade",
-    "text": "While a friendly Neophyte that the Kelermorph can see within 3 inches shoots, fights or retaliates, its weapons have Severe if the Kelermorph has incapacitated an enemy operative this turning point.",
+    "text": "Once the Kelermorph has taken down an enemy this turning point, Neophytes it can see within 3 inches have Severe on their weapons while shooting, fighting or retaliating.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -74,7 +74,7 @@
     "weaponRule": {
       "param": "none"
     },
-    "text": "While the Kelermorph shoots with this profile, enemy operatives cannot be obscured.",
+    "text": "Firing this profile, the Kelermorph's enemy targets are never obscured.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -82,7 +82,7 @@
     "kind": "ability",
     "name": "Expert Swordsman",
     "team": "wyrmblade",
-    "text": "The Locus can take the Fight action twice in one activation. When it finishes a Fight and no enemy is in its control range, it can make a free Charge of up to 3 inches, even if it already charged this activation, and that free Charge does not stop it from Dashing later.",
+    "text": "Two Fight actions per activation. After any Fight that leaves no enemy in its control range it may lunge with a free Charge of at most 3 inches, even having charged already; that lunge does not stop a later Dash.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -90,7 +90,7 @@
     "kind": "ability",
     "name": "Bladed Stance",
     "team": "wyrmblade",
-    "text": "When the Locus fights or retaliates, you can resolve one of your successes before the normal order; it must be used to block.",
+    "text": "Fighting or retaliating, the Locus may spend one success as a block straight away, ahead of the usual turn order.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -106,7 +106,7 @@
         "perTurningPoint": 1
       }
     },
-    "text": "Once per turning point, after an enemy operative performs an action in which it moves or is set up, the Locus can interrupt and make a free Charge of up to 3 inches that must end in that enemy's control range; you can switch its order to Engage to do so. If no such Charge is possible the interruption is cancelled and the rule is not used up.",
+    "text": "Once per turning point, right after an enemy finishes an action that moved it or set it up, the Locus may cut in with a free Charge of at most 3 inches that ends in that enemy's control range (it may switch to Engage for this). If no such Charge exists nothing happens and the use is kept.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -114,7 +114,7 @@
     "kind": "ability",
     "name": "Heavy Weapon Bipod",
     "team": "wyrmblade",
-    "text": "When the Heavy Gunner shoots with a weapon from its own datacard, that weapon has Ceaseless if the operative has not moved this activation or it is counteracting; a weapon that already has Ceaseless has Relentless instead. It may still move after shooting.",
+    "text": "Datacard weapons gain Ceaseless if the Heavy Gunner has not moved this activation or is counteracting; one that already has Ceaseless gets Relentless instead. Shooting does not pin it in place afterwards.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -122,7 +122,7 @@
     "kind": "ability",
     "name": "Icon Bearer",
     "team": "wyrmblade",
-    "text": "When control of a marker is worked out, count this operative's APL as 1 higher. This is not an APL change, so APL changes still stack with it.",
+    "text": "Adds 1 to its APL in the marker-control count only. Its real APL is unchanged, so APL changes still apply on top.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -137,7 +137,7 @@
         "range": 6
       }
     },
-    "text": "Once per turning point, when a ready friendly Neophyte visible to and within 6 inches of the Icon Bearer is incapacitated, before it is removed it can make one free Shoot (switching its order to Engage if you like) or use A Plan Generations in the Making for 0 CP.",
+    "text": "Once per turning point, if a ready Neophyte this operative can see within 6 inches is incapacitated, it gets a last act before removal: one free Shoot (it may switch to Engage), or A Plan Generations in the Making at no cost.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -155,7 +155,7 @@
         "lethal": 5
       }
     },
-    "text": "Until the end of this activation the stationary profile of the Sanctus sniper rifle has Lethal 5+. Not in an enemy control range.",
+    "text": "For the rest of this activation the rifle's stationary profile scores criticals on 5s as well as 6s (Lethal 5+). Not usable with an enemy in control range.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -173,7 +173,7 @@
         "role": "sniper"
       }
     },
-    "text": "Pick an enemy operative you can see; it carries your Soulsight token until the end of the battle or until a friendly operative takes this action again. While the Sniper shoots an enemy with your token, every profile of its rifle has Saturate and that enemy cannot be obscured. Not in an enemy control range.",
+    "text": "Mark an enemy the Sniper can see with your Soulsight token; the mark lasts the battle, or until either familiar marks someone else. Against the marked enemy every sniper rifle profile has Saturate and the target cannot be obscured. Not with an enemy in control range.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -191,7 +191,7 @@
         "role": "talon"
       }
     },
-    "text": "Pick an enemy operative you can see; it carries your Soulsight token until the end of the battle or until a friendly operative takes this action again. While the Talon fights or retaliates against an enemy with your token, its bio-dagger has Brutal and Balanced. Not in an enemy control range.",
+    "text": "Mark an enemy the Talon can see with your Soulsight token; the mark lasts the battle, or until either familiar marks someone else. Fighting or retaliating against the marked enemy, the bio-dagger has Brutal and Balanced. Not with an enemy in control range.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -199,7 +199,7 @@
     "kind": "ability",
     "name": "Creeping Shadow",
     "team": "wyrmblade",
-    "text": "The Talon can Charge while it has a Conceal order, and keeps that order. Whenever it performs a Fight action it can then make a free Dash, or a free Fall Back of up to 3 inches, even if an earlier action this activation would normally forbid it.",
+    "text": "The Talon may Charge on a Conceal order (it stays Conceal). After every Fight action it may slip away with a free Dash, or a free Fall Back of at most 3 inches, whatever it did earlier in the activation.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -219,7 +219,7 @@
         "secondStrike": true
       }
     },
-    "text": "Pick an enemy that cannot see the Talon. The Talon makes a free Charge of up to its Move stat (no extra 2 inches) that must end in that enemy's control range, then immediately a free Fight against it. The first time you strike in that Fight you can at once resolve another success as a strike, before your opponent acts. Not with an Engage order and not in an enemy control range.",
+    "text": "Choose an enemy that cannot see the Talon. The Talon closes in with a free Charge no longer than its Move (no extra 2 inches) that must end in that enemy's control range, then fights it at once; at its first strike it may strike again with a second success before the defender acts. Needs a Conceal order and no enemy in control range.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {
@@ -227,7 +227,7 @@
     "kind": "ability",
     "name": "Group Activation",
     "team": "wyrmblade",
-    "text": "When a Warrior is expended, you must next activate another ready friendly Warrior if you have one, before the opponent activates. When that second Warrior is expended play passes on as normal, so never more than two in a row.",
+    "text": "After a Warrior is expended, if another friendly Warrior is ready you must activate it next, before the opponent goes. The chain stops there: two Warriors in a row at most.",
     "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6"
   },
   {

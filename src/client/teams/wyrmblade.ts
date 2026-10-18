@@ -155,4 +155,17 @@ export const PRESENTATION: TeamPresentation = {
     'wb-sanctus-talon',
     'wb-neophyte-warrior',
   ],
+  // Keywords and rule terms in our own wording (game/glossary.ts merges them over the generic fallbacks).
+  glossary: [
+    { term: 'TYRANIDS', kind: 'keyword', body: 'Species keyword carried by every Wyrmblade operative. No current rule names it, so it only identifies the operative.' },
+    { term: 'GENESTEALER CULTS', kind: 'keyword', body: 'Faction keyword carried by every Wyrmblade operative. No current rule names it, so it only identifies the operative.' },
+    { term: 'NEOPHYTE', kind: 'keyword', body: 'The cult\'s human fighters: Leader, Gunners, Heavy Gunners, Icon Bearer and Warriors. Only Neophytes may start the battle in HIDING.' },
+    { term: 'CULT AGENT', kind: 'keyword', body: 'The cult\'s elite specialists: Kelermorph, Locus, Sanctus Sniper and Sanctus Talon. Shots at them ignore Piercing and Saturate and they keep extra cover. A roster may hold at most two, and each counts as two selections.' },
+    { term: 'KELERMORPH', kind: 'keyword', body: 'Cult gunslinger. Expert Gunslinger lets it Shoot twice in one activation, and Heroic Inspiration sharpens nearby Neophytes. Counts as two selections.' },
+    { term: 'LOCUS', kind: 'keyword', body: 'Cult swordsman. Expert Swordsman lets it Fight twice, Bladed Stance reorders its blocks, and Quicksilver Strike lets it charge in after an enemy moves. Counts as two selections.' },
+    { term: 'SANCTUS', kind: 'keyword', body: 'Marks the Sanctus cult agents, the Sniper and the Talon, each of which can Soulsight an enemy.' },
+    { term: 'TALON', kind: 'keyword', body: 'Sanctus assassin. Creeping Shadow keeps it concealed while charging, and Assassinate takes a free charge at an enemy that cannot see it. Counts as two selections.' },
+    { term: 'HIDING', kind: 'status', aliases: ['Hiding', 'Hidden'], body: 'A set-up option: up to a third of the team (Neophytes only, not Cult Agents) starts out of the killzone. A hiding operative still activates and counts as ready, but its only action is Emerge, which sets it up near your drop zone and away from the enemy. Any operative still hiding when the second turning point ends is incapacitated.' },
+    { term: 'Soulsight token', kind: 'status', aliases: ['Soulsight tokens', 'Soulsight'], body: 'Placed on an enemy by the Sanctus\' Familiar\'s Soulsight action and kept until the battle ends or the action is used again. The Sniper shoots it with Saturate and it cannot be obscured, and the Talon fights it with Brutal and Balanced.' },
+  ],
 }
