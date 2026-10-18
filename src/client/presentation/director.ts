@@ -7,7 +7,11 @@ import { audio } from '../audio/instance'
 import { playEventSounds, type SoundContext } from '../audio/eventSounds'
 import { trayAttack, trayBegin, trayClear, trayDefence, trayFightBlock, trayNote, trayReroll, trayShootBlock, trayShootStrikes, trayStrike } from '../dice/trayStore'
 import { describeEvent, humanize, opName, SEAT_NAME, weaponName } from '../game/labels'
-import { flavourOf, isMeleeFlavour, type WeaponFlavour } from '../weaponFlavour'
+import { aimCue, clearCues, setDeathStyle, triggerCue } from '../figures/cueCore'
+import { toneFor } from '../vfx/api'
+import * as vfx from '../vfx/api'
+import { resetFx } from '../vfx/api'
+import { vfxOf, type VfxFamily } from '../vfx/families'
 import { endMoveAnim, requestRepaint, startMoveAnim } from './animStore'
 import { holdAnnouncement, clearAnnouncement } from './announceStore'
 import { pushDice, pushFeed, pushToast } from './feedStore'
@@ -104,27 +108,41 @@ function beatMs(ev: GameEvent): number {
 
 // ---------------------------------------------------------------- effects
 
-const FLAVOUR_COLOR: Record<WeaponFlavour, string> = {
-  bolter: '#ffe08a',
-  slugga: '#ffb347',
-  flamer: '#ff8a2a',
-  plasma: '#7fe0ff',
-  rokkit: '#ffc46b',
-  chain: '#ffffff',
-  crush: '#ffd9a0',
-  blade: '#e8f4ff',
-  bite: '#ff9a8a',
-}
-
 const SEAT_RING: Record<Seat, string> = { A: '#4fb0ff', B: '#ff6a4f' }
 
-type P3 = [number, number, number]
-const chest = (op: Operative): P3 => [op.pos.x, op.pos.y + op.height * 0.55, op.pos.z]
-const head = (op: Operative): P3 => [op.pos.x, op.pos.y + op.height * 0.8, op.pos.z]
+/** The shot in progress (set at TargetSelected, read by the dice-blocked and damage beats). */
+interface ShotCtx {
+  shooterId: string
+  targetId: string
+  weaponId: string
+  secondary: boolean
+  inCover: boolean
+}
+let shot: ShotCtx | null = null
+/** Who last hurt each operative and with what family: a kill picks its death animation from it. */
+const lastHit = new Map<string, { family: VfxFamily; from: { x: number; z: number } | null }>()
+let strikeIndex = 0
+let strikeHandled = false
+const diceKind = (k: 'fail' | 'normal' | 'crit' | undefined): 'fail' | 'normal' | 'crit' => k ?? 'normal'
 
-/** Tracer travel time at normal speed, by flavour (matches Vfx.tsx). */
-function travelMs(flavour: WeaponFlavour): number {
-  return flavour === 'rokkit' ? 480 : flavour === 'plasma' ? 340 : flavour === 'flamer' ? 520 : flavour === 'slugga' ? 330 : 340
+const CRIT_COLOR = '#ff9a2a'
+const HIT_COLOR = '#ff5a4f'
+
+/** Turn `op` toward `at` for `holdMs` (the engine only turns a figure when it moves, so attackers would fire sideways). */
+function faceToward(op: Operative, at: Operative, holdMs: number): void {
+  const bearing = Math.atan2(at.pos.x - op.pos.x, at.pos.z - op.pos.z)
+  let yaw = bearing - op.facing
+  while (yaw > Math.PI) yaw -= Math.PI * 2
+  while (yaw < -Math.PI) yaw += Math.PI * 2
+  aimCue(op.id, yaw, holdMs)
+}
+
+const above = (op: Operative): [number, number, number] => [op.pos.x, op.pos.y + op.height + 0.4, op.pos.z]
+
+/** The weapon an operative is using in the fight in progress. */
+function fightWeapon(id: string): string | null {
+  if (!fight) return null
+  return id === fight.attackerId ? fight.attackerWeapon : id === fight.defenderId ? fight.defenderWeapon : null
 }
 
 function lookup(state: GameState, id: string | null | undefined): Operative | null {
@@ -175,9 +193,11 @@ async function playEvent(ev: GameEvent, state: GameState, gen: number): Promise<
       mode = 'shoot'
       const shooter = lookup(state, ev.operativeId)
       const target = lookup(state, ev.targetId)
+      shot = { shooterId: ev.operativeId, targetId: ev.targetId, weaponId: ev.weaponId, secondary: ev.secondary, inCover: ev.inCover }
       trayBegin('shoot', `${opName(state, ev.operativeId)} shoots ${opName(state, ev.targetId)} with ${weaponName(state, ev.weaponId)}`)
       if (fx) {
-        if (shooter && target) spawnFx({ kind: 'ring', to: [target.pos.x, target.pos.y, target.pos.z], color: '#ff6a5f', dur: 420, size: 1.4 })
+        // the aiming reticle closes in on the target
+        if (shooter && target) vfx.ring(target.pos.x, target.pos.y, target.pos.z, '#ff6a5f', 1.7, 0.42, true)
       }
       await wait(beatMs(ev))
       break
@@ -187,9 +207,12 @@ async function playEvent(ev: GameEvent, state: GameState, gen: number): Promise<
       const target = lookup(state, ev.targetId)
       pushDice(ev.seq, ev.seat, 'attack', ev.dice, ev.kinds)
       if (fx && mode !== 'fight' && who && target && ev.weaponId) {
-        const fl = flavourOf(ev.weaponId)
-        spawnFx({ kind: 'tracer', flavour: fl, from: head(who), to: chest(target), color: FLAVOUR_COLOR[fl], dur: travelMs(fl) })
-        await wait(travelMs(fl) * 0.85)
+        // the muzzle flash fires on the same beat as the weapon sound (eventSounds.ts): one tracer per attack die
+        const info = vfx.volley(who, target, ev.weaponId, ev.kinds.map(diceKind), shot?.secondary ?? false, shot?.inCover ?? false)
+        faceToward(who, target, 700 + 1000 * info.duration)
+        triggerCue(who.id, 'shoot', performance.now(), 'beat')
+        // hold the dice until the first shots have landed
+        await wait(1000 * Math.min(info.duration, info.first + (info.duration - info.first) * 0.5) + 40)
       }
       trayAttack(
         { operativeId: ev.operativeId, seat: ev.seat, label: opName(state, ev.operativeId), need: ev.need, lethal: ev.lethal, dice: ev.dice, kinds: ev.kinds },
@@ -214,23 +237,50 @@ async function playEvent(ev: GameEvent, state: GameState, gen: number): Promise<
       trayNote(`${opName(state, ev.targetId)} keeps ${ev.normal + ev.crit} cover save${ev.normal + ev.crit === 1 ? '' : 's'} without rolling`)
       await wait(beatMs(ev))
       break
-    case 'DiceBlocked':
+    case 'DiceBlocked': {
       trayShootBlock(ev.blockedNormal, ev.blockedCrit)
+      const def = lookup(state, ev.targetId)
+      // saved dice: a shimmer of cover (or armour) on the defender, with the hit-armour sound
+      if (fx && def && ev.blockedNormal + ev.blockedCrit > 0) vfx.shield(def, ev.blockedNormal + ev.blockedCrit, shot?.inCover ?? false)
       trayNote(ev.unblockedNormal + ev.unblockedCrit === 0 ? 'Everything is blocked.' : `${ev.unblockedNormal} normal and ${ev.unblockedCrit} critical get through.`)
       await wait(beatMs(ev))
       break
+    }
     case 'DamageInflicted': {
       const target = lookup(state, ev.operativeId)
+      const src = lookup(state, ev.sourceId)
       setWoundOverride(ev.operativeId, ev.wounds)
       if (mode === 'shoot') trayShootStrikes()
       if (fx) {
         if (target) {
-          const flavour: WeaponFlavour = fight ? flavourOf(fight.attackerWeapon ?? '') : 'bolter'
-          spawnFx({ kind: 'impact', to: chest(target), color: mode === 'shoot' ? '#ffe08a' : FLAVOUR_COLOR[flavour], dur: 360, size: 0.7 + Math.min(1, ev.amount / 5) })
-          spawnFx({ kind: 'text', to: [target.pos.x, target.pos.y + target.height + 0.4, target.pos.z], color: '#ff6a5f', text: `-${ev.amount}`, dur: 1100 })
+          const isStrike = ev.source.startsWith('strike')
+          const crit = ev.source === 'crit' || ev.source === 'strike-crit'
+          const weaponId = isStrike || mode === 'fight' ? fightWeapon(ev.sourceId) : shot?.weaponId ?? null
+          const fam = vfxOf(weaponId).family
+          const from = src ? { x: src.pos.x, z: src.pos.z } : null
+          lastHit.set(target.id, { family: fam, from })
+          if (isStrike && src) {
+            // a blow lands: sweep or crunch, the red mark, sparks (the Struck beat that follows only marks the tray)
+            vfx.strike(src, target, weaponId, crit, strikeIndex++)
+            strikeHandled = true
+            faceToward(src, target, 650)
+            faceToward(target, src, 650)
+            triggerCue(src.id, 'melee', performance.now(), 'beat')
+          } else if (ev.source === 'devastating') vfx.devastate(target)
+          else if (ev.source === 'hot') vfx.hotFlash(target)
+          vfx.flesh(target, from, ev.amount, crit || ev.source === 'devastating', toneFor(state, target.id))
+          triggerCue(target.id, 'hit', performance.now(), 'beat')
+          spawnFx({ kind: 'text', to: above(target), color: crit ? CRIT_COLOR : HIT_COLOR, text: `-${ev.amount}`, dur: 1150, size: crit ? 1.35 : 1 })
+          if (crit) spawnFx({ kind: 'text', to: [target.pos.x, target.pos.y + target.height + 1.05, target.pos.z], color: CRIT_COLOR, text: 'CRIT', dur: 1250, size: 1.2 })
+          else if (ev.source === 'devastating') spawnFx({ kind: 'text', to: [target.pos.x, target.pos.y + target.height + 1.05, target.pos.z], color: '#ff5a2a', text: 'DEVASTATING', dur: 1250, size: 0.85 })
         }
         await wait(beatMs(ev))
       }
+      break
+    }
+    case 'OperativeInjured': {
+      const target = lookup(state, ev.operativeId)
+      if (fx && target) vfx.wound(target)
       break
     }
     case 'OperativeIncapacitated': {
@@ -238,8 +288,12 @@ async function playEvent(ev: GameEvent, state: GameState, gen: number): Promise<
       setWoundOverride(ev.operativeId, 0)
       if (fx) {
         if (target) {
-          spawnFx({ kind: 'impact', to: chest(target), color: '#ff3b2f', dur: 560, size: 1.7 })
-          spawnFx({ kind: 'ring', to: [target.pos.x, target.pos.y, target.pos.z], color: '#ff3b2f', dur: 700, size: 2.2 })
+          // dies the way it was hurt: slump from bullets, burn down from flame, thrown back by blasts, topple from blades
+          const lh = lastHit.get(target.id)
+          const plan = vfx.death(target, lh?.family ?? null, lh?.from ?? null, toneFor(state, target.id))
+          setDeathStyle(target.id, plan)
+          triggerCue(target.id, 'death', performance.now(), 'beat')
+          vfx.ring(target.pos.x, target.pos.y, target.pos.z, '#ff3b2f', 2.4, 0.7)
         }
         pushToast(`${opName(state, ev.operativeId)} is down`, 'info', 2600)
         await wait(beatMs(ev))
@@ -249,25 +303,35 @@ async function playEvent(ev: GameEvent, state: GameState, gen: number): Promise<
     case 'FightStarted': {
       mode = 'fight'
       fight = { attackerId: ev.operativeId, attackerWeapon: ev.attackerWeapon, defenderId: ev.targetId, defenderWeapon: ev.defenderWeapon }
+      strikeIndex = 0
+      strikeHandled = false
       trayBegin('fight', `${opName(state, ev.operativeId)} fights ${opName(state, ev.targetId)}`)
       if (fx) {
         const a = lookup(state, ev.operativeId)
         const d = lookup(state, ev.targetId)
-        if (a && d) spawnFx({ kind: 'ring', to: [d.pos.x, d.pos.y, d.pos.z], color: '#ffd45a', dur: 500, size: 1.6 })
+        if (a && d) {
+          vfx.ring((a.pos.x + d.pos.x) / 2, d.pos.y, (a.pos.z + d.pos.z) / 2, '#ffd45a', 2.2, 0.5)
+          vfx.fightIntro(a, d, ev.attackerWeapon, ev.defenderWeapon)
+          faceToward(a, d, 1200)
+          faceToward(d, a, 1200)
+        }
         await wait(beatMs(ev))
       }
       break
     }
     case 'Struck': {
       const target = lookup(state, ev.targetId)
+      const striker = lookup(state, ev.operativeId)
       trayStrike(ev.operativeId, ev.die)
       if (fx) {
-        const w = fight ? (ev.operativeId === fight.attackerId ? fight.attackerWeapon : fight.defenderWeapon) : null
-        const fl = flavourOf(w ?? '')
-        if (target) {
-          spawnFx({ kind: 'impact', to: chest(target), color: FLAVOUR_COLOR[fl], dur: 320, size: isMeleeFlavour(fl) && fl === 'crush' ? 1.2 : 0.8 })
-          if (fl === 'crush') spawnFx({ kind: 'ring', to: [target.pos.x, target.pos.y, target.pos.z], color: '#ffd9a0', dur: 420, size: 1.3 })
+        // the blow normally played at its DamageInflicted beat; a blow that dealt nothing still shows
+        if (!strikeHandled && target && striker) {
+          vfx.strike(striker, target, fightWeapon(ev.operativeId), ev.die === 'crit', strikeIndex++)
+          triggerCue(striker.id, 'melee', performance.now(), 'beat')
         }
+        strikeHandled = false
+        // the chainsword's hit sound plays on this beat: spray its sparks with it
+        if (target && vfxOf(fightWeapon(ev.operativeId)).variant === 'chain') vfx.chainBurst(target)
         await wait(beatMs(ev))
       }
       break
@@ -276,14 +340,27 @@ async function playEvent(ev: GameEvent, state: GameState, gen: number): Promise<
       trayFightBlock(ev.operativeId, ev.die, ev.against)
       if (fx) {
         const blocker = lookup(state, ev.operativeId)
-        if (blocker) spawnFx({ kind: 'impact', to: chest(blocker), color: '#9fd4ff', dur: 300, size: 0.8 })
+        if (blocker) {
+          const otherId = fight ? (ev.operativeId === fight.attackerId ? fight.defenderId : fight.attackerId) : null
+          vfx.parry(blocker, lookup(state, otherId), ev.die === 'crit')
+        }
         await wait(beatMs(ev))
       }
       break
+    case 'MineTriggered': {
+      const victim = lookup(state, ev.operativeId)
+      if (fx && victim) {
+        vfx.blastAt(victim, 0.9)
+        await wait(450)
+      }
+      break
+    }
     case 'ShootEnded':
     case 'FightEnded':
       mode = null
       fight = null
+      shot = null
+      strikeHandled = false
       break
     case 'OperativeActivated':
       // the last attack stays in the tray until the next one starts
@@ -312,7 +389,7 @@ async function playEvent(ev: GameEvent, state: GameState, gen: number): Promise<
       setControlOverride(ev.markerId, ev.controller)
       const m = state.markers?.find((k) => k.id === ev.markerId)
       if (fx) {
-        if (m) spawnFx({ kind: 'ring', to: [m.pos.x, 0.1, m.pos.z], color: ev.controller ? SEAT_RING[ev.controller] : '#e8e8f2', dur: 800, size: 3 })
+        if (m) vfx.ring(m.pos.x, 0.1, m.pos.z, ev.controller ? SEAT_RING[ev.controller] : '#e8e8f2', 3, 0.8)
         await wait(beatMs(ev))
       }
       break
@@ -383,6 +460,12 @@ export function resetDirector(): void {
   running = false
   mode = null
   fight = null
+  shot = null
+  lastHit.clear()
+  strikeIndex = 0
+  strikeHandled = false
+  clearCues()
+  resetFx()
   clearAnnouncement()
   clearFx()
   trayClear()

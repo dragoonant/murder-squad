@@ -11,7 +11,7 @@ import { effectiveApl } from '@/engine/state'
 import { dataBundle, engineBundle } from '../game/adapter'
 import { animPosition } from '../presentation/animStore'
 import { colors } from '../ui/theme'
-import { cuePose, deathAge, installCueFeed, isDying, cueActive, CUE_MS } from './cues'
+import { cuePose, deathAge, deathMs, installCueFeed, isDying, cueActive } from './cues'
 import { useGlbInstance } from './glbLoader'
 import { attachmentFor } from './attachmentFor'
 import { HOLDS, SHEATHED, handRight, heaviestHold, holdClassOf, type HoldSpec } from './hold'
@@ -250,8 +250,8 @@ export interface BattleOperativeProps {
 function applyPose(g: Group | null, id: string, now: number, walking: boolean, phase: number): boolean {
   if (!g) return false
   const p = cuePose(id, now, walking, phase)
-  g.position.set(0, p.dy, p.dz)
-  g.rotation.set(p.rx, 0, p.rz)
+  g.position.set(p.dx, p.dy, p.dz)
+  g.rotation.set(p.rx, p.ry, p.rz)
   g.scale.set(p.vis, p.vis * p.sy, p.vis)
   return walking || cueActive(id, now)
 }
@@ -289,7 +289,7 @@ function CorpseFigure({ corpse }: { corpse: Corpse }) {
   const ref = useRef<Group>(null)
   useFrame((state) => {
     const age = deathAge(corpse.id)
-    if (age < 0 || age > CUE_MS.death + 40) {
+    if (age < 0 || age > deathMs(corpse.id) + 40) {
       if (corpses.delete(corpse.id)) emitCorpses()
       return
     }
