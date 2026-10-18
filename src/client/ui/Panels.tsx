@@ -3,7 +3,7 @@
 // two columns. All numbers are read from the DISPLAY state.
 import { useCallback, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import type { DatacardData } from '@/data'
-import type { Seat } from '@/engine'
+import type { Order, Seat } from '@/engine'
 import { effectiveApl } from '@/engine/state'
 import { killStatus, mission } from '../game/kill'
 import { dataBundle } from '../game/adapter'
@@ -15,6 +15,7 @@ import { useSettings, type AnimSpeed } from '../presentation/settings'
 import { useGame } from '../store/game'
 import { useSession } from '../store/session'
 import { useFormFactor } from './formFactor'
+import { AP_DARK, AP_LIT, ORDER_COLOR, apTip, orderTip, woundTip } from './markerInfo'
 import { colors, fontStack, panel } from './theme'
 import { Tooltip } from './Tooltip'
 import { useUi, type DrawerId } from './uiStore'
@@ -82,6 +83,22 @@ function rulesText(rules: { rule: string; x?: number; inches?: number; target?: 
     .join(', ')
 }
 
+/** The order token as drawn over the figure: blue square for Conceal, orange diamond for Engage. */
+function OrderGlyph({ order }: { order: Order }) {
+  return <span aria-hidden style={{ display: 'inline-block', width: 9, height: 9, background: ORDER_COLOR[order], transform: order === 'engage' ? 'rotate(45deg) scale(0.85)' : undefined, verticalAlign: 0 }} />
+}
+
+/** The AP pips as drawn over the figure: yellow = still available. */
+function ApDots({ total, lit }: { total: number; lit: number }) {
+  return (
+    <span aria-hidden style={{ display: 'inline-flex', gap: 2, verticalAlign: 1 }}>
+      {Array.from({ length: total }, (_, i) => (
+        <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: i < lit ? AP_LIT : AP_DARK, border: '1px solid #55576a', boxSizing: 'border-box' }} />
+      ))}
+    </span>
+  )
+}
+
 export function OperativeCard({ docked }: { docked?: boolean }) {
   const state = useDisplayState()
   const selected = useUi((s) => s.selectedOp)
@@ -92,6 +109,14 @@ export function OperativeCard({ docked }: { docked?: boolean }) {
   if (!state || !op) return null
   const card = dataBundle().byId[op.datacardId] as DatacardData | undefined
   const weapons = op.weapons.map((w) => state.data.weapons[w]).filter(Boolean)
+  // the same three markers that float over the figure, each with its glyph and tooltip
+  const act = state.firefight.activation
+  const apSpent = act && act.operativeId === op.id && !act.counteract ? act.apSpent : null
+  const apl = effectiveApl(op)
+  const lit = apSpent !== null ? Math.max(0, apl - apSpent) : op.ready ? apl : 0
+  const ot = orderTip(op.order)
+  const at = apTip(apl, lit, apSpent !== null, op.ready)
+  const wt = woundTip(op.wounds, op.maxWounds, op.flags.injured)
   const body = (
     <div data-testid="operative-card" data-op={op.id}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
@@ -100,20 +125,26 @@ export function OperativeCard({ docked }: { docked?: boolean }) {
         <span style={{ color: colors.muted, fontSize: 12 }}>{op.id}</span>
       </div>
       <div style={{ fontSize: 12, display: 'flex', flexWrap: 'wrap', gap: '2px 12px', marginBottom: 6 }}>
-        <span>
-          Wounds <b>{op.wounds}/{op.maxWounds}</b>
-        </span>
-        <span>
-          APL <b>{effectiveApl(op)}</b>
-        </span>
+        <Tooltip title={ot.title} body={ot.body}>
+          <span data-testid="card-order">
+            <OrderGlyph order={op.order} /> <b>{humanize(op.order)}</b> order &middot; {op.ready ? 'ready' : 'expended'}
+          </span>
+        </Tooltip>
+        <Tooltip title={at.title} body={at.body}>
+          <span data-testid="card-ap">
+            <ApDots total={apl} lit={lit} /> APL <b>{apl}</b>
+          </span>
+        </Tooltip>
+        <Tooltip title={wt.title} body={wt.body}>
+          <span>
+            Wounds <b>{op.wounds}/{op.maxWounds}</b>
+          </span>
+        </Tooltip>
         <span>
           Move <b>{op.move}&Prime;</b>
         </span>
         <span>
           Save <b>{op.save}+</b>
-        </span>
-        <span>
-          <b>{humanize(op.order)}</b> &middot; {op.ready ? 'ready' : 'expended'}
         </span>
         {op.flags.guard && <b style={{ color: colors.accent }}>On Guard</b>}
         {op.flags.injured && <b style={{ color: colors.danger }}>Injured</b>}
@@ -162,7 +193,7 @@ export function OperativeCard({ docked }: { docked?: boolean }) {
         style={{ ...floatStyle, position: 'absolute', top: 62, right: 8, padding: '3px 10px', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: 'calc(100% - 16px)', zIndex: 20, pointerEvents: 'none' }}
       >
         <Dot seat={op.seat} />
-        <b>{op.name}</b> <span style={{ color: colors.muted }}>{op.id}</span> &middot; W <b>{op.wounds}/{op.maxWounds}</b> &middot; Save <b>{op.save}+</b> &middot; {humanize(op.order)} {op.ready ? '' : '(expended)'}
+        <b>{op.name}</b> <span style={{ color: colors.muted }}>{op.id}</span> &middot; W <b>{op.wounds}/{op.maxWounds}</b> &middot; Save <b>{op.save}+</b> &middot; <OrderGlyph order={op.order} /> {humanize(op.order)} {op.ready ? '' : '(expended)'}
       </div>
     )
   }

@@ -5,7 +5,7 @@
 // stay on screen. Hover shows after a short delay; keyboard focus shows at once; on touch a tap toggles it and a
 // tap elsewhere closes it. Pass no title (or `disabled`) to render the child untouched.
 import {
-  cloneElement, useCallback, useEffect, useId, useLayoutEffect, useRef, useState,
+  cloneElement, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState,
   type CSSProperties, type ReactElement, type ReactNode, type SyntheticEvent,
 } from 'react'
 import { createPortal } from 'react-dom'
@@ -78,6 +78,13 @@ function Popup({ id, anchor, placement, title, body }: { id: string; anchor: Rec
     </div>,
     document.body,
   )
+}
+
+/** The same popup anchored at a screen point instead of an element (3D board markers, which have no DOM node). */
+export function PointTooltip({ x, y, title, body, placement = 'top' }: { x: number; y: number; title: ReactNode; body?: ReactNode; placement?: TooltipPlacement }) {
+  const id = useId()
+  const anchor = useMemo(() => ({ left: x - 6, top: y - 6, right: x + 6, bottom: y + 6 }), [x, y])
+  return <Popup id={id} anchor={anchor} placement={placement} title={title} body={body} />
 }
 
 interface ChildProps {
