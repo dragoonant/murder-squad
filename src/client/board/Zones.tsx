@@ -1,11 +1,15 @@
 // Drop zones, territories, centreline and objective markers drawn from engine state and mission data.
 import { useMemo } from 'react'
-import { Line } from '@react-three/drei'
-import { DoubleSide, Shape } from 'three'
-import type { GameState, Polygon } from '@/engine'
+import { Html, Line } from '@react-three/drei'
+import { useThree } from '@react-three/fiber'
+import { DoubleSide, Shape, Vector3 } from 'three'
+import type { GameState, Marker, Polygon } from '@/engine'
 import { markerRadius } from '@/engine/state'
+import { describeMarker } from '../game/markerInfo'
 import { useFx } from '../presentation/fxStore'
-import { colors } from '../ui/theme'
+import { useGame } from '../store/game'
+import { colors, panel } from '../ui/theme'
+import { useUi } from '../ui/uiStore'
 
 function PolyFill({ poly, color, opacity, y }: { poly: Polygon; color: string; opacity: number; y: number }) {
   const geo = useMemo(() => {
@@ -72,9 +76,45 @@ export function Zones({ state, deployRegion, hoverZone }: { state: GameState; de
   )
 }
 
+/** Hover tip over a marker: what it is, who controls it, how it is used. Reads engine queries, never guesses. */
+function MarkerTip({ state, marker }: { state: GameState; marker: Marker }) {
+  const seats = useGame((s) => s.seats)
+  const you = seats.A === 'human' && seats.B !== 'human' ? 'A' : seats.B === 'human' && seats.A !== 'human' ? 'B' : null
+  const info = describeMarker(state, marker, you)
+  // markers in the upper part of the view get the tip below them so it never slides under the HUD
+  const camera = useThree((s) => s.camera)
+  const ndcY = new Vector3(marker.pos.x, 0.5, marker.pos.z).project(camera).y
+  const below = ndcY > 0.35
+  return (
+    <Html position={[0, 0.5, 0]} center zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
+      <div
+        data-testid="marker-tip"
+        style={{
+          ...panel,
+          padding: '7px 10px',
+          fontSize: 12,
+          lineHeight: 1.4,
+          width: 'max-content',
+          maxWidth: 260,
+          transform: below ? 'translateY(calc(50% + 16px))' : 'translateY(calc(-50% - 14px))',
+        }}
+      >
+        <div style={{ fontWeight: 700, color: colors.accent }}>{info.title}</div>
+        <div style={{ marginTop: 2, color: colors.text }}>{info.status}</div>
+        {info.detail.map((line, i) => (
+          <div key={i} style={{ marginTop: 3, color: colors.muted }}>
+            {line}
+          </div>
+        ))}
+      </div>
+    </Html>
+  )
+}
+
 export function Markers({ state }: { state: GameState }) {
   // a control change shows at its beat, before the display state catches up
   const control = useFx((s) => s.control)
+  const hoverMarker = useUi((s) => s.hoverMarker)
   return (
     <group>
       {state.markers
@@ -83,8 +123,19 @@ export function Markers({ state }: { state: GameState }) {
           const r = markerRadius(m)
           const controller = m.id in control ? control[m.id] : m.controller
           const color = controller ? SEAT[controller] : '#e8e8f2'
+          const hot = hoverMarker === m.id
           return (
-            <group key={m.id} position={[m.pos.x, 0.06, m.pos.z]} data-marker={m.id}>
+            <group
+              key={m.id}
+              position={[m.pos.x, 0.06, m.pos.z]}
+              onPointerOver={(e) => {
+                e.stopPropagation()
+                useUi.setState({ hoverMarker: m.id })
+              }}
+              onPointerOut={() => {
+                if (useUi.getState().hoverMarker === m.id) useUi.setState({ hoverMarker: null })
+              }}
+            >
               <mesh rotation={[-Math.PI / 2, 0, 0]}>
                 <circleGeometry args={[r, 28]} />
                 <meshBasicMaterial color="#1b1d26" />
@@ -93,10 +144,17 @@ export function Markers({ state }: { state: GameState }) {
                 <ringGeometry args={[r * 0.78, r, 28]} />
                 <meshBasicMaterial color={color} />
               </mesh>
+              {hot && (
+                <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+                  <ringGeometry args={[r + 0.08, r + 0.2, 36]} />
+                  <meshBasicMaterial color="#ffffff" transparent opacity={0.9} />
+                </mesh>
+              )}
               <mesh position={[0, 0.25, 0]}>
                 <octahedronGeometry args={[0.22, 0]} />
                 <meshBasicMaterial color={m.kind === 'objective' ? '#ffe066' : '#6fe0ff'} />
               </mesh>
+              {hot && <MarkerTip state={state} marker={m} />}
             </group>
           )
         })}

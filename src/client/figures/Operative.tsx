@@ -383,8 +383,14 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
       </Billboard>
       {(selected || hovered) && (
         <Html position={[0, top + 1.25, 0]} center zIndexRange={[10, 0]} distanceFactor={14} style={{ pointerEvents: 'none' }}>
-          <div style={{ background: 'rgba(8,8,14,0.85)', color: '#fff', font: '600 11px system-ui', padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap' }}>
-            {op.id} {op.name} {op.wounds}/{op.maxWounds}
+          <div style={{ background: 'rgba(8,8,14,0.85)', color: '#fff', font: '600 11px system-ui', padding: '3px 7px', borderRadius: 4, whiteSpace: 'nowrap', lineHeight: 1.35 }}>
+            <div>
+              {op.id} {op.name}
+            </div>
+            <div style={{ color: '#c9cde0', fontWeight: 500 }}>
+              {op.order === 'engage' ? 'Engage order' : 'Conceal order'} · APL {apl}
+              {apSpent !== null ? ` (${lit} left)` : op.ready ? '' : ' · activated'} · {op.wounds}/{op.maxWounds} wounds
+            </div>
           </div>
         </Html>
       )}
