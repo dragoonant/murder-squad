@@ -24,7 +24,7 @@ import { enumerateLoadouts, loadBundle, loadoutCapProblems, validateRoster, type
 import { evs, melee, pick as pickOpt, play, ranged, withWeapons } from '../../fixtures/attack'
 import { drive, expectOk, place } from '../../fixtures/helpers'
 import { feature, part, rect } from '../../fixtures/maps'
-import { activateOp, edit, hasOption, realBundle, take, withCtx } from '../../fixtures/real'
+import { activateOp, edit, hasOption, inTp, passIt, realBundle, roster, take, withCtx } from '../../fixtures/real'
 import { A, B, FULL, entry, open, pass, passAll, refreshGambit, toGambit } from './hunter-clade.hooks'
 const data = loadBundle()
 const noPloys = { 'ploy.firefight': pass }
@@ -635,6 +635,33 @@ describe('TEAM-HC Hunter Clade', () => {
     expect(asked(near, 'ability:core.a.operate-hatch')).toHaveLength(0)
     expect(asked(near, 'reposition')).toHaveLength(0)
     expect(asked(far, 'marker:pickUp')).toHaveLength(0)
+  })
+
+  it("TEAM-HC-031 SCRAPCODE OVERLOAD is offered when the Infiltrator itself is about to perform a mission action, in its activation and in a counteraction, and not for its other actions", () => {
+    const start = inTp(open({ rosterA: roster(['hc.sicarian-infiltrator-warrior']), rosterB: roster(['kom.boss-nob', 'kom.boy', 'kom.boy']) }), 2)
+    const inf = A(start, 'sicarian-infiltrator-warrior')
+    const obj = start.markers.find((m) => m.kind === 'objective')!
+    const s = edit(place(start, inf, obj.pos.x, obj.pos.z), (st) => (st.players.A.cp = 3))
+    const secure = `ability:core.a.secure:${obj.id}`
+    // in its own activation: declaring Secure opens the declaration window with the ploy
+    const own = take(activateOp(s, inf), secure).state
+    expect(own.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'A' })
+    expect(hasOption(own, P.scrapcode)).toBe(true)
+    const used = take(own, P.scrapcode).state
+    expect(used.players.A.cp).toBe(2)
+    expect(used.effects.some((e) => e.kind === 'hc.scrapcode' && e.operativeId === inf)).toBe(true)
+    // a Reposition opens no window for it
+    const moved = take(activateOp(s, inf), 'reposition').state
+    expect(moved.pending!.kind).not.toBe('ploy.firefight')
+    // in a counteraction: A's only operative is expended, a Kommando activates, the Infiltrator counteracts into Secure
+    let c = take(activateOp(s, inf), 'end').state
+    c = take(activateOp(c, B(c, 'boss-nob')), 'end').state
+    c = take(c, `counteract:${inf}`).state
+    while (c.pending?.kind === 'ploy.firefight') c = passIt(c).state
+    c = take(c, secure).state
+    expect(c.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'A' })
+    expect(hasOption(c, P.scrapcode)).toBe(true)
+    expect(take(c, P.scrapcode).state.effects.some((e) => e.kind === 'hc.scrapcode' && e.operativeId === inf)).toBe(true)
   })
 
   it("TEAM-HC-026 TEAM-HC-027 OMNISSIAH'S IMPERATIVE adds a rule from the current Imperative: Protector Severe, Bulwark Save and a fourth die when shot, Conqueror a second strike, Aggressor a free 2\" of climbing; Neutral is not offered; no self-damage", () => {

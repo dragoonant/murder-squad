@@ -2152,7 +2152,7 @@ Rows in `12-rules-test-checklist.md` section TEAM-HC: TEAM-HC-000 to TEAM-HC-030
 | SCOUTING PROTOCOL | `startFreeAction` dash loop (Hierotek underlings pattern) |
 | ACCELERANT AGENTS | providers `maxRepeats`, `actionCostDelta` |
 | CONTROL EDICT | ploy at `firefight.activationStart`; provider `chainActivation` |
-| SCRAPCODE OVERLOAD | provider `controlTotal`; window `firefight.opponentActionDeclared` for the second timing (info `actorId` = the enemy, `action`) |
+| SCRAPCODE OVERLOAD | provider `controlTotal`; window `firefight.actionDeclared` for the Infiltrator's own Pick Up Marker or mission action (counteractions included, info `subjectId`, `action`); window `firefight.opponentActionDeclared` for an enemy's (info `actorId` = the enemy, `action`) |
 | Omnissiah Conqueror | provider `afterFightResolution` |
 | Omnissiah Aggressor | provider `moveSurcharge` |
 | Omnissiah defender timing, REFRACTOR FIELD | window `shoot.beforeDefenceRoll` (defender only, after retention and Devastating) |
@@ -2195,10 +2195,9 @@ and `hc.wg.transuranic-arquebus`); the team choice `primary-mode` has choice gro
   gambits are ploy records; Redundancy Systems and Refractor Field are offered by the ploy rule `extraOffers` in
   `firefight.activationStart` and `shoot.beforeDefenceRoll`; Extremis Mind-Link is a `costAdjust` on CONTROL EDICT's
   `<partner>:joint:<order>` offers, which call `firefight.joinActivation`.
-- Not exact: a friendly Infiltrator's own Pick Up Marker or mission action has no declaration window for SCRAPCODE
-  OVERLOAD (use it at activation, which is equivalent; only a counteracting Infiltrator loses the timing); the arquebus
-  oval is moved and measured by the engine but the client still draws a circle and has no turn control (the default
-  roster fields no arquebus Gunner). OMNISSIAH Aggressor taking 2" off the move's total climb cost is exact, because
+- The arquebus oval is moved and measured by the engine, drawn by the client (with its Turn control), and turned by the
+  AI at the end of a move toward the nearest enemy when the arc fits (the default roster fields no arquebus Gunner).
+  OMNISSIAH Aggressor taking 2" off the move's total climb cost is exact, because
   every climb counts at least 2".
 - Rules review (batch B verification): every printed number, roster limit and loadout matches the January '26 PDF and
   Wahapedia. Fixed: OMNISSIAH'S IMPERATIVE is also offered to a shot defender on its fresh and final defence roll

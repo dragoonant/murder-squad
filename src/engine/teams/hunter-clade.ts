@@ -857,7 +857,13 @@ registerCodeHook({
         const op = info.subjectId ? state.operatives[info.subjectId] : undefined
         return isHc(state, op) && op.seat === seat && !info.counteracting && hasKeyword(state, op, 'INFILTRATOR') ? [{ operativeId: op.id }] : []
       }
-      // ... or when it, or an enemy within 3" of it, is about to pick up a marker or perform a mission action
+      // ... or when that Infiltrator is about to pick up a marker or perform a mission action (its own declaration,
+      // a counteraction included; the shared firefight.actionDeclared window opens for both)
+      if (info.window === 'firefight.actionDeclared') {
+        const op = info.subjectId ? state.operatives[info.subjectId] : undefined
+        return isHc(state, op) && op.seat === seat && hasKeyword(state, op, 'INFILTRATOR') && scrapcodeAction(state, info.action) ? [{ operativeId: op.id }] : []
+      }
+      // ... or when an enemy within 3" of it is about to pick up a marker or perform a mission action
       const actor = info.actorId ? state.operatives[info.actorId] : undefined
       if (!actor || actor.seat === seat || !scrapcodeAction(state, info.action)) return []
       return hcOps(state, seat)

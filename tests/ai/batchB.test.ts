@@ -3,9 +3,13 @@
 // team rules are actually used: free (0 CP) offers such as the Pain invigorations, the Legionaries ploys and gambits,
 // FLY set-ups from the Jump Pack, the Tactician gambit and a chosen Hunter Clade Imperative.
 import { describe, expect, it } from 'vitest'
-import { createGame, legalActions, step, view, type Action, type GameEvent, type GameSetup, type GameState, type RosterEntry, type Seat } from '@/engine'
-import { defaultLoadoutFor } from '@/engine/bundle'
-import { createAiDecider, type AiDecider } from '../../src/ai/decider'
+import { act, createGame, legalActions, step, validate, view, type Action, type GameEvent, type GameSetup, type GameState, type RosterEntry, type Seat } from '@/engine'
+import { defaultLoadoutFor, resolveLoadoutChoice } from '@/engine/bundle'
+import { createAiDecider, makeCtx, type AiDecider } from '../../src/ai/decider'
+import { withEndFacing } from '../../src/ai/moves'
+import { newMemory } from '../../src/ai/tiers'
+import { activateOp, edit, opOf, take } from '../fixtures/real'
+import { entry, open as openHc } from '../engine/teams/hunter-clade.hooks'
 import { realBundle, realSetupFor } from './fixtures'
 
 interface Tracked {
@@ -23,6 +27,8 @@ interface Tracked {
   flies: number
   /** Imperative picked by the Doctrina gambit */
   modes: string[]
+  /** move.path answers that turned an oval base at the end (payload.facing) */
+  turns: number
 }
 
 function play(teams: [string, string], seed: string, tier: 'easy' | 'normal' = 'normal', maxDecisions = 4000, tweak?: (setup: GameSetup) => void): Tracked {
@@ -30,7 +36,7 @@ function play(teams: [string, string], seed: string, tier: 'easy' | 'normal' = '
   tweak?.(setup)
   let state = createGame(setup, seed, realBundle()).state
   const deciders: Record<Seat, AiDecider> = { A: createAiDecider(tier, { seed: `${seed}:A`, budgetMs: 40 }), B: createAiDecider(tier, { seed: `${seed}:B`, budgetMs: 40 }) }
-  const t: Tracked = { state, events: [], decisions: 0, rejections: [], fallbacksByKind: {}, stalled: false, offered: {}, taken: {}, gambits: {}, flies: 0, modes: [] }
+  const t: Tracked = { state, events: [], decisions: 0, rejections: [], fallbacksByKind: {}, stalled: false, offered: {}, taken: {}, gambits: {}, flies: 0, modes: [], turns: 0 }
   let lastSeq = -1
   let same = 0
   while (state.pending && t.decisions < maxDecisions) {
@@ -54,6 +60,7 @@ function play(teams: [string, string], seed: string, tier: 'easy' | 'normal' = '
       if (pl.gambitId === 'hc.p.doctrina' && pl.param) t.modes.push(pl.param)
     }
     if (p.kind === 'move.path' && (r.action.payload as { fly?: boolean }).fly === true) t.flies++
+    if (p.kind === 'move.path' && typeof (r.action.payload as { facing?: unknown }).facing === 'number') t.turns++
     const res = step(state, r.action as Action)
     t.decisions++
     if (res.rejection) {
@@ -141,6 +148,56 @@ describe('AI uses the batch B team rules', () => {
       for (const [k, n] of Object.entries(t.taken)) taken[k] = (taken[k] ?? 0) + n
     }
     expect(Object.keys(taken).filter((k) => k.startsWith('ha.inv.')).length).toBeGreaterThan(0)
+  }, 240000)
+
+  it('AI-B-hunter-clade turns an oval base at the end of a move toward the nearest enemy when the turn fits, never a round base', () => {
+    const base = openHc({ rosterA: [entry('hc.skitarii-ranger-alpha', { loadout: ['rifle'] }), entry('hc.skitarii-ranger-gunner', { weapon: ['hc.wg.transuranic-arquebus'] })] })
+    const g = opOf(base, 'A', 'hc.skitarii-ranger-gunner')
+    const alpha = opOf(base, 'A', 'hc.skitarii-ranger-alpha')
+    const boy = opOf(base, 'B', 'kom.boy')
+    const at = (id: string) => edit(base, (st) => {
+      st.operatives[id]!.pos = { x: 0, y: 0, z: 0 }
+      st.operatives[id]!.facing = 0
+      st.operatives[boy]!.pos = { x: 10, y: 0, z: 0 }
+    })
+    const moving = (id: string) => take(activateOp(at(id), id), 'reposition').state
+    const ctxOf = (s: GameState) => makeCtx('normal', view(s, s.pending!.seat), s.pending!, legalActions(s, s.pending!), { seed: 'oval' }, newMemory())
+    const answer = (s: GameState, id: string, wps: { x: number; z: number }[]) => {
+      const ctx = ctxOf(s)
+      return withEndFacing(ctx, ctx.view, s.pending!, ctx.view.operatives[id]!, wps, act.path(s.pending!, wps))
+    }
+    // 2" north, then a turn toward the Boy in the east (cost 2" + about 2" of arc, inside Move 6")
+    const s = moving(g)
+    const turned = answer(s, g, [{ x: 0, z: 2 }])
+    const f = (turned.payload as { facing?: number }).facing
+    expect(f).toBeCloseTo(Math.atan2(10, -2), 2)
+    expect(validate(s, turned)).toBeNull()
+    expect(step(s, turned).state.operatives[g]!.facing).toBeCloseTo(f!, 2)
+    // already pointing at the enemy: no turn
+    const ahead = edit(s, (st) => (st.operatives[boy]!.pos = { x: 0, y: 0, z: 10 }))
+    expect((answer(ahead, g, [{ x: 0, z: 2 }]).payload as { facing?: number }).facing).toBeUndefined()
+    // a full 6" move has no inches left to turn unless a shorter end point scores as well; any answer is legal
+    expect(validate(s, answer(s, g, [{ x: 0, z: 6 }]))).toBeNull()
+    // a round base never gets a facing
+    const r = moving(alpha)
+    expect((answer(r, alpha, [{ x: 0, z: 2 }]).payload as { facing?: number }).facing).toBeUndefined()
+  })
+
+  it('AI-B-hunter-clade plays full games with an arquebus Gunner on its oval base, with no rejection or stall', () => {
+    let turns = 0
+    for (const seed of ['oval-1', 'oval-2']) {
+      const t = play(['hunter-clade', 'angels-of-death'], seed, 'normal', 4000, (s) => {
+        const arc = s.rosters.A.findIndex((e) => e.datacardId === 'hc.skitarii-ranger-gunner')
+        const loadout = resolveLoadoutChoice(realBundle(), 'hc.skitarii-ranger-gunner', { weapon: ['hc.wg.transuranic-arquebus'] })
+        if (arc >= 0) s.rosters.A[arc] = { datacardId: 'hc.skitarii-ranger-gunner', loadout }
+        else s.rosters.A = [...s.rosters.A.slice(0, -1), { datacardId: 'hc.skitarii-ranger-gunner', loadout }]
+      })
+      expect(Object.values(t.state.operatives).some((o) => o.seat === 'A' && o.ovalHalfAxis)).toBe(true)
+      expect(t.rejections).toEqual([])
+      expect(t.stalled).toBe(false)
+      turns += t.turns
+    }
+    if (process.env.AI_DEBUG) process.stderr.write(`oval turns ${turns}\n`)
   }, 240000)
 
   it('AI-B-hunter-clade picks more than one Imperative across games', () => {
