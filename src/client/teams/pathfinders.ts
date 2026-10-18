@@ -1,7 +1,7 @@
 // Pathfinders client presentation: weapon flavours, VFX families, sounds, attachments and figure stand-ins for
 // this team's weapons and datacards (teams/types.ts). Pulse weapons read as plasma, rail and burst weapons as bolt
 // tracers; every sound id already exists in the audio manifest. Attachment slugs follow the concept art names
-// (`art/attachment-concepts/pf-*`); until their GLBs exist the figures draw the hold-class stand-in.
+// (`art/attachment-concepts/pf-*`); every datacard has a body GLB (public/assets/models/bodies) and every weapon an attachment GLB.
 import type { TeamPresentation } from './types'
 
 export const PRESENTATION: TeamPresentation = {
@@ -81,24 +81,6 @@ export const PRESENTATION: TeamPresentation = {
     'pf.w.fists': [],
     'pf.w.ram': [],
   },
-  standIns: [
-    'pf-shasui',
-    'pf-assault-grenadier',
-    'pf-blooded',
-    'pf-comms-specialist',
-    'pf-drone-controller',
-    'pf-marksman',
-    'pf-medical-technician',
-    'pf-shasla',
-    'pf-transpectral-interference',
-    'pf-weapons-expert',
-    'pf-mb3-recon-drone',
-    'pf-mv1-gun-drone',
-    'pf-mv4-shield-drone',
-    'pf-mv7-marker-drone',
-    'pf-mv31-pulse-accelerator-drone',
-    'pf-mv33-grav-inhibitor-drone',
-  ],
   // Keywords and rule terms in our own wording (game/glossary.ts merges them over the generic fallbacks).
   glossary: [
     { term: 'T\'AU EMPIRE', kind: 'keyword', body: 'Allegiance keyword carried by every Pathfinder, drones included. No current rule names it, so it only identifies the operative.' },

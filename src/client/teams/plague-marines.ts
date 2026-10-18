@@ -1,7 +1,7 @@
 // Plague Marines client presentation: weapon flavours, VFX families, sounds, attachments and figure stand-ins for
-// this team's weapons and datacards (teams/types.ts). Owned by the team implementer. There are no Plague Marine
-// GLBs yet, so every weapon borrows an existing attachment mesh (a stand-in) or draws nothing, and every
-// datacard draws the procedural stand-in body (concept art: art/unit-concepts/pm-*.png, art/attachment-concepts/pm-w-*.png).
+// this team's weapons and datacards (teams/types.ts). Owned by the team implementer. Bodies (pm-*) and
+// attachments (pm-w-*) are Hunyuan GLBs from the concept art (art/unit-concepts, art/attachment-concepts); the pistols
+// and grenades reuse the shared meshes, and psychic powers and fists draw nothing.
 // Sounds reuse existing audio ids. Glossary entries for the team's rules come from the data records (game/glossary.ts).
 import type { TeamPresentation } from './types'
 
@@ -83,15 +83,6 @@ export const PRESENTATION: TeamPresentation = {
     'pm.w.blight-grenade-bombardier': ['e-frag-grenade'],
     'pm.w.krak-grenade-bombardier': ['e-krak-grenade'],
   },
-  standIns: [
-    'pm-plague-marine-champion',
-    'pm-plague-marine-bombardier',
-    'pm-plague-marine-fighter',
-    'pm-plague-marine-heavy-gunner',
-    'pm-plague-marine-icon-bearer',
-    'pm-malignant-plaguecaster',
-    'pm-plague-marine-warrior',
-  ],
   // Keywords and rule terms in our own wording (game/glossary.ts merges them over the generic fallbacks).
   glossary: [
     { term: 'CHAOS', kind: 'keyword', body: 'Allegiance keyword carried by every Plague Marine. No current rule names it, so it only identifies the operative.' },
