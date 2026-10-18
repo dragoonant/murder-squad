@@ -456,16 +456,18 @@ def author_hold(parts: dict[str, list[int]], clip: str) -> Pose:
         arm(shR, elR, hdR, -8.0, 40.0, -66.0, 74.0)
     elif clip == "hold-heavy":
         arm(shR, elR, hdR, -5.0, 30.0, -64.0, 70.0)
+    # melee: the forearm comes up in front, the hand counter-turns so the fist stays upright and the blade
+    # (mounted standing up from the fist by HOLDS) points at the sky
     elif clip in ("hold-melee1h", "hold-tool"):
-        arm(shL, elL, hdL, -15.0, -10.0, -70.0, 25.0)
+        arm(shL, elL, hdL, -15.0, -10.0, -70.0, 85.0)
     elif clip == "hold-melee2h":
-        arm(shL, elL, hdL, -28.0, -22.0, -62.0, 20.0)
+        arm(shL, elL, hdL, -24.0, -18.0, -64.0, 88.0)
     elif clip in ("support-rifle", "support-long"):
         arm(shL, elL, hdL, -58.0, -30.0, -30.0, 10.0)
     elif clip == "support-heavy":
         arm(shL, elL, hdL, -52.0, -26.0, -36.0, 14.0)
     elif clip == "support-melee2h":
-        arm(shR, elR, hdR, -40.0, 28.0, -50.0, 12.0)
+        arm(shR, elR, hdR, -36.0, 30.0, -56.0, 92.0)
     return p
 
 
