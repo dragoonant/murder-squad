@@ -1,29 +1,23 @@
 # Status
 
-Rewritten (not appended) as work lands. Orient from this file instead of exploring the codebase.
+Rewritten (not appended) as work lands. Orient from this file instead of exploring the codebase. Live: https://dragoonant.github.io/murder-squad/ (deploys from `main` on every green push). As of 2026-10-17 evening (`main` at M7): typecheck clean, 477 Vitest tests in 47 files, `validate:data` ok (23 files, 180 records), sim 40/40 real-team games with the normal AI and 0 violations, bench normal 40-0 vs random, Playwright 31 specs across chromium + 3 phone projects.
 
-## M1 — data (2026-10-17, commit c2edd48)
+## What exists
 | Area | State |
 |---|---|
-| Schemas | 10 JSON Schemas in `docs/spec/schemas/`, mirrored in `src/data/schema/`; `src/data/types.ts` mirror; `src/data/index.ts` `loadBundle()` (byId, teams, missions, layouts, weaponGroups). |
-| Teams | `src/data/teams/angels-of-death` (9 datacards, 26 weapons, 18 abilities incl. 8 Chapter Tactics, 8 ploys, 4 equipment) and `kommandos` (11 datacards, 24 weapons, 16 abilities, 8 ploys, 4 equipment); rosters via `selection.slots` with half-selections; loadouts via `fixed`/`options` (profile groups). |
-| Core | 23 weapon rules, 11 universal equipment, 2 grenades, Command Re-roll, 46 code-hook names in `src/data/code-hooks.json`. |
-| Missions / layouts | Preliminary Ops Secure/Loot/Transmission with maps `prelim-1`/`prelim-2` (drop zones, territories, centreline, kill-grade table 5..14); Volkus layouts `volkus-01..03` (14/16/14 pieces with traits, objective spots per map). |
-| Gates | `validate:data` ok (23 files, 180 records); `tests/data` 16 tests green. 11 RULING lines appended. |
+| Data (M1) | Angels of Death (9 datacards, 26 weapons, 18 abilities incl. 8 Chapter Tactics, 8 ploys, 4 equipment) and Kommandos (11, 24, 16, 8, 4); 23 weapon rules; 11 universal equipment + 2 grenades; Command Re-roll; Preliminary Ops Secure/Loot/Transmission with maps `prelim-1/2` and the kill-grade table; Volkus layouts `volkus-01..03`. 10 JSON Schemas, `tools/validate-data.ts`, 47 registered code hooks. |
+| Engine (M2) | `src/engine/`: contracts (00 §11 lists every addition), setup by thirds, strategy (initiative, CP, gambits), firefight (orders, AP, restrictions, counteract, Guard interrupts), movement (increments, climb/drop/jump, control-range rules), shoot (6 steps, cover save, obscured, blocks, Blast/Torrent, every weapon rule), fight (assist, alternating strike/block, Brutal/Shock/Stun), markers and control, Preliminary Ops scoring and kill grades, ploys/gambits, equipment incl. markers, abilities and both teams' rules via hook handlers, hidden Mines in `view`. Replay hashes verified in the sim. |
+| AI (M4) | `src/ai/`: random/easy/normal; threat map, activation planner over sampled end points, grid nav, shoot/fight scoring (`expectedDamage`, `killOdds`, `fightOutcome`), ploy heuristics, setup; Web Worker host with 3 s timeout and random fallback; `tools/ai-bench.ts` + `ai-match.ts`. Normal: 4.7 ms/decision, 0.2% zero-action activations. |
+| Client (M3, M7) | Start (seats, teams, mission, layout, map, seed, bot tier, mat, speed), Team Builder (slots, legal loadouts with reasons, equipment, team choices, randomise, 3D preview with attachments), Briefing, Battle (mat, terrain GLBs with Vantage plates and occlusion fade, markers, zones, operatives with attachments and rigid cues, corpses, HUD, activation bar with hover help, dedicated prompts for every decision kind with engine odds, dice tray, event feed, settings), End (VP by source, kill grades, play again, swap seats), `?gallery`, `?scenario=` fixtures, phone layout (compact HUD, bottom sheet, 44 px targets, rotate prompt, Home Screen manifest). First load about 174 KB gz; battle/builder/gallery/AI lazy. |
+| Figures (M5) | 20 MGSD bodies (`public/assets/models/bodies`, Gemini concepts -> Hunyuan3D on this PC and Alteisen), measured sockets in `manifest.json`; 31 attachments (`attachments/`) mapped to every weapon id (`attachmentFor.ts`), held by `HOLDS`; 8 terrain GLBs (`terrain/`) fitted to layout footprints; 6 floor mats (`public/assets/mats`). Models 30 MB, no meshopt yet. |
+| Audio (M6) | 82 mp3s (36 generated SFX, 12 narrator lines, 5 music tracks, 29 reused from Mallet) via the local Audio Studio; `AudioManager`, `eventSounds.ts` (52 weapon ids, 67 event types), music director (title, battle a/b, tense, victory/defeat), settings. **Not verified by ear.** |
+| Docs | `docs/spec/00..60`, `13-teams`, `14-golden-examples`, `docs/knowledge-base/*`, `docs/needs-rules-check.md` (81 RULING lines), `docs/audio.md`, `art/*/PROMPTS.md`. |
 
-## M5 — concepts (2026-10-17, commit b8345af)
-20 MGSD body concepts (9 Angels of Death, 11 Kommandos) from Gemini in `art/unit-concepts/` with `PROMPTS.md`; contact sheet `screenshots/concepts-bodies-v1.png`; all pass the proportion bar. Hunyuan body batches launched unattended: Kommandos on Alteisen (`E:\AI\work\murder-squad`), Angels of Death on this PC (`Hunyuan3D-2/outputs/ms-work`), output to `public/assets/models/bodies/`. Attachments (weapons/equipment) not yet concepted.
-
-## M6 — audio first batch (2026-10-17, commit f22261d)
-`tools/gen-audio.ts` drives the local Audio Studio (port 7890); `tools/audio-manifest.json` has 82 ids (36 generated SFX, 12 Qwen3-TTS narrator lines with a fixed seed, 5 ACE-Step music tracks, 29 Mallet sounds reused); `public/audio/*.mp3` + `trims.json` (0.16 RMS target; music/ambience 0.10); `public/sounds.html` audition page; `docs/audio.md`. Not verified by ear. Client wiring (manager, event sounds, music director) is M6b.
-
-## M0 — scaffold (2026-10-17)
-| Area | State |
-|---|---|
-| Build | Vite 8 + React 19 + TypeScript 7 strict, package `murder-squad`, ESM. Deps copied from Mallet 42k (three 0.186, R3F 9, drei 10, zustand 5; vitest 5, playwright 1.63, ajv, tsx, lamejs). |
-| Config | `vite.config.ts` (base `/murder-squad/` in prod, chunks react/three/r3f/engine), `tsconfig.json`, `playwright.config.ts` (chromium + iphone-se/iphone-pro/pixel projects, `PW_PORT`, `PW_BASE_URL`), `.claude/launch.json` (dev on 5190), `.gitattributes` (LF workflow scripts), `.gitignore` (secrets, PDFs, `docs/sources/`, outputs). |
-| Client | `src/main.tsx`, `src/client/App.tsx`: placeholder 30"x22" plane with a 1" grid, demand frameloop, `data-testid="title"`. |
-| Tests | `tests/engine/smoke.test.ts`; `tests/e2e/home.spec.ts`. `tools/{sim,ai-bench,validate-data}.ts` are placeholders. |
-| CI | `.github/workflows/deploy.yml`: typecheck, test, build, Pages on push to `main`. Pages enabled (workflow build type). |
-| Docs | `CLAUDE.md`, `PLAN.md`, `KICKOFF.md`, `HANDOFF.md`, `README.md`, `docs/knowledge-base/*` (8 entries + index), `docs/spec/` (being written). |
-| Sources (gitignored) | `docs/sources/`: Lite rules, core rules, killzones, missions, appendix (Wahapedia text), update logs, Approved Ops companion, universal equipment, team rules for Angels of Death, Kommandos, Pathfinders, Hierotek Circle, Novitiates. |
+## Known gaps
+- Approved Ops tac ops and the other six crit ops: card text unsourced; Preliminary Ops only.
+- Engine deviations logged as rulings: no `weapon.choice` for Rending/Punishing/Severe (best conversion applied), `fight.weapon` skipped with one melee weapon, Blast secondaries exclude the shooter, TERR-014 Cityfight not implemented.
+- AI does not score tac ops, grenades or most unique actions; equal-skill matches near 50% because Angels of Death beat Kommandos regardless of seat.
+- Art: choppa family shares one design at three scales; heavy bolter reads as a large rifle; hammer/power sword hang low; grenades tiny at the belt; no skeletal animation (M8).
+- Audio unverified by ear; `wpn-scoped-big-shoota` crest 5.0.
+- Manual objective/equipment placement is optional (`?place=manual` or the start-screen checkbox); default is auto.
+- One early commit (`ae22229`) carries a machine path in history.
