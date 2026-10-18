@@ -49,6 +49,19 @@
           1.32,
           0.112
         ]
+      },
+      "rigged": "bodies/rigged/aod-assault-intercessor-grenadier.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.292 valley)",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
+        ]
       }
     },
     "aod-assault-intercessor-sergeant": {
@@ -99,6 +112,19 @@
           0.011,
           1.37,
           0.184
+        ]
+      },
+      "rigged": "bodies/rigged/aod-assault-intercessor-sergeant.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.266 valley)",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
         ]
       }
     },
@@ -151,6 +177,19 @@
           1.32,
           0.246
         ]
+      },
+      "rigged": "bodies/rigged/aod-assault-intercessor-warrior.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.279 valley)",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
+        ]
       }
     },
     "aod-eliminator-sniper": {
@@ -201,6 +240,19 @@
           0.001,
           1.32,
           0.093
+        ]
+      },
+      "rigged": "bodies/rigged/aod-eliminator-sniper.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.248 default (no valley))",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
         ]
       }
     },
@@ -253,6 +305,19 @@
           1.47,
           0.132
         ]
+      },
+      "rigged": "bodies/rigged/aod-heavy-intercessor-gunner.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.291 default (no valley))",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
+        ]
       }
     },
     "aod-intercessor-gunner": {
@@ -304,6 +369,19 @@
           1.32,
           0.031
         ]
+      },
+      "rigged": "bodies/rigged/aod-intercessor-gunner.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.248 default (no valley))",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
+        ]
       }
     },
     "aod-intercessor-sergeant": {
@@ -354,6 +432,19 @@
           0.008,
           1.37,
           0.404
+        ]
+      },
+      "rigged": "bodies/rigged/aod-intercessor-sergeant.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.251 valley)",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
         ]
       }
     },
@@ -409,7 +500,7 @@
       },
       "rigged": "bodies/rigged/aod-intercessor-warrior.glb",
       "rig": {
-        "tool": "split-body.py + rig-clips.py (procedural 17-joint rig from sockets; UniRig pilot returned a 3-joint spine)",
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.275 valley)",
         "bones": 17,
         "clips": [
           "idle",
@@ -470,6 +561,19 @@
           1.42,
           0.09
         ]
+      },
+      "rigged": "bodies/rigged/aod-space-marine-captain.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.301 default (no valley))",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
+        ]
       }
     },
     "kom-bomb-squig": {
@@ -510,6 +614,19 @@
           -0.002,
           0.87,
           0.164
+        ]
+      },
+      "rigged": "bodies/rigged/kom-bomb-squig.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 11-joint biped rig from sockets, no arms; legs in |z-0.144|<0.175)",
+        "bones": 11,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
         ]
       }
     },
@@ -561,6 +678,19 @@
           0.0,
           1.47,
           0.116
+        ]
+      },
+      "rigged": "bodies/rigged/kom-boss-nob.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.415 valley)",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
         ]
       }
     },
@@ -616,7 +746,7 @@
       },
       "rigged": "bodies/rigged/kom-boy.glb",
       "rig": {
-        "tool": "split-body.py + rig-clips.py (procedural 17-joint rig from sockets; UniRig pilot returned a 3-joint spine)",
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.327 valley)",
         "bones": 17,
         "clips": [
           "idle",
@@ -677,6 +807,19 @@
           1.27,
           -0.062
         ]
+      },
+      "rigged": "bodies/rigged/kom-breacha-boy.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.357 valley)",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
+        ]
       }
     },
     "kom-burna-boy": {
@@ -727,6 +870,19 @@
           0.095,
           1.27,
           -0.239
+        ]
+      },
+      "rigged": "bodies/rigged/kom-burna-boy.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.342 valley)",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
         ]
       }
     },
@@ -779,6 +935,19 @@
           1.27,
           -0.066
         ]
+      },
+      "rigged": "bodies/rigged/kom-comms-boy.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.236 default (no valley))",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
+        ]
       }
     },
     "kom-dakka-boy": {
@@ -829,6 +998,19 @@
           0.006,
           1.27,
           0.326
+        ]
+      },
+      "rigged": "bodies/rigged/kom-dakka-boy.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.327 valley)",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
         ]
       }
     },
@@ -881,6 +1063,19 @@
           0.92,
           0.065
         ]
+      },
+      "rigged": "bodies/rigged/kom-grot.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.187 default (no valley))",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
+        ]
       }
     },
     "kom-rokkit-boy": {
@@ -931,6 +1126,19 @@
           -0.0,
           1.27,
           0.248
+        ]
+      },
+      "rigged": "bodies/rigged/kom-rokkit-boy.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.318 valley)",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
         ]
       }
     },
@@ -983,6 +1191,19 @@
           1.27,
           -0.027
         ]
+      },
+      "rigged": "bodies/rigged/kom-slasha-boy.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.321 default (no valley))",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
+        ]
       }
     },
     "kom-snipa-boy": {
@@ -1033,6 +1254,19 @@
           -0.005,
           1.27,
           0.13
+        ]
+      },
+      "rigged": "bodies/rigged/kom-snipa-boy.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint humanoid rig from sockets; arm cut |x|=0.316 default (no valley))",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
         ]
       }
     }

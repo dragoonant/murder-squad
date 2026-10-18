@@ -11,7 +11,7 @@ Updated 2026-10-17 (evening) by the kickoff session. Read `CLAUDE.md` first, the
 ## Next steps
 1. Finish M7 (see the agent brief in the session log / `STATUS.md` once it lands); rewrite `STATUS.md` with the final counts.
 2. Owner playtest round: collect feedback, fix, push.
-3. M8 skeletal animation: pilot done on `aod-intercessor-warrior` and `kom-boy` (branch `claude/upbeat-yalow-16548d`): UniRig failed on MGSD bodies (3-joint spine), the procedural soft-cut rig + clip set ships (`docs/spec/30-figures.md` section 7). Next: roll the two commands out to the other 18 bodies (bomb squig and grot need their own joint layouts), hold-class-specific shoot clips.
+3. M8 skeletal animation: pilot done on `aod-intercessor-warrior` and `kom-boy` (branch `claude/upbeat-yalow-16548d`): UniRig failed on MGSD bodies (3-joint spine), the procedural soft-cut rig + clip set ships (`docs/spec/30-figures.md` section 7). Roll-out done (2026-10-17 late): all 20 bodies rigged, the bomb squig with an arm-less biped layout (`split-body.py --layout`), the grot with the humanoid one; the arm cut is now anchored on the hand socket (spec 30 section 7.2). Next: hold-class-specific shoot clips, pose variants.
 4. M9+: Approved Ops tac ops (card text still unsourced), more teams by figure coverage (Pathfinders, Hand of the Archon, Hunter Clade, Plague Marines, Legionaries, Wyrmblade, Hearthkyn Salvagers), Gallowdark, multiplayer.
 5. Next project after polish: Boarding Actions (owner, week of 2026-10-19), reusing Mallet's engine and a shared Gallowdark set.
 
