@@ -47,14 +47,13 @@ const SOCKET_COLOR: Record<SocketName, string> = {
   head: '#ffffff',
 }
 
+let galleryScene: import('three').Scene | null = null
+
 function CameraPreset({ view, zoom }: { view: View; zoom: number }) {
   const camera = useThree((s) => s.camera)
   const scene = useThree((s) => s.scene)
-  // e2e / QC probes measure bones, socket groups and attachments through the scene graph
-  useEffect(() => {
-    const ms = (window.__ms ?? (window.__ms = {} as NonNullable<typeof window.__ms>)) as unknown as Record<string, unknown>
-    ms.scene = () => scene
-  }, [scene])
+  // e2e / QC probes measure bones, socket groups and attachments through the scene graph (published by Gallery)
+  galleryScene = scene
   const controls = useThree((s) => s.controls) as { target: { set(x: number, y: number, z: number): void }; update(): void } | null
   useEffect(() => {
     const q = new URLSearchParams(window.location.search)
@@ -165,6 +164,7 @@ export function Gallery() {
       ms.galleryView = () => ({ view, sockets, attTeam, attPage, animate, bones })
       ms.attachmentsLoaded = () => glbStats('attachments/').loaded
       ms.riggedLoaded = () => glbStats('bodies/rigged/').loaded
+      ms.scene = () => galleryScene
     }
     publish()
   }, [view, sockets, attTeam, attPage, animate, bones])

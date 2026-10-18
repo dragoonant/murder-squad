@@ -172,7 +172,8 @@ export function GlbBody({ body, spec, ranged, melee }: { body: BodyEntry; spec: 
             : [],
         )
       : []
-    return <SkinnedBody id={spec.animId!} obj={rigged.obj} clips={rigged.clips} sockets={sockets} flip={flip} mounts={mounts} bones={spec.bones} />
+    const holds = { ranged: placed.find((p) => p.spec.socket === 'handR')?.hold ?? null, melee: placed.find((p) => p.spec.socket === 'handL')?.hold ?? null }
+    return <SkinnedBody id={spec.animId!} obj={rigged.obj} clips={rigged.clips} sockets={sockets} flip={flip} mounts={mounts} bones={spec.bones} holds={holds} />
   }
   if (!obj) return <Procedural height={spec.height} baseRadius={spec.baseRadius} major={spec.major} minor={spec.minor} ranged={ranged} melee={melee} seatColor={spec.seatColor} dim={spec.dim} />
   return (

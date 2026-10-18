@@ -26,6 +26,11 @@ import numpy as np
 FPS = 30
 CLIP_LEN = {"idle": 2.4, "walk": 0.6, "shoot": 0.24, "melee": 0.38, "hit": 0.30, "death": 0.60}
 LOOPS = {"idle", "walk"}
+# Static hold poses (docs/spec/30-figures.md section 7.5): the client plays `hold-<class>` for the right-hand
+# ranged weapon and `hold-<class>` for the left-hand melee weapon (else `support-<class>` for the free left hand
+# under a two-handed gun) as the base layer, with the motion clips above converted to additive. `rest` is the
+# reference pose the client converts against. Each pose touches only the joints of the arm it poses.
+HOLD_CLIPS = ["rest", "hold-pistol", "hold-rifle", "hold-long", "hold-heavy", "hold-melee1h", "hold-melee2h", "hold-tool", "support-rifle", "support-long", "support-heavy", "support-melee2h"]
 
 COMPONENT = {5120: ("b", 1), 5121: ("B", 1), 5122: ("h", 2), 5123: ("H", 2), 5125: ("I", 4), 5126: ("f", 4)}
 NCOMP = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT4": 16}
@@ -372,10 +377,9 @@ def author(sk: Skeleton, parts: dict[str, list[int]], clip: str, t: float, lengt
         # the knee bends while its leg swings forward and straightens on the plant
         p.turn(kneeL, X, 32.0 * max(0.0, -s) ** 1.2)
         p.turn(kneeR, X, 32.0 * max(0.0, s) ** 1.2)
-        p.turn(shL, X, 16.0 * s)
-        p.turn(shR, X, -16.0 * s)
-        p.turn(elL, X, -10.0 * max(0.0, s))
-        p.turn(elR, X, -10.0 * max(0.0, -s))
+        # arms stay quiet (a small sway): the hands keep hold of the weapon posed by the hold clips
+        p.turn(shL, X, 4.0 * s)
+        p.turn(shR, X, -4.0 * s)
         p.turn(spine, X, 4.0)
         p.turn(spine, Y, 4.0 * s)
         p.turn(head, X, -3.0)
@@ -425,10 +429,51 @@ def author(sk: Skeleton, parts: dict[str, list[int]], clip: str, t: float, lengt
     return p
 
 
+def author_hold(parts: dict[str, list[int]], clip: str) -> Pose:
+    """A static arm pose. Angles about world axes at the rest pivot: for a hanging arm a negative X angle swings
+    the hand forward, the hand joint gets the opposite turn so the fist (and the grip in it) stays upright; about
+    Y, positive turns a raised right arm inward and a raised left arm outward."""
+    p = Pose()
+    shL, elL, hdL = pick(parts["armL"], 0), pick(parts["armL"], 1), pick(parts["armL"], 2)
+    shR, elR, hdR = pick(parts["armR"], 0), pick(parts["armR"], 1), pick(parts["armR"], 2)
+
+    def arm(sh, el, hd, sh_x: float, sh_y: float, el_x: float, hd_x: float, hd_y: float = 0.0) -> None:
+        p.turn(sh, X, sh_x)
+        p.turn(sh, Y, sh_y)
+        p.turn(el, X, el_x)
+        p.turn(hd, X, hd_x)
+        p.turn(hd, Y, hd_y)
+
+    # port-arms carries: the figures' arms are too short for a hand on the forestock of a 0.9" gun held straight
+    # out, so the right hand keeps the grip at the belly and the shoulder yaw (sh_y, about the world up axis)
+    # swings the barrel across the chest, where the support hand meets it in front of the body. A yaw on the hand
+    # itself would act about the forearm's rest axis, which after the elbow bend is a roll.
+    if clip == "hold-pistol":
+        arm(shR, elR, hdR, -48.0, 18.0, -14.0, 62.0)
+    elif clip == "hold-rifle":
+        arm(shR, elR, hdR, -12.0, 45.0, -70.0, 82.0)
+    elif clip == "hold-long":
+        arm(shR, elR, hdR, -8.0, 40.0, -66.0, 74.0)
+    elif clip == "hold-heavy":
+        arm(shR, elR, hdR, -5.0, 30.0, -64.0, 70.0)
+    elif clip in ("hold-melee1h", "hold-tool"):
+        arm(shL, elL, hdL, -15.0, -10.0, -70.0, 25.0)
+    elif clip == "hold-melee2h":
+        arm(shL, elL, hdL, -28.0, -22.0, -62.0, 20.0)
+    elif clip in ("support-rifle", "support-long"):
+        arm(shL, elL, hdL, -58.0, -30.0, -30.0, 10.0)
+    elif clip == "support-heavy":
+        arm(shL, elL, hdL, -52.0, -26.0, -36.0, 14.0)
+    elif clip == "support-melee2h":
+        arm(shR, elR, hdR, -40.0, 28.0, -50.0, 12.0)
+    return p
+
+
 def bake(sk: Skeleton, parts: dict[str, list[int]], clip: str) -> dict[int, dict[str, np.ndarray]]:
     """Per-joint local tracks: rotation (N,4) for every joint touched by the clip, translation (N,3) for the root."""
-    length = CLIP_LEN[clip]
-    n = int(round(length * FPS)) + 1
+    static = clip in HOLD_CLIPS
+    length = 0.1 if static else CLIP_LEN[clip]
+    n = 2 if static else int(round(length * FPS)) + 1
     times = np.linspace(0.0, length, n)
     root = parts["trunk"][0]
     touched: set[int] = set()
@@ -436,10 +481,13 @@ def bake(sk: Skeleton, parts: dict[str, list[int]], clip: str) -> dict[int, dict
     for t in times:
         if clip in LOOPS and t >= length:
             t = 0.0
-        pose = author(sk, parts, clip, t, length)
+        pose = author_hold(parts, clip) if static else author(sk, parts, clip, t, length)
         poses.append(pose)
         touched.update(pose.rot.keys())
-    touched.add(root)
+    if clip == "rest":
+        touched.update(sk.joints)
+    if not static or clip == "rest":
+        touched.add(root)
     tracks: dict[int, dict[str, np.ndarray]] = {}
     for j in touched:
         node = sk.gltf["nodes"][j]
@@ -480,8 +528,9 @@ def bake(sk: Skeleton, parts: dict[str, list[int]], clip: str) -> dict[int, dict
 
 def add_animations(gltf: dict, bin_chunk: bytearray, sk: Skeleton, parts: dict[str, list[int]]) -> list[str]:
     app = Appender(gltf, bin_chunk)
-    gltf["animations"] = [a for a in gltf.get("animations", []) if a.get("name") not in CLIP_LEN]
-    for clip in CLIP_LEN:
+    names = list(CLIP_LEN) + HOLD_CLIPS
+    gltf["animations"] = [a for a in gltf.get("animations", []) if a.get("name") not in names]
+    for clip in names:
         tracks = bake(sk, parts, clip)
         times = tracks.pop("_times")  # type: ignore[arg-type]
         t_acc = app.add(np.asarray(times).reshape(-1, 1), "SCALAR", minmax=True)
@@ -493,7 +542,7 @@ def add_animations(gltf: dict, bin_chunk: bytearray, sk: Skeleton, parts: dict[s
                 samplers.append({"input": t_acc, "output": out_acc, "interpolation": "LINEAR"})
                 channels.append({"sampler": len(samplers) - 1, "target": {"node": int(j), "path": path}})
         gltf["animations"].append({"name": clip, "samplers": samplers, "channels": channels})
-    return list(CLIP_LEN)
+    return names
 
 
 def unskin_base(gltf: dict, sk: Skeleton) -> str | None:

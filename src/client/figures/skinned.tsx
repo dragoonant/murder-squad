@@ -6,13 +6,42 @@
 // weapon follows the hand; the group handed to each attachment is the display frame moved to its socket.
 import { useMemo, useRef, type ReactNode } from 'react'
 import { createPortal, useFrame, useThree } from '@react-three/fiber'
-import { AnimationMixer, Bone, Group, LoopOnce, LoopRepeat, Matrix4, SkeletonHelper, Vector3, type AnimationAction, type AnimationClip, type Object3D } from 'three'
+import { AdditiveAnimationBlendMode, AnimationMixer, AnimationUtils, Bone, Group, LoopOnce, LoopRepeat, Matrix4, SkeletonHelper, Vector3, type AnimationAction, type AnimationClip, type Object3D } from 'three'
 import { animPosition } from '../presentation/animStore'
 import { CUE_MS, cueState, deathAge, deathMs, isWalking, type CueKind } from './cueCore'
-import type { SocketName, V3 } from './manifest'
+import type { HoldClass, SocketName, V3 } from './manifest'
 
 export const CLIP_NAMES = ['idle', 'walk', 'shoot', 'melee', 'hit', 'death'] as const
 export type ClipName = (typeof CLIP_NAMES)[number]
+
+/** Which weapons the figure holds: the base-layer pose is `hold-<ranged>` on the right arm and `hold-<melee>` on the
+ * left, else `support-<ranged>` (free left hand under a two-handed gun) or `support-melee2h` (right hand on a
+ * two-handed melee weapon). Missing clips are skipped: the arm keeps its rest pose. */
+export interface HoldPose {
+  ranged: HoldClass | null
+  melee: HoldClass | null
+}
+export function holdClipNames(h: HoldPose): string[] {
+  const out: string[] = []
+  if (h.ranged) out.push(`hold-${h.ranged}`)
+  if (h.melee) out.push(`hold-${h.melee}`)
+  else if (h.ranged) out.push(`support-${h.ranged}`)
+  if (h.melee === 'melee2h' && !h.ranged) out.push('support-melee2h')
+  return out
+}
+
+/** Motion clips are authored as deltas from the rest pose; converting them to additive (once per clip object) lets
+ * them stack on the hold pose instead of averaging with it. */
+const additiveDone = new WeakSet<AnimationClip>()
+function toAdditive(clips: AnimationClip[]): void {
+  const rest = clips.find((c) => c.name === 'rest')
+  if (!rest) return
+  for (const c of clips) {
+    if (!(CLIP_NAMES as readonly string[]).includes(c.name) || additiveDone.has(c)) continue
+    AnimationUtils.makeClipAdditive(c, 0, rest)
+    additiveDone.add(c)
+  }
+}
 
 /** Fraction of DEATH_MS the rigid topple spends falling (the rest sinks and fades); the death clip covers that part. */
 const DEATH_FALL = 0.6
@@ -73,7 +102,7 @@ interface Rig {
   groups: Partial<Record<SocketName, Group>>
 }
 
-function buildRig(obj: Object3D, clips: AnimationClip[], sockets: Partial<Record<SocketName, V3>>, frame: Matrix4): Rig {
+function buildRig(obj: Object3D, clips: AnimationClip[], sockets: Partial<Record<SocketName, V3>>, frame: Matrix4, holds: HoldPose): Rig {
   const bindings = bindSockets(obj, sockets, frame)
   const groups: Partial<Record<SocketName, Group>> = {}
   for (const [name, b] of Object.entries(bindings) as [SocketName, SocketBinding][]) {
@@ -86,10 +115,21 @@ function buildRig(obj: Object3D, clips: AnimationClip[], sockets: Partial<Record
   }
   const mixer = new AnimationMixer(obj)
   const actions: Partial<Record<ClipName, AnimationAction>> = {}
+  const additive = clips.some((c) => c.name === 'rest')
+  if (additive) toAdditive(clips)
+  // base layer: the static hold pose(s) for the weapons carried
+  for (const name of holdClipNames(holds)) {
+    const clip = clips.find((c) => c.name === name)
+    if (!clip) continue
+    const a = mixer.clipAction(clip)
+    a.setLoop(LoopRepeat, Infinity)
+    a.play()
+  }
   for (const name of CLIP_NAMES) {
     const clip = clips.find((c) => c.name === name)
     if (!clip) continue
     const a = mixer.clipAction(clip)
+    if (additive) a.blendMode = AdditiveAnimationBlendMode
     if (name === 'idle' || name === 'walk') {
       a.setLoop(LoopRepeat, Infinity)
       a.play()
@@ -124,14 +164,18 @@ export interface SkinnedBodyProps {
   walking?: boolean
   /** QC: draw the skeleton (gallery "bones" toggle) */
   bones?: boolean
+  /** the weapons carried, for the base-layer hold pose */
+  holds: HoldPose
 }
 
 const ramp = (t: number) => Math.min(1, t / ONESHOT_RAMP, (1 - t) / ONESHOT_RAMP)
 const smooth = (t: number) => t * t * (3 - 2 * t)
 
-export function SkinnedBody({ id, obj, clips, sockets, flip, mounts, walking, bones }: SkinnedBodyProps) {
+export function SkinnedBody({ id, obj, clips, sockets, flip, mounts, walking, bones, holds }: SkinnedBodyProps) {
   const frame = useMemo(() => new Matrix4().makeRotationY(flip ? Math.PI : 0), [flip])
-  const rig = useMemo(() => buildRig(obj, clips, sockets, frame), [obj, clips, sockets, frame])
+  const holdKey = holdClipNames(holds).join(',')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const rig = useMemo(() => buildRig(obj, clips, sockets, frame, holds), [obj, clips, sockets, frame, holdKey])
   const scene = useThree((s) => s.scene)
   // the helper draws in world space, so it lives at the scene root (a transformed parent would double the transform)
   const helper = useMemo(() => (bones ? new SkeletonHelper(obj) : null), [obj, bones])
