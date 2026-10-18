@@ -3,7 +3,7 @@
 // live `data` object of that hook, as documented there. Declarative effects (grantWeaponRule,
 // removeWeaponRule, modifyStat) are interpreted generically; the rest belong to a named rule.
 import { inflict } from './attack-common'
-import { providerStealthy } from './team-rules'
+import { providerStealthy, registerTeamRules } from './team-rules'
 import { ruleName } from './bundle'
 import { bodyOf, targetVerdict } from './los'
 import { distanceBetween, enemiesInControlRange } from './measure'
@@ -203,6 +203,26 @@ function tiltingActive(c: HookContext, foe: Operative): boolean {
   markFired('tiltingShields')
   return true
 }
+
+// ---------------------------------------------------------------------------
+// modifyStat move (M9 batch B shared fix): the declarative Move change, read by state.effectiveMove through the
+// provider moveDelta (the injured -2" and its 4" floor still apply there). `filter` is a weapon filter and does not
+// apply to Move; `when` is checked with the operative as the subject.
+// ---------------------------------------------------------------------------
+
+/** Net Move change in inches from declarative `modifyStat { stat: 'move' }` effects on the operative. */
+export function declarativeMoveDelta(state: GameState, op: Operative): number {
+  let d = 0
+  for (const s of sourcesFor(state, op)) {
+    const m = s.effect.modifyStat
+    if (!m || m.stat !== 'move') continue
+    if (s.when && !evalCondition(s.when, { state, seat: s.owner, subjectId: op.id, actorId: op.id, action: 'move' })) continue
+    d += m.value
+  }
+  return d
+}
+
+registerTeamRules({ id: 'core.modifyStat', moveDelta: declarativeMoveDelta })
 
 // ---------------------------------------------------------------------------
 // modifyAttackDice

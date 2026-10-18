@@ -19,11 +19,11 @@ import { addEffect, directDamage, gainCp, markUsedBattle, markUsedTp, regainWoun
 import { cancelAction, canStartFreeAction, finishAction, skipActivation, startFreeAction } from '../firefight'
 import { registerHook, type ActionDeclaredData, type AfterRollData, type DamageInflictedData, type GambitPassedData, type TargetStatusData } from '../hooks'
 import { baseUnderVantage, bodyOf, interveningTraits, visible } from '../los'
-import { distanceBetween, enemiesInControlRange, inControlRange } from '../measure'
+import { distanceBetween, enemiesInControlRange, inControlRange, markerInControlRange } from '../measure'
 import { registerPloyRule, type PloyOffer, type PloyRule } from '../ploy-rules'
 import type { Ctx } from '../registry'
-import { activeOps, enemiesOf, hasInjuredPenalty, otherSeat, SEATS } from '../state'
-import { providerAny, registerTeamRules } from '../team-rules'
+import { activeOps, effectiveApl, enemiesOf, hasInjuredPenalty, otherSeat, SEATS } from '../state'
+import { providerAny, providerControlApl, providerControlTotal, registerTeamRules } from '../team-rules'
 import { addToken, hasToken, removeToken, tokenCount, tokensOn } from '../tokens'
 import type { Activation, DiceSide, GameState, Operative, RerollGrant, Seat } from '../types'
 
@@ -125,10 +125,6 @@ function gap(a: Operative, b: Operative): number {
 
 function within(a: Operative, b: Operative, inches: number): boolean {
   return gap(a, b) <= inches + EPS
-}
-
-function visibleEither(state: GameState, a: Operative, b: Operative): boolean {
-  return visible(state, bodyOf(a), bodyOf(b)) || visible(state, bodyOf(b), bodyOf(a))
 }
 
 function d3(ctx: Ctx, purpose: string): number {
@@ -303,7 +299,8 @@ function stingerBurst(ctx: Ctx, fallenId: string, sourceId: string, seen: Set<st
   if (!fallen || seen.has(fallenId)) return
   seen.add(fallenId)
   for (const o of activeOps(s).filter((x) => x.id !== fallenId && live(x)).sort(byId)) {
-    if (!within(fallen, o, 2) || !visibleEither(s, fallen, o)) continue
+    // "each other operative visible to and within 2 inches of it": seen from the fallen operative
+    if (!within(fallen, o, 2) || !visible(s, bodyOf(fallen), bodyOf(o))) continue
     directDamage(ctx, o.id, d3(ctx, 'ha.stinger'), sourceId, 'ha.stinger')
     if (o.wounds <= 0) stingerBurst(ctx, o.id, sourceId, seen)
   }
@@ -790,6 +787,9 @@ registerHook(
 // Team rule provider
 // ---------------------------------------------------------------------------
 
+/** Re-entry guard: Brutal Display's controlTotal works out the enemy side's total through the same providers. */
+let brutalGuard = false
+
 const MISSION_FORBIDDEN = 'Brutal Display: it cannot pick up markers or perform mission actions until the next turning point'
 
 registerTeamRules({
@@ -831,11 +831,24 @@ registerTeamRules({
     markFired('haHypex')
     return 2
   },
-  controlApl(state, op, _marker, apl) {
-    // Brutal Display (T-HA.10): the marked enemy adds nothing to its side's control total
-    if (!hasToken(state, op.id, BRUTAL)) return null
-    void apl
-    return 0
+  controlTotal(state, seat, marker, total, contesting) {
+    // Brutal Display (T-HA.10): a cowed operative still contests (its APL counts, so it can deny the enemy and help
+    // friends), but it cannot be the one that controls: when every operative of its side on the marker is cowed, the
+    // side's total is held to the enemy's, so the best it can reach is a tie (nobody controls)
+    if (brutalGuard || contesting.length === 0 || !contesting.every((id) => hasToken(state, id, BRUTAL))) return null
+    const enemy = otherSeat(seat)
+    brutalGuard = true
+    try {
+      const foes = activeOps(state).filter((o) => o.seat === enemy && markerInControlRange(state, bodyOf(o), marker))
+      let theirs = 0
+      for (const o of foes) theirs += providerControlApl(state, o, marker, effectiveApl(o))
+      theirs = providerControlTotal(state, enemy, marker, theirs, foes.map((o) => o.id))
+      if (total <= theirs) return null
+      markFired('haBrutalDisplay')
+      return theirs
+    } finally {
+      brutalGuard = false
+    }
   },
   blockCapacity(state, attack, seat) {
     // Tangle (T-HA.12): each block of the razorflail's wielder cancels two successes
@@ -1083,7 +1096,7 @@ function invigorationFree(state: GameState, seat: Seat): boolean {
   return !!base && !usedKey(base, K.invigoration(seat))
 }
 
-function activationOffers(state: GameState, seat: Seat, info: Info): PloyOffer[] {
+function activationOffers(state: GameState, seat: Seat, info: Info, window: string): PloyOffer[] {
   const op = info.subjectId ? state.operatives[info.subjectId] : undefined
   if (!live(op) || op.seat !== seat || !isHa(state, op)) return []
   const out: PloyOffer[] = []
@@ -1096,8 +1109,9 @@ function activationOffers(state: GameState, seat: Seat, info: Info): PloyOffer[]
     }
     if (op.wounds < op.maxWounds) out.push(free('ha.inv.rejuvenation', `Accelerated Rejuvenation: ${op.name} (spend 1 Pain, regain D3+1 wounds)`, op, 'ha.inv.rejuvenation'))
   }
-  // From Darkness, Death: pick an enemy the operative could not be targeted by, as it is activated
-  if (info.counteracting !== true && ployActive(state, seat, ID.fromDarkness) && ownActivation(state, op) && !usedKey(base, 'ha.fdd:picked')) {
+  // From Darkness, Death: pick an enemy the operative could not be targeted by, as it is activated (only then: not
+  // after one of its actions)
+  if (window === 'firefight.activationStart' && info.counteracting !== true && ployActive(state, seat, ID.fromDarkness) && ownActivation(state, op) && !usedKey(base, 'ha.fdd:picked')) {
     const prev = (base.used ?? []).find((k) => k.startsWith('ha.prevOrder:'))?.slice('ha.prevOrder:'.length)
     const was = prev === 'engage' || prev === 'conceal' ? prev : op.order
     for (const e of enemiesOf(state, op).filter((x) => live(x)).sort(byId)) {
@@ -1208,7 +1222,7 @@ const HA_RULE: PloyRule = {
         return omenOffers(state, seat)
       case 'firefight.activationStart':
       case 'firefight.actionEnded':
-        return activationOffers(state, seat, i)
+        return activationOffers(state, seat, i, window)
       case 'operative.killed':
         return killedOffers(state, seat, i)
       case 'shoot.targetSelected':

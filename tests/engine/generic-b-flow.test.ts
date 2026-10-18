@@ -5,14 +5,18 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { step } from '@/engine'
 import { forcedReroll, rerollOptions } from '@/engine/attack-common'
-import { registerCodeHook } from '@/engine/code-hooks'
+import { hookFireCount, markFired, registerCodeHook } from '@/engine/code-hooks'
 import { grenadeSource } from '@/engine/core-hooks'
 import { joinActivation, reactionDone, skipActivation } from '@/engine/firefight'
 import { extraStrike } from '@/engine/fight'
-import { registerHook, unregisterHook, type AttackHookName, type HookName } from '@/engine/hooks'
+import { registerHook, runHook, unregisterHook, type AttackHookName, type HookName } from '@/engine/hooks'
 import { baseUnderVantage, interveningTraits } from '@/engine/los'
 import { bodyOf } from '@/engine/measure'
 import { applyForcedMove, forcedMoveSpots, planFly } from '@/engine/movement'
+import { abilityOffers } from '@/engine/abilities'
+import { expectedDamage } from '@/engine/query'
+import { effectiveMove } from '@/engine/state'
+import { beginTurningPoint } from '@/engine/strategy'
 import { ployRules, registerPloyRule } from '@/engine/ploy-rules'
 import { ScriptedRng } from '@/engine/rng'
 import { registerTeamRules, unregisterTeamRules, type TeamRuleProvider } from '@/engine/team-rules'
@@ -343,5 +347,137 @@ describe('GEN batch B flow capabilities', () => {
     expect(r.state.operatives[foe]!.wounds).toBe(st.operatives[foe]!.wounds - struck[0]!.amount)
     // the strike went through the victim's damage rules (here a Kommandos ploy that can ignore it)
     expect(struck[0]!.operativeId).toBe(w)
+  })
+})
+
+describe('GEN batch B shared fixes', () => {
+  it('GEN-064 per-turning-point use counts start again at the next turning point (Purity Seals works once per TP)', () => {
+    const s = edit(realGame({ equipmentA: ['aod.e.purity-seals'] }), (x) => {
+      x.ledger.A.tpUses = { 'aod.e.purity-seals': 1, 'aod.e.tilting-shields': 1, 'hie.e.tesla-weave': 1, 'limit:core.w.frag-grenade': 1 }
+      x.ledger.B.tpUses = { 'pf.e.high-intensity-markerlight': 2 }
+    })
+    const w = opOf(s, 'A', 'aod.intercessor-warrior')
+    const boy = opOf(s, 'B', 'kom.boy')
+    const fails = () => [1, 2, 6].map((v) => ({ value: v, kind: v === 6 ? ('crit' as const) : ('fail' as const), rerolled: false }))
+    const seal = (st: GameState, dice: ReturnType<typeof fails>) =>
+      withCtx(st, (ctx) => {
+        runHook('afterAttackRoll', { seat: 'A', state: ctx.state, engine: ctx, operativeId: w, targetId: boy, data: { kind: 'shoot', side: 'attack', targetId: boy, dice, requests: [], choices: {} } })
+      }).state
+    const spent = fails()
+    seal(s, spent)
+    expect(spent.map((d) => d.kind)).toEqual(['fail', 'fail', 'crit']) // used this TP
+    const next = withCtx(s, (ctx) => beginTurningPoint(ctx)).state
+    expect(next.ledger.A.tpUses).toEqual({})
+    expect(next.ledger.B.tpUses).toEqual({})
+    const again = fails()
+    const after = seal(next, again)
+    expect(again.map((d) => d.kind)).toEqual(['normal', 'fail', 'crit'])
+    expect(after.ledger.A.tpUses['aod.e.purity-seals']).toBe(1)
+  })
+
+  it('GEN-065 a declarative modifyStat move changes Move and honours its condition', () => {
+    const { s, w } = open()
+    const card = s.operatives[w]!.datacardId
+    const withRule = (when?: Record<string, unknown>) =>
+      edit(s, (x) => {
+        x.operatives[w]!.order = 'engage'
+        x.data.abilities['test.a.fleet'] = { id: 'test.a.fleet', kind: 'ability', name: 'Fleet', team: 'angels-of-death', effect: { modifyStat: { stat: 'move', value: 2 } }, ...(when ? { when } : {}), text: 't', source: 's' } as never
+        x.data.datacards[card] = { ...x.data.datacards[card]!, abilities: [...x.data.datacards[card]!.abilities, 'test.a.fleet'] }
+      })
+    const base = s.operatives[w]!.move
+    expect(effectiveMove(s.operatives[w]!, s)).toBe(base)
+    const fleet = withRule()
+    expect(effectiveMove(fleet.operatives[w]!, fleet)).toBe(base + 2)
+    const conceal = withRule({ order: 'conceal' })
+    expect(effectiveMove(conceal.operatives[w]!, conceal)).toBe(base) // the operative is on Engage
+    const hidden = edit(conceal, (x) => {
+      x.operatives[w]!.order = 'conceal'
+    })
+    expect(effectiveMove(hidden.operatives[w]!, hidden)).toBe(base + 2)
+  })
+
+  it('GEN-066 the attacker gets shoot.attackerDefenceRolled once the defence dice are final; the defender is not asked', () => {
+    const { s, w, boy } = open()
+    const ploy = (id: string, team: string) => ({ id, name: id, team, type: 'firefight', cost: 0, window: 'shoot.attackerDefenceRolled', effect: { cp: 1 }, text: 't', source: 's' })
+    let st = withPloy(withPloy(s, ploy('test.p.siphon', 'angels-of-death')), ploy('test.p.theirs', 'kommandos'))
+    st = edit(st, (x) => {
+      x.operatives[w]!.pos = { x: 0, y: 0, z: -4 }
+      x.operatives[boy]!.pos = { x: 0, y: 0, z: 4 }
+    })
+    st = take(activateOp(st, w), 'shoot').state
+    const rng = new ScriptedRng(Array(80).fill(4))
+    const seen: string[] = []
+    for (let i = 0; i < 40 && st.pending && st.pending.kind !== 'firefight.action'; i++) {
+      const p = st.pending
+      if (p.kind === 'ploy.firefight') seen.push(`${p.seat}:${p.window}:${p.options!.map((o) => o.id).join(',')}`)
+      let a = defaultAnswer(st)
+      if (p.kind === 'shoot.target') a = p.options!.find((o) => o.id === boy)?.action ?? a
+      st = expectOk(step(st, a, rng)).state
+    }
+    expect(seen.filter((x) => x.includes('attackerDefenceRolled'))).toEqual(['A:shoot.attackerDefenceRolled:test.p.siphon'])
+  })
+
+  it('GEN-067 firefight.actionDeclared also opens for Pick Up Marker (and mission actions), before the opponent window', () => {
+    const { s, w } = open()
+    const mine = { id: 'test.p.mine', name: 'MINE', team: 'angels-of-death', type: 'firefight', cost: 0, window: 'firefight.actionDeclared', effect: { cp: 1 }, text: 't', source: 's' }
+    const theirs = { ...mine, id: 'test.p.theirs', team: 'kommandos' }
+    const opp = { ...mine, id: 'test.p.opp', team: 'kommandos', window: 'firefight.opponentActionDeclared' }
+    const st = edit(withPloy(withPloy(withPloy(s, mine), theirs), opp), (x) => {
+      x.operatives[w]!.pos = { x: -3, y: 0, z: 0 }
+      x.markers.push({ id: 'p1', kind: 'equipment', pos: { x: -1.5, z: 0 }, owner: null, carriedBy: null, controller: null, pickable: true, equipmentId: 'test.pickable' })
+    })
+    const r = take(activateOp(st, w), 'marker:pickUp:p1')
+    expect(r.state.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'A', window: 'firefight.actionDeclared' })
+    expect(r.state.pending!.options!.map((o) => o.id)).toEqual(['test.p.mine'])
+    const after = passIt(r.state)
+    expect(after.state.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'B', window: 'firefight.opponentActionDeclared' })
+    const done = passIt(after.state)
+    expect(evs(done.events, 'MarkerPickedUp').map((e) => e.operativeId)).toEqual([w])
+    // other non-attack actions still go straight to the opponent's window
+    const guard = take(activateOp(st, w), 'guard')
+    expect(guard.state.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'B', window: 'firefight.opponentActionDeclared' })
+  })
+
+  it('GEN-068 an actionForbidden rule (and a barred action) removes Pick Up Marker from the offers', () => {
+    const { s, w } = open()
+    const st = edit(s, (x) => {
+      x.operatives[w]!.pos = { x: -3, y: 0, z: 0 }
+      x.markers.push({ id: 'p1', kind: 'equipment', pos: { x: -1.5, z: 0 }, owner: null, carriedBy: null, controller: null, pickable: true, equipmentId: 'test.pickable' })
+    })
+    expect(hasOption(activateOp(st, w), 'marker:pickUp:p1')).toBe(true)
+    provide({ actionForbidden: (_s, op, id) => (op.id === w && id === 'marker:pickUp' ? 'no picking up' : null) })
+    expect(hasOption(activateOp(st, w), 'marker:pickUp:p1')).toBe(false)
+    cleanups.pop()!()
+    // a barred action is left out when the offers are built (the pending options were built before the bar)
+    const t = activateOp(st, w)
+    const act = t.firefight.activation!
+    expect(abilityOffers(t, t.operatives[w]!, act).some((o) => o.id === 'marker:pickUp:p1')).toBe(true)
+    expect(abilityOffers(t, t.operatives[w]!, { ...act, barred: ['marker:pickUp'] }).some((o) => o.id === 'marker:pickUp:p1')).toBe(false)
+  })
+
+  it('GEN-069 shoot odds run the pure afterAttackRoll conversions (Grudge-style) per target, outside the fire counts', () => {
+    const { s, w, boy, grot } = open()
+    const st = edit(s, (x) => {
+      x.operatives[w]!.pos = { x: 0, y: 0, z: -4 }
+      x.operatives[boy]!.pos = { x: 0, y: 0, z: 4 }
+      x.operatives[grot]!.pos = { x: 3, y: 0, z: 4 }
+    })
+    const weapon = st.operatives[w]!.weapons.find((id) => st.data.weapons[id]?.type === 'ranged')!
+    const plain = expectedDamage(st, w, weapon, boy).mean
+    const plainGrot = expectedDamage(st, w, weapon, grot).mean
+    hook('afterAttackRoll', (c) => {
+      const d = c.data as { dice: { kind: string; used?: boolean }[] }
+      if (c.targetId !== boy) return null
+      for (const x of d.dice) if (x.kind === 'normal' && !x.used) x.kind = 'crit'
+      markFired('testConvert')
+      return null
+    })
+    const converted = expectedDamage(st, w, weapon, boy).mean
+    expect(converted).toBeGreaterThan(plain)
+    expect(hookFireCount('testConvert')).toBe(0)
+    // the conversion is per target: the other target keeps the plain odds (the outcome cache keys on it)
+    expect(expectedDamage(st, w, weapon, grot).mean).toBeCloseTo(plainGrot, 6)
+    cleanups.pop()!()
+    expect(expectedDamage(st, w, weapon, boy).mean).toBeCloseTo(plain, 6)
   })
 })

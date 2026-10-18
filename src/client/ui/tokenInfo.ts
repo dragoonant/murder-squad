@@ -19,8 +19,9 @@ export function tokenTip(t: OperativeToken): MarkerTip {
   const d = tokenDef(t.kind)
   const entry = lookupTerm(d.term)
   const expiry = (t.expires ?? []).map((e) => EXPIRY_TEXT[e]).filter(Boolean).join(' ')
+  const detail = d.detail?.(t.data)
   return {
     title: `${d.label} token${t.count > 1 ? ` x${t.count}` : ''} (${SEAT_NAME[t.owner]})`,
-    body: `${entry?.body ?? d.body}${expiry ? ` ${expiry}` : ''}`,
+    body: `${entry?.body ?? d.body}${detail ? ` ${detail}` : ''}${expiry ? ` ${expiry}` : ''}`,
   }
 }

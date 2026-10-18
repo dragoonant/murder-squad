@@ -423,7 +423,9 @@ export const scenarios: Record<string, () => void> = {
     engageWindow()
   },
   hkClimbingRigs() {
-    const s = hkOpen({ equipmentA: ['hk.e.climbing-rigs'] })
+    // a move in the warrior's own activation (the rigs work only there)
+    const open = hkOpen({ equipmentA: ['hk.e.climbing-rigs'] })
+    const s = activateOp(open, A(open, 'hk.warrior'))
     const w = s.operatives[A(s, 'hk.warrior')]!
     expect(providerMoveSurcharge(s, w, 'reposition', [], { horizontal: 2, accessible: 0, climb: 4, drop: 0 })).toBe(-2)
   },

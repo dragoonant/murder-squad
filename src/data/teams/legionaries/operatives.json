@@ -194,7 +194,7 @@
     "figure": {
       "archetype": "lg-butcher"
     },
-    "text": "A frenzied axeman: nobody helps the enemy against it, and it surges at foes near its brothers as their activations end.",
+    "text": "A frenzied axeman: foes fighting it get no help from their friends, and when an enemy's activation ends close by, it lunges into combat.",
     "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md section 7.2"
   },
   {

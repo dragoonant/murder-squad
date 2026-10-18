@@ -110,7 +110,7 @@
         "keyword": "TZEENTCH"
       }
     },
-    "text": "When a friendly TZEENTCH Legionary is activated: until its activation ends it has +1 APL but cannot perform any action more than once. A Warrior's mark cannot be changed by Infernal Pact this turning point.",
+    "text": "As a friendly TZEENTCH Legionary activates: +1 APL for this activation, but it may not repeat any action in it (no double Shoot or Fight). If it is a Warrior, Infernal Pact cannot change its mark this turning point.",
     "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md T-LG.33"
   },
   {
@@ -127,7 +127,7 @@
         "keyword": "NURGLE"
       }
     },
-    "text": "When a friendly NURGLE Legionary performing Shoot picks a valid target: until the action ends its ranged weapons have Piercing 1 against every enemy within 3 inches of it, secondary targets included.",
+    "text": "As a friendly NURGLE Legionary picks the target of a Shoot: for the rest of the action, any enemy within 3 inches of it (secondary targets included) is shot with Piercing 1.",
     "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md T-LG.34"
   },
   {
@@ -147,7 +147,7 @@
         "keyword": "SLAANESH"
       }
     },
-    "text": "In a friendly SLAANESH Legionary's activation, before or after an action: pick an enemy visible to and within 4 inches of it. It has -1 APL until the end of its next activation.",
+    "text": "During a friendly SLAANESH Legionary's activation, before or after one of its actions: an enemy it can see within 4 inches is entranced and has 1 less APL until its next activation is over.",
     "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md T-LG.35"
   },
   {
@@ -164,7 +164,7 @@
         "keyword": "LEGIONARY"
       }
     },
-    "text": "Warded Armour equipment, as a strategic gambit each turning point: pick a friendly Legionary; its Save becomes 2+ until the Ready step of the next Strategy phase.",
+    "text": "Warded Armour equipment, played as a strategic gambit each turning point: one friendly Legionary has a 2+ Save until the next Strategy phase's Ready step.",
     "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md T-LG.36"
   },
   {
@@ -181,7 +181,7 @@
         "keyword": "LEGIONARY"
       }
     },
-    "text": "Chaos Talismans equipment, as a strategic gambit each turning point: pick a Mark of Chaos. Until the end of the turning point, once in each activation, a friendly Legionary of that mark whose attack roll has two or more fails may take D3 damage to discard one fail and retain another as a normal success.",
+    "text": "Chaos Talismans equipment, played as a strategic gambit each turning point: name a Mark of Chaos. For the rest of the turning point, once per activation, a Legionary of that mark left with two or more failed attack dice may take D3 damage to throw one fail away and count another as a normal success.",
     "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md T-LG.38"
   }
 ]

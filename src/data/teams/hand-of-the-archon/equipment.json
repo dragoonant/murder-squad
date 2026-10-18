@@ -24,7 +24,7 @@
     "scope": "faction",
     "team": "hand-of-the-archon",
     "count": 1,
-    "text": "Up to twice per turning point, when a Hand of the Archon operative fights or retaliates and its melee weapon is chosen, that weapon has Lethal 5+ until the sequence ends. It costs no CP.",
+    "text": "Twice per turning point, once a Hand of the Archon operative fighting or retaliating has chosen its melee weapon, the blade can be venomed: Lethal 5+ until the end of that fight. No CP needed.",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.42"
   },
   {
@@ -33,7 +33,7 @@
     "scope": "faction",
     "team": "hand-of-the-archon",
     "count": 1,
-    "text": "Up to twice per turning point, when a Hand of the Archon operative performs Shoot and picks a shardcarbine, splinter cannon, splinter pistol, splinter rifle or stinger pistol, that weapon's Normal Dmg is 1 higher until the action ends. It costs no CP.",
+    "text": "Twice per turning point, a Hand of the Archon operative firing a shardcarbine, splinter cannon, splinter pistol, splinter rifle or stinger pistol in a Shoot may load refined toxins: +1 Normal Dmg for the rest of the action. No CP needed.",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.43"
   }
 ]

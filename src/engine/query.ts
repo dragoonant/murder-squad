@@ -96,6 +96,8 @@ import {
   weaponOf,
 } from './attack-common'
 import { classifyDie, faceDistribution } from './dice'
+import { withoutFireCounts } from './code-hooks'
+import { runHook, type AfterRollData } from './hooks'
 import type { Action, AttackDie, DiceSide, Operative, PendingDecision, RerollGrant } from './types'
 
 export interface ExpectedDamage {
@@ -148,9 +150,43 @@ function expandRerolls(
 
 const outcomeCache = new Map<string, AttackOutcome[]>()
 
-/** The retained (normal, crit) outcomes of an attack pool; they do not depend on the target, so they are cached. */
-function attackOutcomes(stats: ReturnType<typeof attackStats>, obscured: boolean): AttackOutcome[] {
+/** Changes after-roll rules make to a final attack pool (afterAttackRoll hooks run with no engine: Grudge). */
+type Convert = (dice: AttackDie[]) => void
+
+/**
+ * M9 batch B shared: the team conversions of a rolled attack pool, for the odds. The afterAttackRoll hooks run as in
+ * the Shoot (after re-rolls and the Accurate retains, before retention) with `data.query` set and no `engine`: a
+ * handler that needs the engine (a choice, an event, a ledger use) does nothing, so only pure dice conversions count.
+ * Returns the converter and a fingerprint of what it does to a probe pool (part of the outcome cache key), or null
+ * when no rule changes anything for this attacker, weapon and target.
+ */
+function conversionFor(state: GameState, attackerId: string, weaponId: string, targetId: string, obscured: boolean, stats: ReturnType<typeof attackStats>): { convert: Convert; key: string } | null {
+  const attacker = state.operatives[attackerId]
+  if (!attacker) return null
+  const convert: Convert = (dice) => {
+    const data: AfterRollData = { kind: 'shoot', side: 'attack', targetId, dice, requests: [], choices: {}, obscured, query: true }
+    withoutFireCounts(() =>
+      runHook('afterAttackRoll', { seat: attacker.seat, state, operativeId: attackerId, targetId, weaponId, data: data as unknown as Record<string, unknown> }),
+    )
+  }
+  const n = Math.max(1, stats.atk)
+  const probe = (): AttackDie[] => [
+    ...Array.from({ length: n }, (): AttackDie => ({ value: 6, kind: 'crit', rerolled: false })),
+    ...Array.from({ length: n }, (): AttackDie => ({ value: stats.need, kind: classifyDie(stats.need, stats.need, stats.lethal ?? undefined), rerolled: false })),
+    ...Array.from({ length: n }, (): AttackDie => ({ value: 1, kind: 'fail', rerolled: false })),
+  ]
+  const sig = (dice: AttackDie[]) => dice.map((d) => `${d.value ?? '-'}${d.kind[0]}${d.used ? 'u' : ''}`).join('')
+  const before = probe()
+  const after = probe()
+  convert(after)
+  const a = sig(after)
+  return a === sig(before) ? null : { convert, key: a }
+}
+
+/** The retained (normal, crit) outcomes of an attack pool; without conversions they do not depend on the target, so they are cached. */
+function attackOutcomes(stats: ReturnType<typeof attackStats>, obscured: boolean, conv: { convert: Convert; key: string } | null = null): AttackOutcome[] {
   const key = [
+    conv?.key ?? '',
     stats.atk,
     stats.accurate,
     stats.need,
@@ -163,13 +199,13 @@ function attackOutcomes(stats: ReturnType<typeof attackStats>, obscured: boolean
   ].join('|')
   const hit = outcomeCache.get(key)
   if (hit) return hit
-  const out = computeOutcomes(stats, obscured)
+  const out = computeOutcomes(stats, obscured, conv?.convert)
   if (outcomeCache.size > 300) outcomeCache.clear()
   outcomeCache.set(key, out)
   return out
 }
 
-function computeOutcomes(stats: ReturnType<typeof attackStats>, obscured: boolean): AttackOutcome[] {
+function computeOutcomes(stats: ReturnType<typeof attackStats>, obscured: boolean, convert?: Convert): AttackOutcome[] {
   const rolled = stats.atk - stats.accurate
   const acc = new Map<string, AttackOutcome>()
   for (const o of faceDistribution(rolled)) {
@@ -182,6 +218,7 @@ function computeOutcomes(stats: ReturnType<typeof attackStats>, obscured: boolea
       const side: DiceSide = newSide('A', 'x', 'w', stats.need, stats.lethal, [])
       side.dice = final.map((d) => ({ ...d }))
       pushRetained(side, stats.accurate, 'normal', 'accurate')
+      convert?.(side.dice)
       const r = retainAttack(side, stats.rules, obscured)
       const c = countKinds(side.dice)
       const key = `${c.normal}|${c.crit}|${r.critRetained}`
@@ -213,7 +250,7 @@ function oneStatus(
   const dist = new Map<number, number>()
   const add = (dmg: number, p: number) => dist.set(dmg, (dist.get(dmg) ?? 0) + p)
   const defCache = new Map<string, { normal: number; crit: number; p: number }[]>()
-  for (const ao of attackOutcomes(stats, obscured)) {
+  for (const ao of attackOutcomes(stats, obscured, conversionFor(state, attackerId, weaponId, targetId, obscured, stats))) {
     const ds = defenceStats(state, targetId, attackerId, weaponId, stats.rules, ao.critRetained)
     let retained = 0
     let retainedCrit = false

@@ -940,8 +940,9 @@ const LG_RULE = {
         for (const m of pickAlternatives(state, subject, MARK)) out.push(offer(`${PACT}:${m}`, `Infernal Pact: ${m}`, 'lg.pact', subject, m))
       }
     }
-    // ---- Siphon Life, after the dice are rolled and before they resolve (T-LG.12)
-    if ((window === 'shoot.attackRolled' || window === 'fight.rolled') && a && !usedThisTp(state, seat, SIPHON_TP) && !opEffect(state, SIPHON, subject.id)) {
+    // ---- Siphon Life, at the start of the Resolve Attack Dice step (T-LG.12): for a Shoot once the defence dice are
+    //      final (the attacker's shoot.attackerDefenceRolled window), for a Fight once both rolls are final
+    if ((window === 'shoot.attackerDefenceRolled' || window === 'fight.rolled') && a && !usedThisTp(state, seat, SIPHON_TP) && !opEffect(state, SIPHON, subject.id)) {
       const weaponId = a.kind === 'shoot' ? (a.operativeId === subject.id ? a.weaponId : null) : (sideOf(state, subject.id)?.weaponId ?? null)
       const w = weaponId ? state.data.weapons[weaponId] : undefined
       if (w && hasRule(w.rules, 'siphonlife')) {

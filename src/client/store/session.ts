@@ -3,7 +3,7 @@
 import { create } from 'zustand'
 import type { Seat } from '@/engine'
 import { dataBundle, type SeatBuild } from '../game/adapter'
-import { defaultBuild, layoutList, missionList, resolveLayout, resolveMission, resolveTeam, teamList } from '../game/defaults'
+import { defaultBuild, fullBuild, layoutList, missionList, resolveLayout, resolveMission, resolveTeam, teamList } from '../game/defaults'
 import type { SeatMode, UrlParams } from '../params'
 import { getBotTier, setBotTier, type BotTier } from '../bot/botTier'
 import { getMatPref, setMatPref } from '../board/mats'
@@ -145,7 +145,7 @@ export function startFromParams(p: UrlParams): void {
     // dev fixtures load on demand so they never weigh on the menus
     const name = p.scenario
     void import('../dev/scenarios').then(({ buildScenario }) => {
-      useSession.setState({ seats: { A: 'human', B: 'human' }, builds: { A: defaultBuild(b, resolveTeam(b, 'aod')), B: defaultBuild(b, resolveTeam(b, 'kom')) }, layoutId: resolveLayout(b, '01').id, mapId: 'prelim-1', missionId: resolveMission(b, 'secure').id, seed: p.seed ?? `scenario-${name}` })
+      useSession.setState({ seats: { A: 'human', B: 'human' }, builds: { A: fullBuild(b, resolveTeam(b, 'aod')), B: fullBuild(b, resolveTeam(b, 'kom')) }, layoutId: resolveLayout(b, '01').id, mapId: 'prelim-1', missionId: resolveMission(b, 'secure').id, seed: p.seed ?? `scenario-${name}` })
       useSession.getState().launch((state) => buildScenario(name, state))
     })
     return

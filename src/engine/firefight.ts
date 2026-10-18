@@ -1233,6 +1233,9 @@ function handleAction(state: GameState, action: Action): Handled {
         const mission = (s.data.abilities[offer.abilityId]?.keywords ?? []).includes('MISSION')
         consumeDiscounts(s, o, a, id === PICK_UP ? 'pick-up-marker' : id === PLACE ? 'place-marker' : offer.abilityId, mission)
         if (declaredVeto(ctx, o, id, a.frame !== undefined)) return
+        // M9 batch B shared: the active player's firefight.actionDeclared window also opens for Pick Up Marker and
+        // mission actions (Scrapcode Overload, a counteracting Infiltrator included); resumes at the opponent's window
+        if ((id === PICK_UP || mission) && openFirefightWindow(ctx, 'firefight.actionDeclared', { subjectId: o.id, counteracting: a.counteract, action: id }, 'declared')) return
         declaredOpponentWindow(ctx)
       },
     }

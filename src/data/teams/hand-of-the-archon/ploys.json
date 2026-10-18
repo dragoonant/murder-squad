@@ -72,7 +72,7 @@
       "params": { "fallBackDelta": -1 },
       "scope": { "side": "friendly", "keyword": "HAND OF THE ARCHON" }
     },
-    "text": "During a Hand of the Archon operative's activation, before or after an action: for the rest of that activation it can Fall Back for 1 AP less.",
+    "text": "During a friendly Hand of the Archon operative's activation, before or after one of its actions: for the rest of that activation its Fall Back costs 1 AP less.",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.36"
   },
   {
@@ -110,7 +110,7 @@
       "params": { "reroll": "any" },
       "scope": { "side": "friendly", "keyword": "HAND OF THE ARCHON" }
     },
-    "text": "After rolling attack dice for a Hand of the Archon operative that is shooting or fighting a wounded enemy, re-roll any of those dice.",
+    "text": "Once the attack dice are rolled for a Hand of the Archon operative shooting or fighting an enemy that has lost wounds, re-roll as many of them as you like.",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.39"
   }
 ]

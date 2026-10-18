@@ -256,6 +256,13 @@ export interface AfterRollData {
   /** push { id, seat, labelKey, options } to ask a player something; the answer arrives in `choices[id]` */
   requests: ChoiceRequest[]
   choices: Record<string, string>
+  /** M9 batch B shared: the shoot target is obscured in this sequence (read this, not state.attack, so the odds agree) */
+  obscured?: boolean
+  /**
+   * M9 batch B shared: query.* is running the hook on hypothetical dice for the odds (no `engine`): convert dice only,
+   * never touch state, ask nothing
+   */
+  query?: boolean
 }
 
 export interface ChoiceRequest {

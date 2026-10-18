@@ -649,7 +649,8 @@ describe('TEAM-HK Hearthkyn Salvagers: equipment', () => {
     const trial = (opts: Parameters<typeof hkOpen>[0], tweak?: (st: GameState) => void) => {
       const s = withTerrain(hkOpen(opts), hill)
       const w = A(s, 'hk.warrior')
-      const lay = edit(place(s, w, 0, 0), tweak ?? (() => undefined))
+      // planned inside the warrior's own activation (the rigs only work there)
+      const lay = edit(activateOp(place(s, w, 0, 0), w), tweak ?? (() => undefined))
       return planMove(lay, lay.operatives[w]!, 'reposition', [{ x: -3, z: 0, y: 3 }]).ok
     }
     expect(trial({})).toBe(false)

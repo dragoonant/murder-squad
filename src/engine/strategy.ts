@@ -31,7 +31,12 @@ export function beginTurningPoint(ctx: Ctx): void {
     if (op.actionsThisTp) op.actionsThisTp = []
   }
   // M2b-game: per-TP ledgers, transmitting, Harpoon and "until the start of the next TP" effects reset
-  for (const seat of SEATS) s.ledger[seat].tp = []
+  // M9 batch B shared fix: per-TP use counts (Purity Seals, Tilting Shields, Tesla Weave, Magnification Conduits, Phase
+  // Shifter, the High-Intensity Markerlight and team-limited weapons) start again too; only `limit:` keys reset before
+  for (const seat of SEATS) {
+    s.ledger[seat].tp = []
+    s.ledger[seat].tpUses = {}
+  }
   removeEffects(ctx, (e) => e.expires === 'turningPointStart')
   restoreTurningPointWeapons(s)
   onTurningPointStart(ctx)

@@ -14,7 +14,7 @@
     "name": "RIFLES",
     "team": "hand-of-the-archon",
     "scope": { "side": "friendly", "keyword": "HAND OF THE ARCHON" },
-    "text": "A splinter rifle has Accurate 1 while its bearer shoots in an activation in which it has not made a Charge, Fall Back or Reposition. Doing those after shooting is still fine.",
+    "text": "Splinter rifles have Accurate 1 for a shooter that has not yet made a Charge, Fall Back or Reposition in the current activation; making one of those after the shot is allowed.",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.31"
   },
   {
@@ -23,7 +23,7 @@
     "name": "Tangle",
     "team": "hand-of-the-archon",
     "weaponRule": { "param": "none" },
-    "text": "While fighting or retaliating with this weapon, each of your blocks may cancel two of the enemy's unresolved successes instead of one.",
+    "text": "The razorflail tangles weapons: while its wielder fights or retaliates with it, each of its blocks may cancel up to two of the opponent's unresolved successes.",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.12"
   },
   {
@@ -32,7 +32,7 @@
     "name": "Stinger",
     "team": "hand-of-the-archon",
     "weaponRule": { "param": "none" },
-    "text": "When an enemy is incapacitated by this weapon, before it is removed, every other operative (friend or foe) that can see it within 2 inches takes D3 damage, rolled separately. Any operative incapacitated by this damage bursts in the same way.",
+    "text": "An enemy killed by this weapon bursts before it is removed: every other operative within 2 inches that it can see, friend or foe, takes its own D3 damage roll. Anyone the burst kills bursts the same way.",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.13"
   },
   {
@@ -41,7 +41,7 @@
     "name": "Flay",
     "team": "hand-of-the-archon",
     "weaponRule": { "param": "none" },
-    "text": "The first time in a fight that the wielder strikes with a critical success using this weapon, you may pick a friendly Hand of the Archon operative within 6 inches of it (itself included) to gain a Pain token.",
+    "text": "On the wielder's first critical strike in a fight with this weapon, a friendly Hand of the Archon operative of your choice within 6 inches of it (the wielder included) takes a Pain token.",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.21"
   },
   {
@@ -49,7 +49,7 @@
     "kind": "ability",
     "name": "Cunning",
     "team": "hand-of-the-archon",
-    "text": "In the Gambit step, if the Archsybarite is in the killzone and you pass at the first opportunity, you gain 1 CP. A gambit from the mission pack used first does not spoil it; a team strategy ploy used first does.",
+    "text": "Each Gambit step, while the Archsybarite is on the killzone, passing with your very first decision earns 1 CP. Mission-pack gambits used before that pass are ignored; a team strategy ploy is not.",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.7"
   },
   {
@@ -57,7 +57,7 @@
     "kind": "ability",
     "name": "Torturous Vision",
     "team": "hand-of-the-archon",
-    "text": "Once in each of its own activations, if the Archsybarite holds no Pain token when it performs Shoot or Fight, it can gain one as the target (or the enemy to fight) is chosen.",
+    "text": "In each of its own activations, the first time the Archsybarite goes to Shoot or Fight holding no Pain token, it may take one as it picks its target or opponent.",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.8"
   },
   {
@@ -65,7 +65,7 @@
     "kind": "ability",
     "name": "Sadistic Competition",
     "team": "hand-of-the-archon",
-    "text": "Once per turning point, when a friendly Hand of the Archon operative gains a Pain token, one friendly Agent that holds none gains one too (the engine picks the closest).",
+    "text": "Once per turning point, as any friendly Hand of the Archon operative gains a Pain token, an Agent holding none gets one too (the engine picks the closest).",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.9"
   },
   {
@@ -73,7 +73,7 @@
     "kind": "ability",
     "name": "Brutal Display",
     "team": "hand-of-the-archon",
-    "text": "Once per turning point, when the Duellist incapacitates an enemy within its control range, pick another enemy that is visible to and within 6 inches of the Duellist or of the fallen enemy. Until the next turning point starts it cannot control markers or perform Pick Up Marker or mission actions.",
+    "text": "Once per turning point, a kill the Duellist makes on an enemy inside its control range cows a second enemy that it or the victim can see within 6 inches. Until the next turning point begins, that enemy can contest but never control a marker, and cannot pick markers up or take mission actions.",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.10"
   },
   {
@@ -92,7 +92,7 @@
     "ap": 1,
     "conditions": { "notInEnemyControlRange": true },
     "effect": { "code": "haTormentGrenade", "params": { "range": 6, "area": 1, "damage": "D3" } },
-    "text": "Pick an enemy the Disciple can see within 6 inches. That enemy and every other operative within 1 inch of it, friend or foe, takes a poison test: roll a D6, adding 1 if its Save is 4+ or worse; on a 3 or more it takes D3 damage and gains one of your Poison tokens if it has none. A Poison-token holder takes D3 damage whenever it is activated. Not usable inside an enemy control range.",
+    "text": "Throw at an enemy the Disciple can see within 6 inches. The enemy and everyone else within 1 inch of it, friends included, rolls a D6 (+1 for a Save of 4+ or worse): on 3 or more it takes D3 damage and, if it has none, one of your Poison tokens. Poison deals D3 each time its holder is activated. Not usable inside an enemy control range.",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.14"
   },
   {
@@ -110,7 +110,7 @@
     "name": "Painbringer",
     "team": "hand-of-the-archon",
     "choiceGroup": "ha-combat-drug",
-    "text": "COMBAT DRUG. Whenever one attack die would inflict 3 or more damage on this operative, roll a D6; on a 6 that die's damage is reduced by 1.",
+    "text": "COMBAT DRUG. A single attack die that would deal this operative 3 or more damage is rolled against: on a D6 of 6 it deals 1 less.",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.16"
   },
   {
@@ -139,7 +139,7 @@
     "ap": 1,
     "conditions": { "notInEnemyControlRange": true },
     "effect": { "code": "haAdministerDrug", "params": { "range": 3, "heal": "2D3" } },
-    "text": "Pick a friendly Hand of the Archon operative that the Elixicant can see within 3 inches (itself included). Either it regains up to 2D3 lost wounds, or its combat drug is replaced by a different one for the rest of the battle. Not usable inside an enemy control range.",
+    "text": "Treat a friendly Hand of the Archon operative the Elixicant can see within 3 inches (or itself): heal it by up to 2D3, or switch its combat drug to another one for the rest of the battle. Not usable inside an enemy control range.",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.19"
   },
   {
@@ -174,7 +174,7 @@
     "ap": 1,
     "conditions": { "notInEnemyControlRange": true },
     "effect": { "code": "haMarkAction", "params": { "ruleGranted": "core.wr.seek-light" } },
-    "text": "Pick an enemy the Assassin can see. Until the end of the turning point, when the Assassin shoots it, its ranged weapons have Seek Light and the enemy cannot be obscured. Not usable inside an enemy control range.",
+    "text": "Mark an enemy the Assassin can see. For the rest of the turning point, the Assassin's ranged weapons have Seek Light against it and it is never obscured to the Assassin. Not usable inside an enemy control range.",
     "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md T-HA.24"
   }
 ]

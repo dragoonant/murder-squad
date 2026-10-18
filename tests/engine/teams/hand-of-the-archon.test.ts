@@ -140,7 +140,7 @@ describe('TEAM-HA Hand of the Archon', () => {
     expect(painOf(own.state, agents[1]!)).toBe(1)
   })
 
-  it('TEAM-HA-006 Brutal Display: after a kill in its control range the Duellist cows a second enemy until the next turning point (no marker control, no mission actions)', () => {
+  it('TEAM-HA-006 Brutal Display: after a kill in its control range the Duellist cows a second enemy until the next turning point (it contests but never controls, no mission actions)', () => {
     const s0 = openHa()
     const duel = A(s0, 'crimson-duellist')
     const boy = B(s0, 'boy')
@@ -158,8 +158,24 @@ describe('TEAM-HA Hand of the Archon', () => {
     expect(tokenCount(t, comms, BRUTAL)).toBe(0)
     // the cowed enemy adds nothing to marker control and cannot Pick Up Marker or perform a mission action
     const m = t.markers.find((k) => k.kind === 'objective')!
-    const near = put(t, { [grot]: [m.pos.x, m.pos.z] })
+    // (the Grot never contests markers, so the control check uses a cowed Nob: same token, same rule)
+    const nob = B(t, 'boss-nob')
+    const cowed = edit(t, (st) => {
+      st.operatives[nob]!.tokens = [...(st.operatives[nob]!.tokens ?? []), { ...st.operatives[grot]!.tokens!.find((k) => k.kind === BRUTAL)! }]
+    })
+    const near = put(cowed, { [nob]: [m.pos.x + 0.9, m.pos.z], [duel]: [m.pos.x - 10, m.pos.z - 6] })
+    expect(markerControl(near, m).contesting.B).toEqual([nob])
     expect(markerControl(near, m).apl.B).toBe(0)
+    expect(markerControl(near, m).controller).toBeNull()
+    // it still contests: alone against an Agent it only denies the marker (APL 3 held to a tie with 2), and beside an
+    // unmarked friend its APL still counts, so the friend controls (3 + 2 against 2)
+    const agent = A(t, 'agent')
+    const denied = put(near, { [agent]: [m.pos.x - 0.9, m.pos.z] })
+    expect(markerControl(denied, m).apl).toEqual({ A: 2, B: 2 })
+    expect(markerControl(denied, m).controller).toBeNull()
+    const helped = put(denied, { [comms]: [m.pos.x, m.pos.z + 0.9] })
+    expect(markerControl(helped, m).apl.B).toBe(5)
+    expect(markerControl(helped, m).controller).toBe('B')
     expect(providerActionForbidden(t, t.operatives[grot]!, 'marker:pickUp')).toMatch(/Brutal Display/)
     expect(providerActionForbidden(t, t.operatives[grot]!, 'ability:core.a.secure')).toMatch(/Brutal Display/)
     expect(providerActionForbidden(t, t.operatives[grot]!, 'dash')).toBeNull()
@@ -654,7 +670,7 @@ describe('TEAM-HA Hand of the Archon', () => {
     expect(s.players.A.cp).toBeLessThan(plain.players.A.cp)
   })
 
-  it('TEAM-HA-026 From Darkness, Death offers only enemies that cannot target the operative and turns a normal into a crit at the first sequence; Denizens of Night re-rolls one defence die at range under cover', () => {
+  it('TEAM-HA-026 From Darkness, Death offers (only as the operative activates) enemies that cannot target the operative and turns a normal into a crit at the first sequence; Denizens of Night re-rolls one defence die at range under cover', () => {
     const wall = { id: 'ha-light', parts: [{ id: 'ha-light.a', footprint: [{ x: 0.9, z: -2 }, { x: 1.2, z: -2 }, { x: 1.2, z: 2 }, { x: 0.9, z: 2 }], height: 1, traits: ['light' as const] }] }
     const s0 = openWithGambits(['ha.p.from-darkness-death', 'ha.p.denizens-of-night'])
     const agent = A(s0, 'agent')
@@ -673,6 +689,10 @@ describe('TEAM-HA Hand of the Archon', () => {
     const fdd = w.pending!.options!.map((o) => o.id).filter((id) => id.startsWith('ha.fdd:'))
     expect(fdd).toContain(`ha.fdd:${boy}`)
     expect(fdd).not.toContain(`ha.fdd:${nob}`)
+    // only as it is activated: never offered after one of its actions
+    const fddAt = (win: string) => offersFor(w, 'A', win, { window: win, subjectId: agent }).filter((o) => o.id.startsWith('ha.fdd:')).length
+    expect(fddAt('firefight.activationStart')).toBeGreaterThan(0)
+    expect(fddAt('firefight.actionEnded')).toBe(0)
     let u = take(w, `ha.fdd:${boy}`, rng).state
     u = passIt(u, rng).state
     // the first sequence against the Boy: a choice to retain one normal as a crit

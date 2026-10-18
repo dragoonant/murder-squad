@@ -21,6 +21,10 @@ interface UiState {
   deployOp: string | null
   waypoints: Waypoint[]
   jumpNext: boolean
+  /** oval bases: the facing (radians) the base turns to at the end of a move or is set up at; null keeps the engine's default */
+  facing: number | null
+  /** FLY (Jump Pack): the next click sets the operative up there instead of adding a path step */
+  fly: boolean
   hover: Pt | null
   /** verdict of the current hover position for deploy: ok flag + engine reason */
   hoverNote: { ok: boolean; text: string } | null
@@ -43,6 +47,8 @@ export const useUi = create<UiState>((set) => ({
   deployOp: null,
   waypoints: [],
   jumpNext: false,
+  facing: null,
+  fly: false,
   hover: null,
   hoverNote: null,
   drawer: null,
@@ -51,6 +57,6 @@ export const useUi = create<UiState>((set) => ({
   set: (p) => set(p),
   togglePanel: (k) => set((s) => ({ panels: { ...s.panels, [k]: !s.panels[k] } })),
   toggleDrawer: (id) => set((s) => ({ drawer: s.drawer === id ? null : id })),
-  resetPath: () => set({ waypoints: [], jumpNext: false }),
+  resetPath: () => set({ waypoints: [], jumpNext: false, facing: null, fly: false }),
   requestCamera: (id) => set((s) => ({ cameraPreset: { id, nonce: (s.cameraPreset?.nonce ?? 0) + 1 } })),
 }))

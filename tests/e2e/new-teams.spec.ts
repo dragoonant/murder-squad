@@ -1,4 +1,5 @@
-// The four M9 teams in a real battle through the client: each one (played by the normal AI in the bot seat) meets an
+// The eight M9 teams (batch A: Pathfinders, Hierotek Circle, Plague Marines, Wyrmblade; batch B: Legionaries, Hand of the
+// Archon, Hunter Clade, Hearthkyn Salvagers) in a real battle through the client: each one (played by the normal AI in the bot seat) meets an
 // existing team (played by the random bot through the human seat's auto-step), the game runs to turning point 3 without
 // page errors or error toasts, and the battle is screenshotted to tools/out/screens/<team>.png. Wyrmblade also checks
 // the HIDING control at set-up and the tray of hidden operatives (both seats' hidden operatives show: open information).
@@ -7,7 +8,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { screenshotRendered } from './helpers'
 
 const OLD_TEAMS = ['aod', 'kom']
-const NEW_TEAMS = ['pathfinders', 'hierotek-circle', 'plague-marines', 'wyrmblade'] as const
+const NEW_TEAMS = ['pathfinders', 'hierotek-circle', 'plague-marines', 'wyrmblade', 'legionaries', 'hand-of-the-archon', 'hunter-clade', 'hearthkyn-salvagers'] as const
 
 test.use({ viewport: { width: 1280, height: 720 } })
 
@@ -121,7 +122,33 @@ test('wyrmblade: the set-up offers HIDING and hidden operatives wait in the tray
   await expect(page.getByTestId('hidden-tray')).toBeVisible()
   await expect(page.getByTestId('hidden-tray')).toContainText(status.names[0]!)
   // the hidden operatives are not drawn on the board, and the HUD still counts the whole team
-  await expect(page.getByTestId('hud-seat-A')).toContainText('14')
+  const team = await page.evaluate(() => Object.values((window.__ms!.getState() as { operatives: Record<string, { seat: string }> }).operatives).filter((o) => o.seat === 'A').length)
+  await expect(page.getByTestId('hud-seat-A')).toContainText(String(team))
   mkdirSync('tools/out/screens', { recursive: true })
   await screenshotRendered(page, 'tools/out/screens/wyrmblade-hiding.png')
+})
+
+test('legionaries: the builder offers a Mark of Chaos per operative and keeps the Balefire Acolyte off KHORNE', async ({ page }) => {
+  test.setTimeout(90_000)
+  const errors = await prepare(page)
+  await page.goto('./')
+  await page.getByTestId('team-A').selectOption('legionaries')
+  await page.getByTestId('team-B').selectOption('angels-of-death')
+  await page.getByTestId('go-builder').click()
+  await expect(page.getByTestId('team-builder')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByTestId('builder-ok')).toBeVisible()
+  // the default roster's second operative (leader first) is a KHORNE Butcher: change its mark
+  await page.getByTestId('pick-row-main-0').click()
+  const mark = page.getByTestId('pick-mark')
+  await expect(mark).toBeVisible()
+  await mark.selectOption('NURGLE')
+  await expect(mark).toHaveValue('NURGLE')
+  await expect(page.getByTestId('builder-ok')).toBeVisible()
+  // an Acolyte can never take KHORNE: that option is disabled for it
+  await page.getByTestId('remove-main-4').click()
+  await page.getByTestId('add-lg.balefire-acolyte').click()
+  await page.getByTestId('pick-row-main-4').click()
+  await expect(page.getByTestId('pick-mark').locator('option[value="KHORNE"]')).toHaveAttribute('disabled', '')
+  await expect(page.getByTestId('builder-ok')).toBeVisible()
+  expect(errors).toEqual([])
 })

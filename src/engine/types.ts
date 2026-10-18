@@ -822,6 +822,9 @@ export type TimingWindowId =
   | 'shoot.beforeDefenceRoll'
   // M9 batch B: the defender on its own fresh defence roll, after the attacker's shoot.beforeDefenceRerolls
   | 'shoot.defenderBeforeRerolls'
+  // M9 batch B shared: the attacker once the defence dice are final, before blocking (Siphon Life: shoot.defenceRolled
+  // is the defender's)
+  | 'shoot.attackerDefenceRolled'
   | 'operative.incapacitated'
   | 'firefight.activationEnded'
   | 'turningPoint.end'

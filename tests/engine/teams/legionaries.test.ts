@@ -21,7 +21,7 @@ import type { GameState, Marker } from '@/engine/types'
 import { enumerateLoadouts, loadBundle, validateOperativePicks, validateRoster, type DatacardData } from '../../../src/data'
 import { play } from '../../fixtures/attack'
 import { place } from '../../fixtures/helpers'
-import { activateOp, edit, optionIds, realBundle, take, withCtx } from '../../fixtures/real'
+import { activateOp, edit, optionIds, passIt, realBundle, take, withCtx } from '../../fixtures/real'
 import { A, B, STOP_PLOY, bTurn, dice, engaged, lgRoster, open, strikes, takePloy, toGambit } from './legionaries.hooks'
 
 const data = loadBundle()
@@ -281,7 +281,7 @@ describe('TEAM-LG Legionaries', () => {
     void icon
   })
 
-  it('TEAM-LG-015 Siphon Life: Life siphon heals a friend within 6" 1 per damaging normal and D3 per crit; once per turning point', () => {
+  it('TEAM-LG-015 Siphon Life: picked once the defence dice are final; Life siphon heals a friend within 6" 1 per damaging normal and D3 per crit; once per turning point', () => {
     const s = open({ rosterA: lgRoster(['lg.aspiring-champion', 'lg.balefire-acolyte', 'lg.butcher', 'lg.gunner', 'lg.icon-bearer', 'lg.warrior']) })
     const acolyte = A(s, 'balefire-acolyte')
     const friend = A(s, 'aspiring-champion')
@@ -291,13 +291,20 @@ describe('TEAM-LG Legionaries', () => {
     })
     const t = take(take(activateOp(t0, acolyte), 'shoot').state, 'lg.w.life-siphon').state
     // attack: crit, normal, normal, fail, fail; defence all fails; the crit heals D3 (6 -> 3)
-    const rolled = play(take(t, boy, dice(6, 4, 3, 1, 1)).state, dice(), {}, STOP_PLOY).state
+    let rolled = play(take(t, boy, dice(6, 4, 3, 1, 1)).state, dice(), {}, STOP_PLOY).state
+    // the opponent's own windows are passed on the way
+    for (let i = 0; i < 6 && rolled.pending?.kind === 'ploy.firefight' && rolled.pending.seat === 'B'; i++) rolled = play(passIt(rolled, dice()).state, dice(), {}, STOP_PLOY).state
+    // the pick comes at the start of the Resolve Attack Dice step: after the defence roll, not after the attack roll
+    expect(rolled.pending).toMatchObject({ kind: 'ploy.firefight', window: 'shoot.attackerDefenceRolled', seat: 'A' })
+    expect(rolled.attack!.seq!.def!.dice.map((d) => d.value)).toEqual([1, 1, 1])
     expect(optionIds(rolled)).toContain(`lg.a.wr-siphon-life:${friend}`)
-    const r = play(rolled, dice(1, 1, 1, 6), takePloy(`lg.a.wr-siphon-life:${friend}`))
+    const at = (st: GameState, w: string) => offersFor(st, 'A', w, { window: w, attackerId: acolyte, targetId: boy, subjectId: acolyte }).some((o) => o.id.startsWith('lg.a.wr-siphon-life'))
+    expect(at(rolled, 'shoot.attackRolled')).toBe(false)
+    const r = play(rolled, dice(6), takePloy(`lg.a.wr-siphon-life:${friend}`))
     expect(r.state.operatives[friend]!.wounds).toBe(8 + 3 + 1 + 1)
     expect(usedThisTp(r.state, 'A', 'lg.siphon.tp')).toBe(true)
     // not offered a second time this turning point
-    expect(offersFor(r.state, 'A', 'shoot.attackRolled', { window: 'shoot.attackRolled', subjectId: acolyte }).some((o) => o.id.startsWith('lg.a.wr-siphon-life'))).toBe(false)
+    expect(offersFor(r.state, 'A', 'shoot.attackerDefenceRolled', { window: 'shoot.attackerDefenceRolled', subjectId: acolyte }).some((o) => o.id.startsWith('lg.a.wr-siphon-life'))).toBe(false)
   })
 
   it('TEAM-LG-016 TEAM-LG-017 Butcher: no assists against it; a free 2" Charge after an enemy activation, only when a legal path exists', () => {

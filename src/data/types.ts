@@ -77,6 +77,8 @@ export type TimingWindowId =
   | 'shoot.beforeAttackRerolls'
   | 'shoot.beforeDefenceRoll'
   | 'shoot.defenderBeforeRerolls'
+  // M9 batch B shared: the attacker once the defence dice are final (Siphon Life)
+  | 'shoot.attackerDefenceRolled'
   | 'operative.incapacitated'
   | 'firefight.activationEnded'
   | 'turningPoint.end'
@@ -159,7 +161,7 @@ export interface WeaponRuleUse {
 }
 
 export interface Effect {
-  modifyStat?: { stat: 'apl' | 'move' | 'save' | 'wounds' | 'hit' | 'atk'; value: number; cap?: number; filter?: WeaponFilter }
+  modifyStat?: { stat: 'move' | 'hit' | 'atk'; value: number; cap?: number; filter?: WeaponFilter }
   grantWeaponRule?: WeaponRuleUse & { filter?: WeaponFilter }
   removeWeaponRule?: { rule: Id; filter?: WeaponFilter }
   reroll?: { dice: 'attack' | 'defence' | 'own'; which: 'one' | 'any' | 'result'; result?: number }

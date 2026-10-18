@@ -37,7 +37,7 @@
         "oncePer": "turningPoint"
       }
     },
-    "text": "Once per turning point, when a friendly Legionary performing Shoot selects a bolt pistol or boltgun, that weapon has Rending until the action ends.",
+    "text": "One Shoot per turning point, a Legionary firing a plain bolt pistol or boltgun may load cursed rounds: that gun gains Rending for the rest of the action. The tainted bolt pistol does not qualify.",
     "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md T-LG.37"
   },
   {
@@ -46,7 +46,7 @@
     "scope": "faction",
     "team": "legionaries",
     "count": 1,
-    "text": "Each turning point, as a strategic gambit, pick a Mark of Chaos: friendly Legionaries of that mark may suffer D3 damage once per activation to turn two attack fails into one normal success.",
+    "text": "A strategic gambit each turning point: name a Mark of Chaos. A Legionary of that mark with at least two failed attack dice may, once per activation, take D3 damage to throw one fail away and count another as a normal success.",
     "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md T-LG.38"
   }
 ]

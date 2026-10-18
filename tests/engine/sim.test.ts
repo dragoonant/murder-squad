@@ -56,4 +56,22 @@ describe('SIM invariants', () => {
     expect(ord([ev({ type: 'ShootStarted', operativeId: w, weaponId: weapon, seat: 'A' })])).toHaveLength(1)
     expect(ord([])).toEqual([])
   })
+
+  it('SIM-009 MOVE: a forced move (pushes, Timesplinter) may end in an enemy control range; an own move may not', () => {
+    const s = openReal()
+    const w = opOf(s, 'A', 'aod.intercessor-warrior')
+    const boy = opOf(s, 'B', 'kom.boy')
+    const next = edit(s, (x) => {
+      x.operatives[w]!.pos = { x: 0, y: 0, z: 0 }
+      x.operatives[boy]!.pos = { x: 1.6, y: 0, z: 0 }
+      x.seq = s.seq + 1
+    })
+    const act = { type: 'pass', seat: 'B', decisionId: 'd:0', payload: {} } as unknown as Action
+    const moved = (action: string) =>
+      ({ type: 'OperativeMoved', seq: next.seq, turningPoint: 1, phase: 'firefight', seat: 'B', operativeId: boy, action, from: { x: 4, y: 0, z: 0 }, to: { x: 1.6, y: 0, z: 0 }, segments: [], cost: 0, maxInches: 3 }) as unknown as GameEvent
+    const move = (action: string) => checkInvariants(s, next, act, [moved(action)]).filter((v) => v.startsWith('MOVE:'))
+    expect(move('reposition')).toHaveLength(1)
+    expect(move('forced')).toEqual([])
+    expect(move('timesplinter')).toEqual([])
+  })
 })

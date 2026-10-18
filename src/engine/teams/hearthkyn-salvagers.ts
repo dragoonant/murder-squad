@@ -13,7 +13,6 @@ import { abilityOffers, maxRepeats } from '../abilities'
 import { applyAplEffect, continueRemovals, countKinds, hasRule, heavyBlocksMove, retainAttack, ruleSetFor, targetInfo, type RuleSet } from '../attack-common'
 import { markFired, registerCodeHook, type OfferSeed, type PloyOfferSeed } from '../code-hooks'
 import { canBeTargetedBy, hasAbility, hasKeyword, inEnemyCr } from '../conditions'
-import { commsBonus } from '../core-hooks'
 import { addEffect, directDamage, gainCp, markUsedBattle, markUsedTp, regainWounds, removeEffects, usedThisBattle, usedThisTp } from '../effects'
 import { extraStrike } from '../fight'
 import { canStartFreeAction, cancelAction, finishAction, REACTION_DONE, reactionDone, startDelegatedAction, startFreeAction } from '../firefight'
@@ -21,7 +20,7 @@ import { pointGapToFootprint, footprintOf } from '../footprint'
 import { round3 } from '../geometry'
 import { registerFrameResume, registerHook, type HookContext } from '../hooks'
 import { bodyOf, interveningTraits, visible } from '../los'
-import { contestedBy, newMarkerId, removeMarker } from '../markers'
+import { contestedBy, controlledBy, newMarkerId, removeMarker } from '../markers'
 import { distanceBetween, enemiesInControlRange, gapToMarker, inControlRange, isWithin } from '../measure'
 import { applyForcedMove, forcedMoveSpots } from '../movement'
 import { registerPloyRule, type PloyOffer, type PloyRule } from '../ploy-rules'
@@ -519,13 +518,14 @@ registerCodeHook({
       // objectives and the Dozr's goals decide where an enemy is best pushed; the first spot offered is the best one
       const objectives = s.markers.filter((m) => m.kind === 'objective')
       const score = (p: Vec3): number => (objectives.length ? Math.min(...objectives.map((m) => Math.hypot(m.pos.x - p.x, m.pos.z - p.z))) : 0)
-      // destinations are kept out of every control range around the pushed operative: the sim's MOVE invariant treats any
-      // non-Charge move that ends in one as a fault (RULING: a push never lands in a control range here)
+      // any spot the enemy can be placed at within 3" may be picked, a control range included (the push is not that
+      // operative's own move, so the Reposition limits do not bind it); spots that free the Dozr for its Charge come first
       const clear = (p: Vec3): boolean => {
         const ghost = { id: target.id, pos: p, baseRadius: target.baseRadius, height: target.height }
         return !enemiesOf(s, target).some((e) => inControlRange(s, ghost, bodyOf(e)))
       }
-      const spots = forcedMoveSpots(s, target, 3, 24).filter(clear).slice(0, 12).sort((a, b) => score(b) - score(a))
+      const all = forcedMoveSpots(s, target, 3, 24)
+      const spots = [...all.filter(clear).sort((a, b) => score(b) - score(a)), ...all.filter((p) => !clear(p)).sort((a, b) => score(b) - score(a))].slice(0, 16)
       const options = [
         ...spots.map((p) => choiceOpt(`${p.x},${p.z}`, 'hk.knux.push', { x: p.x, z: p.z, name: `Push to ${p.x}, ${p.z}` })),
         choiceOpt('stay', 'hk.knux.stay', { name: 'Leave it where it is' }),
@@ -831,12 +831,22 @@ registerCodeHook({
   },
 })
 
-/** Is `target` spotted for `shooter`: carries the seat's Spot token placed by a Lokatr within 3" (6" with a Comms Device) of the shooter. */
+/**
+ * Comms Device (M-5.1): while this operative controls its own team's Comms Device marker, the distances in its SUPPORT
+ * rules that name friendly operatives are 3" longer.
+ */
+function commsReach(s: GameState, op: Operative): number {
+  if (controlledBy(s, op, (m) => m.equipmentId === 'core.e.comms-device' && m.owner === op.seat).length === 0) return 0
+  markFired('commsDevice')
+  return 3
+}
+
+/** Is `target` spotted for `shooter`: carries the seat's Spot token placed by a Lokatr within 3" of the shooter (6" while that Lokatr controls a Comms Device). */
 function spotted(s: GameState, shooter: Operative, target: Operative): boolean {
   const tk = tokensOn(s, target.id).find((t) => t.kind === SPOT && t.owner === shooter.seat && t.count > 0)
   const lok = tk?.sourceId ? s.operatives[tk.sourceId] : undefined
   if (!tk || !live(lok) || lok.seat !== shooter.seat) return false
-  const range = 3 + commsBonus(s, shooter.seat)
+  const range = 3 + commsReach(s, lok)
   return shooter.id === lok.id || distanceBetween(bodyOf(shooter), bodyOf(lok)) <= range + EPS
 }
 
@@ -1219,7 +1229,9 @@ registerHook(
     if (data.action === 'charge') addEffect(ctx, { source: ID.jump, seat: op.seat, kind: 'hk.charged', operativeId: op.id, expires: 'activation' })
     // Climbing Rigs: the benefit is spent by the first move that climbs or drops more than the rig covers (T-HK.38)
     const moved = ctx.events.find((e) => e.type === 'OperativeMoved' && e.operativeId === op.id && e.action !== 'forced')
-    if (moved && moved.type === 'OperativeMoved' && equipped(s, op.seat, ID.rigs) && !effectFor(s, 'hk.rigs', op.id)) {
+    const own = activeActivationOf(s)
+    const rigsApply = !!own && own.operativeId === op.id && !own.counteract
+    if (moved && moved.type === 'OperativeMoved' && rigsApply && equipped(s, op.seat, ID.rigs) && !effectFor(s, 'hk.rigs', op.id)) {
       let climb = 0
       let drop = 0
       for (const sg of moved.segments) {
@@ -1396,8 +1408,10 @@ registerTeamRules({
   /** Climbing Rigs: the first climb or drop of the activation costs less (T-HK.38) */
   moveSurcharge(state, op, _kind, _points, breakdown) {
     if (!isHk(state, op) || !equipped(state, op.seat, ID.rigs) || effectFor(state, 'hk.rigs', op.id)) return 0
-    const act = state.firefight.activation
-    if (act?.counteract) return 0
+    // "during each friendly operative's activation": its own activation (a free move under a frame included), never a
+    // counteraction or a move made in another operative's activation
+    const own = activeActivationOf(state)
+    if (!own || own.operativeId !== op.id || own.counteract) return 0
     const climbSave = breakdown.climb > 2 ? breakdown.climb - 2 : 0
     const save = Math.max(climbSave, breakdown.drop)
     if (save <= 0) return 0

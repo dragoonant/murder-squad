@@ -131,7 +131,7 @@ export const PRESENTATION: TeamPresentation = {
     { term: 'HEARTHKYN SALVAGER', kind: 'keyword', body: 'The faction keyword of every Hearthkyn Salvagers operative. Grudge, Medic!, Signal and nearly every ploy of the team look for it.' },
     { term: 'LEAGUES OF VOTANN', kind: 'keyword', body: 'Allegiance keyword carried by every Hearthkyn Salvager. No current rule names it, so it only identifies the operative.' },
     { term: 'THEYN', kind: 'keyword', body: 'The Hearthkyn Salvager Leader. Its Eye of the Ancestors gambit hands out Grudge tokens, and its Weavefield Crest ignores one Normal Dmg hit per battle.' },
-    { term: 'DOZR', kind: 'keyword', body: 'The brawler of the squad. Enemies cannot assist against it, it shrugs off 4+ Normal Dmg by 1, and Knux Smash shoves an enemy aside before a free Charge.' },
+    { term: 'DOZR', kind: 'keyword', body: 'The brawler of the squad. Enemies cannot assist against it, a Normal Dmg of 4 or more does 1 less damage to it, and Knux Smash shoves an enemy aside before a free Charge.' },
     { term: 'FIELD MEDIC', kind: 'keyword', body: 'The Hearthkyn healer. Medic! keeps a fallen kinsman standing once per turning point and Medikit restores wounds.' },
     { term: 'KINLYNK', kind: 'keyword', body: 'The comms specialist: Signal adds APL to any friendly Hearthkyn Salvager, and System Jam keeps one enemy from activating while others are ready.' },
     { term: 'KOGNITAAR', kind: 'keyword', body: 'The thinking machine of the squad. Its Tactician gambit and Accelerated Appraisal place the Attack or Defence marker anywhere in the killzone.' },

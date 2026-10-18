@@ -15,6 +15,7 @@ import { circleOverlapsPolygon } from '../geometry'
 import { discCentres, footprintOf } from '../footprint'
 import { registerFrameResume, registerHook } from '../hooks'
 import { baseUnderVantage, bodyOf, targetVerdict, visible } from '../los'
+import { controlledBy } from '../markers'
 import { isWithin, markerInControlRange } from '../measure'
 import { registerPloyRule, type PloyOffer } from '../ploy-rules'
 import type { Ctx } from '../registry'
@@ -111,6 +112,16 @@ function sees(state: GameState, a: Operative, b: Operative): boolean {
 
 function byId(a: Operative, b: Operative): number {
   return a.id < b.id ? -1 : 1
+}
+
+/**
+ * Comms Device (M-5.1): while this operative controls its own team's Comms Device marker, the distances in its SUPPORT
+ * rules that name friendly operatives are 3" longer (SIGNAL 6" to 9", SPOT's 3" to 6").
+ */
+export function commsReach(state: GameState, op: Operative): number {
+  if (controlledBy(state, op, (m) => m.equipmentId === 'core.e.comms-device' && m.owner === op.seat).length === 0) return 0
+  markFired('commsDevice')
+  return 3
 }
 
 /** A strategy ploy of the seat that is in force this turning point. */
@@ -417,7 +428,7 @@ export function spotted(state: GameState, shooter: Operative, targetId: string):
   if (!t?.sourceId) return false
   const src = state.operatives[t.sourceId]
   if (!src || !live(src) || src.seat !== shooter.seat) return false
-  return src.id === shooter.id || within(src, shooter, 3)
+  return src.id === shooter.id || within(src, shooter, 3 + commsReach(state, src))
 }
 
 function tokenOf2(state: GameState, opId: string, kind: string, owner: Seat): OperativeToken | undefined {
@@ -581,10 +592,10 @@ registerHook(
 // Unique actions: SIGNAL (T-HC.18) and SPOT (T-HC.19)
 // ---------------------------------------------------------------------------
 
-/** Other friendly Hunter Clade operatives visible to and within 6" of the Diktat. */
+/** Other friendly Hunter Clade operatives visible to and within 6" of the Diktat (9" while it controls a Comms Device). */
 export function signalTargets(state: GameState, op: Operative): Operative[] {
   return hcOps(state, op.seat)
-    .filter((f) => f.id !== op.id && within(op, f, 6) && sees(state, op, f))
+    .filter((f) => f.id !== op.id && within(op, f, 6 + commsReach(state, op)) && sees(state, op, f))
     .sort(byId)
 }
 
@@ -861,12 +872,18 @@ registerCodeHook({
   },
 })
 
+/**
+ * The defender's windows of a Shoot: the end of the Roll Attack Dice step, and (the card's note allows use after defence
+ * dice are rolled or re-rolled) the defender's windows on its fresh and final defence roll.
+ */
+const OMNISSIAH_DEFENDER = ['shoot.beforeDefenceRoll', 'shoot.defenderBeforeRerolls', 'shoot.defenceRolled']
+
 /** OMNISSIAH'S IMPERATIVE can be used in the operative's own activation, or as the defender once the attack dice are final. */
 function omnissiahUsable(state: GameState, op: Operative, window: string, info: { targetId?: string }): boolean {
   if (!isHc(state, op) || tokenOf(state, op, T.omnissiah)) return false
   const m = modeOf(state, op)
   if (!m || m.mode === 'neutral') return false
-  if (window === 'shoot.beforeDefenceRoll') return info.targetId === op.id
+  if (OMNISSIAH_DEFENDER.includes(window)) return info.targetId === op.id
   const act = state.firefight.activation
   return !!act && act.operativeId === op.id && !act.counteract
 }

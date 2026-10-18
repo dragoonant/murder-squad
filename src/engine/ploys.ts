@@ -336,7 +336,7 @@ export function findGambit(state: GameState, seat: Seat, gambitId: string, param
 // Firefight windows
 // ---------------------------------------------------------------------------
 
-const ATTACKER_ONLY: string[] = ['shoot.attackRolled', 'shoot.beforeDefenceRerolls', 'shoot.beforeAttackRerolls']
+const ATTACKER_ONLY: string[] = ['shoot.attackRolled', 'shoot.beforeDefenceRerolls', 'shoot.beforeAttackRerolls', 'shoot.attackerDefenceRolled']
 const DEFENDER_ONLY: string[] = ['shoot.defenceRolled', 'shoot.beforeDefenceRoll', 'shoot.defenderBeforeRerolls']
 
 function infoForSeat(state: GameState, window: string, base: PloyWindowInfo, seat: Seat): PloyWindowInfo | null {

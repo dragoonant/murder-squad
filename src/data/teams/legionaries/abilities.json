@@ -186,7 +186,7 @@
         "plus": 1
       }
     },
-    "text": "After the Chosen fights or retaliates and is still standing, if it incapacitated the enemy fighter or dealt it damage with a crit strike, it regains up to D3+1 lost wounds.",
+    "text": "Once a fight the Chosen took part in is over, if it is still standing and it killed its opponent or landed a damaging crit strike, it heals up to D3+1 wounds.",
     "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md T-LG.10"
   },
   {
@@ -244,7 +244,7 @@
         "cp": 1
       }
     },
-    "text": "In the Ready step of each Strategy phase, if the Icon Bearer controls an objective marker nobody has tainted, that marker is tainted for the rest of the battle and you gain 1 CP. A marker can only be tainted once.",
+    "text": "Each Ready step, an objective the Icon Bearer holds that nobody has tainted yet becomes tainted for good and its player gains 1 CP. No marker can be tainted twice, by either side.",
     "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md T-LG.16"
   },
   {
@@ -270,7 +270,7 @@
         "aplDelta": -1
       }
     },
-    "text": "When the Shrivetalon incapacitates an enemy while fighting or retaliating, pick another enemy visible to and within 3 inches of the Shrivetalon or of the fallen enemy: it has -1 APL until the end of its next activation.",
+    "text": "A kill the Shrivetalon makes in melee (fighting or retaliating) horrifies a second enemy that it or the victim can see within 3 inches: that enemy has 1 less APL until its next activation is over.",
     "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md T-LG.18"
   },
   {
@@ -290,7 +290,7 @@
         "controlDelta": -1
       }
     },
-    "text": "Place your Grisly marker within the Shrivetalon's control range. Enemies within 3 inches of it pay 1 extra AP for Pick Up Marker and mission actions, and an enemy contesting a marker from there counts the total as 1 lower. Once per battle, not in an enemy control range; the marker stays all battle.",
+    "text": "The Shrivetalon sets its Grisly marker down within its control range, where it stays for the battle. Enemies within 3 inches of it pay 1 extra AP for Pick Up Marker and mission actions, and their side counts 1 less APL on any marker they contest from there. Once per battle; not while an enemy is in its control range.",
     "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md T-LG.19"
   },
   {
