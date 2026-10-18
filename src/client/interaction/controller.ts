@@ -8,6 +8,8 @@ import { planMove, type MoveKind, type MovePlan } from '@/engine/movement'
 import { humanToAct, useGame } from '../store/game'
 import { useUi, type Pt } from '../ui/uiStore'
 import { rejectionText } from '../game/labels'
+import { pickDisplaySnapshot, usePresentedStore } from '../presentation/presentedStore'
+import { useSight } from './sightStore'
 
 const MOVE_KINDS: MoveKind[] = ['reposition', 'dash', 'fallBack', 'charge']
 
@@ -132,6 +134,11 @@ export function hoverPoint(pt: Pt | null): void {
 }
 
 export function clickPoint(pt: Pt): void {
+  // the measure tool takes every board click (read-only: it never reaches the engine, even between decisions or on a bot turn)
+  if (useSight.getState().measureOn) {
+    useSight.getState().measureClick({ x: round(pt.x), y: pt.y, z: round(pt.z) })
+    return
+  }
   const { pending, state, dispatch } = useGame.getState()
   const ui = useUi.getState()
   if (!pending || !state || !humanToAct()) {
@@ -175,6 +182,12 @@ export function optionOperative(o: { action: { payload: unknown }; data?: Record
 
 /** Clicking an operative: choose it when it is an option of the pending decision (activation, shoot/fight target), otherwise just select it for the card. */
 export function clickOperative(id: string): void {
+  if (useSight.getState().measureOn) {
+    const p = usePresentedStore.getState()
+    const op = pickDisplaySnapshot(p.snapshots, p.presentedSeq)?.operatives[id]
+    if (op) useSight.getState().measureClick({ x: op.pos.x, y: op.pos.y, z: op.pos.z, opId: id })
+    return
+  }
   const { pending, choose } = useGame.getState()
   const ui = useUi.getState()
   ui.set({ selectedOp: id })

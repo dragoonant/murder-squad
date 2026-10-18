@@ -9,6 +9,7 @@ import { currentParams } from '../params'
 import { useAnnouncementStore } from '../presentation/announceStore'
 import { usePresentedStore } from '../presentation/presentedStore'
 import { useUi } from '../ui/uiStore'
+import { useSight } from '../interaction/sightStore'
 import { useGame } from './game'
 import { useSession } from './session'
 
@@ -27,6 +28,8 @@ export interface MsHooks {
   camera: typeof cameraApi
   session(): unknown
   ui(): unknown
+  /** sight-line tools: overlay on/off, threat preference, measure tool state (client only) */
+  sight(): unknown
   /** answer the pending decision (whatever seat) with the random bot's choice; false when nothing is pending */
   autoStep(): boolean
   /** the toasts currently on screen */
@@ -92,6 +95,7 @@ export function installTestHooks(): void {
     camera: cameraApi,
     session: () => useSession.getState(),
     ui: () => useUi.getState(),
+    sight: () => useSight.getState(),
     autoStep,
     toasts: () => useFeedStore.getState().toasts.map((t) => ({ text: t.text, kind: t.kind })),
     events: () => useGame.getState().events,

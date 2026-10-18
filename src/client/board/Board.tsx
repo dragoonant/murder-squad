@@ -17,6 +17,8 @@ import { useUi, type Pt } from '../ui/uiStore'
 import { CameraRig } from './CameraRig'
 import { FpsProbe } from './FpsProbe'
 import { makeMatTexture } from './matTexture'
+import { MeasureLayer } from './MeasureLayer'
+import { SightlineLayer } from './Sightlines'
 import { Terrain } from './Terrain'
 import { Vfx } from './Vfx'
 import { Markers, Zones } from './Zones'
@@ -123,6 +125,8 @@ function Scene({ state }: { state: GameState }) {
       {pending && human && (pending.kind === 'shoot.target' || pending.kind === 'fight.target') && <TargetBadges state={state} pending={pending} />}
       {pending && human && (pending.kind === 'setup.objective' || pending.kind === 'ability.choice') && <SpotRings pending={pending} />}
       {pending && human && (pending.kind === 'marker.place' || pending.kind === 'setup.equipMarker') && <PlaceOverlay state={state} pending={pending} />}
+      <SightlineLayer />
+      <MeasureLayer />
       <Corpses />
       <Vfx />
       <CameraRig halfX={w / 2} halfZ={h / 2} />

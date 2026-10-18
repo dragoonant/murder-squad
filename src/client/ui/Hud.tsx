@@ -7,6 +7,8 @@ import { humanize } from '../game/labels'
 import { useDisplayState } from '../presentation/presentedStore'
 import { useGame } from '../store/game'
 import { useFormFactor } from './formFactor'
+import { MeasureButton, MeasurePanel } from './MeasureTool'
+import { SightlinePanel } from './SightlinePanel'
 import { colors, fontStack, panel } from './theme'
 import { Tooltip } from './Tooltip'
 import { useUi, type DrawerId } from './uiStore'
@@ -95,6 +97,9 @@ export function Hud() {
     )
   }
   return (
+    <>
+    <SightlinePanel />
+    <MeasurePanel />
     <div data-testid="hud" className="ms-touch" style={barStyle}>
       <SeatBlock seat="A" />
       <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
@@ -108,11 +113,13 @@ export function Hud() {
       </div>
       <SeatBlock seat="B" />
       <div style={{ display: 'flex', gap: 4, flexWrap: 'nowrap' }}>
+        <MeasureButton compact={ff.compact} />
         {toggle('mission', 'Mission', 'btn-mission')}
         {toggle('feed', 'Feed', 'btn-feed')}
         {toggle('log', 'Dice', 'btn-log')}
         {toggle('settings', 'Menu', 'btn-settings')}
       </div>
     </div>
+    </>
   )
 }
