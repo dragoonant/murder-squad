@@ -38,7 +38,7 @@ export const ACTION_HELP: Record<string, string> = {
 
 export const ORDER_HELP: Record<'engage' | 'conceal', string> = {
   engage:
-    'Engage: stays visible and can Charge, Guard and Shoot freely. Can counteract later. Enemies can see it even behind light cover.',
+    'Engage: can Charge, Guard and Shoot freely and can counteract later. Enemies can target it even in cover (it keeps the cover save).',
   conceal:
     'Conceal: harder to target while in cover and out of sight, but it cannot Charge or Shoot (unless the weapon is Silent) and cannot counteract.',
 }

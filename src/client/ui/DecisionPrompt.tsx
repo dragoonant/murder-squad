@@ -13,6 +13,7 @@ import { cancelPath, confirmPath, deployAction, deployChoice, optionOperative, p
 import { useSettled } from '../presentation/presentedStore'
 import { useGame } from '../store/game'
 import { BottomSheet } from './BottomSheet'
+import { Keyword, KeywordText } from './Keyword'
 import { Why } from './promptParts'
 import { useFormFactor } from './formFactor'
 import { colors, fontStack, panel } from './theme'
@@ -58,14 +59,14 @@ function Header({ pending, seat }: { pending: PendingDecision; seat?: boolean })
   const info = decisionInfo(pending.kind)
   const compact = useFormFactor().compact
   // on a phone the sheet header already names the decision (seat and title): keep only the one-line hint
-  if (compact) return <div style={{ marginBottom: 6 }}><Muted>{info.hint}</Muted><Why text={info.why} /></div>
+  if (compact) return <div style={{ marginBottom: 6 }}><Muted><KeywordText text={info.hint} keywords={false} /></Muted><Why text={info.why} /></div>
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{ fontWeight: 800, fontSize: 15 }} data-testid="prompt-title">
         {seat && <Dot seat={pending.seat} />}
         {info.title}
       </div>
-      <Muted>{info.hint}</Muted>
+      <Muted><KeywordText text={info.hint} keywords={false} /></Muted>
       <Why text={info.why} />
     </div>
   )
@@ -94,7 +95,7 @@ function GenericBody({ pending, state }: { pending: PendingDecision; state: Game
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px', marginBottom: 8, fontSize: 12, color: colors.muted }} data-testid="prompt-facts">
           {facts.map((f) => (
             <span key={f.key}>
-              {f.key}: <span style={{ color: colors.text }}>{f.value}</span>
+              <KeywordText text={f.key} keywords={false} />: <span style={{ color: colors.text }}><KeywordText text={f.value} keywords={false} /></span>
             </span>
           ))}
         </div>
@@ -129,8 +130,8 @@ function OptionButton({ o, state, pending, onPick }: { o: DecisionOption; state:
       onMouseEnter={() => useUi.setState(isZone ? { hoverZone: (o.action.payload as { zoneId: string }).zoneId } : { hoverOp: optionOperative(o) })}
       onMouseLeave={() => useUi.setState({ hoverZone: null, hoverOp: null })}
     >
-      {optionLabel(o, state, pending)}
-      {detail && <span style={{ display: 'block', fontWeight: 400, fontSize: 11, opacity: 0.85 }}>{detail}</span>}
+      {body ? optionLabel(o, state, pending) : <KeywordText text={optionLabel(o, state, pending)} keywords={false} />}
+      {detail && <span style={{ display: 'block', fontWeight: 400, fontSize: 11, opacity: 0.85 }}>{body ? detail : <KeywordText text={detail} keywords={false} />}</span>}
     </Btn>
   )
   return body ? <Tooltip title={optionLabel(o, state, pending)} body={body}>{btn}</Tooltip> : btn
@@ -174,7 +175,7 @@ function DeployBody({ pending, state }: { pending: PendingDecision; state: GameS
     <>
       <Header pending={pending} seat />
       <Muted style={{ marginBottom: 6 }}>
-        Place {left} more operative{left === 1 ? '' : 's'} now; every operative starts on Conceal. {ids.length} left in reserve.
+        Place {left} more operative{left === 1 ? '' : 's'} now; every operative starts on <Keyword term="Conceal" />. {ids.length} left in reserve.
       </Muted>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }} data-testid="deploy-tray">
         {ids.map((id) => (
@@ -220,9 +221,9 @@ function MoveBody({ pending, state }: { pending: PendingDecision; state: GameSta
     <>
       <Header pending={pending} seat />
       <div style={{ fontSize: 13, marginBottom: 6 }}>
-        <b>{op ? opName(state, op.id) : ''}</b> {kindLabel}: up to <b>{max}&Prime;</b>
-        {c?.kind === 'charge' && ' and finish inside an enemy control range'}
-        {c?.mustEndOutsideControlRange && c.kind !== 'charge' && ', finishing outside every enemy control range'}.
+        <b>{op ? opName(state, op.id) : ''}</b> <Keyword term={kindLabel} />: up to <b>{max}&Prime;</b>
+        {c?.kind === 'charge' && <> and finish inside an enemy <Keyword term="Control range">control range</Keyword></>}
+        {c?.mustEndOutsideControlRange && c.kind !== 'charge' && <>, finishing outside every enemy <Keyword term="Control range">control range</Keyword></>}.
       </div>
       <div data-testid="move-total" style={{ fontSize: 15, fontWeight: 800, color: plan ? colors.text : colors.muted }}>
         {plan ? `Path cost ${plan.cost}/${plan.maxInches}″` : waypoints.length ? 'Path not allowed' : 'Click the board to lay the first step'}
@@ -243,7 +244,7 @@ function MoveBody({ pending, state }: { pending: PendingDecision; state: GameSta
         </div>
       )}
       <Muted style={{ marginBottom: 8 }}>
-        Each straight step is rounded up to a whole inch. Click ground for flat steps, click a Vantage platform to climb, click ground beside a tower to drop. Use Jump for a leap across a gap.
+        <KeywordText text="Each straight step is rounded up to a whole inch. Click ground for flat steps, click a Vantage platform to climb, click ground beside a tower to drop. Use Jump for a leap across a gap." />
       </Muted>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         <Btn data-testid="move-confirm" variant="primary" disabled={!plan} onClick={() => confirmPath()}>
@@ -314,8 +315,8 @@ function OrderBody({ pending, state }: { pending: PendingDecision; state: GameSt
     <>
       <Header pending={pending} seat />
       <div style={{ fontSize: 13, marginBottom: 6 }}>
-        Order for <b>{op ? opName(state, op.id) : ''}</b>
-        {op && <> (currently {humanize(op.order)})</>}
+        <Keyword term="Order">Order</Keyword> for <b>{op ? opName(state, op.id) : ''}</b>
+        {op && <> (currently <Keyword term={op.order}>{humanize(op.order)}</Keyword>)</>}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         {(['engage', 'conceal'] as const).map((order) => (
@@ -336,7 +337,9 @@ function OrderBody({ pending, state }: { pending: PendingDecision; state: GameSt
             }}
           >
             <div style={{ fontWeight: 800, fontSize: 14 }}>{order === 'engage' ? 'Engage' : 'Conceal'}</div>
-            <div style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>{ORDER_HELP[order]}</div>
+            <div style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
+              <KeywordText text={ORDER_HELP[order]} />
+            </div>
           </button>
         ))}
       </div>
@@ -411,16 +414,22 @@ function ActionBody({ pending, state }: { pending: PendingDecision; state: GameS
       <div style={{ fontSize: 13, marginBottom: compact ? 4 : 8, display: 'flex', alignItems: 'center', gap: 8 }}>
         <b>{op ? opName(state, op.id) : ''}</b>
         {ctx.counteract ? (
-          <span style={{ color: colors.accent }}>Counteract: one 1 AP action</span>
+          <span style={{ color: colors.accent }}>
+            <KeywordText text="Counteract: one 1 AP action" />
+          </span>
         ) : (
           <>
             <ApPips total={total} left={left} />
             <span data-testid="ap-left">
-              {left}/{total} AP
+              {left}/{total} <Keyword term="AP" />
             </span>
           </>
         )}
-        {op && <span style={{ color: colors.muted }}>{humanize(op.order)}</span>}
+        {op && (
+          <span style={{ color: colors.muted }}>
+            <Keyword term={op.order}>{humanize(op.order)}</Keyword>
+          </span>
+        )}
       </div>
       <div style={compact ? { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 } : { display: 'flex', flexWrap: 'wrap', gap: 6 }} data-testid="action-bar">
         {known.filter((id) => id !== 'end').map(renderAction)}
@@ -433,7 +442,9 @@ function ActionBody({ pending, state }: { pending: PendingDecision; state: GameS
       </div>
       {(abilities.length > 0 || markerOpts.length > 0) && (
         <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 11, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 3 }}>Mission and special actions</div>
+          <div style={{ fontSize: 11, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 3 }}>
+            <Keyword term="Mission action">Mission</Keyword> and special actions
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} data-testid="ability-bar">
             {abilities.map((a) => {
               const why = [a.text, ...a.conditions].filter(Boolean).join(' ')
@@ -473,7 +484,11 @@ function ActionBody({ pending, state }: { pending: PendingDecision; state: GameS
           </div>
         </div>
       )}
-      {(ctx.performed?.length ?? 0) > 0 && <Muted style={{ marginTop: 6 }}>Done this activation: {ctx.performed!.map((a) => ACTION_LABEL[a] ?? humanize(a)).join(', ')}</Muted>}
+      {(ctx.performed?.length ?? 0) > 0 && (
+        <Muted style={{ marginTop: 6 }}>
+          <KeywordText text={`Done this activation: ${ctx.performed!.map((a) => ACTION_LABEL[a] ?? humanize(a)).join(', ')}`} />
+        </Muted>
+      )}
     </>
   )
 }

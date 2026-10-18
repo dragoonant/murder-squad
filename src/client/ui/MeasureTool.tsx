@@ -9,6 +9,7 @@ import { useDisplayState } from '../presentation/presentedStore'
 import { useFormFactor } from './formFactor'
 import { colors, fontStack, panel } from './theme'
 import { Tooltip } from './Tooltip'
+import { Keyword, KeywordText } from './Keyword'
 import { Btn } from './widgets'
 
 function isTyping(e: KeyboardEvent): boolean {
@@ -119,7 +120,8 @@ export function MeasurePanel() {
             Within 1″: <b style={{ color: r.within1 ? '#6dff9a' : colors.text }}>{r.within1 ? 'yes' : 'no'}</b>
             {r.inControlRange !== null && (
               <>
-                {' · '}control range (needs sight): <b style={{ color: r.inControlRange ? '#6dff9a' : colors.text }}>{r.inControlRange ? 'yes' : 'no'}</b>
+                {' · '}
+                <Keyword term="Control range">control range</Keyword> (needs sight): <b style={{ color: r.inControlRange ? '#6dff9a' : colors.text }}>{r.inControlRange ? 'yes' : 'no'}</b>
               </>
             )}
           </div>
@@ -131,10 +133,10 @@ export function MeasurePanel() {
           {r.aSeesB && r.bSeesA && (
             <>
               <div data-testid="measure-a-sees-b">
-                {r.labelA} sees {r.labelB}: <b>{factsText(r.aSeesB)}</b>
+                {r.labelA} sees {r.labelB}: <b><KeywordText text={factsText(r.aSeesB)} /></b>
               </div>
               <div data-testid="measure-b-sees-a">
-                {r.labelB} sees {r.labelA}: <b>{factsText(r.bSeesA)}</b>
+                {r.labelB} sees {r.labelA}: <b><KeywordText text={factsText(r.bSeesA)} /></b>
               </div>
             </>
           )}

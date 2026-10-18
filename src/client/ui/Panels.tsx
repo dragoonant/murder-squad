@@ -16,7 +16,7 @@ import { useGame } from '../store/game'
 import { useSession } from '../store/session'
 import { useFormFactor } from './formFactor'
 import { colors, fontStack, panel } from './theme'
-import { Tooltip } from './Tooltip'
+import { Keyword, KeywordText, WeaponRules } from './Keyword'
 import { useUi, type DrawerId } from './uiStore'
 import { Btn, Die, Dot, Muted, seatColor } from './widgets'
 
@@ -73,15 +73,6 @@ export function PanelBox({ id, title, testId, open, children, style }: { id: Dra
 
 // ---------------------------------------------------------------- operative card
 
-function rulesText(rules: { rule: string; x?: number; inches?: number; target?: number }[]): string {
-  return rules
-    .map((r) => {
-      const val = r.inches !== undefined ? `${r.inches}″` : r.x !== undefined ? String(r.x) : r.target !== undefined ? `${r.target}+` : ''
-      return `${humanize(r.rule)}${val ? ` ${val}` : ''}`
-    })
-    .join(', ')
-}
-
 export function OperativeCard({ docked }: { docked?: boolean }) {
   const state = useDisplayState()
   const selected = useUi((s) => s.selectedOp)
@@ -101,43 +92,44 @@ export function OperativeCard({ docked }: { docked?: boolean }) {
       </div>
       <div style={{ fontSize: 12, display: 'flex', flexWrap: 'wrap', gap: '2px 12px', marginBottom: 6 }}>
         <span>
-          Wounds <b>{op.wounds}/{op.maxWounds}</b>
+          <Keyword term="Wounds" /> <b>{op.wounds}/{op.maxWounds}</b>
         </span>
         <span>
-          APL <b>{effectiveApl(op)}</b>
+          <Keyword term="APL" /> <b>{effectiveApl(op)}</b>
         </span>
         <span>
-          Move <b>{op.move}&Prime;</b>
+          <Keyword term="Move" /> <b>{op.move}&Prime;</b>
         </span>
         <span>
-          Save <b>{op.save}+</b>
+          <Keyword term="Save" /> <b>{op.save}+</b>
         </span>
         <span>
-          <b>{humanize(op.order)}</b> &middot; {op.ready ? 'ready' : 'expended'}
+          <b><Keyword term={op.order}>{humanize(op.order)}</Keyword></b> &middot; <Keyword term={op.ready ? 'Ready' : 'Expended'}>{op.ready ? 'ready' : 'expended'}</Keyword>
         </span>
-        {op.flags.guard && <b style={{ color: colors.accent }}>On Guard</b>}
-        {op.flags.injured && <b style={{ color: colors.danger }}>Injured</b>}
+        {op.flags.guard && <b style={{ color: colors.accent }}><Keyword term="On Guard" /></b>}
+        {op.flags.injured && <b style={{ color: colors.danger }}><Keyword term="Injured" /></b>}
       </div>
       {!compactDrawer && (
       <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ color: colors.muted, textAlign: 'left' }}>
             <th>Weapon</th>
-            <th>A</th>
-            <th>Hit</th>
-            <th>Dmg</th>
+            <th><Keyword term="Atk">A</Keyword></th>
+            <th><Keyword term="Hit" /></th>
+            <th><Keyword term="Dmg" /></th>
           </tr>
         </thead>
         <tbody>
           {weapons.map((w) => (
             <tr key={w!.id} style={{ borderTop: `1px solid ${colors.border}` }}>
               <td style={{ padding: '2px 0' }}>
-                <Tooltip title={w!.name} body={w!.rules.length ? rulesText(w!.rules) : 'No special rules.'}>
-                  <span>
-                    {w!.name}
-                    {w!.type === 'melee' ? ' (melee)' : ''}
-                  </span>
-                </Tooltip>
+                {w!.name}
+                {w!.type === 'melee' ? ' (melee)' : ''}
+                {w!.rules.length > 0 && (
+                  <div data-testid="weapon-rules" style={{ fontSize: 10, color: colors.muted }}>
+                    <WeaponRules rules={w!.rules} />
+                  </div>
+                )}
               </td>
               <td>{w!.atk}</td>
               <td>{w!.hit}+</td>
@@ -149,7 +141,33 @@ export function OperativeCard({ docked }: { docked?: boolean }) {
         </tbody>
       </table>
       )}
-      {card && !compactDrawer && <Muted style={{ marginTop: 6 }}>{card.keywords.slice(0, 5).join(' · ')}</Muted>}
+      {card && !compactDrawer && (
+        <Muted style={{ marginTop: 6 }}>
+          <span data-testid="card-keywords">
+            {card.keywords.map((k, i) => (
+              <span key={k}>
+                {i > 0 && ' · '}
+                <Keyword term={k} kind="keyword" />
+              </span>
+            ))}
+          </span>
+        </Muted>
+      )}
+      {card && !compactDrawer && card.abilities.length + card.uniqueActions.length > 0 && (
+        <Muted style={{ marginTop: 4 }}>
+          <span data-testid="card-abilities">
+            {[...card.abilities, ...card.uniqueActions].map((id, i) => {
+              const name = (dataBundle().byId[id] as { name?: string } | undefined)?.name
+              return name ? (
+                <span key={id}>
+                  {i > 0 && ', '}
+                  <Keyword term={name} />
+                </span>
+              ) : null
+            })}
+          </span>
+        </Muted>
+      )}
     </div>
   )
   if (compactDrawer) {
@@ -201,13 +219,13 @@ export function EventFeed() {
               <div style={{ fontSize: 10, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6 }}>Dice ({g.length})</div>
               {g.map((f) => (
                 <div key={f.id} style={{ borderLeft: `3px solid ${f.seat ? seatColor(f.seat) : colors.border}`, paddingLeft: 6 }}>
-                  {f.text}
+                  <KeywordText text={f.text} keywords={false} />
                 </div>
               ))}
             </div>
           ) : (
             <div key={g[0]!.id} style={{ borderLeft: `3px solid ${g[0]!.seat ? seatColor(g[0]!.seat!) : colors.border}`, paddingLeft: 6 }}>
-              {g[0]!.text}
+              <KeywordText text={g[0]!.text} keywords={false} />
             </div>
           ),
         )}
@@ -226,7 +244,9 @@ export function DiceLog() {
         {dice.slice(-30).map((d) => (
           <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
             <Dot seat={d.seat ?? 'A'} />
-            <span style={{ width: 120, color: colors.muted }}>{humanize(d.purpose)}</span>
+            <span style={{ width: 120, color: colors.muted }}>
+              <KeywordText text={humanize(d.purpose)} />
+            </span>
             {d.dice.map((n, i) => (
               <Die key={i} n={n} small kind={d.kinds?.[i]} />
             ))}
@@ -249,10 +269,12 @@ export function MissionPanel() {
   return (
     <PanelBox id="mission" title={def.name} testId="mission-panel" open={panels.mission} style={{ maxHeight: '34vh' }}>
       <div style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <Muted>{def.text}</Muted>
+        <Muted>
+          <KeywordText text={def.text} />
+        </Muted>
         {view && (
           <div data-testid="mission-crit">
-            Crit op: <b>{humanize(view.critOp)}</b> &middot; map {view.mapId}
+            <Keyword term="Crit op" />: <b><KeywordText text={humanize(view.critOp)} /></b> &middot; map {view.mapId}
           </div>
         )}
         {(['A', 'B'] as const).map((seat) => {
@@ -260,7 +282,7 @@ export function MissionPanel() {
           return (
             <div key={seat} data-testid={`mission-kill-${seat}`}>
               <Dot seat={seat} />
-              <b>{SEAT_NAME[seat]}</b>: kill grade <b>{k.grade}</b>/5 ({k.kills} down; grades at {k.thresholds.join(', ') || 'n/a'}
+              <b>{SEAT_NAME[seat]}</b>: <Keyword term="Kill grade">kill grade</Keyword> <b>{k.grade}</b>/5 ({k.kills} down; grades at {k.thresholds.join(', ') || 'n/a'}
               {k.next !== null ? `; next at ${k.next}` : ''})
             </div>
           )
@@ -269,11 +291,9 @@ export function MissionPanel() {
           <div data-testid="mission-markers">
             {view.markers.map((k) => (
               <div key={k.id}>
-                {humanize(k.id)}: {k.controller ? `${SEAT_NAME[k.controller]} controls` : 'uncontrolled'}
-                {k.securedBy ? `, secured by ${SEAT_NAME[k.securedBy]}` : ''}
-                {k.transmitting ? ', transmitting' : ''}
-                {k.looted ? ', looted' : ''}
-                {k.contesting.A.length + k.contesting.B.length > 0 ? ` (${k.contesting.A.length} vs ${k.contesting.B.length} contesting)` : ''}
+                <KeywordText
+                  text={`${humanize(k.id)}: ${k.controller ? `${SEAT_NAME[k.controller]} controls` : 'uncontrolled'}${k.securedBy ? `, secured by ${SEAT_NAME[k.securedBy]}` : ''}${k.transmitting ? ', transmitting' : ''}${k.looted ? ', looted' : ''}${k.contesting.A.length + k.contesting.B.length > 0 ? ` (${k.contesting.A.length} vs ${k.contesting.B.length} contesting)` : ''}`}
+                />
               </div>
             ))}
           </div>
