@@ -17,6 +17,8 @@ export interface UrlParams {
   teams: [string, string] | null
   speed: AnimSpeed | null
   scenario: string | null
+  /** ?place=manual: the human places objective and equipment markers on the board (default: the engine's suggestions) */
+  place: 'auto' | 'manual'
 }
 
 function mode(v: string | undefined, fallback: SeatMode): SeatMode {
@@ -42,6 +44,7 @@ export function parseParams(search: string): UrlParams {
     teams: teams.length >= 2 ? [teams[0]!, teams[1]!] : null,
     speed: speed === 'normal' || speed === 'fast' || speed === 'instant' ? speed : null,
     scenario: q.get('scenario'),
+    place: q.get('place') === 'manual' ? 'manual' : 'auto',
   }
 }
 

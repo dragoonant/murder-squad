@@ -30,12 +30,31 @@ export function vpBySource(events: GameEvent[]): Record<Seat, VpLine[]> {
   return { A: lines(out.A), B: lines(out.B) }
 }
 
+export interface SourceLine {
+  id: string
+  op: string
+  vp: number
+  text: string
+}
+
+/** VP per scoring rule from the engine's own mission ledger (`state.mission.scored`), falling back to the event log. */
+export function vpLines(state: GameState, ruleList: { id: string; op: string; text: string }[], events: GameEvent[], seat: Seat): SourceLine[] {
+  const scored = state.mission?.scored
+  if (scored) {
+    return ruleList.map((r) => ({ id: r.id, op: r.op, vp: scored[r.id]?.[seat] ?? 0, text: r.text })).filter((l) => l.vp !== 0)
+  }
+  return vpBySource(events)[seat].map((l) => ({ id: l.source, op: 'mission', vp: l.vp, text: '' }))
+}
+
 export function EndScreen() {
   const state = useGame((g) => g.state)
   const meta = useGame((g) => g.meta)
   const events = useGame((g) => g.events)
   const [hidden, setHidden] = useState(false)
-  const vp = useMemo(() => vpBySource(events), [events])
+  const vp = useMemo(() => {
+    const rules = meta?.mission.scoring ?? []
+    return state ? { A: vpLines(state, rules, events, 'A'), B: vpLines(state, rules, events, 'B') } : { A: [], B: [] }
+  }, [events, meta, state])
   if (!state || !meta || !state.result || hidden) {
     return hidden ? (
       <div style={{ position: 'fixed', top: 8, right: 8, zIndex: 90 }}>
@@ -86,10 +105,13 @@ export function EndScreen() {
                   {r.vp[seat]} VP
                 </div>
                 <div style={{ fontSize: 12, marginBottom: 4, color: colors.muted }}>By source</div>
-                {vp[seat].length === 0 && <Muted>No scoring events recorded.</Muted>}
+                {vp[seat].length === 0 && <Muted>No VP scored from the mission.</Muted>}
                 {vp[seat].map((l) => (
-                  <div key={l.source} style={{ fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{humanize(l.source)}</span>
+                  <div key={l.id} data-testid={`end-source-${seat}-${l.id}`} style={{ fontSize: 12, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <span>
+                      <span style={{ color: colors.muted }}>{l.op === 'kill' ? 'Kill op' : l.op === 'crit' ? 'Crit op' : 'Mission'} · </span>
+                      {humanize(l.id)}
+                    </span>
                     <b>{l.vp}</b>
                   </div>
                 ))}

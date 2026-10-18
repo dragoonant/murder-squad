@@ -1,6 +1,9 @@
 // window.__ms (docs/spec/50-client.md section 4): test hooks installed when ?test=1 (or ?gallery/?debug).
 // Read-only views of the store plus `dispatch`; the store remains the only step caller.
-import { suggestPlacement, type Action } from '@/engine'
+import { legalActions, step, suggestPlacement, type Action } from '@/engine'
+import { audio } from '../audio/instance'
+import { RandomBot } from '../bot/randomBot'
+import { useFeedStore } from '../presentation/feedStore'
 import { cameraApi } from '../board/cameraApi'
 import { currentParams } from '../params'
 import { useAnnouncementStore } from '../presentation/announceStore'
@@ -24,12 +27,39 @@ export interface MsHooks {
   camera: typeof cameraApi
   session(): unknown
   ui(): unknown
+  /** answer the pending decision (whatever seat) with the random bot's choice; false when nothing is pending */
+  autoStep(): boolean
+  /** the toasts currently on screen */
+  toasts(): { text: string; kind: string }[]
+  /** every event of the battle so far */
+  events(): unknown[]
+  /** the sound ids requested so far (newest last) */
+  sounds(): string[]
 }
 
 declare global {
   interface Window {
     __ms?: MsHooks
   }
+}
+
+let autoBot: RandomBot | null = null
+
+function autoStep(): boolean {
+  const { state, pending, dispatch } = useGame.getState()
+  if (!state || !pending || state.phase === 'ended') return false
+  autoBot ??= new RandomBot(`auto:${state.seed}`)
+  const candidates: Action[] = []
+  try {
+    candidates.push(autoBot.decide(state, pending))
+  } catch {
+    /* fall through to the enumerated answers */
+  }
+  candidates.push(...(legalActions(state, pending) ?? []))
+  for (const a of candidates) {
+    if (!step(state, a).rejection) return dispatch(a) === null
+  }
+  return false
 }
 
 export function installTestHooks(): void {
@@ -62,5 +92,9 @@ export function installTestHooks(): void {
     camera: cameraApi,
     session: () => useSession.getState(),
     ui: () => useUi.getState(),
+    autoStep,
+    toasts: () => useFeedStore.getState().toasts.map((t) => ({ text: t.text, kind: t.kind })),
+    events: () => useGame.getState().events,
+    sounds: () => [...audio.history],
   }
 }

@@ -8,6 +8,7 @@ import { effectiveApl } from '@/engine/state'
 import { killStatus, mission } from '../game/kill'
 import { dataBundle } from '../game/adapter'
 import { humanize, SEAT_NAME } from '../game/labels'
+import { useAudioSettings } from '../audio'
 import { useFeedStore } from '../presentation/feedStore'
 import { useDisplayState } from '../presentation/presentedStore'
 import { useSettings, type AnimSpeed } from '../presentation/settings'
@@ -76,7 +77,7 @@ function rulesText(rules: { rule: string; x?: number; inches?: number; target?: 
     .join(', ')
 }
 
-export function OperativeCard() {
+export function OperativeCard({ docked }: { docked?: boolean }) {
   const state = useDisplayState()
   const selected = useUi((s) => s.selectedOp)
   const hover = useUi((s) => s.hoverOp)
@@ -145,6 +146,7 @@ export function OperativeCard() {
     </div>
   )
   if (compactDrawer) {
+    if (docked) return null
     return (
       <div style={{ ...floatStyle, position: 'absolute', top: 60, right: 8, width: 230, zIndex: 30 }}>
         {body}
@@ -152,7 +154,7 @@ export function OperativeCard() {
     )
   }
   return (
-    <div style={{ ...floatStyle, position: 'absolute', top: 66, right: 8, width: 290, maxHeight: '50vh', zIndex: 20 }}>
+    <div style={docked ? { ...floatStyle, width: '100%', maxHeight: '38vh', flex: '0 1 auto' } : { ...floatStyle, position: 'absolute', top: 66, right: 8, width: 290, maxHeight: '50vh', zIndex: 20 }}>
       {body}
     </div>
   )
@@ -260,6 +262,33 @@ const SPEEDS: { id: AnimSpeed; label: string }[] = [
   { id: 'instant', label: 'Instant' },
 ]
 
+const VOLUMES: { id: 'master' | 'sfx' | 'voice' | 'music'; label: string }[] = [
+  { id: 'master', label: 'Master' },
+  { id: 'sfx', label: 'Effects' },
+  { id: 'voice', label: 'Narrator' },
+  { id: 'music', label: 'Music' },
+]
+
+function AudioControls() {
+  const { settings, setVolume, setMuted } = useAudioSettings()
+  return (
+    <div data-testid="audio-controls" style={{ marginBottom: 10 }}>
+      <div style={{ fontSize: 12, marginBottom: 4 }}>Sound</div>
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginBottom: 6 }}>
+        <input data-testid="audio-mute" type="checkbox" checked={settings.muted} onChange={(e) => setMuted(e.target.checked)} />
+        Mute everything
+      </label>
+      {VOLUMES.map((v) => (
+        <label key={v.id} style={{ display: 'grid', gridTemplateColumns: '64px 1fr 34px', alignItems: 'center', gap: 6, fontSize: 12, marginBottom: 2, opacity: settings.muted ? 0.5 : 1 }}>
+          <span>{v.label}</span>
+          <input data-testid={`vol-${v.id}`} type="range" min={0} max={100} step={1} value={Math.round(settings[v.id] * 100)} onChange={(e) => setVolume(v.id, Number(e.target.value) / 100)} />
+          <span style={{ color: colors.muted, textAlign: 'right' }}>{Math.round(settings[v.id] * 100)}</span>
+        </label>
+      ))}
+    </div>
+  )
+}
+
 export function SettingsPanel() {
   const speed = useSettings((s) => s.animSpeed)
   const low = useSettings((s) => s.lowGraphics)
@@ -280,6 +309,7 @@ export function SettingsPanel() {
           </Btn>
         ))}
       </div>
+      <AudioControls />
       <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginBottom: 10 }}>
         <input data-testid="low-graphics" type="checkbox" checked={low} onChange={(e) => useSettings.getState().setLowGraphics(e.target.checked)} />
         Low graphics (no shadows, smaller mat texture)

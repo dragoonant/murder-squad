@@ -19,6 +19,9 @@ export interface Session {
   mapId: string
   builds: Record<Seat, SeatBuild>
   builderSeat: Seat
+  /** place objective and equipment markers by hand instead of taking the engine's suggestions */
+  manualPlacement: boolean
+  setManualPlacement(v: boolean): void
   setScreen(s: Screen): void
   setSeat(seat: Seat, mode: SeatMode): void
   setSeed(seed: string): void
@@ -36,7 +39,7 @@ export function randomSeed(): string {
   return `ms-${Math.floor(Math.random() * 1_000_000).toString(36)}`
 }
 
-function initial(): Pick<Session, 'seats' | 'seed' | 'missionId' | 'layoutId' | 'mapId' | 'builds' | 'builderSeat'> {
+function initial(): Pick<Session, 'seats' | 'seed' | 'missionId' | 'layoutId' | 'mapId' | 'builds' | 'builderSeat' | 'manualPlacement'> {
   const b = dataBundle()
   const teams = teamList(b)
   const tA = teams[0]!
@@ -49,12 +52,14 @@ function initial(): Pick<Session, 'seats' | 'seed' | 'missionId' | 'layoutId' | 
     mapId: 'auto',
     builds: { A: defaultBuild(b, tA), B: defaultBuild(b, tB) },
     builderSeat: 'A',
+    manualPlacement: false,
   }
 }
 
 export const useSession = create<Session>((set, get) => ({
   screen: 'start',
   ...initial(),
+  setManualPlacement: (manualPlacement) => set({ manualPlacement }),
   setScreen: (screen) => set({ screen }),
   setSeat: (seat, mode) => set((s) => ({ seats: { ...s.seats, [seat]: mode } })),
   setSeed: (seed) => set({ seed }),
@@ -77,6 +82,7 @@ export const useSession = create<Session>((set, get) => ({
       missionId: s.missionId,
       layoutId: s.layoutId,
       mapId: s.mapId === 'auto' ? null : s.mapId,
+      manualPlacement: s.manualPlacement,
     })
     set({ screen: 'battle' })
   },
@@ -101,6 +107,7 @@ export function startFromParams(p: UrlParams): void {
     layoutId: layout.id,
     mapId: p.map ?? 'auto',
     builds: { A: defaultBuild(b, tA), B: defaultBuild(b, tB) },
+    manualPlacement: p.place === 'manual',
   })
   useSession.getState().launch()
 }

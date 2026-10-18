@@ -4,6 +4,7 @@ import { Line } from '@react-three/drei'
 import { DoubleSide, Shape } from 'three'
 import type { GameState, Polygon } from '@/engine'
 import { markerRadius } from '@/engine/state'
+import { useFx } from '../presentation/fxStore'
 import { colors } from '../ui/theme'
 
 function PolyFill({ poly, color, opacity, y }: { poly: Polygon; color: string; opacity: number; y: number }) {
@@ -72,13 +73,16 @@ export function Zones({ state, deployRegion, hoverZone }: { state: GameState; de
 }
 
 export function Markers({ state }: { state: GameState }) {
+  // a control change shows at its beat, before the display state catches up
+  const control = useFx((s) => s.control)
   return (
     <group>
       {state.markers
         .filter((m) => !m.hidden || m.owner === null)
         .map((m) => {
           const r = markerRadius(m)
-          const color = m.controller ? SEAT[m.controller] : '#e8e8f2'
+          const controller = m.id in control ? control[m.id] : m.controller
+          const color = controller ? SEAT[controller] : '#e8e8f2'
           return (
             <group key={m.id} position={[m.pos.x, 0.06, m.pos.z]} data-marker={m.id}>
               <mesh rotation={[-Math.PI / 2, 0, 0]}>

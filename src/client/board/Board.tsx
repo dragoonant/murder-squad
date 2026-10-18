@@ -4,10 +4,11 @@ import { Suspense, useEffect, useMemo } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { SRGBColorSpace } from 'three'
 import type { GameState } from '@/engine'
-import { BattleOperative } from '../figures/Operative'
-import { clickOperative, clickPoint, hoverPoint } from '../interaction/controller'
-import { DeployGhost, MovePreviewLayer } from '../interaction/Overlays'
+import { BattleOperative, Corpses } from '../figures/Operative'
+import { clickOperative, clickPoint, hoverPoint, optionOperative } from '../interaction/controller'
+import { DeployGhost, MovePreviewLayer, PlaceOverlay, SpotRings, TargetBadges } from '../interaction/Overlays'
 import { setRepaint } from '../presentation/animStore'
+import { useFx } from '../presentation/fxStore'
 import { useDisplayState, useSettled } from '../presentation/presentedStore'
 import { useSettings } from '../presentation/settings'
 import { humanToAct, useGame } from '../store/game'
@@ -15,6 +16,7 @@ import { useUi, type Pt } from '../ui/uiStore'
 import { CameraRig } from './CameraRig'
 import { makeMatTexture } from './matTexture'
 import { Terrain } from './Terrain'
+import { Vfx } from './Vfx'
 import { Markers, Zones } from './Zones'
 
 function Repaint() {
@@ -63,6 +65,7 @@ function Scene({ state }: { state: GameState }) {
   const hoverOp = useUi((s) => s.hoverOp)
   const hoverZone = useUi((s) => s.hoverZone)
   const human = settled ? humanToAct() : null
+  const woundOverride = useFx((s) => s.wounds)
   const w = state.map.size.x
   const h = state.map.size.z
   const onPoint = (p: Pt | null, click: boolean) => (click && p ? clickPoint(p) : hoverPoint(p))
@@ -70,6 +73,11 @@ function Scene({ state }: { state: GameState }) {
   const choosable = new Set<string>(
     pending?.kind === 'firefight.activate' && human ? [...((pending.context.ready as string[]) ?? []), ...((pending.context.counteract as string[]) ?? [])] : [],
   )
+  // guard interrupts: the operatives on Guard that can answer are ringed like activation choices
+  if (pending?.kind === 'guard.interrupt' && human) for (const o of pending.options ?? []) {
+    const id = optionOperative(o)
+    if (id) choosable.add(id)
+  }
   const activation = state.firefight.activation
   return (
     <>
@@ -98,7 +106,7 @@ function Scene({ state }: { state: GameState }) {
           .map((op) => (
             <BattleOperative
               key={op.id}
-              op={op}
+              op={woundOverride[op.id] !== undefined ? { ...op, wounds: woundOverride[op.id]! } : op}
               apSpent={activation && activation.operativeId === op.id && !activation.counteract ? activation.apSpent : null}
               selected={selectedOp === op.id}
               hovered={hoverOp === op.id}
@@ -110,6 +118,11 @@ function Scene({ state }: { state: GameState }) {
       </Suspense>
       {pending && human && pending.kind === 'setup.deploy' && <DeployGhost state={state} pending={pending} />}
       {pending && human && pending.kind === 'move.path' && <MovePreviewLayer state={state} pending={pending} />}
+      {pending && human && (pending.kind === 'shoot.target' || pending.kind === 'fight.target') && <TargetBadges state={state} pending={pending} />}
+      {pending && human && (pending.kind === 'setup.objective' || pending.kind === 'ability.choice') && <SpotRings pending={pending} />}
+      {pending && human && (pending.kind === 'marker.place' || pending.kind === 'setup.equipMarker') && <PlaceOverlay state={state} pending={pending} />}
+      <Corpses />
+      <Vfx />
       <CameraRig halfX={w / 2} halfZ={h / 2} />
       <Repaint />
     </>

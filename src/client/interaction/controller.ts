@@ -3,6 +3,7 @@
 // clicking an operative. All verdicts come from the engine (`validate`, `planMove`); this file only builds
 // candidate actions.
 import { act, validate, type Action, type GameState, type PendingDecision, type Rejection, type Waypoint } from '@/engine'
+import { markerRadius } from '@/engine/state'
 import { planMove, type MoveKind, type MovePlan } from '@/engine/movement'
 import { humanToAct, useGame } from '../store/game'
 import { useUi, type Pt } from '../ui/uiStore'
@@ -44,10 +45,68 @@ function round(n: number): number {
   return Math.round(n * 1000) / 1000
 }
 
+export interface SpotOption {
+  id: string
+  x: number
+  z: number
+}
+
+/** Decisions answered by clicking one of a list of board spots: objective placement and spot-style ability choices. */
+export function spotOptions(pending: PendingDecision | null): SpotOption[] {
+  if (!pending) return []
+  if (pending.kind !== 'setup.objective' && pending.kind !== 'ability.choice') return []
+  const out: SpotOption[] = []
+  for (const o of pending.options ?? []) {
+    const p = o.action.payload as { x?: unknown; z?: unknown }
+    const d = o.data ?? {}
+    const x = typeof p.x === 'number' ? p.x : typeof d.x === 'number' ? d.x : null
+    const z = typeof p.z === 'number' ? p.z : typeof d.z === 'number' ? d.z : null
+    if (x !== null && z !== null) out.push({ id: o.id, x, z })
+  }
+  return out
+}
+
+/** The spot closest to a board point, if one lies within `maxDist` inches. */
+export function nearestSpot(spots: SpotOption[], pt: { x: number; z: number }, maxDist: number): SpotOption | null {
+  let best: SpotOption | null = null
+  let bd = maxDist
+  for (const s of spots) {
+    const d = Math.hypot(s.x - pt.x, s.z - pt.z)
+    if (d <= bd) {
+      bd = d
+      best = s
+    }
+  }
+  return best
+}
+
+const SPOT_REACH: Record<string, number> = { 'setup.objective': 3, 'ability.choice': 1.6 }
+
+/** The answer for a free-position placement (marker.place, setup.equipMarker) at a board point. */
+export function placementAction(pending: PendingDecision, pt: { x: number; z: number }): Action | null {
+  const x = round(pt.x)
+  const z = round(pt.z)
+  if (pending.kind === 'marker.place') return { type: 'marker.place', seat: pending.seat, decisionId: pending.id, payload: { x, z } }
+  if (pending.kind === 'setup.equipMarker') {
+    const yaw = (pending.context.suggestion as { yaw?: number } | undefined)?.yaw
+    return { type: 'setup.equipMarker', seat: pending.seat, decisionId: pending.id, payload: yaw === undefined ? { x, z } : { x, z, yaw } }
+  }
+  return null
+}
+
+/** Radius of the marker being placed (for the ghost), in inches. */
+export function placedMarkerRadius(state: GameState, pending: PendingDecision): number {
+  if (pending.kind === 'marker.place') {
+    const m = state.markers.find((k) => k.id === pending.context.markerId)
+    return m ? markerRadius(m) : 0.4
+  }
+  return markerRadius({ kind: 'equipment' })
+}
+
 export function hoverPoint(pt: Pt | null): void {
   const ui = useUi.getState()
   if (!pt) {
-    if (ui.hover) ui.set({ hover: null, hoverNote: null })
+    if (ui.hover || ui.hoverSpot) ui.set({ hover: null, hoverNote: null, hoverSpot: null })
     return
   }
   const { pending, state } = useGame.getState()
@@ -59,7 +118,17 @@ export function hoverPoint(pt: Pt | null): void {
       note = rej ? { ok: false, text: rejectionText(rej) } : { ok: true, text: 'Legal spot: click to deploy.' }
     }
   }
-  useUi.setState({ hover: pt, hoverNote: note })
+  let spot: string | null = null
+  if (pending && state && humanToAct()) {
+    const spots = spotOptions(pending)
+    if (spots.length > 0) spot = nearestSpot(spots, pt, SPOT_REACH[pending.kind] ?? 2)?.id ?? null
+    const place = placementAction(pending, pt)
+    if (place) {
+      const rej = validate(state, place)
+      note = rej ? { ok: false, text: rejectionText(rej) } : { ok: true, text: 'Legal spot: click to place.' }
+    }
+  }
+  useUi.setState({ hover: pt, hoverNote: note, hoverSpot: spot ?? (ui.hoverSpot === 'suggestion' ? 'suggestion' : null) })
 }
 
 export function clickPoint(pt: Pt): void {
@@ -72,6 +141,16 @@ export function clickPoint(pt: Pt): void {
   if (pending.kind === 'setup.deploy') {
     const id = deployChoice(pending, ui.deployOp)
     if (id) dispatch(deployAction(pending, id, pt))
+    return
+  }
+  if (pending.kind === 'setup.objective' || pending.kind === 'ability.choice') {
+    const hit = nearestSpot(spotOptions(pending), pt, SPOT_REACH[pending.kind] ?? 2)
+    if (hit) useGame.getState().choose(hit.id)
+    return
+  }
+  if (pending.kind === 'marker.place' || pending.kind === 'setup.equipMarker') {
+    const a = placementAction(pending, pt)
+    if (a) dispatch(a)
     return
   }
   if (pending.kind === 'move.path') {

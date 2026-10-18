@@ -11,6 +11,7 @@ const attachmentCount = Object.keys(manifest.attachments).length
 test.use({ viewport: { width: 2200, height: 1250 } })
 
 test('gallery loads every body GLB and draws sockets', async ({ page }) => {
+  test.setTimeout(120_000) // software GL shares the machine with the long play specs
   const errors: string[] = []
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(m.text())
@@ -52,6 +53,7 @@ test('gallery loads every body GLB and draws sockets', async ({ page }) => {
 })
 
 test('gallery attachment pages show every real attachment GLB in hand', async ({ page }) => {
+  test.setTimeout(120_000)
   const errors: string[] = []
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(m.text())

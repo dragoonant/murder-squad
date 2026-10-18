@@ -1,6 +1,7 @@
 // App shell: routes between the start screen, team builder, briefing and battle from the session store;
 // ?gallery shows the figure gallery; ?test=1 skips the menus and starts a battle with default rosters.
 import { useEffect } from 'react'
+import { audio, installClickSounds, startMusicDirector } from './audio'
 import { Gallery } from './figures/Gallery'
 import { loadModelManifest } from './figures/manifest'
 import { currentParams } from './params'
@@ -12,6 +13,9 @@ import { StartScreen } from './ui/StartScreen'
 import { TeamBuilder } from './ui/TeamBuilder'
 
 installTestHooks()
+audio.attachAutoUnlock()
+installClickSounds()
+startMusicDirector(audio)
 
 let autoStarted = false
 

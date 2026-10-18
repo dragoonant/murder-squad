@@ -6,6 +6,9 @@ import { suggestPlacement, type DecisionOption, type GameState, type PendingDeci
 import * as firefight from '@/engine/firefight'
 import { effectiveApl } from '@/engine/state'
 import { ACTION_HELP, ACTION_LABEL, ACTION_ORDER_FALLBACK, contextFacts, decisionInfo, humanize, opName, optionDetail, optionLabel, ORDER_HELP, SEAT_NAME } from '../game/labels'
+import { abilityActions, markerActionLabel } from '../game/promptLabels'
+import { AbilityChoiceBody, EquipBody, GuardBody, MarkerPlaceBody, ObjectiveBody, PloyBody } from './GamePrompts'
+import { BlockBody, CoverSaveBody, FightResolveBody, FightTargetBody, FightWeaponBody, RerollBody, ShootTargetBody, ShootWeaponBody } from './AttackPrompts'
 import { cancelPath, confirmPath, deployAction, deployChoice, optionOperative, previewMove } from '../interaction/controller'
 import { useSettled } from '../presentation/presentedStore'
 import { useGame } from '../store/game'
@@ -350,7 +353,13 @@ function ActionBody({ pending, state }: { pending: PendingDecision; state: GameS
     if (a) byAction.set(a, o)
   }
   const known: string[] = (firefight as { ACTION_ORDER?: string[] }).ACTION_ORDER ?? FALLBACK_ORDER
-  const extras = [...byAction.keys()].filter((a) => a !== 'end' && !known.includes(a))
+  const abilities = abilityActions(state, pending)
+  const abilityKeys = new Set(abilities.map((a) => a.action))
+  const markerOpts = options.filter((o) => {
+    const a = (o.action.payload as { action?: string }).action
+    return a === 'marker:pickUp' || a === 'marker:place'
+  })
+  const extras = [...byAction.keys()].filter((a) => a !== 'end' && !known.includes(a) && !abilityKeys.has(a) && a !== 'marker:pickUp' && a !== 'marker:place')
   const total = ctx.apl ?? (op ? effectiveApl(op) : 0)
   const left = ctx.apRemaining ?? Math.max(0, total - (ctx.apSpent ?? 0))
   const reasonFor = (id: string): string => {
@@ -415,6 +424,48 @@ function ActionBody({ pending, state }: { pending: PendingDecision; state: GameS
           </Btn>
         )}
       </div>
+      {(abilities.length > 0 || markerOpts.length > 0) && (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 11, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 3 }}>Mission and special actions</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} data-testid="ability-bar">
+            {abilities.map((a) => {
+              const why = [a.text, ...a.conditions].filter(Boolean).join(' ')
+              if (a.offers.length === 0) {
+                return (
+                  <Tooltip key={a.action} title={`${a.name}${a.mission ? ' (mission)' : ''}`} body={`${why} Unavailable: ${a.reason ?? 'not right now'}`} wrap>
+                    <Btn data-testid={`act-${a.action}`} disabled>
+                      {a.name}
+                      {a.cost !== null ? ` · ${a.cost} AP` : ''}
+                    </Btn>
+                  </Tooltip>
+                )
+              }
+              return a.offers.map((o) => {
+                const p = o.action.payload as { markerId?: string; targetId?: string; param?: string }
+                const which = p.markerId ? humanize(p.markerId) : p.targetId ? opName(state, p.targetId) : p.param ? humanize(p.param) : ''
+                const cost = typeof o.data?.cost === 'number' ? (o.data.cost as number) : a.cost
+                return (
+                  <Tooltip key={o.id} title={`${a.name}${a.mission ? ' (mission)' : ''}`} body={why}>
+                    <Btn data-testid={a.offers.length > 1 ? `act-${a.action}-${which || o.id}` : `act-${a.action}`} variant="primary" onClick={() => choose(o.id)}>
+                      {a.name}
+                      {which ? ` · ${which}` : ''}
+                      {cost !== null && cost !== undefined ? ` · ${cost} AP` : ''}
+                    </Btn>
+                  </Tooltip>
+                )
+              })
+            })}
+            {markerOpts.map((o) => (
+              <Tooltip key={o.id} title={markerActionLabel(o)} body="Pick the marker up, or set a carried marker down within 1 inch.">
+                <Btn data-testid={`act-${o.id}`} variant="primary" onClick={() => choose(o.id)}>
+                  {markerActionLabel(o)}
+                  {typeof o.data?.cost === 'number' ? ` · ${o.data.cost} AP` : ''}
+                </Btn>
+              </Tooltip>
+            ))}
+          </div>
+        </div>
+      )}
       {(ctx.performed?.length ?? 0) > 0 && <Muted style={{ marginTop: 6 }}>Done this activation: {ctx.performed!.map((a) => ACTION_LABEL[a] ?? humanize(a)).join(', ')}</Muted>}
     </>
   )
@@ -442,7 +493,7 @@ export function DecisionPrompt() {
   // Reset path / pick when the decision changes.
   const id = pending?.id
   useEffect(() => {
-    useUi.setState({ waypoints: [], jumpNext: false, deployOp: null, hoverNote: null, hoverZone: null, hoverOp: null })
+    useUi.setState({ waypoints: [], jumpNext: false, deployOp: null, hoverNote: null, hoverZone: null, hoverOp: null, hoverOption: null, hoverSpot: null })
   }, [id])
   if (!pending || !state || state.phase === 'ended') return null
   if (!settled) return <Waiting text="..." />
@@ -464,6 +515,50 @@ export function DecisionPrompt() {
       break
     case 'firefight.action':
       body = <ActionBody pending={pending} state={state} />
+      break
+    case 'shoot.weapon':
+      body = <ShootWeaponBody pending={pending} state={state} />
+      break
+    case 'shoot.target':
+      body = <ShootTargetBody pending={pending} state={state} />
+      break
+    case 'shoot.coverSave':
+      body = <CoverSaveBody pending={pending} state={state} />
+      break
+    case 'shoot.block':
+      body = <BlockBody pending={pending} state={state} />
+      break
+    case 'fight.target':
+      body = <FightTargetBody pending={pending} state={state} />
+      break
+    case 'fight.weapon':
+      body = <FightWeaponBody pending={pending} state={state} />
+      break
+    case 'fight.resolve':
+      body = <FightResolveBody pending={pending} state={state} />
+      break
+    case 'dice.reroll':
+    case 'dice.commandReroll':
+      body = <RerollBody pending={pending} state={state} />
+      break
+    case 'ploy.firefight':
+    case 'strategy.gambit':
+      body = <PloyBody pending={pending} state={state} />
+      break
+    case 'guard.interrupt':
+      body = <GuardBody pending={pending} state={state} />
+      break
+    case 'ability.choice':
+      body = <AbilityChoiceBody pending={pending} state={state} />
+      break
+    case 'marker.place':
+      body = <MarkerPlaceBody pending={pending} state={state} />
+      break
+    case 'setup.objective':
+      body = <ObjectiveBody pending={pending} />
+      break
+    case 'setup.equipMarker':
+      body = <EquipBody pending={pending} />
       break
     default:
       body = <GenericBody pending={pending} state={state} />

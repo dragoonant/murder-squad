@@ -48,6 +48,11 @@ export function pushToast(text: string, kind: Toast['kind'] = 'info', ttlMs = 42
   }
 }
 
+/** Drop the toasts of one kind (default: rejection errors and warnings) so a new one replaces them instead of stacking. */
+export function clearToasts(kinds: Toast['kind'][] = ['error', 'warn']): void {
+  useFeedStore.setState((s) => ({ toasts: s.toasts.filter((t) => !kinds.includes(t.kind)) }))
+}
+
 export function clearFeed(): void {
   useFeedStore.setState({ feed: [], dice: [], toasts: [] })
 }

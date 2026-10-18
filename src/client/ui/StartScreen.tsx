@@ -116,6 +116,10 @@ export function StartScreen() {
               </Btn>
             </span>
           </Row>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginTop: 6 }}>
+            <input data-testid="manual-placement" type="checkbox" checked={s.manualPlacement} onChange={(e) => s.setManualPlacement(e.target.checked)} />
+            Place objective and equipment markers myself
+          </label>
           {mission && <Muted style={{ marginTop: 4 }}>{mission.text}</Muted>}
           <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
             <Btn data-testid="go-builder" variant="primary" style={{ padding: '10px 18px', fontSize: 15 }} onClick={() => s.setScreen('builder')}>

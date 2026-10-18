@@ -170,7 +170,7 @@ function pct(v: number): string {
   return `${Math.round(v * 100)}%`
 }
 
-function rulesLine(rules: unknown): string {
+export function rulesLine(rules: unknown): string {
   if (!Array.isArray(rules)) return ''
   return (rules as { rule: string; x?: number; inches?: number; target?: number }[])
     .map((r) => `${humanize(r.rule)}${r.inches !== undefined ? ` ${r.inches}″` : r.x !== undefined ? ` ${r.x}` : r.target !== undefined ? ` ${r.target}+` : ''}`)

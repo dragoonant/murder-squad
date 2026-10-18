@@ -2,6 +2,7 @@
 // dice rolls show as short banners; the end screen takes over when the battle is over and presented.
 import type { CSSProperties } from 'react'
 import { BoardCanvas } from '../board/Board'
+import { DiceTray } from '../dice/DiceTray'
 import { useAnnouncementStore } from '../presentation/announceStore'
 import { useFeedStore } from '../presentation/feedStore'
 import { useDisplayState, useSettled } from '../presentation/presentedStore'
@@ -90,6 +91,19 @@ export function BattleScreen() {
     zIndex: 15,
     overflow: 'hidden',
   }
+  const rail: CSSProperties = {
+    position: 'absolute',
+    top: 66,
+    right: 8,
+    bottom: 10,
+    width: 290,
+    display: ff.compact ? 'none' : 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    pointerEvents: 'none',
+    zIndex: 20,
+    overflow: 'hidden',
+  }
   const over = !!state && state.phase === 'ended' && settled
   return (
     <div data-testid="battle" data-phase={state?.phase} data-tp={state?.turningPoint} style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: '#0a0a10' }}>
@@ -99,16 +113,22 @@ export function BattleScreen() {
         <div style={column}>
           <MissionPanel />
           <EventFeed />
+        </div>
+        <div style={rail} data-testid="right-rail">
+          <OperativeCard docked />
+          <div style={{ flex: 1 }} />
           <DiceLog />
+          <DiceTray />
         </div>
         {ff.compact && (
           <>
             <MissionPanel />
             <EventFeed />
             <DiceLog />
+            <DiceTray />
+            <OperativeCard />
           </>
         )}
-        <OperativeCard />
         <SettingsPanel />
         <DecisionPrompt />
         <Banner />
