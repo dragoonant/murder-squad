@@ -298,7 +298,8 @@ interface DieLike {
 }
 
 function fails(dice: DieLike[]): DieLike[] {
-  return dice.filter((d) => d.kind === 'fail' && d.value !== null && !d.used)
+  // a tagged failure was set by a rule (an obscured discard, a team rule's locked fail) and is left alone
+  return dice.filter((d) => d.kind === 'fail' && d.value !== null && !d.used && !d.tag)
 }
 
 registerHook(

@@ -49,6 +49,13 @@ export function bTurn(s: GameState): GameState {
   return take(activateOp(place(s, g, -13.5, 9.5), g), 'end').state
 }
 
+/** End the activation in progress and pass the end-of-activation ploy window (Slink Into Darkness) if it opens. */
+export function endAct(s: GameState, rng?: ScriptedRng): GameState {
+  let t = take(s, 'end', rng).state
+  while (t.pending?.kind === 'ploy.firefight' && t.pending.window === 'firefight.activationEnded') t = passIt(t, rng).state
+  return t
+}
+
 /** Choose the option of the pending decision whose id starts with `prefix`. */
 export function takeStarting(s: GameState, prefix: string, rng?: ScriptedRng): GameState {
   const o = s.pending!.options!.find((x) => x.id.startsWith(prefix))
@@ -193,6 +200,7 @@ export const scenarios: Record<string, () => void> = {
     take(s, 'react:0')
   },
   planGenerations() {
+    // the Overthrow choice answers through this hook; the ploy itself is played from the incapacitation window
     const { s } = warriorShotDead(wyr())
     take(s, 'overthrow-shoot', dice())
   },
@@ -209,11 +217,8 @@ export const scenarios: Record<string, () => void> = {
   slinkIntoDarkness() {
     const s = wyr()
     const w = idsOf(s, 'A', 'wyr.icon-bearer')[0]!
-    let t = activateOp(place(s, w, -13.5, 0), w)
-    t = take(t, 'guard').state
-    t = take(t, 'dash').state
-    t = pathTo(t, -10.5, 0)
-    expect(t.pending!.kind).toBe('ploy.firefight')
+    const t = take(activateOp(place(s, w, -13.5, 0), w), 'end').state
+    expect(t.pending).toMatchObject({ kind: 'ploy.firefight', window: 'firefight.activationEnded' })
     take(t, 'wyr.p.slink-into-darkness')
   },
   coiledSerpent() {

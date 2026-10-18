@@ -83,15 +83,15 @@
     "id": "pf.p.a-worthy-cause",
     "name": "A WORTHY CAUSE",
     "team": "pathfinders",
-    "type": "strategy",
+    "type": "firefight",
     "cost": 1,
-    "window": "strategy.gambit",
+    "window": "firefight.start",
     "effect": {
       "code": "worthyCause",
       "params": { "freeMissionAction": true },
       "scope": { "side": "friendly", "keyword": "PATHFINDER", "notKeywords": ["DRONE"] }
     },
-    "text": "Used just before the Firefight phase begins (it is offered in the gambit step so that nothing can happen in between). One friendly Pathfinder (not a drone) immediately performs a free mission action, if it can.",
+    "text": "Used as the Firefight phase begins. One friendly Pathfinder (not a drone) immediately performs a free mission action, if it can.",
     "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.35"
   },
   {

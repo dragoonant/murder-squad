@@ -1,6 +1,7 @@
 // plague-marines code-hook firing scenarios, merged into tests/engine/code-hooks.test.ts (which proves every hook the
 // data names fires in a real game). One entry per hook name this team's data uses. Owned by the team implementer.
 import { createGame } from '@/engine'
+import { act } from '@/engine/actions'
 import { maxRepeats } from '@/engine/abilities'
 import { inflict, weaponDamage } from '@/engine/attack-common'
 import { removeNow } from '@/engine/effects'
@@ -11,6 +12,7 @@ import { markerControl } from '@/engine/query'
 import { ScriptedRng } from '@/engine/rng'
 import { POISON } from '@/engine/teams/plague-marines'
 import type { GameState } from '@/engine/types'
+import { play } from '../../fixtures/attack'
 import { drive, place } from '../../fixtures/helpers'
 import { activateOp, edit, openReal, opOf, realBundle, realSetupWith, roster, take, withCtx } from '../../fixtures/real'
 
@@ -141,10 +143,14 @@ export const scenarios: Record<string, () => void> = {
     withCtx(t, (ctx) => removeNow(ctx, warrior))
   },
   curseOfRot() {
+    // a real Shoot: the defence roll shows two 3s, and the ploy is taken in the window before the defender's re-rolls
     const s = open()
     const hg = A(s, 'heavy-gunner')
     const boy = B(s, 'boy')
-    usePlayed(place(place(s, hg, 0, 0), boy, 3, 0), 'pm.p.curse-of-rot', { window: 'shoot.attackRolled', subjectId: hg, attackerId: hg, targetId: boy, kind: 'shoot' })
+    const t = take(take(activateOp(place(place(s, hg, 0, 0), boy, 3, 0), hg), 'shoot').state, 'pm.w.bolt-pistol').state
+    play(t, new ScriptedRng([6, 1, 1, 1, 3, 3, 6, ...Array<number>(20).fill(1)]), {
+      'ploy.firefight': (q) => (q.seat === 'A' && q.options?.find((o) => o.id === 'pm.p.curse-of-rot')?.action) || act.pass(q),
+    })
   },
   plagueBells() {
     open({ equipmentA: ['pm.e.plague-bells'] })

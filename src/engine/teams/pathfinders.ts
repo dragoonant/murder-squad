@@ -26,7 +26,8 @@ import { registerFrameResume, registerHook, type HookContext } from '../hooks'
 import { bodyOf, visible } from '../los'
 import { distanceBetween, enemiesInControlRange, inControlRange, isWithin } from '../measure'
 import { missionActionIds } from '../missions'
-import { registerPloyRule, type PloyOffer } from '../ploys'
+import { registerPloyRule, type PloyOffer } from '../ploy-rules'
+import { continueWindow } from '../ploys'
 import type { Ctx } from '../registry'
 import { activeOps, enemiesOf, friendsOf, hasInjuredPenalty, otherSeat } from '../state'
 import { resumeGambit } from '../strategy'
@@ -579,7 +580,8 @@ registerCodeHook({
   },
 })
 
-// A WORTHY CAUSE: a free mission action for a non-drone Pathfinder, just before the Firefight phase begins
+// A WORTHY CAUSE: a free mission action for a non-drone Pathfinder, in the shared ploy window that opens as the
+// Firefight phase starts (firefight.start; offered like a gambit, one offer per Pathfinder that has a mission action)
 registerCodeHook({
   name: 'worthyCause',
   ploy: {
@@ -600,12 +602,17 @@ registerCodeHook({
     },
     apply(ctx, _seat, _ploy, seed) {
       const id = seed.param ?? seed.operativeId
-      if (!id || !startDelegatedAction(ctx, { operativeId: id, resume: 'pf.worthyCause', rules: { allow: ['mission'], tag: 'worthyCause' } })) resumeGambit(ctx)
+      // nothing started: the ploy window simply carries on (ploys.ts handlePloy)
+      if (id) startDelegatedAction(ctx, { operativeId: id, resume: 'pf.worthyCause', rules: { allow: ['mission'], tag: 'worthyCause' } })
     },
   },
 })
 
-registerFrameResume('pf.worthyCause', (ctx) => resumeGambit(ctx))
+// the free mission action is over: the firefight.start window (restored when the frame closed) carries on
+registerFrameResume('pf.worthyCause', (ctx) => {
+  if (ctx.state.window) continueWindow(ctx)
+  else if (ctx.state.phase === 'strategy') resumeGambit(ctx)
+})
 
 // RECON SWEEP: a free Dash for each Pathfinder wholly within 6" of the chosen edge, in the order the player picks
 registerCodeHook({
@@ -782,17 +789,10 @@ const pfPloyRule = {
   },
 }
 
-// Registered when the first Pathfinder game is created (the import order of ploys.ts and the team files forbids doing
-// it at load time); the hook is named by the Shas'ui's Art of War record.
-let ployRuleRegistered = false
-registerCodeHook({
-  name: 'pfTeamRules',
-  setup() {
-    if (ployRuleRegistered) return
-    ployRuleRegistered = true
-    registerPloyRule(pfPloyRule)
-  },
-})
+// Registered at module load (ploy-rules.ts is a leaf, so there is no import-cycle problem); the code hook stays as
+// the name the Shas'ui's Art of War record gives the team rules.
+registerPloyRule(pfPloyRule)
+registerCodeHook({ name: 'pfTeamRules', setup: () => undefined })
 
 // POINT-BLANK FUSILLADE (T-PF.38): offered in the fight.weaponsSelected window to the retaliating Pathfinder
 function activeActivationOf(s: GameState): Activation | null {

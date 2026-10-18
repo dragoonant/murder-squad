@@ -119,9 +119,14 @@ function PlaceholderWeapon({ hold, spec, socket, color }: { hold: HoldClass; spe
 export function planAttachments(shown: { ranged: ShownWeapon | null; melee: ShownWeapon | null }, manifest: ModelManifest): Placed[] {
   const out: Placed[] = []
   let rightTaken = false
+  const drawn = new Set<string>()
   for (const w of [shown.ranged, shown.melee]) {
     if (!w) continue
     const slugs = attachmentFor(w.id) ?? [null]
+    // one physical weapon with a ranged and a melee profile (a stave you shoot and swing) is drawn once
+    const key = slugs.join('|')
+    if (slugs.length && slugs.every((s) => s !== null) && drawn.has(key)) continue
+    if (slugs.length && slugs.every((s) => s !== null)) drawn.add(key)
     slugs.forEach((slug, i) => {
       const hold = (slug && manifest.attachments[slug]?.holdClass) || w.hold
       let spec = HOLDS[hold]

@@ -26,6 +26,7 @@ import {
   dashNearLocus,
   dice,
   emerged,
+  endAct,
   hide,
   idsOf,
   loyaltyShot,
@@ -215,16 +216,16 @@ describe('wyrmblade', () => {
   it('TEAM-WYR-009 Group Activation owes one more Warrior, never a third; an emerging Warrior ignores it', () => {
     const base = wyr()
     const [w1, w2, w3, w4] = idsOf(base, 'A', 'wyr.warrior')
-    let s = take(activateOp(base, w1!), 'end').state
+    let s = endAct(activateOp(base, w1!))
     expect(s.pending).toMatchObject({ kind: 'firefight.activate', seat: 'A' })
     expect(s.pending!.options!.map((o) => o.id).sort()).toEqual([w2, w3, w4].sort())
-    s = take(activateOp(s, w2!), 'end').state
+    s = endAct(activateOp(s, w2!))
     expect(s.pending!.seat).toBe('B')
     // a Warrior that emerges is not owed a partner
     const hidden = hide(base, w1!)
-    const out = take(emerged(hidden, w1!), 'end').state
+    const out = endAct(emerged(hidden, w1!))
     expect(out.pending!.seat).toBe('B')
-    // one that stays hidden is, and the partner may be hiding too
+    // one that stays hidden is, and the partner may be hiding too (a hiding operative gets no end-of-activation window)
     const two = hide(base, w1!, w2!)
     const stay = take(activateOp(two, w1!), 'end').state
     expect(stay.pending!.options!.map((o) => o.id)).toContain(w2)
@@ -343,7 +344,7 @@ describe('wyrmblade', () => {
     expect(effectiveRules(plain, plain.operatives[hg]!, plain.data.weapons['wyr.w.gun-butt']!, 'fight', boy).map((r) => r.rule)).not.toContain('ceaseless')
   })
 
-  it('TEAM-WYR-015 a Neophyte shot dead near the Icon Bearer shoots before removal; a melee-killed one takes Plan Generations for 0 CP', () => {
+  it('TEAM-WYR-015 a Neophyte shot dead near the Icon Bearer shoots before removal; Plan Generations is the incapacitation ploy window, for 0 CP through Overthrow', () => {
     const { s, warrior } = warriorShotDead(wyr())
     expect(s.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { operativeId: warrior } })
     expect(s.pending!.options!.map((o) => o.id)).toEqual(['overthrow-shoot', 'none'])
@@ -373,14 +374,31 @@ describe('wyrmblade', () => {
     expect(f.operatives[w]!.status).toBe('removed')
     expect(f.pending).toMatchObject({ kind: 'firefight.action', seat: 'B' })
 
-    // shot dead on an objective: the free mission action for 0 CP through Overthrow, or for 1 CP as the ploy
+    // shot dead on an objective: Overthrow offers the free mission action for 0 CP (the rule's own choice); letting it
+    // go, the ploy is offered at its printed cost in the shared operative.incapacitated window, before removal
     let g = bTurn(place(place(place(pinned, icon, -0.5, 3), w, -0.5, 0), boy, 5.5, 0))
     g = take(activateOp(g, boy), 'shoot').state
     g = take(g, g.pending!.options![0]!.id).state
     const rng3 = dice(6, 6, 6, 6, 1, 1, 1)
     g = play(expectOk(step(g, g.pending!.options!.find((o) => o.id === w)!.action, rng3)).state, rng3, { 'ploy.firefight': (p) => act.pass(p) }, ['ability.choice', 'firefight.action']).state
-    expect(g.pending!.options!.map((o) => o.id)).toEqual(['plan', 'overthrow-plan', 'overthrow-shoot', 'none'])
+    expect(g.pending!.options!.map((o) => o.id)).toEqual(['overthrow-plan', 'overthrow-shoot', 'none'])
     const cp = g.players.A.cp
+    let p = take(g, 'none').state
+    expect(p.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'A', window: 'operative.incapacitated', context: { subjectId: w } })
+    expect(p.pending!.options!.find((o) => o.id === 'wyr.p.a-plan-generations-in-the-making')!.data).toMatchObject({ cost: 1 })
+    expect(p.operatives[w]!.status).toBe('active')
+    p = take(p, 'wyr.p.a-plan-generations-in-the-making').state
+    expect(p.pending).toMatchObject({ kind: 'firefight.action', seat: 'A', context: { operativeId: w } })
+    p = takeStarting(p, 'ability:core.a.secure')
+    expect(p.mission!.secured[objective(p).id]).toBe('A')
+    expect(p.players.A.cp).toBe(cp - 1)
+    expect(p.operatives[w]!.status).toBe('removed')
+    expect(p.pending).toMatchObject({ kind: 'firefight.action', seat: 'B' })
+    // passing the window too removes it with nothing done
+    const fell = passIt(take(g, 'none').state).state
+    expect(fell.operatives[w]!.status).toBe('removed')
+    expect(fell.players.A.cp).toBe(cp)
+    // through Overthrow it costs nothing, and the window has nothing left to offer
     g = take(g, 'overthrow-plan').state
     expect(g.pending).toMatchObject({ kind: 'firefight.action', seat: 'A', context: { operativeId: w } })
     g = takeStarting(g, 'ability:core.a.secure')
@@ -553,7 +571,7 @@ describe('wyrmblade', () => {
     expect(t.operatives[locus]!.pos.x).toBeCloseTo(3)
     expect(t.pending).toMatchObject({ kind: 'firefight.action', seat: 'A', context: { performed: ['fight'] } })
 
-    // Slink Into Darkness after the last AP; Shadow Vector makes it free for a Neophyte the Leader sees, not for the Leader
+    // Slink Into Darkness at the end of the activation; Shadow Vector makes it free for a Neophyte the Leader sees, not for the Leader
     const w = idsOf(base, 'A', 'wyr.warrior')[0]!
     const leader = opOf(base, 'A', 'wyr.neophyte-leader')
     const slink = (id: string, o: GameState) => {
@@ -563,7 +581,7 @@ describe('wyrmblade', () => {
     }
     const arranged = place(place(base, leader, -6, 4), w, -6, 0)
     const slunk = slink(w, arranged)
-    expect(slunk.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'A' })
+    expect(slunk.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'A', window: 'firefight.activationEnded' })
     const opt = slunk.pending!.options!.find((o) => o.id === 'wyr.p.slink-into-darkness')!
     expect(opt.data).toMatchObject({ cost: 0, via: 'shadowVector' })
     const after = take(slunk, 'wyr.p.slink-into-darkness').state

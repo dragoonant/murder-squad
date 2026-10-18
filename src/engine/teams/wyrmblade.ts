@@ -10,19 +10,22 @@
 //  - Quicksilver Strike (T-WYR.14): provider reactions + the quicksilverStrike choice hook.
 //  - Expert Swordsman and Creeping Shadow follow-ups (T-WYR.12, 20): pseudo ploys in the firefight.actionEnded window
 //    (registerPloyRule extraOffers) that start a free action; Shadow Vector (T-WYR.8) is a ploy cost rule.
-//  - Before-removal free actions (T-WYR.17, 37): the operative.incapacitated hook raises one ability.choice.
+//  - Before-removal free actions (T-WYR.17, 37): the operative.incapacitated hook raises the Overthrow choice, then
+//    the shared operative.incapacitated ploy window offers A Plan Generations in the Making.
+//  - Slink Into Darkness (T-WYR.34): the shared firefight.activationEnded ploy window.
 import { abilityOffers } from '../abilities'
 import { applyAplEffect, redirectAttack, ruleKey, ruleSetFor, continueRemovals } from '../attack-common'
 import { hasAbility, hasKeyword, inEnemyCr } from '../conditions'
 import { markFired, registerCodeHook, type OfferSeed, type PloyOfferSeed } from '../code-hooks'
-import { addEffect, markUsedTp, spendCp, usedThisTp } from '../effects'
+import { addEffect, markUsedTp, usedThisTp } from '../effects'
 import { cancelAction, canStartFreeAction, finishAction, reactionDone, startDelegatedAction, startFreeAction } from '../firefight'
 import { bearing, distToPolygon, polygonBBox, round3, segmentBBoxOverlaps, segmentPolygonIntervals } from '../geometry'
 import { registerFrameResume, registerHook, type TargetStatusData } from '../hooks'
 import { bodyOf, visible } from '../los'
 import { distanceBetween } from '../measure'
 import { planMove } from '../movement'
-import { registerPloyRule, type PloyOffer, type PloyRule } from '../ploys'
+import { registerPloyRule, type PloyOffer, type PloyRule } from '../ploy-rules'
+import { continueWindow } from '../ploys'
 import type { Ctx } from '../registry'
 import { incapacitateOffboard, placementSpots, returnToKillzone } from '../reserve'
 import { activeOps, effectiveMove, enemiesOf, getOp, readyOps } from '../state'
@@ -292,20 +295,6 @@ registerHook(
     return null
   },
   'wyr.activationStart',
-)
-
-// SLINK INTO DARKNESS takes effect as the activation ends (T-WYR.34).
-registerHook(
-  'activation.end',
-  (c) => {
-    const s = c.state
-    const op = s && c.operativeId ? s.operatives[c.operativeId] : undefined
-    // "if that operative has an Engage order" is read as the activation ends
-    if (!s || !c.engine || !op || op.status !== 'active' || op.order !== 'engage' || !operativeEffect(s, SLINK_FX, op.id)) return null
-    setOrder(c.engine, op, 'conceal')
-    return null
-  },
-  'wyr.slinkEnd',
 )
 
 // HIDING ends with the second turning point (T-WYR.26): still hiding means incapacitated, without before-removal rules.
@@ -683,10 +672,8 @@ registerCodeHook({
   },
 })
 
-// SLINK INTO DARKNESS (T-WYR.34). RULING: the engine has no end-of-activation ploy window, so it is offered after the
-// action that spends the operative's last AP and takes effect when the activation ends (activation.end above). An
-// activation ended early with AP unspent gets no offer (offering it after every action would prompt after every
-// Wyrmblade action); the exact fix is a shared end-of-activation ploy window.
+// SLINK INTO DARKNESS (T-WYR.34): the shared end-of-activation ploy window (firefight.activationEnded), opened for
+// the operative's own activation only (a counteraction is not an activation) and only while it is in the killzone.
 registerCodeHook({
   name: 'slinkIntoDarkness',
   ploy: {
@@ -694,16 +681,15 @@ registerCodeHook({
       const op = info.subjectId ? state.operatives[info.subjectId] : undefined
       const act = state.firefight.activation
       if (!op || op.seat !== seat || op.status !== 'active' || !isWyr(state, op) || op.order !== 'engage') return []
-      if (op.oncePerBattleUsed.includes('wyr.slink') || operativeEffect(state, SLINK_FX, op.id)) return []
-      if (!act || act.operativeId !== op.id || act.counteract || act.frame || act.apSpent < Math.max(0, op.apl + Math.max(-1, Math.min(1, op.aplMods)))) return []
+      if (op.oncePerBattleUsed.includes(SLINK_FX)) return []
+      if (!act || act.operativeId !== op.id || act.counteract || act.frame) return []
       return [{}]
     },
-    apply(ctx, seat, _ploy, _seed, info) {
+    apply(ctx, _seat, _ploy, _seed, info) {
       const op = info.subjectId ? ctx.state.operatives[info.subjectId] : undefined
       if (!op) return
-      op.oncePerBattleUsed.push('wyr.slink')
-      // the order changes when the activation ends (below), so the activation itself still plays as an Engage one
-      addEffect(ctx, { source: SLINK_FX, seat, kind: 'ployFlag', operativeId: op.id, expires: 'activation' })
+      op.oncePerBattleUsed.push(SLINK_FX)
+      if (op.order === 'engage') setOrder(ctx, op, 'conceal')
     },
   },
 })
@@ -877,14 +863,13 @@ registerHook(
     // only inside a removal queue, which can wait for the answer (mines and direct damage remove at once; RULING)
     if (!s || !ctx || !victim || !s.removal || victim.status !== 'active' || !isWyr(s, victim) || !isNeophyte(s, victim)) return null
     const seat = victim.seat
-    const ploy = s.data.ploys?.[PLAN]
-    const cost = ploy?.cost ?? 1
+    // Overthrow the Oppressors is a rule, asked here; A Plan Generations in the Making at its printed cost is a ploy,
+    // offered by the operative.incapacitated ploy window that follows (planGenerations ploy below)
     const planOk = missionFeasible(s, victim)
     const ployFree = !usedThisTp(s, seat, PLAN)
     const over = overthrowAvailable(s, victim)
     const options: { id: string; name: string }[] = []
-    if (planOk && ployFree && s.players[seat].cp >= cost) options.push({ id: 'plan', name: `A Plan Generations in the Making (${cost} CP): a free mission action` })
-    if (over && planOk && ployFree) options.push({ id: 'overthrow-plan', name: 'Overthrow the Oppressors: a free mission action for 0 CP' })
+    if (over && planOk && ployFree) options.push({ id: 'overthrow-plan', name: 'Overthrow the Oppressors: A Plan Generations in the Making for 0 CP (a free mission action)' })
     if (over && freeShootPossible(s, victim)) options.push({ id: 'overthrow-shoot', name: 'Overthrow the Oppressors: a free Shoot' })
     if (options.length === 0) return null
     options.push({ id: 'none', name: 'Let it fall' })
@@ -902,6 +887,23 @@ registerHook(
 
 registerCodeHook({
   name: 'planGenerations',
+  // the ploy at its printed cost, in the shared operative.incapacitated window of an attack's removal queue
+  ploy: {
+    offers(state, seat, _ploy, info): PloyOfferSeed[] {
+      const victim = info.subjectId ? state.operatives[info.subjectId] : undefined
+      if (!victim || victim.seat !== seat || victim.status !== 'active' || !state.removal || !isWyr(state, victim) || !isNeophyte(state, victim)) return []
+      return missionFeasible(state, victim) ? [{}] : []
+    },
+    apply(ctx, _seat, _ploy, _seed, info) {
+      const s = ctx.state
+      const victim = info.subjectId ? s.operatives[info.subjectId] : undefined
+      if (!victim || !s.removal) return
+      // the window waits aside while the free action runs (startDelegatedAction keeps it), and so does the removal
+      const saved = JSON.parse(JSON.stringify(s.removal)) as NonNullable<GameState['removal']>
+      startDelegatedAction(ctx, { operativeId: victim.id, resume: 'wyr.planWindow', rules: { allow: ['mission'] }, data: { removal: saved } })
+    },
+  },
+  // the Overthrow the Oppressors choice raised by the before-removal hook
   choice(ctx, op, option) {
     const s = ctx.state
     const seat = op.seat
@@ -911,12 +913,9 @@ registerCodeHook({
     }
     // a free action of its own may start a removal of its own: keep this one and put it back afterwards
     const saved = JSON.parse(JSON.stringify(s.removal)) as NonNullable<GameState['removal']>
-    if (option === 'plan' || option === 'overthrow-plan') {
-      if (option === 'plan') spendCp(ctx, seat, s.data.ploys?.[PLAN]?.cost ?? 1, PLAN)
-      else {
-        markUsedTp(s, seat, OVERTHROW)
-        markFired('overthrowOppressors')
-      }
+    if (option === 'overthrow-plan') {
+      markUsedTp(s, seat, OVERTHROW)
+      markFired('overthrowOppressors')
       markUsedTp(s, seat, PLAN)
       ctx.emit({ type: 'PloyUsed', ployId: PLAN }, seat)
       if (!startDelegatedAction(ctx, { operativeId: op.id, resume: 'wyr.beforeRemoval', rules: { allow: ['mission'] }, data: { removal: saved } })) continueRemovals(ctx)
@@ -935,21 +934,20 @@ registerFrameResume('wyr.beforeRemoval', (ctx, _outcome, data) => {
   continueRemovals(ctx)
 })
 
+// the ploy's free mission action is over: put the removal back and let the ploy window carry on (it then closes
+// into continueRemovals)
+registerFrameResume('wyr.planWindow', (ctx, _outcome, data) => {
+  if (data.removal) ctx.state.removal = data.removal as NonNullable<GameState['removal']>
+  if (ctx.state.window) continueWindow(ctx)
+  else continueRemovals(ctx)
+})
+
 // ---------------------------------------------------------------------------
 // Ploy rules: Shadow Vector, Expert Swordsman and Creeping Shadow follow-ups
 // ---------------------------------------------------------------------------
 
-// ploys.ts is still being evaluated when the team modules load (abilities.ts imports them), so the rule is registered
-// from a code hook run at game creation instead of at module level. Every Wyrmblade roster has the Leader.
-let ployRulesRegistered = false
-registerCodeHook({
-  name: 'shadowVector',
-  setup() {
-    if (ployRulesRegistered) return
-    ployRulesRegistered = true
-    registerPloyRule(PLOY_RULE)
-  },
-})
+// named by the Leader's data (every Wyrmblade roster has one); the ploy rule itself registers at module load below
+registerCodeHook({ name: 'shadowVector', setup: () => undefined })
 
 const PLOY_RULE: PloyRule = {
   extraOffers(state, seat, window, info): PloyOffer[] {
@@ -1009,3 +1007,4 @@ const PLOY_RULE: PloyRule = {
   },
 }
 
+registerPloyRule(PLOY_RULE)

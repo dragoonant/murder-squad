@@ -1,7 +1,7 @@
 // The four M9 teams in a real battle through the client: each one (played by the normal AI in the bot seat) meets an
 // existing team (played by the random bot through the human seat's auto-step), the game runs to turning point 3 without
 // page errors or error toasts, and the battle is screenshotted to tools/out/screens/<team>.png. Wyrmblade also checks
-// the HIDING control at set-up and the tray of hidden operatives.
+// the HIDING control at set-up and the tray of hidden operatives (both seats' hidden operatives show: open information).
 import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { screenshotRendered } from './helpers'
@@ -90,7 +90,7 @@ for (const team of NEW_TEAMS) {
   })
 }
 
-test('wyrmblade: the set-up offers HIDING, hidden operatives wait in the tray and the opponent sees none', async ({ page }) => {
+test('wyrmblade: the set-up offers HIDING and hidden operatives wait in the tray (open information, the opponent sees them too)', async ({ page }) => {
   test.setTimeout(240_000)
   const errors = await prepare(page)
   await page.goto('./?test=1&bot=normal&seats=human,bot&seed=nt-hide&mission=secure&layout=01&teams=wyrmblade,aod&speed=instant')

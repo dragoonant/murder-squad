@@ -238,7 +238,7 @@ TEAM-PF-003 | T-PF.28, T-PF.21 | Shoot and Markerlight in one activation must sh
 TEAM-PF-004 | T-PF.30 | Token rows apply cumulatively: 1 Saturate and Balanced, 2 Hit +1 capped at 3+, 3 no obscured, 4 Seek Light (changes valid targets), 5 Seek; fusion and frag/krak grenades get nothing.
 TEAM-PF-005 | T-PF.7, T-PF.8 | Art of War: each option once per battle; Mont'ka +1" Move; Kauyon free Markerlight only for Conceal-ordered operatives with the action; Blooded may swap options for its activation.
 TEAM-PF-006 | T-PF.12, T-PF.20 | Drone whitelist enforced; Remote Pilot lets a drone do a forbidden action with a 2" move cap, repeatable but never the same drone-action pair twice per activation; drone control APL counts 1 lower.
-TEAM-PF-007 | T-PF.14, T-PF.15 | Medic! saves a non-drone within 3" once per TP at 1 wound, free Dash into medic CR, both -1 APL, ends that operative's activation; blocked if the medic is a target or either is in enemy CR; Medikit heals 2D3 capped, not the Medic! target.
+TEAM-PF-007 | T-PF.14, T-PF.15 | Medic! saves a non-drone within 3" once per TP at 1 wound, free Dash into medic CR, both -1 APL, ends that operative's activation; saved inside an enemy Guard interrupt, the Dash is a reaction once the interrupt is over; blocked if the medic is a target or either is in enemy CR; Medikit heals 2D3 capped, not the Medic! target.
 TEAM-PF-008 | T-PF.16 | Group Activation forces a second ready Shas'la activation, never a third.
 TEAM-PF-009 | T-PF.37, T-PF.11, T-PF.22 | Saviour Protocols redirects to a drone within 3", ignores validity, cover/obscured capped by the original, no effect vs Blast/Torrent; 0 CP with Drone Controller or MV4.
 TEAM-PF-010 | T-PF.38 | Point-Blank Fusillade: ranged weapon as melee, no blocking, Devastating/Piercing/Torrent off, resolve-first only when ready, Engage and pulse.
@@ -247,7 +247,7 @@ TEAM-PF-012 | T-PF.32, T-PF.36 | Suppressing Fire bans enemy attack re-rolls whe
 TEAM-PF-013 | T-PF.39 to T-PF.42 | Equipment limits (TAO 1/TP, HIML 2/TP, Photon 1/TP, OSU 1/TP); Photon Grenade on 3+ gives Move -2" (floor 4") and no Dash; OSU picks any enemy, never combined with HIML or Analyse.
 TEAM-PF-014 | T-PF.22, T-PF.24 | MV4 ignores Piercing and Piercing Crits and one Normal Dmg per TP; Pulse Accelerator gives pulse weapons within 3" Lethal 5+ and Severe until the drone's next activation or death.
 TEAM-PF-015 | stat tables | Every operative stat, base size and weapon profile matches 3.2 and 3.3 (dart round 3/4, fusion grenade 4/3).
-TEAM-PF-016 | T-PF.31, T-PF.35 | Recon Sweep (not in TP1, never the own edge, order chosen by the player, Dash refused unless it ends wholly within 6" of a non-own edge) and A Worthy Cause (a free mission action only).
+TEAM-PF-016 | T-PF.31, T-PF.35 | Recon Sweep (not in TP1, never the own edge, order chosen by the player, Dash refused unless it ends wholly within 6" of a non-own edge) and A Worthy Cause (in the firefight.start ploy window, a free mission action only, then the window carries on).
 TEAM-PF-017 | T-PF.10 | SIGNAL may be done in a counteraction (no ban is printed), needs sight of the friendly operative and stays within 6".
 
 ## TEAM-HIE - Hierotek Circle
@@ -283,7 +283,7 @@ TEAM-PM-006 | T-PM.19 | A 3-damage die on a Plague Marine with D6 4+ inflicts 2;
 TEAM-PM-007 | T-PM.8 | Toxic adds 1/1 Dmg only against targets poisoned at the start of the action; in a Blast, an unpoisoned primary that gains a token does not upgrade the secondaries.
 TEAM-PM-008 | T-PM.7 | Champion regains wounds equal to wounds a poisoned enemy within 7" lost, capped at 3 per TP and at starting wounds; nothing when the enemy is unpoisoned or beyond 7".
 TEAM-PM-009 | T-PM.9 | Bombardier throws blight at 3+ with Toxic and krak at 3+ without spending the team's Blight Grenades uses; its own allowance runs out after 2 blight and 1 krak.
-TEAM-PM-010 | T-PM.10 | FLAIL deals D3+2 to every operative (friend and foe) visible and within 2"; a D3 of 3 poisons an enemy; Fight + FLAIL is legal, Fight + FLAIL + Fight is not; blocked by a Conceal order.
+TEAM-PM-010 | T-PM.10 | FLAIL deals D3+2 to every operative (friend and foe) visible and within 2"; a D3 of 3 poisons an enemy; Fight + FLAIL and FLAIL + FLAIL are legal, Fight + FLAIL + Fight is not; blocked by a Conceal order.
 TEAM-PM-011 | T-PM.11 | Icon Bearer with APL 3 contributes 4 to marker control, and 5 with a +1 APL change.
 TEAM-PM-012 | T-PM.12, T-PM.20 | Contagion costs 0 CP while the Icon Bearer is in the opponent's territory, 1 CP otherwise.
 TEAM-PM-013 | T-PM.13 | Poisonous Miasma poisons an unpoisoned target and deals 3 damage to a poisoned one; legal on a concealed enemy in cover visible within 7"; illegal in an enemy's CR.
@@ -295,8 +295,8 @@ TEAM-PM-018 | T-PM.22 | Cloud of Flies obscures a Plague Marine wholly within 1"
 TEAM-PM-019 | T-PM.23 | Nurglings: APL -1 on an enemy within 3", or a poisoned enemy within 7"; an unpoisoned enemy 5" away is not selectable; the cap holds with Stun.
 TEAM-PM-020 | T-PM.24 | Virulent Poison poisons an enemy within 3" behind a wall, or one visible within 7"; not one hidden at 5".
 TEAM-PM-021 | T-PM.25 | After Sickening Resilience a 4-damage die becomes 3 with no roll, a 3 becomes 2, a 2 stays 2.
-TEAM-PM-022 | T-PM.26 | Poisonous Demise poisons unpoisoned enemies visible within 3" and deals 1 damage to already-poisoned ones, including one poisoned earlier in the same action.
-TEAM-PM-023 | T-PM.27 | Curse of Rot: each opponent 3 deals 1 damage and becomes a fail that cannot be re-rolled; not offered while retaliating or beyond the range.
+TEAM-PM-022 | T-PM.26 | Poisonous Demise poisons unpoisoned enemies visible within 3" and deals 1 damage to already-poisoned ones, including one poisoned earlier in the same action; after an attack it is offered in the operative.incapacitated ploy window before removal (passing keeps the CP).
+TEAM-PM-023 | T-PM.27 | Curse of Rot: used before re-rolls (shoot.beforeDefenceRerolls, fight.beforeRerolls), each opponent 3 deals 1 damage and becomes a fail that cannot be re-rolled, shooting or fighting; not offered while retaliating, beyond the range or without a 3.
 TEAM-PM-024 | T-PM.28 | With Plague Bells an injured Plague Marine keeps Move 5" and its printed Hit.
 TEAM-PM-025 | T-PM.29 | With Plague Rounds a bolt pistol hit poisons; the Warrior's boltgun has Poison, Severe and Toxic; plasma pistols are unchanged.
 TEAM-PM-026 | T-PM.30 | Third team blight grenade use in a battle is rejected.
@@ -311,20 +311,20 @@ TEAM-WYR-003 | T-WYR.24 | Set-up allows at most 4 NEOPHYTE in HIDING; a cult age
 TEAM-WYR-004 | T-WYR.25 | Emerge offers only positions wholly within 6" of the drop zone and >6" from enemies; costs 1 AP; Charge and Fall Back then illegal; expend always legal.
 TEAM-WYR-005 | T-WYR.25 | An emerged Heavy Gunner cannot shoot its heavy stubber that activation.
 TEAM-WYR-006 | T-WYR.26 | Operatives still hiding at end of TP2 are incapacitated and raise the opponent's kill grade.
-TEAM-WYR-007 | T-WYR.27 | With a ready hiding operative the Wyrmblade player cannot counteract; the opponent's view lists the hiding operative.
+TEAM-WYR-007 | T-WYR.27 | With a ready hiding operative the Wyrmblade player cannot counteract; the opponent's view lists the hiding operative (open information; the client tray shows it too, M9C-009).
 TEAM-WYR-008 | T-WYR.29 | Ceaseless when switched Conceal→Engage at activation start; Ceaseless when unseen at activation start; no Ceaseless on retaliation or counteract.
 TEAM-WYR-009 | T-WYR.23 | Expending a Warrior forces the next decision to be a ready Warrior; after the second Warrior, the opponent activates.
-TEAM-WYR-010 | T-WYR.14 | After an enemy Dash ending 2.5" from the Locus, Quicksilver Strike Charges into its CR; when no ≤3" Charge exists it is not offered and the TP use stays.
+TEAM-WYR-010 | T-WYR.14 | After an enemy Dash ending 2.5" from the Locus, Quicksilver Strike Charges into its CR; when no ≤3" Charge exists it is not offered and the TP use stays; an enemy gambit Dash in the Strategy phase triggers it too (FAQ).
 TEAM-WYR-011 | T-WYR.13 | Retaliating Locus blocks an enemy success before the attacker's first strike.
 TEAM-WYR-012 | T-WYR.22 | Assassinate is legal only vs an enemy that cannot see the Talon and is reachable within 6"; the double strike resolves before the defender acts.
 TEAM-WYR-013 | T-WYR.36 | Unquestioning Loyalty swaps a Shoot target onto a Neophyte out of the shooter's sight; refused vs a Blast weapon.
 TEAM-WYR-014 | T-WYR.15 | Stationary Heavy Gunner gets Ceaseless; with Cult Ambush active it gets Relentless instead.
-TEAM-WYR-015 | T-WYR.17, T-WYR.37 | Neophyte shot dead near the Icon Bearer makes a free Shoot before removal; one killed in melee has an enemy in its CR, so it can neither Shoot nor take a mission action (both keep their conditions) and is simply removed; one shot dead on an objective can take Plan Generations at 0 CP through Overthrow.
+TEAM-WYR-015 | T-WYR.17, T-WYR.37 | Neophyte shot dead near the Icon Bearer makes a free Shoot before removal; one killed in melee has an enemy in its CR, so it can neither Shoot nor take a mission action (both keep their conditions) and is simply removed; one shot dead on an objective can take Plan Generations at 0 CP through Overthrow, or at 1 CP in the operative.incapacitated ploy window.
 TEAM-WYR-016 | T-WYR.33 | Divert and Disappear: a cult agent uses two of the three slots; its Fall Back applies −1 APL to its next activation.
 TEAM-WYR-017 | T-WYR.40 | A Wyrmblade operative passes over its own mine without triggering it; an enemy triggers it.
 TEAM-WYR-018 | T-WYR.10, 18, 19, 21, 28, 30, 31 | Rule grants: Soulsight (Saturate on the Sniper's rifle, Brutal and Balanced on the Talon's dagger), Target Vulnerability (Lethal 5+ on the stationary profile), Heroic Inspiration (Severe after a Kelermorph kill, within 3" and in sight), Crossfire (Accurate 1 after another operative shot the target), The Day Is At Hand (Rending, +1 Atk capped at 5), Cult Agent (Piercing and Saturate ignored).
 TEAM-WYR-019 | T-WYR.11, 19, 32, 41 | Obscured: Hypersense, a Soulsight token and Spotlights remove it; One With The Shadows adds it from Light terrain more than 1" from both operatives.
-TEAM-WYR-020 | T-WYR.8, 12, 34, 35 | After a Fight that leaves no enemy in CR the Locus is offered a free 3" Charge (not counted as its Charge action); Slink Into Darkness after the last AP costs 0 CP for a Neophyte the Leader sees (not for the Leader) and sets Conceal when the activation ends; Coiled Serpent makes a normal success a critical success, only after a Conceal to Engage switch.
+TEAM-WYR-020 | T-WYR.8, 12, 34, 35 | After a Fight that leaves no enemy in CR the Locus is offered a free 3" Charge (not counted as its Charge action); Slink Into Darkness in the end-of-activation window (AP spent or not; never mid-activation, in a counteraction or twice per operative) costs 0 CP for a Neophyte the Leader sees (not for the Leader) and sets Conceal; Coiled Serpent makes a normal success a critical success, only after a Conceal to Engage switch.
 TEAM-WYR-021 | T-WYR.9, 12, 16, 19, 20, 21 | Kelermorph shoots twice and the Locus fights twice; the Talon can Charge under Conceal; the Icon Bearer counts one more at an objective without changing its APL; one Soulsight token per team moves when the other cult agent takes the action.
 
 ## SIM - simulation invariants

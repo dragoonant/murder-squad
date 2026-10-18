@@ -5,7 +5,7 @@
 import { applyAplEffect, continueRemovals, effectiveRules, hasRule, inflict, validTargets, weaponDamage } from '../attack-common'
 import { markFired, registerCodeHook, type OfferSeed, type PloyOfferSeed } from '../code-hooks'
 import { codeParams, hasAbility, hasKeyword } from '../conditions'
-import { addEffect, addUse, directDamage, markUsedTp, regainWounds, removeEffects, spendCp, usedThisTp, usesOf } from '../effects'
+import { addEffect, addUse, directDamage, markUsedTp, regainWounds, spendCp, usedThisTp, usesOf } from '../effects'
 import { territoryOf } from '../equipment'
 import { cancelAction, finishAction } from '../firefight'
 import { dist2, distToPolygon, pointInPolygon } from '../geometry'
@@ -13,7 +13,7 @@ import { registerHook } from '../hooks'
 import { bodyOf, visible } from '../los'
 import { newMarkerId, removeMarker } from '../markers'
 import { distanceBetween } from '../measure'
-import { registerPloyRule } from '../ploys'
+import { registerPloyRule } from '../ploy-rules'
 import type { Ctx } from '../registry'
 import { activeOps, enemiesOf, markerRadius, otherSeat, SEATS } from '../state'
 import { registerTeamRules } from '../team-rules'
@@ -49,7 +49,8 @@ const ID = {
 for (const name of ['pmAstartes', 'disgustinglyResilient', 'poisonRule', 'toxicRule', 'grandfathersBlessing', 'iconBearer', 'repulsiveFortitude', 'plagueBells', 'poisonVents']) {
   registerCodeHook({ name })
 }
-registerCodeHook({ name: 'iconOfContagion', setup: () => registerPloyCosts() })
+// named by the Icon Bearer's data; its cost rule below registers at module load (ploy-rules.ts is a leaf)
+registerCodeHook({ name: 'iconOfContagion', setup: () => undefined })
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -196,20 +197,6 @@ registerTeamRules({
   injuredEquivalent(state, op) {
     return contagionApplies(state, op)
   },
-  // Curse of Rot when shooting (T-PM.27): the armed curse locks every defence 3 as soon as the dice are rolled,
-  // before the defender's re-roll window (this is the first rule read on the fresh dice), so a 3 can never be
-  // re-rolled away; afterDefenceRoll then turns the locked 3s into fails and deals the damage. Bans nothing.
-  rerollsBanned(state, side, attack) {
-    if (attack.kind !== 'shoot' || side.operativeId === attack.operativeId) return false
-    const armed = state.effects.some((e) => e.source === ID.curse && e.operativeId === attack.operativeId && e.data?.targetId === side.operativeId)
-    if (!armed) return false
-    for (const d of side.dice) {
-      if (d.value !== 3 || d.tag) continue
-      d.rerolled = true
-      d.tag = 'pm.curse.locked'
-    }
-    return false
-  },
   controlApl(state, op, _marker, apl) {
     if (!hasAbility(state, op, ID.iconBearer)) return null
     markFired('iconBearer')
@@ -218,31 +205,24 @@ registerTeamRules({
 })
 
 // Icon of Contagion (T-PM.12): CONTAGION costs 0 CP while an Icon Bearer stands in the opponent's territory.
-// The ploy rule registers when a game with an Icon Bearer is created (ploys.ts is still loading when this
-// module is first evaluated through the abilities.ts import cycle).
 /** "Within" a territory: any part of the base is inside it (not the centre only). */
 export function inTerritory(o: Operative, terr: { x: number; z: number }[]): boolean {
   const c = { x: o.pos.x, z: o.pos.z }
   return pointInPolygon(c, terr) || distToPolygon(c, terr) < o.baseRadius - EPS
 }
 
-let ployRuleRegistered = false
-function registerPloyCosts(): void {
-  if (ployRuleRegistered) return
-  ployRuleRegistered = true
-  registerPloyRule({
-    costAdjust(state, seat, ploy) {
-      if (ploy.id !== ID.contagion) return null
-      const terr = territoryOf(state, otherSeat(seat))
-      if (!terr) return null
-      const there = pmsOf(state, seat).some((o) => hasAbility(state, o, ID.iconOfContagion) && inTerritory(o, terr))
-      return there ? { cost: 0, via: 'pm.iconOfContagion' } : null
-    },
-    onUsed(_ctx, _seat, offer) {
-      if (offer.via === 'pm.iconOfContagion') markFired('iconOfContagion')
-    },
-  })
-}
+registerPloyRule({
+  costAdjust(state, seat, ploy) {
+    if (ploy.id !== ID.contagion) return null
+    const terr = territoryOf(state, otherSeat(seat))
+    if (!terr) return null
+    const there = pmsOf(state, seat).some((o) => hasAbility(state, o, ID.iconOfContagion) && inTerritory(o, terr))
+    return there ? { cost: 0, via: 'pm.iconOfContagion' } : null
+  },
+  onUsed(_ctx, _seat, offer) {
+    if (offer.via === 'pm.iconOfContagion') markFired('iconOfContagion')
+  },
+})
 
 // ---------------------------------------------------------------------------
 // Weapon rules: Lumbering Death's Ceaseless, Toxic's Dmg
@@ -399,7 +379,7 @@ registerHook(
 )
 
 // ---------------------------------------------------------------------------
-// Dice: Repulsive Fortitude, the armed Curse of Rot
+// Dice: Repulsive Fortitude, Curse of Rot
 // ---------------------------------------------------------------------------
 
 /** Curse of Rot (T-PM.27): every 3 becomes a fail that cannot be re-rolled; returns how many. */
@@ -427,13 +407,6 @@ registerHook(
     const data = c.data as { kind: 'shoot' | 'fight'; dice: AttackDie[] }
     const defender = state && c.operativeId ? state.operatives[c.operativeId] : undefined
     if (!ctx || !state || !defender || data.kind !== 'shoot') return null
-    // the armed Curse of Rot of the shooter takes effect now
-    const fx = state.effects.find((e) => e.source === ID.curse && e.operativeId === c.targetId && e.data?.targetId === defender.id)
-    if (fx) {
-      removeEffects(ctx, (e) => e.id === fx.id)
-      const n = markCurse(data.dice)
-      if (n > 0) curseDamage(ctx, c.targetId!, defender.id, n)
-    }
     if (codeParams(state, defender, 'repulsiveFortitude')) {
       for (const die of data.dice) {
         if (die.value === null || die.value < 5 || die.kind === 'crit' || die.tag) continue
@@ -528,29 +501,46 @@ function demiseVictims(state: GameState, pm: Operative): Operative[] | null {
   return victims.length > 0 ? victims : null
 }
 
+/** Enemies in the ploy's reach (visible, within 3"), whatever the CP. */
+function demiseReach(state: GameState, pm: Operative): Operative[] {
+  return enemiesOf(state, pm).filter((e) => live(e) && within(pm, e, 3) && visible(state, bodyOf(pm), bodyOf(e)))
+}
+
+/** The ploy's effect: poison every enemy in reach, or hurt one that already carries your Poison token. */
+function demiseEffect(ctx: Ctx, pm: Operative): void {
+  for (const e of demiseReach(ctx.state, pm)) {
+    if (hasToken(ctx.state, e.id, POISON, pm.seat)) directDamage(ctx, e.id, 1, pm.id, 'pm.poisonousDemise')
+    else addToken(ctx, e.id, { kind: POISON, owner: pm.seat }, 'pm.poisonousDemise')
+  }
+}
+
+/** Played outside a ploy window, and paid here: direct damage, or a removal while another ploy timing is open. */
 function playDemise(ctx: Ctx, pm: Operative): void {
   const state = ctx.state
   const ploy = state.data.ploys?.[ID.demise]
-  const victims = demiseVictims(state, pm)
-  if (!ploy || !victims) return
+  if (!ploy || !demiseVictims(state, pm)) return
   spendCp(ctx, pm.seat, ploy.cost, ploy.id)
   markUsedTp(state, pm.seat, ploy.id)
   ctx.emit({ type: 'PloyUsed', ployId: ploy.id }, pm.seat)
   markFired('poisonousDemise')
-  for (const e of victims) {
-    if (hasToken(state, e.id, POISON, pm.seat)) directDamage(ctx, e.id, 1, pm.id, 'pm.poisonousDemise')
-    else addToken(ctx, e.id, { kind: POISON, owner: pm.seat }, 'pm.poisonousDemise')
-  }
+  demiseEffect(ctx, pm)
 }
 
 registerCodeHook({
   name: 'poisonousDemise',
   ploy: {
-    // no ploy window opens at an incapacitation: the hook below asks (or plays it) instead
-    offers: () => [],
-    apply: () => undefined,
+    // the shared operative.incapacitated ploy window of an attack's removal queue (passing keeps the CP)
+    offers(state, seat, _ploy, info): PloyOfferSeed[] {
+      const pm = info.subjectId ? state.operatives[info.subjectId] : undefined
+      if (!isPm(state, pm) || pm.seat !== seat || pm.status !== 'active' || demiseReach(state, pm).length === 0) return []
+      return [{}]
+    },
+    apply(ctx, _seat, _ploy, _seed, info) {
+      const pm = info.subjectId ? ctx.state.operatives[info.subjectId] : undefined
+      if (pm) demiseEffect(ctx, pm)
+    },
   },
-  // the owner's answer while the removal queue waits (attack removals)
+  // the owner's answer when the removal queue waits but the ploy window cannot open (another ploy timing is open)
   choice(ctx, op, option) {
     if (option === 'use' && op.status === 'active') playDemise(ctx, op)
     continueRemovals(ctx)
@@ -564,6 +554,8 @@ registerHook(
     const state = c.state
     const pm = state && c.operativeId ? state.operatives[c.operativeId] : undefined
     if (!ctx || !state || !pm || !isPm(state, pm) || !demiseVictims(state, pm)) return null
+    // an attack's removal queue: the operative.incapacitated ploy window offers it next, before removal (R-5.18)
+    if (state.removal && !state.window) return null
     if (state.removal && !state.pending) {
       // an attack's removal queue can wait for the owner's decision (R-5.18: the owner orders its own rules)
       ctx.raise({
@@ -827,23 +819,17 @@ registerCodeHook({
       if (!foe || foe.seat === seat || !live(foe)) return []
       const near = within(pm, foe, 3) || (hasToken(state, foe.id, POISON, seat) && within(pm, foe, 7))
       if (!near) return []
-      if (info.window === 'fight.rolled') {
-        const side = sideOf(state, foe.id)
-        if (!side || !side.dice.some((d) => d.value === 3)) return []
-      }
+      // offered on the enemy's fresh roll, before any re-roll (shoot.beforeDefenceRerolls, fight.beforeRerolls), when a 3 shows
+      const side = sideOf(state, foe.id)
+      if (!side || !side.dice.some((d) => d.value === 3 && !d.used && d.tag !== 'pm.curse')) return []
       return [{}]
     },
-    apply(ctx, seat, ploy, _seed, info) {
+    apply(ctx, _seat, _ploy, _seed, info) {
       const pmId = info.subjectId
       const foeId = info.targetId
       if (!pmId || !foeId) return
-      if (info.window === 'fight.rolled') {
-        const side = sideOf(ctx.state, foeId)
-        if (side) curseDamage(ctx, pmId, foeId, markCurse(side.dice))
-        return
-      }
-      // shooting: the opponent's defence dice do not exist yet, so the ploy is armed and takes effect on that roll
-      addEffect(ctx, { source: ploy.id, seat, kind: 'ployFlag', operativeId: pmId, expires: 'action', data: { targetId: foeId } })
+      const side = sideOf(ctx.state, foeId)
+      if (side) curseDamage(ctx, pmId, foeId, markCurse(side.dice))
     },
   },
 })

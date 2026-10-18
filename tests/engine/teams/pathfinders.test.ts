@@ -20,7 +20,7 @@ import { play } from '../../fixtures/attack'
 import { place } from '../../fixtures/helpers'
 import { feature, part, rect } from '../../fixtures/maps'
 import { activateOp, edit, hasOption, openReal, optionIds, passIt, realBundle, take, withCtx } from '../../fixtures/real'
-import { A, B, go, lightWall, ML, opsOf, pfOpen, scenarios, toGambit, withEffect, withTerrain } from './pathfinders.hooks'
+import { A, B, go, lightWall, ML, opsOf, pfOpen, scenarios, toGambit, withEffect, withTerrain, worthyStart } from './pathfinders.hooks'
 
 const data = loadBundle()
 const TEAM = data.teams['pathfinders']!
@@ -705,21 +705,20 @@ it('TEAM-PF-016 Recon Sweep dashes the chosen Pathfinders in the player order, o
     expect(optionIds(s)).not.toContain(b)
     s = take(s, 'done').state
     expect(s.pending!.kind).toBe('strategy.gambit')
-    // A Worthy Cause: the picked Pathfinder is offered mission actions only
-    let w = open(toGambit({ missionId: 'mission.prelim-secure' }))
-    const sla = A(w, 'pf.shasla')
-    const marker = w.markers.find((m) => m.kind === 'objective')!
-    w = edit(place(w, sla, marker.pos.x + 2, marker.pos.z), (st) => {
-      st.turningPoint = 2
-    })
-    const cause = offersFor(w, 'A', 'strategy.gambit', { window: 'strategy.gambit' }).find((o) => o.ployId === 'pf.p.a-worthy-cause' && o.operativeId === sla)
+    // A Worthy Cause: offered in the ploy window that opens as the Firefight phase starts (no longer a gambit);
+    // the picked Pathfinder is offered mission actions only, then the window carries on into the first activation
+    const { s: w, sla } = worthyStart()
+    expect(w.phase).toBe('firefight')
+    const cause = w.pending!.options!.find((o) => o.id.startsWith('pf.p.a-worthy-cause') && (o.action.payload as { operativeId?: string }).operativeId === sla)
     expect(cause).toBeDefined()
-    let t = withCtx(w, (ctx) => usePloy(ctx, 'A', cause!, { window: 'strategy.gambit' })).state
+    let t = take(w, cause!.id).state
     expect(t.pending!.kind).toBe('firefight.action')
     expect(optionIds(t).filter((id) => id !== 'end').every((id) => id.startsWith('ability:core.a.'))).toBe(true)
     expect(hasOption(t, 'dash')).toBe(false)
     t = take(t, 'end').state
-    expect(t.pending!.kind).toBe('strategy.gambit')
+    expect(t.players.A.cp).toBe(w.players.A.cp - 1)
+    while (t.pending?.kind === 'ploy.firefight') t = passIt(t).state
+    expect(t.pending!.kind).toBe('firefight.activate')
   })
 })
 
@@ -740,6 +739,39 @@ function drive(s: GameState): GameState {
 }
 
 describe('pathfinders rules verification fixes', () => {
+  it('TEAM-PF-007 Medic! under a real enemy Guard interrupt: the free Dash is offered as a reaction once the interrupt is over, then the saved operative\'s activation ends', () => {
+    const base = pfOpen()
+    const v = A(base, 'pf.shasla')
+    const m = A(base, 'pf.medical-technician')
+    const boy = B(base, 'kom.boy')
+    let s = edit(place(place(place(base, v, 0, 0), m, 2.2, 0), boy, 6, 0), (st) => {
+      st.operatives[v]!.wounds = 2
+      st.operatives[boy]!.order = 'engage'
+      st.operatives[boy]!.flags.guard = true
+    })
+    s = take(activateOp(s, v), 'dash').state
+    s = clear(step(s, path(s, [0, 1])).state)
+    expect(s.pending).toMatchObject({ kind: 'guard.interrupt', seat: 'B' })
+    s = take(s, `${boy}:shoot`).state
+    s = take(s, 'kom.w.slugga').state
+    const rng = new ScriptedRng([6, 6, 6, 6, 1, 1, 1, 1, 1, 1])
+    s = take(s, v, rng).state
+    s = play(s, rng, { 'dice.commandReroll': pass, 'dice.reroll': pass }, ['ability.choice', 'firefight.action', 'firefight.activate', 'move.path']).state
+    expect(s.operatives[v]).toMatchObject({ status: 'active', wounds: 1 })
+    // the interrupt has finished; the Pathfinder player is offered the Dash as a reaction
+    expect(s.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { reaction: true } })
+    expect(s.pending!.options!.map((o) => o.data?.hook)).toContain('medic')
+    s = take(s, s.pending!.options!.find((o) => o.data?.hook === 'medic')!.id).state
+    expect(s.pending).toMatchObject({ kind: 'move.path', seat: 'A', constraints: { kind: 'dash', mustEndInControlRangeOfId: m } })
+    s = clear(step(s, path(s, [1.2, 0.5])).state)
+    expect(s.operatives[v]!.pos.x).toBeCloseTo(1.2)
+    // used in its own activation: that activation is over (no AP may be spent); the next one is up (Group Activation
+    // owes another Shas'la here)
+    expect(s.operatives[v]!.ready).toBe(false)
+    expect(s.firefight.activation).toBeNull()
+    expect(s.pending).toMatchObject({ kind: 'firefight.activate' })
+  })
+
   it('TEAM-PF-007 Medic! in the saved operative\'s own activation: the activation ends, also under an enemy Guard interrupt, and the free Dash is still offered after the action', () => {
     const base = pfOpen()
     const v = A(base, 'pf.shasla')

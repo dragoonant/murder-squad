@@ -86,7 +86,7 @@
     "team": "wyrmblade",
     "type": "firefight",
     "cost": 1,
-    "window": "firefight.actionEnded",
+    "window": "firefight.activationEnded",
     "effect": {
       "code": "slinkIntoDarkness",
       "params": {

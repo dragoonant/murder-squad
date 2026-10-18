@@ -540,12 +540,23 @@ describe('TEAM-PM Plague Marines', () => {
     expect(shot.state.operatives[boy]!.wounds).toBeLessThanOrEqual(boy ? 10 - 2 : 0)
     // the crit still blocks the attack crit; the two 3s are fails (no block): one attack crit blocked by the defence crit, so only the 2 direct damage lands
     expect(shot.state.operatives[boy]!.wounds).toBe(10 - 2)
-    // not offered beyond the range (8" away, no token)
-    const far = place(s, boy, 9, 0)
-    expect(offersFor(far, 'A', 'shoot.attackRolled', { window: 'shoot.attackRolled', attackerId: hg, targetId: boy, kind: 'shoot', subjectId: hg }).some((o) => o.ployId === 'pm.p.curse-of-rot')).toBe(false)
+    // offered in the window on the fresh defence roll, before the defender's re-rolls (shoot.beforeDefenceRerolls)
+    const windows: string[] = []
+    const seen = { 'ploy.firefight': (q: PendingDecision): Action => (q.options?.some((o) => o.id === 'pm.p.curse-of-rot') && windows.push(String(q.window)), answers['ploy.firefight'](q)) }
+    const curseShot = (st: GameState) => play(take(take(activateOp(st, hg), 'shoot').state, 'pm.w.bolt-pistol').state, new ScriptedRng([6, 1, 1, 1, 3, 3, 6, 1, 1, 1, 1, 1, 1, 1]), seen)
+    const directOn = (r: ReturnType<typeof play>) => r.events.filter((e) => e.type === 'DamageInflicted' && (e as { source: string }).source === 'direct' && (e as { operativeId: string }).operativeId === boy)
+    expect(directOn(curseShot(place(s, boy, 3, 0)))).toHaveLength(2)
+    expect(windows).toEqual(['shoot.beforeDefenceRerolls'])
+    // not offered beyond the range (5" away, no token)
+    windows.length = 0
+    expect(directOn(curseShot(place(s, boy, 5, 0)))).toHaveLength(0)
+    expect(windows).toEqual([])
     // but a poisoned target at 7" is in range
-    const mid = poison(place(s, boy, 7, 0), boy)
-    expect(offersFor(mid, 'A', 'shoot.attackRolled', { window: 'shoot.attackRolled', attackerId: hg, targetId: boy, kind: 'shoot', subjectId: hg }).some((o) => o.ployId === 'pm.p.curse-of-rot')).toBe(true)
+    expect(directOn(curseShot(poison(place(s, boy, 7, 0), boy)))).toHaveLength(2)
+    // and not when the defence roll shows no 3
+    windows.length = 0
+    play(take(take(activateOp(place(s, boy, 3, 0), hg), 'shoot').state, 'pm.w.bolt-pistol').state, new ScriptedRng([6, 1, 1, 1, 4, 4, 6, 1, 1, 1, 1, 1, 1, 1]), seen)
+    expect(windows).toEqual([])
 
     // fighting: the Champion's dice 1 1 1 1 1, the Boy's choppa 3 3 6 1
     const fresh = open()
@@ -553,12 +564,13 @@ describe('TEAM-PM Plague Marines', () => {
     const f = edit(place(place(fresh, champ, 0, 0), boy, 1.4, 0), (st) => {
       st.operatives[boy]!.order = 'engage'
     })
-    const fought = play(take(activateOp(f, champ), 'fight').state, new ScriptedRng([1, 1, 1, 1, 1, 3, 3, 6, 1, 1, 1, 1, 1, 1]), answers)
+    const fought = play(take(activateOp(f, champ), 'fight').state, new ScriptedRng([1, 1, 1, 1, 1, 3, 3, 6, 1, 1, 1, 1, 1, 1]), seen)
     const dmg = fought.events.filter((e) => e.type === 'DamageInflicted' && (e as { source: string }).source === 'direct' && (e as { operativeId: string }).operativeId === boy)
     expect(dmg).toHaveLength(2)
+    expect(windows.at(-1)).toBe('fight.beforeRerolls')
     // not offered to the retaliating side: the Boy attacks the Champion, so the Champion cannot use it
-    const info = { window: 'fight.rolled', attackerId: boy, targetId: champ, kind: 'fight', subjectId: champ }
-    expect(offersFor(f, 'A', 'fight.rolled', info).some((o) => o.ployId === 'pm.p.curse-of-rot')).toBe(false)
+    const info = { window: 'fight.beforeRerolls', attackerId: boy, targetId: champ, kind: 'fight', subjectId: champ }
+    expect(offersFor(f, 'A', 'fight.beforeRerolls', info).some((o) => o.ployId === 'pm.p.curse-of-rot')).toBe(false)
   })
 
   it('TEAM-PM-024 TEAM-PM-025 PLAGUE BELLS keep an injured Plague Marine at full Move and Hit; PLAGUE ROUNDS give bolt weapons Poison and Severe', () => {

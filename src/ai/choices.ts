@@ -71,7 +71,8 @@ export function abilityChoice(ctx: AiCtx): Action | null {
       return answer(best(opts, score))
     }
     case 'planGenerations': {
-      const order = ['plan', 'overthrow-plan', 'overthrow-shoot', 'none']
+      // Overthrow the Oppressors: the 0 CP mission action first; the 1 CP ploy comes from the incapacitation ploy window
+      const order = ['overthrow-plan', 'overthrow-shoot', 'none']
       return answer(order.map(byId).find((o) => o) ?? opts[0]!)
     }
     case 'reconSweep':

@@ -27,6 +27,8 @@ Fan game: 3D Warhammer 40,000: Kill Team (2024 edition, mechanics 1:1, our own p
 | Client presentation per team | weapon flavour, VFX family, sound and attachment entries for new teams live in `src/client/teams/<team>.ts` (merged into the shared tables); figure archetypes without a body GLB are listed as `standIns` | keeps implementers out of shared client tables; art arrives later |
 | Lifecycle hooks | Ready-step, activation-start/end and TP-end team rules run as non-decision hooks; owner choices there are picked by the team code (RULING) | hook points have no resume; the choices rarely matter |
 | Kill op reversal | an operative that returns (Reanimation) is no longer incapacitated: kill grade recomputed, its VP taken back | T-HIE.27; RULING logged |
+| Hidden operatives (HIDING) | Open information: `view` redacts nothing and the client tray and feed show the opponent's set-aside operatives too, marked as theirs (no contract change) | core sequence reveals selections and sets up in the open; Wyrmblade rule only puts them "to one side"; RULING logged |
+| Bench coverage | `bench:ai` tests every playable team in turn against a rotating opponent (`--games` stays the total), report per team; `--pair a,b` keeps the old two-team bench | M9 batch A polish |
 
 ## Architecture
 ```

@@ -1,8 +1,10 @@
 // The client side of the four M9 teams (Pathfinders, Hierotek Circle, Plague Marines, Wyrmblade): picker, builder legality,
-// glossary entries, token wording and glyphs, the event feed lines, and who may see hidden operatives.
+// glossary entries, token wording and glyphs, the event feed lines, and the tray of hidden operatives (open information).
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { enumerateRosters, validateRoster, type DatacardData, type SelectionSlot } from '@/data'
-import type { GameEvent } from '@/engine'
+import type { GameEvent, Operative } from '@/engine'
 import { buildGameSetup, dataBundle, engineBundle, flattenRoster } from '@/client/game/adapter'
 import { buildProblems, defaultBuild, defaultLoadouts, resolveLayout, resolveMission, teamList } from '@/client/game/defaults'
 import { allEntries, linkTerms, lookupTerm } from '@/client/game/glossary'
@@ -11,7 +13,7 @@ import { TEAM_PRESENTATION } from '@/client/teams'
 import { randomLoadout, addProblem } from '@/client/ui/TeamBuilder'
 import { glyphPoints, tokenDef } from '@/client/ui/tokenDefs'
 import { tokenTip } from '@/client/ui/tokenInfo'
-import { viewerSeats } from '@/client/ui/HiddenTray'
+import { trayEntries, viewerSeats } from '@/client/ui/HiddenTray'
 import { createGame } from '@/engine'
 
 const NEW = ['pathfinders', 'hierotek-circle', 'plague-marines', 'wyrmblade'] as const
@@ -75,8 +77,15 @@ describe('M9 teams: picker and builder', () => {
 
   it('M9C-004 every new archetype either has a body GLB or is declared a procedural stand-in', () => {
     const standIns = new Set(Object.values(TEAM_PRESENTATION).flatMap((p) => p.standIns ?? []))
-    for (const t of NEW) expect((TEAM_PRESENTATION[t]?.standIns ?? []).length, t).toBeGreaterThan(0)
-    expect(standIns.size).toBeGreaterThan(20)
+    const manifest = JSON.parse(readFileSync(resolve(__dirname, '../../public/assets/models/manifest.json'), 'utf8')) as { bodies: Record<string, unknown> }
+    const b = dataBundle()
+    for (const t of NEW) {
+      const archetypes = Object.values(b.byId)
+        .filter((r): r is DatacardData => (r as DatacardData).team === t && 'figure' in r)
+        .map((c) => c.figure.archetype)
+      expect(archetypes.length, t).toBeGreaterThan(5)
+      for (const a of archetypes) expect(!!manifest.bodies[a] || standIns.has(a), `${t}: ${a}`).toBe(true)
+    }
   })
 })
 
@@ -142,10 +151,20 @@ describe('M9 teams: tokens, feed and hidden operatives', () => {
     expect(describeEvent(ev({ type: 'ActivationGated', operativeId: 'B2', by: 'hie.madness' }), null)).toMatch(/cannot activate/)
   })
 
-  it('M9C-009 hidden operatives show only to the seat(s) the viewer plays', () => {
+  it('M9C-009 HIDING is open information: the tray lists every hidden operative, the viewer\'s own first, the opponent\'s marked as theirs', () => {
     expect(viewerSeats({ A: 'human', B: 'bot' }, 'B')).toEqual(['A'])
     expect(viewerSeats({ A: 'bot', B: 'human' }, 'A')).toEqual(['B'])
     expect(viewerSeats({ A: 'human', B: 'human' }, 'B')).toEqual(['B'])
     expect(viewerSeats({ A: 'bot', B: 'bot' }, null)).toEqual(['A', 'B'])
+    const op = (id: string, seat: 'A' | 'B', hidden: boolean) => ({ id, seat, name: id, status: hidden ? 'reserve' : 'active', ...(hidden ? { offboard: 'setAside' } : {}) }) as unknown as Operative
+    const ops = Object.fromEntries([op('A2', 'A', true), op('B1', 'B', true), op('B3', 'B', false), op('A1', 'A', true)].map((o) => [o.id, o]))
+    expect(trayEntries(ops, ['B']).map((e) => [e.op.id, e.theirs])).toEqual([
+      ['B1', false],
+      ['A1', true],
+      ['A2', true],
+    ])
+    expect(trayEntries(ops, ['A', 'B']).every((e) => !e.theirs)).toBe(true)
+    // and the feed reads the opponent's set-aside like any other event
+    expect(describeEvent({ seq: 1, turningPoint: 1, phase: 'setup', seat: 'B', type: 'OperativeSetAside', operativeId: 'B1', kind: 'setAside' } as unknown as GameEvent, null)).toMatch(/set aside/)
   })
 })

@@ -1,19 +1,20 @@
 # HANDOFF
 
-Updated 2026-10-17 (evening) by the kickoff session. Read `CLAUDE.md` first, then this file, then `STATUS.md`, then `PLAN.md`.
+Updated 2026-10-18 after the M9 batch A polish pass. Read `CLAUDE.md` first, then this file, then `STATUS.md`, then `PLAN.md`.
 
 ## Where things stand
 - Live playtest build: https://dragoonant.github.io/murder-squad/ (deploys from `main` on every green push).
-- M0-M6 are on `main`: data for both teams, full engine (setup, strategy, firefight, movement, shoot, fight, every weapon rule, ploys, equipment, guard, markers, Preliminary Ops scoring, all team rules), utility AI (normal 40-0 vs random), client (start, team builder, briefing, battle with dedicated prompts, dice tray, presentation director, end screen), 20 MGSD body GLBs, 31 attachment GLBs held at measured sockets, 8 terrain GLBs, 6 floor mats, 82 generated sounds with narrator and music wired through the audio manager.
-- M7 polish is in progress (start-screen options incl. bot tier and mat picker, scenario fixtures, phone layout, chunking, prompt consistency).
-- Not verified by ear: all audio. Not play-verified by the owner: everything (the owner has the URL).
+- M0-M7 are on `main` (data, full engine, utility AI, client, 20 MGSD bodies, 31 attachments, 8 terrain GLBs, 6 mats, audio, keyword tooltips, sightlines and weapon VFX).
+- M9 batch A is playable: Pathfinders, Hierotek Circle, Plague Marines and Wyrmblade (spec `docs/spec/13-teams.md` sections 3 to 6), six playable teams in all, every pairing in the sim. The polish pass moved the team approximations onto the new shared windows (Slink Into Darkness at activation end, Curse of Rot before re-rolls, Poisonous Demise and A Plan Generations in the incapacitation ploy window, A Worthy Cause at Firefight start, Quicksilver after Strategy-phase moves, Medic! Dash after a Guard interrupt, FLAIL + FLAIL), with rulings marked Corrected. HIDING is open information in engine and client (the tray shows the opponent's hidden operatives). `bench:ai` now covers every playable team (per-team report).
+- Batch A figures are in progress (concepts under `art/`; the teams play on procedural stand-ins until the GLBs land). New-team sounds are being generated.
+- Not verified by ear: all audio. Not play-verified by the owner: the four new teams.
 
 ## Next steps
-1. Finish M7 (see the agent brief in the session log / `STATUS.md` once it lands); rewrite `STATUS.md` with the final counts.
-2. Owner playtest round: collect feedback, fix, push.
-3. M8 skeletal animation: UniRig pilot on two bodies (owner decision), part-split articulation as fallback.
-4. M9+: Approved Ops tac ops (card text still unsourced), more teams by figure coverage (Pathfinders, Hand of the Archon, Hunter Clade, Plague Marines, Legionaries, Wyrmblade, Hearthkyn Salvagers), Gallowdark, multiplayer.
-5. Next project after polish: Boarding Actions (owner, week of 2026-10-19), reusing Mallet's engine and a shared Gallowdark set.
+1. Batch A figures: concepts -> Hunyuan3D bodies and attachments -> measured sockets, mapped in `src/client/teams/<team>.ts` (replace the `standIns`).
+2. M9 batch B (queued): Legionaries, Hand of the Archon, Hunter Clade, Hearthkyn Salvagers. Same process as batch A: one engine-prep stage for any generic capability the four need, then parallel team implementers (spec sections in `13-teams.md` first), shared tests and sim invariant, then a polish pass.
+3. Owner playtest round on the six teams: collect feedback, fix, push.
+4. M8 skeletal animation: UniRig pilot on two bodies (owner decision), part-split articulation as fallback.
+5. Later: Approved Ops tac ops (card text still unsourced), Gallowdark, multiplayer; next project Boarding Actions (owner, week of 2026-10-19), reusing the engine and a shared Gallowdark set.
 
 ## Pipelines (how to regenerate things)
 - Concepts: Gemini via Claude in Chrome on this PC (`art/*/PROMPTS.md` record every prompt). Bodies are bare-handed MGSD; attachments are side-view props.
@@ -23,8 +24,8 @@ Updated 2026-10-17 (evening) by the kickoff session. Read `CLAUDE.md` first, the
 - Gates: `npm run typecheck`, `npm test`, `npm run validate:data`, `npm run sim -- --games 40 --teams real --decider normal`, `npm run bench:ai -- --games 40`, `PW_PORT=41xx npm run e2e`.
 
 ## Known gaps and rulings
-- `docs/needs-rules-check.md` holds about 80 RULING lines (kill op table and map geometry are Confirmed from the source images; Approved Ops tac ops out of scope; Guard treated as universal; several engine deviations such as no `weapon.choice` for Rending/Punishing/Severe).
-- Bench note: equal-skill AI matches sit near 50% because Angels of Death beat Kommandos regardless of seat; the bench reports VP difference too.
+- `docs/needs-rules-check.md` holds about 230 RULING lines (kill op table and map geometry are Confirmed from the source images; Approved Ops tac ops out of scope; Guard treated as universal; several engine deviations such as no `weapon.choice` for Rending/Punishing/Severe).
+- Bench note: the bench rotates every playable team through the tested seat against a rotating opponent; `--pair a,b` restores the old two-team bench. Zero-action activations sit at 1.8% against the 2% gate.
 - Choppa, big choppa and grot choppa share one Gemini design at different scales; heavy bolter reads like a bigger rifle.
 - Personal path leaked into one early commit (`ae22229`, batch script); scrubbed in the next commit, history untouched (owner's call to rewrite).
 

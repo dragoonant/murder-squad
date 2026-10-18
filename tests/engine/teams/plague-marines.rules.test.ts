@@ -11,7 +11,7 @@ import { tokenCount } from '@/engine/tokens'
 import type { Action, GameState, Marker, Operative, PendingDecision } from '@/engine/types'
 import { play } from '../../fixtures/attack'
 import { expectOk, place } from '../../fixtures/helpers'
-import { activateOp, edit, openReal, opOf, take } from '../../fixtures/real'
+import { activateOp, edit, openReal, opOf, passIt, take } from '../../fixtures/real'
 
 const MATCH = { teams: ['plague-marines', 'kommandos'] as [string, string] }
 const open = (): GameState => openReal({ ...MATCH })
@@ -48,6 +48,10 @@ describe('TEAM-PM rules verification', () => {
     expect(offered(['fight'])).toBe(true)
     expect(offered(['fight', 'fight'])).toBe(false)
     expect(offered(['ability:pm.a.flail', 'fight', 'fight'])).toBe(false)
+    // FLAIL + FLAIL: the shared unique-action bar now asks maxRepeats, so a second FLAIL is offered, a third never
+    expect(offered(['ability:pm.a.flail', 'fight'])).toBe(true)
+    expect(offered(['ability:pm.a.flail', 'fight', 'ability:pm.a.flail'])).toBe(false)
+    expect(offered(['shoot', 'shoot', 'ability:pm.a.flail', 'fight'])).toBe(false)
   })
 
   it('TEAM-PM-023 CURSE OF ROT locks the defence 3s before the defender may re-roll them', () => {
@@ -81,9 +85,40 @@ describe('TEAM-PM rules verification', () => {
       const dice = ((o.action.payload as { dice?: number[] }).dice ?? []) as number[]
       for (const i of threes) expect(dice).not.toContain(i)
     }
+
+    // fighting: the ploy is taken in the window before either side re-rolls (fight.beforeRerolls), so the Boy's
+    // cursed 3s are fails it can never re-roll; the Champion rolls 1s, the Boy 3 3 6 1 and holds CP
+    let f = open()
+    const champ = A(f, 'champion')
+    f = edit(place(place(f, champ, 0, 0), boy, 1.4, 0), (st) => {
+      st.operatives[boy]!.order = 'engage'
+      st.players.B.cp = 3
+    })
+    const windows: string[] = []
+    let offered: { p: PendingDecision; dice: (number | null)[]; kinds: string[] } | null = null
+    play(take(activateOp(f, champ), 'fight').state, new ScriptedRng([1, 1, 1, 1, 1, 3, 3, 6, 1, ...ones(20)]), {
+      'ploy.firefight': (q) => {
+        if (q.seat === 'A' && q.options?.some((o) => o.id === 'pm.p.curse-of-rot')) windows.push(String(q.window))
+        return q.seat === 'A' ? curse(q) : pass(q)
+      },
+      'dice.commandReroll': (q, st) => {
+        const side = st.attack!.seq!.def!
+        if (q.seat === 'B' && !offered) offered = { p: q, dice: side.dice.map((d) => d.value), kinds: side.dice.map((d) => d.kind) }
+        return pass(q)
+      },
+    })
+    expect(windows).toEqual(['fight.beforeRerolls'])
+    expect(offered).not.toBeNull()
+    const cursed = offered!.dice.map((v, i) => (v === 3 ? i : -1)).filter((i) => i >= 0)
+    expect(cursed).toHaveLength(2)
+    for (const i of cursed) expect(offered!.kinds[i]).toBe('fail')
+    for (const o of offered!.p.options ?? []) {
+      const dice = ((o.action.payload as { dice?: number[] }).dice ?? []) as number[]
+      for (const i of cursed) expect(dice).not.toContain(i)
+    }
   })
 
-  it('TEAM-PM-022 POISONOUS DEMISE is the owner\'s choice when an attack kills the Plague Marine', () => {
+  it('TEAM-PM-022 POISONOUS DEMISE is the owner\'s choice in the operative.incapacitated ploy window when an attack kills the Plague Marine', () => {
     let s = open()
     const warrior = A(s, 'warrior')
     const ender = A(s, 'bombardier')
@@ -98,15 +133,20 @@ describe('TEAM-PM rules verification', () => {
     g = take(g, g.pending!.options![0]!.id).state
     const rng = new ScriptedRng([6, 6, 6, 6, ...ones(30)])
     g = expectOk(step(g, g.pending!.options!.find((o) => o.id === warrior)!.action, rng)).state
-    g = play(g, rng, { 'ploy.firefight': (q) => pass(q) }, ['ability.choice', 'firefight.action']).state
-    expect(g.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { hook: 'poisonousDemise', operativeId: warrior } })
-    expect(g.pending!.options!.map((o) => o.id)).toEqual(['use', 'none'])
+    // pass the attack's own ploy windows; stop at the incapacitation window, which waits before the removal
+    const stops: PendingDecision['kind'][] = ['ploy.firefight', 'ability.choice', 'firefight.action']
+    g = play(g, rng, {}, stops).state
+    while (g.pending?.kind === 'ploy.firefight' && g.pending.window !== 'operative.incapacitated') g = play(passIt(g, rng).state, rng, {}, stops).state
+    expect(g.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'A', window: 'operative.incapacitated', context: { subjectId: warrior } })
+    expect(g.pending!.options!.map((o) => o.id)).toEqual(['pm.p.poisonous-demise'])
+    expect(g.pending!.options![0]!.data).toMatchObject({ cost: 1 })
+    expect(g.operatives[warrior]!.status).toBe('active')
     const cp = g.players.A.cp
-    const used = take(g, 'use', rng).state
+    const used = take(g, 'pm.p.poisonous-demise', rng).state
     expect(tokenCount(used, nob, POISON, 'A')).toBe(1)
     expect(used.players.A.cp).toBe(cp - 1)
     expect(used.operatives[warrior]!.status).toBe('removed')
-    const kept = take(g, 'none', rng).state
+    const kept = passIt(g, rng).state
     expect(tokenCount(kept, nob, POISON)).toBe(0)
     expect(kept.players.A.cp).toBe(cp)
     expect(kept.operatives[warrior]!.status).toBe('removed')

@@ -21,8 +21,8 @@ const glbPath = (file: string) => resolve(modelsDir, file.includes('/') ? file :
 const UNBUILT = /^[a-z]{2,4}-[we]-[a-z0-9-]+$/
 const isUnbuilt = (slug: string) => !manifest.attachments[slug] && UNBUILT.test(slug)
 // "Draws nothing" is only for natural or abstract weapons: bare hands, bodies, tails, gun butts (the gun is already
-// drawn), abstract explosives, and psychic powers (any rule ending in `wr-psychic`).
-const NATURAL = /^(fists|bite|gun butt|bionic arm|ram|barbed tail|explosives)$/i
+// drawn), a bayonet (part of the rifle mesh), Plasmacyte claws, abstract explosives, and psychic powers (any rule ending in `wr-psychic`).
+const NATURAL = /^(fists|bite|gun butt|bionic arm|ram|barbed tail|explosives|claws|bayonet)$/i
 const byId = dataBundle().byId as Record<string, { name?: string; rules?: { rule: string }[] }>
 const drawsNothingOk = (id: string) => {
   const w = byId[id]

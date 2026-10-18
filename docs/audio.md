@@ -180,6 +180,46 @@ RMS and peak are linear full-scale; crest = peak / RMS over the whole file (a gu
 
 **Loudness outliers (trim gain <= 0.45 or >= 1.5):** `death-ork` (0.44), `shout-ork` (0.45), `ui-cp-gained` (1.72), `ui-vp-scored` (6.01), `wpn-burna` (0.36), `wpn-heavy-bolter` (0.34), `wpn-power-klaw` (1.75), `wpn-rokkit-launcha` (0.41).
 
+## M9 teams (Pathfinders, Hierotek Circle, Plague Marines, Wyrmblade)
+
+33 more ids, all generated (no Mallet copies), same pipeline and same voice description and seed for the narrator lines. Weapon-flavour map: flavours (`src/client/weaponFlavour.ts`) are a closed hold-class set, so no new flavours were added; each team's `flavour` block keeps mapping onto them and only the `sound` blocks changed. Reused as they were: bolt pistol and bolt rifle (Plague Marine bolters, Wyrmblade pistols and shotguns), plasma pistol standard and supercharge (Plague Marine plasma pistol, Pathfinder overcharge), grenade frag and krak (all grenades), hand flamer, chainsword rev, thunder hammer (power maul), power weapon (Necron bayonet, Wyrmblade pick and dagger), power fist, choppa (cult knife), dakka shoota (autostubs), heavy bolter (heavy stubber), bolt sniper rifle (Wyrmblade sanctus rifle, Necron disintegrator), dynamite (blasting charge), hit-flesh (fists, gun butts). Sound-only ids not yet routed by `eventSounds.ts` (its death, initiative and move tables key on Ork and Marine keywords): `death-tau`, `death-drone`, `death-necron`, `death-plague`, `death-cultist`, `shout-brood-hiss`, `fx-reanimate`, `fx-flies-swarm`, `fx-plague-bell`, `fx-ambush-emerge`, `ui-markerlight`, `narr-initiative-pf|ht|pm|wb`. `wpn-rail-rifle` was re-rolled once (first take crest 3.7, second 22.5 and quiet, trim gain 1.19). Not verified by ear.
+
+| id | seconds | RMS | peak | crest | trim gain |
+|---|---|---|---|---|---|
+| `wpn-pulse-carbine` | 1.25 | 0.044 | 0.84 | 19.3 | 1.19 |
+| `wpn-pulse-burst` | 1.80 | 0.046 | 0.85 | 18.5 | 1.18 |
+| `wpn-ion-rifle` | 2.09 | 0.198 | 0.78 | 3.9 | 0.81 |
+| `wpn-rail-rifle` | 1.25 | 0.038 | 0.84 | 22.5 | 1.19 |
+| `wpn-burst-cannon` | 2.09 | 0.235 | 0.86 | 3.6 | 0.68 |
+| `ui-markerlight` | 1.07 | 0.247 | 0.85 | 3.4 | 0.65 |
+| `death-drone` | 2.09 | 0.187 | 0.87 | 4.6 | 0.85 |
+| `death-tau` | 1.99 | 0.152 | 1.00 | 6.6 | 1.00 |
+| `wpn-gauss-blaster` | 1.52 | 0.054 | 0.79 | 14.7 | 1.26 |
+| `wpn-tesla-carbine` | 1.80 | 0.105 | 0.96 | 9.2 | 1.04 |
+| `wpn-staff-beam` | 2.27 | 0.179 | 0.84 | 4.7 | 0.89 |
+| `wpn-staff-strike` | 1.52 | 0.133 | 1.00 | 7.5 | 1.00 |
+| `wpn-scarab-skitter` | 2.09 | 0.103 | 0.83 | 8.1 | 1.20 |
+| `fx-reanimate` | 3.00 | 0.216 | 0.84 | 3.9 | 0.74 |
+| `death-necron` | 3.00 | 0.214 | 0.84 | 3.9 | 0.75 |
+| `wpn-plague-spewer` | 2.09 | 0.243 | 0.84 | 3.5 | 0.66 |
+| `wpn-plague-blade` | 1.07 | 0.163 | 0.99 | 6.0 | 0.98 |
+| `wpn-flail-corruption` | 1.80 | 0.137 | 1.00 | 7.3 | 1.00 |
+| `fx-flies-swarm` | 3.00 | 0.180 | 0.87 | 4.8 | 0.89 |
+| `fx-plague-bell` | 3.53 | 0.080 | 0.93 | 11.7 | 1.07 |
+| `death-plague` | 3.11 | 0.289 | 0.86 | 3.0 | 0.55 |
+| `wpn-autogun` | 0.84 | 0.187 | 1.00 | 5.3 | 0.85 |
+| `wpn-mining-laser` | 2.53 | 0.209 | 0.87 | 4.2 | 0.76 |
+| `wpn-seismic-cannon` | 2.82 | 0.339 | 0.84 | 2.5 | 0.47 |
+| `wpn-webber` | 1.80 | 0.061 | 0.85 | 13.8 | 1.18 |
+| `wpn-claws-rend` | 0.76 | 0.143 | 0.81 | 5.7 | 1.12 |
+| `shout-brood-hiss` | 1.80 | 0.087 | 0.85 | 9.7 | 1.18 |
+| `fx-ambush-emerge` | 1.02 | 0.060 | 0.89 | 14.8 | 1.12 |
+| `death-cultist` | 2.09 | 0.136 | 0.83 | 6.2 | 1.18 |
+| `narr-initiative-pf` | 1.88 | 0.175 | 0.84 | 4.8 | 0.91 |
+| `narr-initiative-ht` | 2.53 | 0.108 | 0.84 | 7.8 | 1.18 |
+| `narr-initiative-pm` | 1.96 | 0.181 | 0.84 | 4.7 | 0.88 |
+| `narr-initiative-wb` | 1.65 | 0.162 | 0.85 | 5.2 | 0.99 |
+
 ## Not verified by ear
 
 No human or model has listened to any of this. Likely trouble spots to check first: the narrator timbre across the 12 lines (one description and seed, but TTS can still drift), the ork and marine deaths against the Mallet versions, `music-victory` / `music-defeat` (ACE-Step short pieces can end early or fade out), the loop point of `amb-industrial-wind`, and `wpn-shokka-pistol` (crest 18, very quiet raw).

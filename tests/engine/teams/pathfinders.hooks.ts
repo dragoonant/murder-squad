@@ -80,6 +80,23 @@ export function toGambit(o: RealOpts = {}): GameState {
   return drive(newRealGame(pfOpts(o), 'pf-hooks').state, (st) => st.pending?.kind === 'strategy.gambit', 1200, new ScriptedRng([6, 1, 6, 1]))
 }
 
+/**
+ * A Shas'la 2" from an objective in the second turning point (Secure is a mission action from then on), both gambit
+ * steps passed: the game stops at the firefight.start ploy window of the Pathfinder player.
+ */
+export function worthyStart(): { s: GameState; sla: string } {
+  let s = edit(toGambit({ missionId: 'mission.prelim-secure' }), (st) => {
+    st.turningPoint = 2
+    st.players.A.cp = 2
+  })
+  const sla = A(s, 'pf.shasla')
+  const m = s.markers.find((k) => k.kind === 'objective')!
+  s = place(s, sla, m.pos.x + 2, m.pos.z)
+  for (let i = 0; i < 12 && !(s.pending?.kind === 'ploy.firefight' && s.pending.window === 'firefight.start'); i++) s = passIt(s).state
+  expect(s.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'A', window: 'firefight.start' })
+  return { s, sla }
+}
+
 /** A low light wall between x1 and x2 across the lane (cover for whoever stands just behind it). */
 export function lightWall(x0: number, x1: number): ReturnType<typeof feature> {
   return feature('pf-wall', part('pf-wall.a', rect(x0, x1, -2, 2), 1, ['light']))
@@ -290,16 +307,9 @@ export const scenarios: Record<string, () => void> = {
     expect(defenceStats(s, target, boy, 'kom.w.slugga', rules, false).need).toBe(4)
   },
   worthyCause() {
-    let s = edit(openReal(pfOpts({ missionId: 'mission.prelim-secure' }), 'pf-worthy'), (st) => {
-      st.turningPoint = 2
-    })
-    const w = A(s, 'pf.shasla')
-    const m = s.markers.find((k) => k.kind === 'objective')!
-    s = place(s, w, m.pos.x + 2, m.pos.z)
-    const offers = offersFor(s, 'A', 'strategy.gambit', { window: 'strategy.gambit' }).filter((o) => o.ployId === 'pf.p.a-worthy-cause')
-    expect(offers.length).toBeGreaterThan(0)
-    const r = withCtx(s, (ctx) => usePloy(ctx, 'A', offers.find((o) => o.operativeId === w) ?? offers[0]!, { window: 'strategy.gambit' }))
-    expect(r.state.pending?.kind).toBe('firefight.action')
+    const { s, sla } = worthyStart()
+    const opt = s.pending!.options!.find((o) => o.id.startsWith('pf.p.a-worthy-cause') && (o.action.payload as { operativeId?: string }).operativeId === sla)!
+    expect(take(s, opt.id).state.pending?.kind).toBe('firefight.action')
   },
   supportingFire() {
     let s = pfOpen()
