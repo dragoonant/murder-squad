@@ -420,7 +420,7 @@ TEAM-HA-030 | T-HA.40, T-HA.42, T-HA.43 | Chain Snare stops a Fall Back on any 4
 
 ## TEAM-HC - Hunter Clade
 
-TEAM-HC-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-HC-000 | T-HC.1 | The team is registered with the engine and the data and flagged playable; its default roster (Ranger Alpha plus nine) is legal and starts a game.
 TEAM-HC-001 | T-HC.1, T-HC.2, T-HC.3 | A roster of one leader plus nine main picks validates; a second Diktat (Ranger plus Vanguard), a second Surveyor, a duplicate non-repeatable card or an 11th operative is rejected; repeated Ranger and Vanguard Warriors are accepted.
 TEAM-HC-002 | T-HC.4, T-HC.5 | With a Sicarian Princeps leader, a fifth main-list Sicarian is rejected (six Sicarians); with a Skitarii Alpha leader five main-list Sicarians are accepted; eight of (Sicarian Warriors plus Gunners) are rejected.
 TEAM-HC-003 | T-HC.6, T-HC.7 | Two arc rifles (Ranger Gunner plus Vanguard Gunner) are rejected; one of each special weapon is accepted; the Ranger Alpha loadout picker offers exactly the three sets and set (c) asks for one pistol and one melee weapon.

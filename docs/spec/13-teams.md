@@ -2175,6 +2175,33 @@ Rows in `12-rules-test-checklist.md` section TEAM-HC: TEAM-HC-000 to TEAM-HC-030
 - RULING lines expected: Sicarian limit and the leader, seven-limit membership, Gunner base, arquebus damage, Canticle of Destruction scope, Control Protocol on itself, Shroudpsalm and area weapons, Targeting Protocol and movement, Rad-Saturation timing, penalties not cumulative with injury, SIGNAL timing, SPOT optional and expiry, oval rotation cost, orientation and turning on the spot, Primary Mode timing, doctrine duration, skipping the gambit, Bulwark ordering, Scouting Protocol eligibility, which Fight is free, Control Edict timing, Scrapcode expiry, Command Override choices, Omnissiah self-damage, mode, Bulwark and Aggressor and Conqueror, Rad Bombardment areas and modified 6, Redundancy timing, Refractor and Piercing Crits, Extremis Mind-Link.
 - Gotchas: section 9.10. Rotation is movement for the oval Gunner; Deprecations always apply unless the once-per-battle Primary ignore is taken; the arquebus Dmg 4/3 is printed that way.
 
+### 9.13 As built (M9 batch B)
+
+Files: `src/data/teams/hunter-clade/*.json`, `src/engine/teams/hunter-clade.ts`, `src/client/teams/hunter-clade.ts`,
+`tests/engine/teams/hunter-clade.{test,hooks}.ts`, a block in `src/ai/teamActions.ts` (SIGNAL, SPOT). Datacard ids
+`hc.<name>` (fourteen cards, figure archetype `hc-<name>`); weapons `hc.w.*` (21 profiles, groups `hc.wg.plasma-caliver`
+and `hc.wg.transuranic-arquebus`); the team choice `primary-mode` has choice group `doctrina` (the schema allows slugs only).
+
+- Code hooks named by the data (24): the passive names `hcCanticleDestruction`, `hcWastelandStalker`, `hcShroudpsalm`,
+  `hcControlProtocol`, `hcElimination`, `hcTargeting`, `hcGlow`, `hcRadSaturation`, `hcImperative` (the five Imperative
+  abilities share it), `hcRedundancy`, `hcRefractor`, `hcMindLink`; the actions `hcSignal`, `hcSpot`; the ploys
+  `hcDoctrina` (also the faction rule), `hcDebilitating`, `hcNeurostatic`, `hcAccelerant`, `hcScouting`,
+  `hcRadBombardment`, `hcControlEdict`, `hcScrapcode`, `hcCommandOverride`, `hcOmnissiah`.
+- One mode function (`modeOf`) answers "which Imperative does this operative have, and does its Deprecation apply":
+  `COMMAND OVERRIDE` token `hc.doctrine`, else `config.doctrine` (set by the free DOCTRINA gambit; `hc.ignore` effect for
+  the once-per-battle Primary ignore). Every Optimisation and Deprecation reads it from a hook (`modifyWeaponRules`,
+  `modifyAttackDice`, `modifyDefenceDice`, `modifyDamage`) or from the provider `moveDelta`.
+- RAD BOMBARDMENT is a strategy ploy record (`hc.p.rad-bombardment`, 0 CP) that the equipment unlocks, because the engine's
+  gambits are ploy records; Redundancy Systems and Refractor Field are offered by the ploy rule `extraOffers` in
+  `firefight.activationStart` and `shoot.beforeDefenceRoll`; Extremis Mind-Link is a `costAdjust` on CONTROL EDICT's
+  `<partner>:joint:<order>` offers, which call `firefight.joinActivation`.
+- Not exact: a friendly Infiltrator's own Pick Up Marker or mission action has no declaration window for SCRAPCODE
+  OVERLOAD (use it at activation); OMNISSIAH Aggressor frees the first 2" of the whole move's climb; the arquebus oval
+  is moved and measured by the engine but the client still draws a circle and has no turn control (the default roster
+  fields no arquebus Gunner).
+- Shared-engine findings: none blocking. `pending.options` is fixed when a decision is raised, so tests that edit the state
+  at a gambit decision rebuild the options (`refreshGambit` in the hooks file).
+
 ## 10. Hearthkyn Salvagers
 
 Rule IDs `T-HK.<n>`, checklist IDs `TEAM-HK-<nnn>`. Sources: the team PDF (Hearthkyn Salvagers, April '26 update log state; the flow and layout extracts were read together) as the primary source, cross-checked against the Wahapedia page (faction version 3, April 2026, with one FAQ entry). The two agree on everything except three places where Wahapedia lags the PDF errata (listed in 10.10); the PDF wins there. All rule text is restated in our own words; team, operative, weapon, ploy and equipment names are used as printed (display names keep their diacritics, keywords and ids do not, T-HK.5). Core terms per `10-rules-core.md` (R-x.y), missions and universal equipment per `11-missions.md` (M-x.y). Ploys and equipment are one bullet per record so each can carry its MECH line.
