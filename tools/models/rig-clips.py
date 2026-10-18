@@ -594,8 +594,9 @@ def main() -> int:
     parts = sk.classify()
     base = unskin_base(gltf, sk)
     clips = add_animations(gltf, bin_chunk, sk, parts)
-    gltf.setdefault("asset", {})["generator"] = "murder-squad rig-clips.py (UniRig skeleton + skin)"
-    gltf["asset"]["extras"] = {"rig": {"tool": "UniRig", "clips": clips, "joints": len(sk.joints), "parts": {k: len(v) for k, v in parts.items()}}}
+    tool = "split-body.py" if "split-body" in gltf.get("asset", {}).get("generator", "") else "UniRig"
+    gltf.setdefault("asset", {})["generator"] = f"murder-squad rig-clips.py ({tool} skeleton + skin, procedural clips)"
+    gltf["asset"]["extras"] = {"rig": {"tool": tool, "clips": clips, "joints": len(sk.joints), "parts": {k: len(v) for k, v in parts.items()}}}
     dst.parent.mkdir(parents=True, exist_ok=True)
     write_glb(dst, gltf, bin_chunk)
     names = gltf["nodes"]
