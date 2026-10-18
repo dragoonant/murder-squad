@@ -254,6 +254,12 @@ GEN-060 | team-rules ownGrenades | An operative with its own grenades gets the w
 GEN-061 | firefight.joinActivation | Two operatives activated together keep separate AP; the player switches between them; ending one hands over, and both are expended.
 GEN-062 | los terrain queries | interveningTraits reports Light and Heavy terrain crossed by targeting lines; baseUnderVantage reports a base under a higher Vantage floor.
 GEN-063 | fight.extraStrike | An out-of-sequence strike resolves one unresolved success through the normal strike path, once.
+GEN-064 | strategy ledger | Per-TP use counts (ledger.tpUses) reset at every turning point start; Purity Seals works again in the next TP.
+GEN-065 | handlers modifyStat move | A declarative modifyStat move changes Move through effectiveMove and honours its `when`.
+GEN-066 | shoot.attackerDefenceRolled | The attacker is offered ploys once the defence dice are final; the defender is not.
+GEN-067 | firefight.actionDeclared | The active player's declaration window also opens for Pick Up Marker and mission actions, before the opponent's.
+GEN-068 | abilities marker offers | actionForbidden and a barred action remove Pick Up Marker from the offers.
+GEN-069 | query conversions | Shoot odds run pure afterAttackRoll conversions per target, without counting hook fires.
 ## TEAM-PF - Pathfinders
 
 TEAM-PF-000 | registration | The team is registered with the engine and the data, is `playable`, and every code hook its data names is registered and fires in a real game (the scenarios in `tests/engine/teams/pathfinders.hooks.ts`).
@@ -354,7 +360,7 @@ TEAM-WYR-021 | T-WYR.9, 12, 16, 19, 20, 21 | Kelermorph shoots twice and the Loc
 
 ## TEAM-LG - Legionaries
 
-TEAM-LG-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-LG-000 | registration | Built: the team is registered with the engine and the data, is `playable`, its default roster (Aspiring Champion plus five, one mark each) is legal and starts a game, and every code hook its data names is registered and fires in a real game (the scenarios in `tests/engine/teams/legionaries.hooks.ts`); rules verified against the October '25 sources.
 TEAM-LG-001 | T-LG.1, T-LG.2 | A roster of one leader (Aspiring Champion or Chosen) plus 5 main picks validates; two leaders, a duplicate Butcher or a 7th operative is rejected; five Warriors are accepted.
 TEAM-LG-002 | T-LG.3 | The Champion offers 8 legal loadouts (2 pistols x 4 melee); Gunner, Heavy Gunner, Icon Bearer and Warrior offer exactly their printed sets; Anointed has no picker.
 TEAM-LG-003 | T-LG.5 | Every LEGIONARY entry must carry one of the five marks; a Balefire Acolyte with KHORNE is rejected; the mark is a keyword (`hasKeyword(op, 'NURGLE')`) and appears in `view` for both seats.
@@ -386,7 +392,7 @@ TEAM-LG-028 | T-LG.38, T-LG.39 | Chaos Talismans on the picked mark turns a roll
 
 ## TEAM-HA - Hand of the Archon
 
-TEAM-HA-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-HA-000 | registration | Built: the team is registered with the engine and the data, is `playable`, its default roster (Archsybarite plus eight, two darklight weapons) is legal and starts a game, and every code hook its data names is registered and fires in a real game (the scenarios in `tests/engine/teams/hand-of-the-archon.hooks.ts`); rules verified against the January '26 sources.
 TEAM-HA-001 | T-HA.1, T-HA.2 | Roster of Archsybarite plus 8 main picks validates with several Agents; a second Gunner (or any repeated non-Agent) or a 10th operative is rejected.
 TEAM-HA-002 | T-HA.3, T-HA.4 | Archsybarite blast pistol + Gunner blaster validates; adding Heavy Gunner dark lance (third darklight weapon) is rejected; swapping it for the splinter cannon validates.
 TEAM-HA-003 | T-HA.7 | Archsybarite on the board and its player passes first in the Gambit step: +1 CP; using a team strategy ploy first gives nothing; using a mission strategic gambit first then passing still gives +1 CP.
@@ -420,7 +426,7 @@ TEAM-HA-030 | T-HA.40, T-HA.42, T-HA.43 | Chain Snare stops a Fall Back on any 4
 
 ## TEAM-HC - Hunter Clade
 
-TEAM-HC-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-HC-000 | registration | Built: the team is registered with the engine and the data, is `playable`, its default roster (Ranger Alpha plus nine) is legal and starts a game, and every code hook its data names is registered and fires in a real game (the scenarios in `tests/engine/teams/hunter-clade.hooks.ts`); rules-review fixes in `tests/engine/teams/hunter-clade.rules.test.ts`.
 TEAM-HC-001 | T-HC.1, T-HC.2, T-HC.3 | A roster of one leader plus nine main picks validates; a second Diktat (Ranger plus Vanguard), a second Surveyor, a duplicate non-repeatable card or an 11th operative is rejected; repeated Ranger and Vanguard Warriors are accepted.
 TEAM-HC-002 | T-HC.4, T-HC.5 | With a Sicarian Princeps leader, a fifth main-list Sicarian is rejected (six Sicarians); with a Skitarii Alpha leader five main-list Sicarians are accepted; eight of (Sicarian Warriors plus Gunners) are rejected.
 TEAM-HC-003 | T-HC.6, T-HC.7 | Two arc rifles (Ranger Gunner plus Vanguard Gunner) are rejected; one of each special weapon is accepted; the Ranger Alpha loadout picker offers exactly the three sets and set (c) asks for one pistol and one melee weapon.
@@ -454,7 +460,7 @@ TEAM-HC-030 | T-HC.39 | With EXTREMIS MIND-LINK, CONTROL EDICT costs 0 CP once p
 
 ## TEAM-HK - Hearthkyn Salvagers
 
-TEAM-HK-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-HK-000 | registration | Built: the team is registered with the engine and the data, is `playable`, and every code hook its data names is registered and fires in a real game (the scenarios in `tests/engine/teams/hearthkyn-salvagers.hooks.ts`); rules-review fixes in `tests/engine/teams/hearthkyn-salvagers.rules.test.ts`.
 TEAM-HK-001 | T-HK.1, T-HK.2 | Theyn plus 9 picks validates with three Warriors and three different Gunner cards; a second Dôzr, a fourth Gunner, the same Gunner card twice, or an 11th operative is rejected.
 TEAM-HK-002 | T-HK.3 | The Theyn must take exactly one of the six ranged weapons and one of the two melee weapons; a Warrior (and Kinlynk, Kognitâar, Lokâtr, Lugger) takes bolter or ion blaster plus fists, never both guns; the rotary cannon and missile launcher cards bring both profiles.
 TEAM-HK-003 | T-HK.27 | An enemy that incapacitates a friendly Hearthkyn operative gains one Grudge token (a second kill makes 2); a kill by a mine, by the Hearthkyn operative's own Hot, or a Medic! save gives none; tokens show in `view` for both seats.
@@ -495,3 +501,4 @@ SIM-005 | R-3.6, R-2.4 | AP spent never exceeds APL (with R-3.15 exception) and 
 SIM-006 | R-9.2 | The same seed and the same action list reproduce the same state and event log.
 SIM-007 | R-8.1 | After every action no two bases overlap and none lies outside the killzone or inside terrain.
 SIM-008 | R-8.x kill op, R-3.4 | VP falls only by the kill op VP a returning operative takes back; a Conceal shooter firing a non-Silent weapon without a viewpoint or team rule is flagged.
+SIM-009 | R-4.x forced moves | The MOVE invariant exempts forced moves (pushes, Timesplinter) that end in an enemy control range.

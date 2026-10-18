@@ -4,14 +4,14 @@ import { describe, expect, it } from 'vitest'
 import { createGame, type GameState } from '@/engine'
 import { buildScenario } from '@/client/dev/scenarios'
 import { buildGameSetup, dataBundle, engineBundle } from '@/client/game/adapter'
-import { defaultBuild, resolveLayout, resolveMission, resolveTeam } from '@/client/game/defaults'
+import { fullBuild, resolveLayout, resolveMission, resolveTeam } from '@/client/game/defaults'
 import { evaluateSight, evaluateThreat, hypothetical, measure, sightFor, threatFor } from '@/client/interaction/sightlines'
 import { sightView } from '@/client/interaction/sightData'
 import { expectedDamage } from '@/engine/query'
 
 function base(name: string): GameState {
   const b = dataBundle()
-  const setup = buildGameSetup(b, defaultBuild(b, resolveTeam(b, 'aod')), defaultBuild(b, resolveTeam(b, 'kom')), {
+  const setup = buildGameSetup(b, fullBuild(b, resolveTeam(b, 'aod')), fullBuild(b, resolveTeam(b, 'kom')), {
     layoutId: resolveLayout(b, '01').id,
     missionId: resolveMission(b, 'secure').id,
     mapId: 'prelim-1',

@@ -209,6 +209,9 @@ function finiteState(s: GameState): string | null {
   return null
 }
 
+/** OperativeMoved actions another rule places the operative by (movement.applyForcedMove, Timesplinter): exempt from MOVE. */
+export const FORCED_MOVES: ReadonlySet<string> = new Set(['forced', 'timesplinter'])
+
 export function checkInvariants(prev: GameState, next: GameState, action: Action, events: GameEvent[]): string[] {
   const out: string[] = []
   const add = (rule: string, msg: string) => out.push(`${rule}: ${msg}`)
@@ -269,7 +272,9 @@ export function checkInvariants(prev: GameState, next: GameState, action: Action
       const op = next.operatives[ev.operativeId]!
       const inCr = enemiesInControlRange(next, op, op.seat).length > 0
       if (ev.action === 'charge' && !inCr) add('MOVE-006', `${op.id} charged but is not in an enemy control range`)
-      if (ev.action !== 'charge' && inCr) add('MOVE', `${op.id} finished a ${ev.action} in an enemy control range`)
+      // a forced move (Knux Smash pushes, Timesplinter's swap) is placed by another operative's rule: the mover's own
+      // control range restrictions do not apply to it, so it may end in an enemy control range
+      if (ev.action !== 'charge' && !FORCED_MOVES.has(ev.action) && inCr) add('MOVE', `${op.id} finished a ${ev.action} in an enemy control range`)
     }
   }
 

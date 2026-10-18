@@ -21,11 +21,14 @@ import { attachmentFor } from './attachmentFor'
 import { HOLDS, SHEATHED, handRight, heaviestHold, holdClassOf, type HoldSpec } from './hold'
 import { modelManifest, pointOf, slugOf, useModelManifest, type BodyEntry, type HoldClass, type ModelManifest, type V3 } from './manifest'
 import { Procedural, type HslLike } from './Procedural'
+import { BaseRing } from './OvalBase'
 
 export interface FigureSpec {
   archetype: string
   height: number
   baseRadius: number
+  /** oval bases (engine `ovalHalfAxis`); omitted for a round base */
+  ovalHalfAxis?: number
   major: HslLike
   minor: HslLike
   weaponIds: string[]
@@ -166,7 +169,7 @@ export function GlbBody({ body, spec, ranged, melee }: { body: BodyEntry; spec: 
   const shown = useMemo(() => shownWeapons(spec.weaponIds), [spec.weaponIds])
   const cols = useMemo(() => ({ ranged: hslColor(spec.minor, 0.1), melee: hslColor(spec.major, 0.12) }), [spec.major, spec.minor])
   const placed = useMemo(() => (spec.attachSlugs ? planSlugs(spec.attachSlugs, manifest) : planAttachments(shown, manifest)), [spec.attachSlugs, shown, manifest])
-  if (!obj && !rigged) return <Procedural height={spec.height} baseRadius={spec.baseRadius} major={spec.major} minor={spec.minor} ranged={ranged} melee={melee} seatColor={spec.seatColor} dim={spec.dim} />
+  if (!obj && !rigged) return <Procedural height={spec.height} baseRadius={spec.baseRadius} ovalHalfAxis={spec.ovalHalfAxis} major={spec.major} minor={spec.minor} ranged={ranged} melee={melee} seatColor={spec.seatColor} dim={spec.dim} />
   const sockets = body.sockets ?? {}
   // natural weapons (no hand sockets, e.g. the bomb squig) draw nothing
   const armed = !!(sockets.handR || sockets.handL)
@@ -183,7 +186,7 @@ export function GlbBody({ body, spec, ranged, melee }: { body: BodyEntry; spec: 
     const holds = { ranged: placed.find((p) => p.spec.socket === 'handR')?.hold ?? null, melee: placed.find((p) => p.spec.socket === 'handL')?.hold ?? null }
     return <SkinnedBody id={spec.animId!} obj={rigged.obj} clips={rigged.clips} sockets={sockets} flip={flip} mounts={mounts} bones={spec.bones} holds={holds} />
   }
-  if (!obj) return <Procedural height={spec.height} baseRadius={spec.baseRadius} major={spec.major} minor={spec.minor} ranged={ranged} melee={melee} seatColor={spec.seatColor} dim={spec.dim} />
+  if (!obj) return <Procedural height={spec.height} baseRadius={spec.baseRadius} ovalHalfAxis={spec.ovalHalfAxis} major={spec.major} minor={spec.minor} ranged={ranged} melee={melee} seatColor={spec.seatColor} dim={spec.dim} />
   return (
     <group>
       <group rotation={[0, flip ? Math.PI : 0, 0]}>
@@ -210,6 +213,7 @@ export function Figure({ spec }: { spec: FigureSpec }) {
     <Procedural
       height={spec.height}
       baseRadius={spec.baseRadius}
+      ovalHalfAxis={spec.ovalHalfAxis}
       major={spec.major}
       minor={spec.minor}
       ranged={holds.ranged}
@@ -391,9 +395,9 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
   const paint = team?.paint ?? { major: { h: 0.6, s: 0.5, l: 0.4 }, minor: { h: 0.1, s: 0.6, l: 0.4 } }
   const archetype = (dataBundle().byId[op.datacardId] as { figure?: { archetype: string } } | undefined)?.figure?.archetype ?? op.datacardId
   const spec: FigureSpec = useMemo(
-    () => ({ archetype, height: op.height, baseRadius: op.baseRadius, major: paint.major, minor: paint.minor, weaponIds: op.weapons, seatColor: seatColor(op.seat), dim: !op.ready, animId: op.id }),
+    () => ({ archetype, height: op.height, baseRadius: op.baseRadius, ...(op.ovalHalfAxis ? { ovalHalfAxis: op.ovalHalfAxis } : {}), major: paint.major, minor: paint.minor, weaponIds: op.weapons, seatColor: seatColor(op.seat), dim: !op.ready, animId: op.id }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [archetype, op.height, op.baseRadius, op.weapons, op.seat, op.ready, team],
+    [archetype, op.height, op.baseRadius, op.ovalHalfAxis, op.weapons, op.seat, op.ready, team],
   )
   useEffect(() => installCueFeed(), [])
   const last = useRef({ spec, pos: op.pos, facing: op.facing })
@@ -449,10 +453,15 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
         <Figure spec={spec} />
       </group>
       {(selected || hovered || choosable) && (
-        <mesh position={[0, 0.08, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[op.baseRadius + 0.08, op.baseRadius + (choosable ? 0.3 : 0.2), 36]} />
-          <meshBasicMaterial color={selected ? '#ffffff' : choosable ? '#ffe066' : '#9aa0b8'} transparent opacity={0.9} />
-        </mesh>
+        <BaseRing
+          baseRadius={op.baseRadius}
+          ovalHalfAxis={op.ovalHalfAxis}
+          inner={0.08}
+          outer={choosable ? 0.3 : 0.2}
+          color={selected ? '#ffffff' : choosable ? '#ffe066' : '#9aa0b8'}
+          opacity={0.9}
+          y={0.08}
+        />
       )}
       <Billboard position={[0, top + 0.3, 0]} follow>
         <TipArea tip={orderTip(op.order)} w={0.5} h={0.4} y={0.62}>

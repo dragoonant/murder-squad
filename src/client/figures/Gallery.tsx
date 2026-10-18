@@ -14,6 +14,7 @@ import { HOLDS } from './hold'
 import { clearCues } from './cueCore'
 import { ANIM_TICK_MS, galleryAnimStep } from './galleryAnim'
 import { Figure, hasGlbBody, seatColor } from './Operative'
+import { baseOfCard } from './OvalBase'
 import { useModelManifest, type SocketName, type V3 } from './manifest'
 
 const COLS = 5
@@ -248,7 +249,7 @@ export function Gallery() {
                 spec={{
                   archetype: card.figure.archetype,
                   height: Math.round(((card.base / 25.4) * 1.15 + 0.1) * 1000) / 1000,
-                  baseRadius: card.base / 25.4 / 2,
+                  ...baseOfCard(card),
                   major: team.paint.major,
                   minor: team.paint.minor,
                   weaponIds,

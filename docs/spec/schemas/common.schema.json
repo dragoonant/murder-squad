@@ -74,6 +74,7 @@
             "shoot.beforeAttackRerolls",
             "shoot.beforeDefenceRoll",
             "shoot.defenderBeforeRerolls",
+            "shoot.attackerDefenceRolled",
             "operative.incapacitated",
             "firefight.activationEnded",
             "turningPoint.end",
@@ -191,7 +192,7 @@
           "additionalProperties": false,
           "required": ["stat", "value"],
           "properties": {
-            "stat": { "enum": ["apl", "move", "save", "wounds", "hit", "atk"] },
+            "stat": { "enum": ["move", "hit", "atk"] },
             "value": { "type": "integer" },
             "cap": { "type": "integer" },
             "filter": { "$ref": "#/$defs/WeaponFilter" }

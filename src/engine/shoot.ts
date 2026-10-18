@@ -534,6 +534,7 @@ function runAfterRoll(ctx: Ctx, which: 'atk' | 'def', resumeStep: string): boole
     dice: side.dice,
     requests: [] as ChoiceRequest[],
     choices: seq.choices,
+    obscured: seq.obscured,
   }
   runHook(which === 'atk' ? 'afterAttackRoll' : 'afterDefenceRoll', {
     seat: side.seat,
@@ -684,8 +685,11 @@ STEPS.defenceRerolls = (ctx) => advanceWindow(ctx, 'def')
 
 STEPS.afterDefenceWindow = (ctx) => {
   if (!runAfterRoll(ctx, 'def', 'afterDefenceWindow')) return
-  proceed(ctx, 'block', 'shoot.defenceRolled')
+  proceed(ctx, 'attackerDefenceWindow', 'shoot.defenceRolled')
 }
+
+// M9 batch B shared: the attacker's window once the defence dice are final, before blocking (Siphon Life)
+STEPS.attackerDefenceWindow = (ctx) => proceed(ctx, 'block', 'shoot.attackerDefenceRolled')
 
 // --- blocking and damage ----------------------------------------------------
 

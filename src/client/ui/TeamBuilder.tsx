@@ -27,6 +27,7 @@ import { dataBundle, flattenRoster, type SeatBuild } from '../game/adapter'
 import { buildProblems, choiceOptions, defaultBuild, defaultEquipmentPicks, equipmentFor, equipmentLimitOf, teamList } from '../game/defaults'
 import { humanize } from '../game/labels'
 import { Figure, seatColor as figureSeatColor } from '../figures/Operative'
+import { baseOfCard } from '../figures/OvalBase'
 import { chosenWeaponIds } from '../game/adapter'
 import { useSession } from '../store/session'
 import { colors, fontStack, panel } from './theme'
@@ -238,7 +239,7 @@ function Preview({ card, seat, weaponIds, teamId }: { card: DatacardData; seat: 
   const spec = {
     archetype: card.figure.archetype,
     height: h,
-    baseRadius: card.base / 25.4 / 2,
+    ...baseOfCard(card, weaponIds),
     major: paint.major,
     minor: paint.minor,
     weaponIds,

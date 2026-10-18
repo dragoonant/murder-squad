@@ -1,11 +1,14 @@
 // Drop zones, territories, centreline and objective markers drawn from engine state and mission data.
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { Line } from '@react-three/drei'
 import { DoubleSide, Shape } from 'three'
 import type { GameState, Polygon } from '@/engine'
 import { markerRadius } from '@/engine/state'
 import { useFx } from '../presentation/fxStore'
 import { colors } from '../ui/theme'
+import { isTainted } from '@/engine/teams/legionaries'
+import { lookupTerm } from '../game/glossary'
+import { useBoardTip } from '../ui/markerInfo'
 
 function PolyFill({ poly, color, opacity, y }: { poly: Polygon; color: string; opacity: number; y: number }) {
   const geo = useMemo(() => {
@@ -72,6 +75,40 @@ export function Zones({ state, deployRegion, hoverZone }: { state: GameState; de
   )
 }
 
+/** A tainted objective (Legionaries, Favoured of the Dark Gods): a violet spiked crown over the marker, with a hover tooltip. */
+function TaintMark({ r }: { r: number }) {
+  const over = useRef(false)
+  const entry = lookupTerm('Tainted objective')
+  return (
+    <group data-tainted>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
+        <ringGeometry args={[r * 1.02, r * 1.2, 6]} />
+        <meshBasicMaterial color="#b44bff" />
+      </mesh>
+      <mesh position={[0, 0.62, 0]} rotation={[Math.PI, 0, 0]}>
+        <coneGeometry args={[0.16, 0.34, 5]} />
+        <meshBasicMaterial color="#b44bff" />
+      </mesh>
+      <mesh
+        position={[0, 0.3, 0]}
+        onPointerOver={(e) => {
+          if (e.pointerType === 'touch') return
+          over.current = true
+          useBoardTip.setState({ tip: { title: 'Tainted objective', body: entry?.body ?? 'Tainted by the Legionaries.', x: e.nativeEvent.clientX, y: e.nativeEvent.clientY } })
+        }}
+        onPointerOut={() => {
+          if (!over.current) return
+          over.current = false
+          useBoardTip.setState({ tip: null })
+        }}
+      >
+        <cylinderGeometry args={[r * 1.2, r * 1.2, 0.8, 12]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+    </group>
+  )
+}
+
 export function Markers({ state }: { state: GameState }) {
   // a control change shows at its beat, before the display state catches up
   const control = useFx((s) => s.control)
@@ -97,6 +134,7 @@ export function Markers({ state }: { state: GameState }) {
                 <octahedronGeometry args={[0.22, 0]} />
                 <meshBasicMaterial color={m.kind === 'objective' ? '#ffe066' : '#6fe0ff'} />
               </mesh>
+              {m.kind === 'objective' && isTainted(state, m.id) && <TaintMark r={r} />}
             </group>
           )
         })}

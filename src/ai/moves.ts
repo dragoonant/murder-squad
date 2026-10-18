@@ -6,7 +6,8 @@
 import { act, validate, type Action, type Activation, type GameState, type Operative, type Vec2, type Vec3, type Waypoint } from '@/engine'
 import { actionAvailability, actionCost } from '@/engine/firefight'
 import { abilityOffers, allowedOrders } from '@/engine/abilities'
-import { moveLimit, planMove, type MoveKind } from '@/engine/movement'
+import { moveLimit, planFly, planMove, type MoveKind } from '@/engine/movement'
+import { providerCanFly } from '@/engine/team-rules'
 import { enemiesInControlRange, distanceBetween } from '@/engine/measure'
 import { bodyOf } from '@/engine/los'
 import { enemiesOf, effectiveApl, seatOps } from '@/engine/state'
@@ -25,6 +26,8 @@ import { exhausted, spend, type ActivationPlan, type AiCtx, type PlanStep } from
 // ---------------------------------------------------------------------------
 
 export interface Endpoint {
+  /** a FLY set-up (Jump Pack): answered with `act.fly`, one waypoint */
+  fly?: boolean
   wps: Waypoint[]
   end: Vec3
   tag: string
@@ -145,6 +148,18 @@ function buildEndpoints(ctx: AiCtx, view: GameState, op: Operative, kind: MoveKi
     out.push({ wps, end: plan.end, tag, pre: preFor(plan.end) })
     return true
   }
+  // FLY (Jump Pack): set up again within the move, terrain between ignored; tried when the walk is blocked
+  const flies = providerCanFly(view, op, kind)
+  const acceptFly = (wp: Waypoint, tag: string): boolean => {
+    if (!flies) return false
+    const plan = planFly(view, op, kind, [wp], counteract)
+    if (!plan.ok) return false
+    const k = keyOf(plan.end)
+    if (taken.has(k)) return true
+    taken.add(k)
+    out.push({ fly: true, wps: [wp], end: plan.end, tag: `${tag}-fly`, pre: preFor(plan.end) })
+    return true
+  }
   // routed attempts need a distance field; build it once, only for ground moves
   const avoid = enemiesOf(view, op).map((e) => ({ x: e.pos.x, z: e.pos.z, r: e.baseRadius }))
   let field: Field | null = null
@@ -164,6 +179,7 @@ function buildEndpoints(ctx: AiCtx, view: GameState, op: Operative, kind: MoveKi
       attempts++
       const wp: Waypoint = { x: round3(rw.x), z: round3(rw.z), ...(y !== undefined ? { y } : {}) }
       if (accept([wp], rw.tag)) continue
+      if (acceptFly(wp, rw.tag)) continue
       // blocked straight line: try a route around the walls
       if (routed < 28 && y === undefined && kind !== 'dash') {
         const route = routeFor(wp)
@@ -240,7 +256,7 @@ function moved(ctx: AiCtx, from: Node, kind: MoveKind, e: Endpoint, cost: number
     performed: [...from.performed, kind],
     weaponsUsed: from.weaponsUsed,
     ap: from.ap + cost,
-    steps: [...from.steps, { action: kind, wps: e.wps, ...(targetId ? { targetId } : {}) }],
+    steps: [...from.steps, { action: kind, wps: e.wps, ...(e.fly ? { fly: true } : {}), ...(targetId ? { targetId } : {}) }],
     acc: from.acc,
   })
 }
@@ -519,7 +535,7 @@ function verify(ctx: AiCtx, n: Node, counteract: boolean, start: Start): boolean
       ap += actionCost(cur, op, s.action, hyp)
       performed = [...performed, s.action]
       if (s.wps) {
-        const plan = planMove(cur, op, s.action as MoveKind, s.wps, counteract)
+        const plan = s.fly ? planFly(cur, op, s.action as MoveKind, s.wps, counteract) : planMove(cur, op, s.action as MoveKind, s.wps, counteract)
         if (!plan.ok) return false
         cur = overlay(cur, opId, plan.end)
         op = cur.operatives[opId]!
@@ -754,7 +770,7 @@ export function movePath(ctx: AiCtx): Action | null {
   if (plan && plan.operativeId === op.id && a && onPlan(plan, a.performed)) {
     const step = plan.steps[stepIndex(plan, a.performed)]
     if (step?.wps && step.action === kind) {
-      const act1 = act.path(pending, step.wps)
+      const act1 = step.fly ? act.fly(pending, step.wps[0]!) : act.path(pending, step.wps)
       if (!validate(view, act1)) return act1
     }
   }
@@ -786,7 +802,7 @@ export function movePath(ctx: AiCtx): Action | null {
     if (!spend(ctx)) break
   }
   if (best) {
-    const act1 = act.path(pending, best.e.wps)
+    const act1 = best.e.fly ? act.fly(pending, best.e.wps[0]!) : act.path(pending, best.e.wps)
     if (!validate(view, act1)) return act1
   }
   const r = randomMove(ctx)

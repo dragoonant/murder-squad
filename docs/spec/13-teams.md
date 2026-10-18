@@ -2175,6 +2175,39 @@ Rows in `12-rules-test-checklist.md` section TEAM-HC: TEAM-HC-000 to TEAM-HC-030
 - RULING lines expected: Sicarian limit and the leader, seven-limit membership, Gunner base, arquebus damage, Canticle of Destruction scope, Control Protocol on itself, Shroudpsalm and area weapons, Targeting Protocol and movement, Rad-Saturation timing, penalties not cumulative with injury, SIGNAL timing, SPOT optional and expiry, oval rotation cost, orientation and turning on the spot, Primary Mode timing, doctrine duration, skipping the gambit, Bulwark ordering, Scouting Protocol eligibility, which Fight is free, Control Edict timing, Scrapcode expiry, Command Override choices, Omnissiah self-damage, mode, Bulwark and Aggressor and Conqueror, Rad Bombardment areas and modified 6, Redundancy timing, Refractor and Piercing Crits, Extremis Mind-Link.
 - Gotchas: section 9.10. Rotation is movement for the oval Gunner; Deprecations always apply unless the once-per-battle Primary ignore is taken; the arquebus Dmg 4/3 is printed that way.
 
+### 9.13 As built (M9 batch B)
+
+Files: `src/data/teams/hunter-clade/*.json`, `src/engine/teams/hunter-clade.ts`, `src/client/teams/hunter-clade.ts`,
+`tests/engine/teams/hunter-clade.{test,hooks}.ts`, a block in `src/ai/teamActions.ts` (SIGNAL, SPOT). Datacard ids
+`hc.<name>` (fourteen cards, figure archetype `hc-<name>`); weapons `hc.w.*` (21 profiles, groups `hc.wg.plasma-caliver`
+and `hc.wg.transuranic-arquebus`); the team choice `primary-mode` has choice group `doctrina` (the schema allows slugs only).
+
+- Code hooks named by the data (24): the passive names `hcCanticleDestruction`, `hcWastelandStalker`, `hcShroudpsalm`,
+  `hcControlProtocol`, `hcElimination`, `hcTargeting`, `hcGlow`, `hcRadSaturation`, `hcImperative` (the five Imperative
+  abilities share it), `hcRedundancy`, `hcRefractor`, `hcMindLink`; the actions `hcSignal`, `hcSpot`; the ploys
+  `hcDoctrina` (also the faction rule), `hcDebilitating`, `hcNeurostatic`, `hcAccelerant`, `hcScouting`,
+  `hcRadBombardment`, `hcControlEdict`, `hcScrapcode`, `hcCommandOverride`, `hcOmnissiah`.
+- One mode function (`modeOf`) answers "which Imperative does this operative have, and does its Deprecation apply":
+  `COMMAND OVERRIDE` token `hc.doctrine`, else `config.doctrine` (set by the free DOCTRINA gambit; `hc.ignore` effect for
+  the once-per-battle Primary ignore). Every Optimisation and Deprecation reads it from a hook (`modifyWeaponRules`,
+  `modifyAttackDice`, `modifyDefenceDice`, `modifyDamage`) or from the provider `moveDelta`.
+- RAD BOMBARDMENT is a strategy ploy record (`hc.p.rad-bombardment`, 0 CP) that the equipment unlocks, because the engine's
+  gambits are ploy records; Redundancy Systems and Refractor Field are offered by the ploy rule `extraOffers` in
+  `firefight.activationStart` and `shoot.beforeDefenceRoll`; Extremis Mind-Link is a `costAdjust` on CONTROL EDICT's
+  `<partner>:joint:<order>` offers, which call `firefight.joinActivation`.
+- Not exact: a friendly Infiltrator's own Pick Up Marker or mission action has no declaration window for SCRAPCODE
+  OVERLOAD (use it at activation, which is equivalent; only a counteracting Infiltrator loses the timing); the arquebus
+  oval is moved and measured by the engine but the client still draws a circle and has no turn control (the default
+  roster fields no arquebus Gunner). OMNISSIAH Aggressor taking 2" off the move's total climb cost is exact, because
+  every climb counts at least 2".
+- Rules review (batch B verification): every printed number, roster limit and loadout matches the January '26 PDF and
+  Wahapedia. Fixed: OMNISSIAH'S IMPERATIVE is also offered to a shot defender on its fresh and final defence roll
+  (`shoot.defenderBeforeRerolls`, `shoot.defenceRolled`; Bulwark then lowers the Save at once and rolls the extra die),
+  and SIGNAL (9") and SPOT (6") gain the Comms Device's 3" while the Diktat or Surveyor itself controls it (`commsReach`).
+  Tests: `tests/engine/teams/hunter-clade.rules.test.ts`.
+- Shared-engine findings: none blocking. `pending.options` is fixed when a decision is raised, so tests that edit the state
+  at a gambit decision rebuild the options (`refreshGambit` in the hooks file).
+
 ## 10. Hearthkyn Salvagers
 
 Rule IDs `T-HK.<n>`, checklist IDs `TEAM-HK-<nnn>`. Sources: the team PDF (Hearthkyn Salvagers, April '26 update log state; the flow and layout extracts were read together) as the primary source, cross-checked against the Wahapedia page (faction version 3, April 2026, with one FAQ entry). The two agree on everything except three places where Wahapedia lags the PDF errata (listed in 10.10); the PDF wins there. All rule text is restated in our own words; team, operative, weapon, ploy and equipment names are used as printed (display names keep their diacritics, keywords and ids do not, T-HK.5). Core terms per `10-rules-core.md` (R-x.y), missions and universal equipment per `11-missions.md` (M-x.y). Ploys and equipment are one bullet per record so each can carry its MECH line.
@@ -2458,3 +2491,37 @@ Rows in `12-rules-test-checklist.md` section TEAM-HK: TEAM-HK-000 to TEAM-HK-029
 - Scaffold: the leader record and its weapons are in `hearthkyn-salvagers-leader.json`; Beam and Force Impact are left off the scaffold weapons (add `hk.wr.beam` / `hk.wr.force-impact` when the team file resolves them).
 - RULING lines expected: Gunner options, keyword spelling, Field Medic bolt revolver (Corrected), magna rail rifle Dmg, Eye of the Ancestors count, Weavefield Crest use, Brawler last strike, Knux Smash end-action (Fan-source), push and free Charge, Medic! opportunity, MEDIKIT self-target, Grenadier allowance, Utility Grenade scope and removal, Beam line, Jump Pack details, Force Impact when retaliating, System Jam scope, Tactician markers, Spot distance, Pan Spectral Scan placement, Well Supplied CP (Corrected), I've Got It scope, Secure Salvage use, Grudge source, against obscured and conversion, Need Keeps Atk, Wrought Defence count, Ancestors errata (Corrected) and free action, Sturdy timing, Engage to Acquire, Plasma Knives and the Field Medic, Climbing Rigs, Excavation Tools in v1, Writ of Claim.
 - Gotchas: section 10.10. Grudge tokens are public, stack and are never spent; obscured blocks the conversion. Model each Gunner weapon as its own datacard (`figure.archetype: "hk-gunner"` with a `variant`). Keywords are ASCII (DOZR, KOGNITAAR, LOKATR). Ten operatives use the 10-operative kill grade row.
+
+### 10.13 As built (M9 batch B)
+
+Files: `src/data/teams/hearthkyn-salvagers/*.json`, `src/engine/teams/hearthkyn-salvagers.ts`,
+`src/client/teams/hearthkyn-salvagers.ts`, `tests/engine/teams/hearthkyn-salvagers.{test,hooks,rules.test}.ts`, a block in
+`src/ai/teamActions.ts` (Knux Smash, Signal, System Jam, Medikit, Utility Grenade, Accelerated Appraisal, Spot, Pan Spectral Scan). Datacard ids
+`hk.<name>` (eleven roles, the Gunner as five option cards `hk.gunner-<weapon>`, figure archetype `hk-<role>`); weapons
+`hk.w.*` (23 profiles, groups `hk.wg.hylas-rotary-cannon` and `hk.wg.l7-missile-launcher`); team weapon rules `hk.wr.beam`
+and `hk.wr.force-impact`.
+
+- Code hooks named by the data (31): the passive names `hkGrudge`, `hkBeam`, `hkForceImpact`, `weavefieldCrest`,
+  `hkBrawler`, `hkMedic`, `hkGrenadier`, `hkJumpPack`, `hkWellSupplied`, `secureSalvage`; the actions `knuxSmash`,
+  `hkMedikit`, `hkUtilityGrenade`, `hkSignal`, `hkSystemJam`, `acceleratedAppraisal`, `hkSpot`, `panSpectralScan`; the
+  gambits and ploys `eyeOfTheAncestors`, `hkTactician` (both 0-CP ploy records gated on the Theyn or Kognitâar being in
+  the killzone), `needKeeps`, `toilEarns`, `wroughtDefence`, `proximateFirepower`, `ancestorsAreWatching`, `hkWorthIt`,
+  `hkSturdy`, `engageToAcquire`; the equipment `hkClimbingRigs`, `hkExcavationTools`, `hkWritOfClaim`.
+- Grudge is the spine: `damage.inflicted` remembers the last enemy operative whose attack or own action damaged each
+  Hearthkyn operative (effect `hk.lastHit`), `operative.incapacitated` gives that enemy an `hk.grudge` token, and
+  `afterAttackRoll` converts one unretained normal per token (plus one per Toil Earns marker within 3") into a tagged
+  crit, never against an obscured target. Beam resolves in the same hook from a trial retention, over the distinct sets
+  of operatives that 13 sampled lines through the target's base reach.
+- Medic! copies the Pathfinders path (`beforeIncapacitated`, a damage floor for the rest of the action, a free Dash offered
+  as a reaction or a 0-CP action-ended offer); Brawler's last strike uses `fight.extraStrike`; Knux Smash pushes through
+  `movement.forcedMoveSpots` and `applyForcedMove` (any placeable spot within 3", control ranges included, the Dôzr-freeing
+  spots first) and offers its 3" free Charge with `startFreeAction`.
+- Not exact: the Utility Grenade marker uses the Smoke Grenade spots (no Vantage-only placement); Beam counts the crits a
+  trial retention keeps when the attack dice are final, so a crit made later by a ploy does not beam; Climbing Rigs take
+  the saving off the move's total climb cost, so two separate climbs in one move are both shortened; Weavefield Crest,
+  Secure Salvage and Medic! apply automatically (the hooks cannot ask).
+- Rules review (batch B verification): every printed number, roster limit and loadout matches the April '26 PDF (the three
+  Corrected RULINGs where Wahapedia lags stand). Fixed: the Knux Smash push may now end inside a control range (the shared
+  sim's MOVE invariant exempts `OperativeMoved` with `action: 'forced'`); Spot's Comms Device extension needs the
+  Lokâtr itself to control the marker; Climbing Rigs work only in the operative's own activation; the magna rail rifle
+  text. Tests: `tests/engine/teams/hearthkyn-salvagers.rules.test.ts`.

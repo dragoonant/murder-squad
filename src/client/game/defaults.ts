@@ -79,8 +79,43 @@ export function resolveLayout(b: DataBundle, key: string | null | undefined) {
   return list[0]!
 }
 
-/** A legal roster: greedy fill (whole selections first, then halves, repeatable entries pad), checked, else the first enumerated. */
+/**
+ * The team's own default roster (team.json `defaults.roster`) laid into its selection slots: each datacard goes into the
+ * first slot that offers it and still has room. Null when the data gives none or the result is not a legal roster.
+ */
+function dataDefaultRoster(b: DataBundle, team: TeamData): RosterSelection | null {
+  const ids = team.defaults?.roster
+  if (!ids || ids.length === 0) return null
+  const roster: RosterSelection = Object.fromEntries(team.selection.slots.map((s) => [s.id, [] as Id[]]))
+  for (const id of ids) {
+    const slot = team.selection.slots.find((s) => s.from.includes(id) && slotCost(s, [...roster[s.id]!, id]) <= s.count)
+    if (!slot) return null
+    roster[slot.id]!.push(id)
+  }
+  if (flattenRoster(team, roster).join() !== ids.join()) return null
+  return validateRoster(team, roster, b.byId as Record<string, DatacardData>).ok ? roster : null
+}
+
+/** Does the roster list exactly the team's default operatives in the data's order (so per-entry defaults line up)? */
+function isDataDefault(team: TeamData, roster: RosterSelection): boolean {
+  const ids = team.defaults?.roster
+  return !!ids && ids.length > 0 && flattenRoster(team, roster).join() === ids.join()
+}
+
+/**
+ * A legal roster: the team's data default (team.json `defaults.roster`, the same list the engine's realSetup plays) when
+ * it is legal, else the greedy fill, else the first enumerated shape.
+ */
 export function defaultRoster(b: DataBundle, team: TeamData): RosterSelection {
+  return dataDefaultRoster(b, team) ?? fullRoster(b, team)
+}
+
+/** The fullest roster by greedy fill (whole selections first, then halves, repeatable entries pad), else the first enumerated shape. Scenario fixtures use it. */
+export function fullRoster(b: DataBundle, team: TeamData): RosterSelection {
+  return greedyRoster(b, team) ?? firstEnumerated(b, team)
+}
+
+function greedyRoster(b: DataBundle, team: TeamData): RosterSelection | null {
   const roster: RosterSelection = {}
   for (const slot of team.selection.slots) {
     const half = new Set(slot.halfSelections ?? [])
@@ -94,7 +129,10 @@ export function defaultRoster(b: DataBundle, team: TeamData): RosterSelection {
     while (pad && slotCost(slot, [...ids, pad]) <= slot.count) ids.push(pad)
     roster[slot.id] = ids
   }
-  if (validateRoster(team, roster, b.byId as Record<string, DatacardData>).ok) return roster
+  return validateRoster(team, roster, b.byId as Record<string, DatacardData>).ok ? roster : null
+}
+
+function firstEnumerated(b: DataBundle, team: TeamData): RosterSelection {
   // M9 batch B: team caps may rule out the first shapes; take the first legal one
   let tried = 0
   for (const shape of enumerateRosters(team)) {
@@ -102,21 +140,25 @@ export function defaultRoster(b: DataBundle, team: TeamData): RosterSelection {
     if (++tried > 5000) break
   }
   const first = enumerateRosters(team).next()
-  return first.done ? roster : first.value
+  return first.done ? {} : first.value
 }
 
 export function datacard(b: DataBundle, id: string): DatacardData {
   return b.byId[id] as DatacardData
 }
 
-/** First legal loadouts, kept inside the team's loadout caps (M9 batch B). */
+/** First legal loadouts, kept inside the team's loadout caps; the data's own answers (team.json `defaults.loadouts`) win for its default roster (M9 batch B). */
 export function defaultLoadouts(b: DataBundle, team: TeamData, roster: RosterSelection) {
-  return capAwareLoadouts(team, flattenRoster(team, roster).map((id) => datacard(b, id)), b.weaponGroups)
+  const auto = capAwareLoadouts(team, flattenRoster(team, roster).map((id) => datacard(b, id)), b.weaponGroups)
+  if (!isDataDefault(team, roster)) return auto
+  const answers = team.defaults?.loadouts ?? []
+  return auto.map((l, i) => (answers[i] && Object.keys(answers[i]!).length > 0 ? answers[i]! : l))
 }
 
 /** M9 batch B: the first allowed keyword of every operative choice, per operative in flattened roster order. */
 export function defaultPicks(b: DataBundle, team: TeamData, roster: RosterSelection): Record<string, string>[] {
-  return flattenRoster(team, roster).map((id) => defaultOperativePicks(team, datacard(b, id)))
+  const fromData = isDataDefault(team, roster) ? (team.defaults?.operativePicks ?? []) : []
+  return flattenRoster(team, roster).map((id, i) => ({ ...defaultOperativePicks(team, datacard(b, id)), ...(fromData[i] ?? {}) }))
 }
 
 /** M9 batch B: the equipment limit for this build (the mission's limit plus a Lugger-style roster bonus). */
@@ -162,13 +204,15 @@ export function defaultEquipmentPicks(e: EquipmentData): string[] {
   return out
 }
 
-/** Default equipment: the engine's tested default list for the team (only entries that exist and are enabled). */
+/** Default equipment: the team's data defaults (team.json `defaults.equipment`), else the engine's tested list (only entries that exist and are enabled). */
 export function defaultEquipment(b: DataBundle, team: TeamData): { equipment: string[]; equipmentChoices: Record<string, string[]> } {
-  let ids: string[] = []
-  try {
-    ids = defaultEquipmentFor(team.id, engineBundle())
-  } catch {
-    ids = []
+  let ids: string[] = team.defaults?.equipment ? [...team.defaults.equipment] : []
+  if (ids.length === 0) {
+    try {
+      ids = defaultEquipmentFor(team.id, engineBundle())
+    } catch {
+      ids = []
+    }
   }
   const equipment: string[] = []
   const equipmentChoices: Record<string, string[]> = {}
@@ -182,7 +226,15 @@ export function defaultEquipment(b: DataBundle, team: TeamData): { equipment: st
 }
 
 export function defaultBuild(b: DataBundle, team: TeamData): SeatBuild {
-  const roster = defaultRoster(b, team)
+  return buildFor(b, team, defaultRoster(b, team))
+}
+
+/** The same build on the fullest greedy roster: the fixed fixtures of the dev scenarios and their tests rely on it. */
+export function fullBuild(b: DataBundle, team: TeamData): SeatBuild {
+  return buildFor(b, team, fullRoster(b, team))
+}
+
+function buildFor(b: DataBundle, team: TeamData, roster: RosterSelection): SeatBuild {
   const build: SeatBuild = { teamId: team.id, roster, loadouts: defaultLoadouts(b, team, roster), ...defaultEquipment(b, team), choices: defaultChoices(b, team) }
   if ((team.operativeChoices ?? []).length > 0) build.picks = defaultPicks(b, team, roster)
   return build

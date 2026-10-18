@@ -109,6 +109,73 @@ function value(ctx: AiCtx, v: GameState, op: Operative, offer: AbilityOffer): nu
       return target && target.seat !== op.seat && tokenCount(v, target.id, SOULSIGHT, op.seat) === 0 ? 0.9 : 0
     case 'wyr.a.assassinate':
       return target && target.seat !== op.seat ? 2 : 0
+    // ---- Legionaries
+    case 'lg.a.grisly-mark': {
+      // a 2 AP, once-per-battle marker: worth it only beside an objective the enemy will come to contest
+      const objectives = v.markers.filter((m) => m.kind === 'objective')
+      const beside = objectives.some((m) => Math.hypot(m.pos.x - op.pos.x, m.pos.z - op.pos.z) <= 4)
+      return beside && enemiesOf(v, op).some((e) => e.status === 'active') ? 1.3 : 0
+    }
+    // ---- Hunter Clade
+    case 'hc.a.signal':
+      // +1 APL for a ready friend is worth most when that friend is close to the fight
+      return target && target.seat === op.seat && target.ready ? 1.2 : 0
+    case 'hc.a.spot': {
+      // marks an enemy for the friends within 3 inches of the Surveyor: worth it when some friend can shoot it
+      if (!target || target.seat === op.seat) return 0
+      const shooters = friendsOf(v, op).filter((f) => f.ready && hasRanged(v, f) && distanceBetween(bodyOf(f), bodyOf(op)) <= 3).length
+      return 0.4 + 0.35 * shooters + (hasRanged(v, op) ? 0.2 : 0)
+    }
+    // ---- Hearthkyn Salvagers
+    case 'hk.a.knux-smash':
+      // D3+1 damage (about 3 on average) plus a free Charge
+      return target && target.seat !== op.seat ? Math.min(target.wounds, 3) + 0.6 : 0
+    case 'hk.a.signal':
+      return target && target.seat === op.seat && target.ready ? 1.2 : 0
+    case 'hk.a.system-jam':
+      return target && target.seat !== op.seat ? (target.ready ? 0.9 : 0.2) : 0
+    case 'hk.a.medikit':
+      return target && target.seat === op.seat ? Math.min(wounded(target), 4) * 0.6 : 0
+    case 'hk.a.utility-grenade': {
+      // a tax on mission actions near an objective the enemy will contest; one marker at a time is plenty
+      const mine = v.markers.some((m) => m.equipmentId === 'hk.utility-grenade' && m.owner === op.seat)
+      const beside = v.markers.some((m) => m.kind === 'objective' && Math.hypot(m.pos.x - op.pos.x, m.pos.z - op.pos.z) <= 7)
+      return !mine && beside ? 0.4 : 0
+    }
+    case 'hk.a.accelerated-appraisal': {
+      const kind = offer.params.param === 'defence' ? 'hk.defence-marker' : 'hk.attack-marker'
+      const inPlay = v.markers.some((m) => (m.equipmentId === 'hk.attack-marker' || m.equipmentId === 'hk.defence-marker') && m.owner === op.seat)
+      return inPlay ? 0 : kind === 'hk.attack-marker' ? 0.8 : 0.6
+    }
+    case 'hk.a.spot': {
+      if (!target || target.seat === op.seat || tokenCount(v, target.id, 'hk.spot', op.seat) > 0) return 0
+      const shooters = friendsOf(v, op).filter((f) => f.ready && hasRanged(v, f) && distanceBetween(bodyOf(f), bodyOf(op)) <= 3).length
+      return 0.4 + 0.35 * shooters + (hasRanged(v, op) ? 0.2 : 0)
+    }
+    case 'hk.a.pan-spectral-scan': {
+      const placed = v.markers.some((m) => m.equipmentId === 'hk.pan-spectral-scan' && m.owner === op.seat)
+      return placed ? 0 : 0.8
+    }
+    // ---- Hand of the Archon
+    case 'ha.a.torment-grenade': {
+      // the target and everyone within 1" of it (friends too) test: D6 plus 1 for a Save of 4+ or worse, D3 damage and a Poison token on a 3+
+      if (!target || target.seat === op.seat) return 0
+      let total = 0
+      for (const o of Object.values(v.operatives)) {
+        if (o.status !== 'active' || o.wounds <= 0) continue
+        if (o.id !== target.id && distanceBetween(bodyOf(o), bodyOf(target)) > 1) continue
+        const p = o.save >= 4 ? 5 / 6 : 4 / 6
+        const dmg = Math.min(2, o.wounds)
+        total += o.seat === op.seat ? -1.3 * dmg * p : (dmg + 0.7) * p
+      }
+      return Math.max(0, total) * 0.9
+    }
+    case 'ha.a.administer-drug':
+      // healing a hurt friend; swapping a drug is never worth an AP to the planner
+      return offer.params.param === 'heal' && target && target.seat === op.seat ? Math.min(wounded(target), 4) * 0.6 : 0
+    case 'ha.a.mark':
+      // Seek Light and no obscuring help most against a Conceal enemy hiding in cover
+      return target && target.seat !== op.seat ? (target.order === 'conceal' ? 1 : 0.35) : 0
     default:
       return 0
   }

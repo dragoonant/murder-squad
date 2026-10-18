@@ -274,6 +274,9 @@ export function abilityOffers(state: GameState, op: Operative, act: Activation |
     }
   }
   for (const m of op.status === 'active' ? markerOffers(state, op, act) : []) {
+    // M9 batch B shared fix: team rules that forbid Pick Up / Place Marker (Brutal Display, Stoopid) and an action an
+    // action.declared rule barred this activation apply to the marker actions too
+    if (actionForbidden(state, op, m.action) || act?.barred?.includes(m.action)) continue
     const delta = actionCostDelta(state, op, m.action === PICK_UP ? 'pick-up-marker' : 'place-marker', act) + providerCostDelta(state, op, m.action)
     const cost = Math.max(0, m.cost + delta)
     if (act && !act.counteract && !act.frame) {

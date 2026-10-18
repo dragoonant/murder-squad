@@ -9,7 +9,7 @@ import { ACTION_HELP, ACTION_LABEL, ACTION_ORDER_FALLBACK, contextFacts, decisio
 import { abilityActions, markerActionLabel } from '../game/promptLabels'
 import { AbilityChoiceBody, EquipBody, GuardBody, MarkerPlaceBody, ObjectiveBody, PloyBody } from './GamePrompts'
 import { BlockBody, CoverSaveBody, FightResolveBody, FightTargetBody, FightWeaponBody, RerollBody, ShootTargetBody, ShootWeaponBody } from './AttackPrompts'
-import { cancelPath, confirmPath, deployAction, deployChoice, optionOperative, previewMove } from '../interaction/controller'
+import { bearingTo, canFlyNow, cancelPath, confirmPath, deployAction, deployChoice, facingTowardEnemy, optionOperative, previewMove, turnedBy } from '../interaction/controller'
 import { useSettled } from '../presentation/presentedStore'
 import { useGame } from '../store/game'
 import { BottomSheet } from './BottomSheet'
@@ -166,10 +166,12 @@ function DeployBody({ pending, state }: { pending: PendingDecision; state: GameS
   const ids = pending.constraints?.operativeIds ?? []
   const current = deployChoice(pending, picked)
   const left = Number(pending.context.left ?? 0)
+  const facing = useUi((s) => s.facing)
+  const currentOp = current ? state.operatives[current] : undefined
   const auto = () => {
     if (!current) return
     const spot = suggestPlacement(state, pending, current)
-    if (spot) dispatch(deployAction(pending, current, { x: spot.x, z: spot.z, y: spot.y }))
+    if (spot) dispatch(deployAction(pending, current, { x: spot.x, z: spot.z, y: spot.y }, currentOp?.ovalHalfAxis ? facing : null))
   }
   return (
     <>
@@ -179,12 +181,23 @@ function DeployBody({ pending, state }: { pending: PendingDecision; state: GameS
       </Muted>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }} data-testid="deploy-tray">
         {ids.map((id) => (
-          <Btn key={id} data-testid={`deploy-op-${id}`} variant={id === current ? 'active' : 'base'} onClick={() => useUi.setState({ deployOp: id })}>
+          <Btn key={id} data-testid={`deploy-op-${id}`} variant={id === current ? 'active' : 'base'} onClick={() => useUi.setState({ deployOp: id, facing: null })}>
             {opName(state, id)}
           </Btn>
         ))}
       </div>
       <HidingControl pending={pending} state={state} />
+      {currentOp?.ovalHalfAxis ? (
+        <TurnControl
+          current={facing ?? 0}
+          chosen={facing !== null}
+          label="Base facing"
+          help="This operative stands on an oval base. It is set up with its long side along the facing you pick (default: towards the centre of the killzone)."
+          onSet={(f) => useUi.setState({ facing: f })}
+          onEnemy={null}
+          onReset={() => useUi.setState({ facing: null })}
+        />
+      ) : null}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Btn data-testid="deploy-auto" onClick={auto}>
           Auto-place {current ?? ''}
@@ -228,14 +241,71 @@ function HidingControl({ pending, state }: { pending: PendingDecision; state: Ga
   )
 }
 
+// ---------------------------------------------------------------- oval base turn
+
+/** Turn buttons for an oval base: 30 degree steps, face the nearest enemy, along the last step, and back to the default. */
+function TurnControl({
+  current,
+  chosen,
+  label,
+  help,
+  onSet,
+  onEnemy,
+  onAlong,
+  onReset,
+}: {
+  current: number
+  chosen: boolean
+  label: string
+  help: string
+  onSet(f: number): void
+  onEnemy: (() => void) | null
+  onAlong?: () => void
+  onReset(): void
+}) {
+  const step = Math.PI / 6
+  const degrees = Math.round(((current * 180) / Math.PI + 360) % 360)
+  return (
+    <div data-testid="turn-control" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, margin: '4px 0 8px' }}>
+      <Tooltip title={label} body={help}>
+        <span style={{ fontSize: 12, fontWeight: 700 }}>
+          {label}: <span data-testid="turn-facing">{chosen ? `${degrees}°` : 'as is'}</span>
+        </span>
+      </Tooltip>
+      <Btn data-testid="turn-left" onClick={() => onSet(turnedBy(current, -step))}>
+        ↶ 30°
+      </Btn>
+      <Btn data-testid="turn-right" onClick={() => onSet(turnedBy(current, step))}>
+        30° ↷
+      </Btn>
+      {onEnemy && (
+        <Btn data-testid="turn-enemy" onClick={onEnemy}>
+          Face enemy
+        </Btn>
+      )}
+      {onAlong && (
+        <Btn data-testid="turn-along" onClick={onAlong}>
+          Along move
+        </Btn>
+      )}
+      <Btn data-testid="turn-reset" disabled={!chosen} onClick={onReset}>
+        Default
+      </Btn>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------- move path
 
 function MoveBody({ pending, state }: { pending: PendingDecision; state: GameState }) {
   const waypoints = useUi((s) => s.waypoints)
   const jumpNext = useUi((s) => s.jumpNext)
+  const facing = useUi((s) => s.facing)
+  const fly = useUi((s) => s.fly)
+  const canFly = canFlyNow(state, pending)
   const c = pending.constraints
   const op = c?.operativeId ? state.operatives[c.operativeId] : null
-  const preview = useMemo(() => previewMove(state, pending, waypoints), [state, pending, waypoints])
+  const preview = useMemo(() => previewMove(state, pending, waypoints, facing, fly), [state, pending, waypoints, facing, fly])
   const max = c?.maxInches ?? Number(pending.context.maxInches ?? 0)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -258,7 +328,7 @@ function MoveBody({ pending, state }: { pending: PendingDecision; state: GameSta
         {c?.mustEndOutsideControlRange && c.kind !== 'charge' && <>, finishing outside every enemy <Keyword term="Control range">control range</Keyword></>}.
       </div>
       <div data-testid="move-total" style={{ fontSize: 15, fontWeight: 800, color: plan ? colors.text : colors.muted }}>
-        {plan ? `Path cost ${plan.cost}/${plan.maxInches}″` : waypoints.length ? 'Path not allowed' : 'Click the board to lay the first step'}
+        {plan ? `Path cost ${plan.cost}/${plan.maxInches}″` : waypoints.length || facing !== null ? 'Path not allowed' : 'Click the board to lay the first step'}
       </div>
       {plan && (
         <div style={{ fontSize: 12, color: colors.muted, margin: '2px 0 4px' }} data-testid="move-segments">
@@ -275,6 +345,30 @@ function MoveBody({ pending, state }: { pending: PendingDecision; state: GameSta
           {preview.rejection.reason}
         </div>
       )}
+      {op?.ovalHalfAxis ? (
+        <TurnControl
+          current={facing ?? plan?.facing ?? op.facing}
+          chosen={facing !== null}
+          label="Turn base"
+          help="An oval base may turn on the spot at the end of a move. The end of its long side sweeps an arc, and that arc counts as one more step (rounded up to a whole inch) against the move."
+          onSet={(f) => useUi.setState({ facing: f })}
+          onEnemy={() => {
+            const end = plan?.end ?? waypoints[waypoints.length - 1] ?? op.pos
+            const f = facingTowardEnemy(state, op, end)
+            if (f !== null) useUi.setState({ facing: f })
+          }}
+          onAlong={
+            waypoints.length > 0
+              ? () => {
+                  const last = waypoints[waypoints.length - 1]!
+                  const from = waypoints.length > 1 ? waypoints[waypoints.length - 2]! : op.pos
+                  useUi.setState({ facing: bearingTo(from, last) })
+                }
+              : undefined
+          }
+          onReset={() => useUi.setState({ facing: null })}
+        />
+      ) : null}
       <Muted style={{ marginBottom: 8 }}>
         <KeywordText text="Each straight step is rounded up to a whole inch. Click ground for flat steps, click a Vantage platform to climb, click ground beside a tower to drop. Use Jump for a leap across a gap." />
       </Muted>
@@ -288,6 +382,13 @@ function MoveBody({ pending, state }: { pending: PendingDecision; state: GameSta
         <Btn data-testid="move-clear" disabled={waypoints.length === 0} onClick={() => useUi.getState().resetPath()}>
           Clear
         </Btn>
+        {canFly && (
+          <Tooltip title="Fly" body="Jump pack: instead of walking, set the operative up again anywhere within its move, measured in a straight line. Terrain in between, climbs and drops cost nothing. Click the board to choose the spot.">
+            <Btn data-testid="move-fly" variant={fly ? 'active' : 'base'} onClick={() => useUi.setState({ fly: !fly, waypoints: [] })}>
+              Fly
+            </Btn>
+          </Tooltip>
+        )}
         <Tooltip title="Jump" body="Mark the next step as a leap across a gap or down from a platform (up to 4 inches).">
           <Btn data-testid="move-jump" variant={jumpNext ? 'active' : 'base'} onClick={() => useUi.setState({ jumpNext: !jumpNext })}>
             Jump next
@@ -548,7 +649,7 @@ export function DecisionPrompt() {
   // Reset path / pick when the decision changes.
   const id = pending?.id
   useEffect(() => {
-    useUi.setState({ waypoints: [], jumpNext: false, deployOp: null, hoverNote: null, hoverZone: null, hoverOp: null, hoverOption: null, hoverSpot: null })
+    useUi.setState({ waypoints: [], jumpNext: false, facing: null, fly: false, deployOp: null, hoverNote: null, hoverZone: null, hoverOp: null, hoverOption: null, hoverSpot: null })
   }, [id])
   if (!pending || !state || state.phase === 'ended') return null
   if (!settled) return <Waiting text="..." />
