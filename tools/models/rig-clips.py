@@ -533,6 +533,8 @@ def add_animations(gltf: dict, bin_chunk: bytearray, sk: Skeleton, parts: dict[s
     for clip in names:
         tracks = bake(sk, parts, clip)
         times = tracks.pop("_times")  # type: ignore[arg-type]
+        if not tracks:
+            continue  # a hold pose for an arm this body does not have (the bomb squig)
         t_acc = app.add(np.asarray(times).reshape(-1, 1), "SCALAR", minmax=True)
         samplers = []
         channels = []
@@ -542,7 +544,7 @@ def add_animations(gltf: dict, bin_chunk: bytearray, sk: Skeleton, parts: dict[s
                 samplers.append({"input": t_acc, "output": out_acc, "interpolation": "LINEAR"})
                 channels.append({"sampler": len(samplers) - 1, "target": {"node": int(j), "path": path}})
         gltf["animations"].append({"name": clip, "samplers": samplers, "channels": channels})
-    return names
+    return [a["name"] for a in gltf["animations"]]
 
 
 def unskin_base(gltf: dict, sk: Skeleton) -> str | None:
