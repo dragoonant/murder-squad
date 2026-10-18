@@ -10,7 +10,7 @@ import { equipmentLimitFor } from '@/engine/equipment'
 import { runHook } from '@/engine/hooks'
 import { planFly, planMove } from '@/engine/movement'
 import { gambitOffers, offersFor, usePloy } from '@/engine/ploys'
-import { markerControl } from '@/engine/query'
+import { expectedDamage, markerControl } from '@/engine/query'
 import { ScriptedRng } from '@/engine/rng'
 import { effectiveApl, effectiveMove } from '@/engine/state'
 import { providerCostDelta, providerInitiativeReroll, providerMoveSurcharge, providerReactions } from '@/engine/team-rules'
@@ -138,6 +138,27 @@ describe('TEAM-HK Hearthkyn Salvagers: Grudge', () => {
     expect(lastRetained(rend.events)).toMatchObject({ crit: 2, normal: 2 })
     const none = shootAt(place(place(s, g, 0, 0), boy, 5, 0), g, 'hk.w.hylas-auto-rifle', boy, dice(4, 4, 4, 4, 1, 1, 1))
     expect(lastRetained(none.events)).toMatchObject({ crit: 0 })
+  })
+
+  it('TEAM-HK-004 the engine odds agree with the Shoot: Grudge raises expected damage in the open and changes nothing against an obscured target', () => {
+    const s = hkOpen()
+    const w = A(s, 'hk.warrior')
+    const boy = B(s, 'kom.boy')
+    const row = edit(place(place(s, w, 0, 0), boy, 5, 0), (st) => (st.operatives[boy]!.wounds = st.operatives[boy]!.maxWounds = 40))
+    const odds = (st: GameState) => expectedDamage(st, w, 'hk.w.autoch-bolter', boy).mean
+    expect(odds(withGrudge(row, boy, 2))).toBeGreaterThan(odds(row))
+    const hidden = withTerrain(row, wall(2, 2.5, ['heavy']))
+    expect(expectedDamage(hidden, w, 'hk.w.autoch-bolter', boy).obscured).toBe(true)
+    expect(odds(withGrudge(hidden, boy, 2))).toBeCloseTo(odds(hidden), 9)
+    // mid-Shoot against the obscured Boy, the odds against a second Kommando in the open still count its Grudge tokens
+    // (the hook reads its own sequence's obscured flag, not the live attack's)
+    const other = Object.values(s.operatives).find((o) => o.seat === 'B' && o.id !== boy)!.id
+    const both = withGrudge(place(hidden, other, 0, 5), other, 2)
+    const mid = take(take(take(activateOp(both, w), 'shoot').state, 'hk.w.autoch-bolter').state, boy).state
+    expect(mid.attack?.seq?.obscured).toBe(true)
+    const vsOther = (st: GameState) => expectedDamage(st, w, 'hk.w.autoch-bolter', other).mean
+    expect(vsOther(mid)).toBeCloseTo(vsOther(both), 9)
+    expect(vsOther(both)).toBeGreaterThan(expectedDamage(place(hidden, other, 0, 5), w, 'hk.w.autoch-bolter', other).mean)
   })
 
   it('TEAM-HK-005 TEAM-HK-006 Eye of the Ancestors marks one enemy (two once three Kin have fallen, none without a Theyn); Weavefield Crest ignores one Normal Dmg die, never a crit', () => {

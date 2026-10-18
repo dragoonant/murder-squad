@@ -11,7 +11,7 @@ import { providerCanFly } from '@/engine/team-rules'
 import { enemiesInControlRange, distanceBetween } from '@/engine/measure'
 import { bodyOf } from '@/engine/los'
 import { enemiesOf, effectiveApl, seatOps } from '@/engine/state'
-import { round3 } from '@/engine/geometry'
+import { bearing, round3 } from '@/engine/geometry'
 import { distanceField, gridFor, routeTo, type Field } from './nav'
 import { terrainOf } from '@/engine/terrain'
 import { approachTerm, bestShot, exactShot, memo, missionActionValue, objectiveTargets, objectiveValue, overlay, posKey, shotsFrom, withOrder, type ShotEst } from './eval'
@@ -757,6 +757,48 @@ export function action(ctx: AiCtx): Action | null {
   return endOpt
 }
 
+/**
+ * M9 batch B: an oval base (Hunter Clade arquebus Gunner) keeps its orientation while it moves and may turn at the end,
+ * paying the arc from the move. Prefer the front (+Z, the long axis) toward the nearest enemy, else along the last leg of
+ * the move. When the turn does not fit, the last leg may give up a whole inch or two for it, but only if the shorter end
+ * point scores no worse; otherwise (or when the base already points within 15 degrees) the path is kept unturned.
+ */
+export function withEndFacing(ctx: AiCtx, view: GameState, pending: AiCtx['pending'], op: Operative, wps: Waypoint[], plain: Action): Action {
+  if (!op.ovalHalfAxis || wps.length === 0) return plain
+  const end = wps[wps.length - 1]!
+  const from: Waypoint = wps.length > 1 ? wps[wps.length - 2]! : { x: op.pos.x, z: op.pos.z, y: op.pos.y }
+  const near = enemiesOf(view, op)
+    .filter((e) => e.pos)
+    .sort((x, y) => Math.hypot(x.pos.x - end.x, x.pos.z - end.z) - Math.hypot(y.pos.x - end.x, y.pos.z - end.z))[0]
+  const leg = Math.hypot(end.x - from.x, end.z - from.z)
+  const wants: number[] = []
+  if (near) wants.push(bearing(end, near.pos))
+  if (leg > 0.25) wants.push(bearing(from, end))
+  const flat = (end.y ?? op.pos.y) === (from.y ?? op.pos.y) && !end.jump
+  const scoreAt = (w: Waypoint) => {
+    const v2 = overlay(view, op.id, { x: w.x, y: w.y ?? op.pos.y, z: w.z })
+    return endScore(ctx, v2, v2.operatives[op.id]!)
+  }
+  for (const f of wants) {
+    const d = Math.abs(Math.atan2(Math.sin(f - op.facing), Math.cos(f - op.facing)))
+    if (d < Math.PI / 12) return plain
+    const facing = round3(f)
+    const turned = act.pathFacing(pending, wps, facing)
+    if (!validate(view, turned)) return turned
+    if (!flat) continue
+    const base = scoreAt(end)
+    for (const cut of [1, 2]) {
+      if (leg - cut < 0.5) break
+      const t = (leg - cut) / leg
+      const short: Waypoint = { ...end, x: round3(from.x + (end.x - from.x) * t), z: round3(from.z + (end.z - from.z) * t) }
+      const path = [...wps.slice(0, -1), short]
+      const trimmed = act.pathFacing(pending, path, facing)
+      if (!validate(view, trimmed) && scoreAt(short) >= base - 1e-9) return trimmed
+    }
+  }
+  return plain
+}
+
 /** move.path: the planned end point when still valid, else the best fresh end point, else any legal move. */
 export function movePath(ctx: AiCtx): Action | null {
   const { pending, view } = ctx
@@ -771,7 +813,7 @@ export function movePath(ctx: AiCtx): Action | null {
     const step = plan.steps[stepIndex(plan, a.performed)]
     if (step?.wps && step.action === kind) {
       const act1 = step.fly ? act.fly(pending, step.wps[0]!) : act.path(pending, step.wps)
-      if (!validate(view, act1)) return act1
+      if (!validate(view, act1)) return step.fly ? act1 : withEndFacing(ctx, view, pending, op, step.wps, act1)
     }
   }
   // fresh: rate every end point with the full evaluation
@@ -803,7 +845,7 @@ export function movePath(ctx: AiCtx): Action | null {
   }
   if (best) {
     const act1 = best.e.fly ? act.fly(pending, best.e.wps[0]!) : act.path(pending, best.e.wps)
-    if (!validate(view, act1)) return act1
+    if (!validate(view, act1)) return best.e.fly ? act1 : withEndFacing(ctx, view, pending, op, best.e.wps, act1)
   }
   const r = randomMove(ctx)
   if (r.type === 'pass' && a) mem.banned.push(a.declared?.action ?? kind)

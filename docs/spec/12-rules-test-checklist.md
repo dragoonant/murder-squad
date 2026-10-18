@@ -457,6 +457,7 @@ TEAM-HC-027 | T-HC.35 | Omnissiah Conqueror lets the fighter resolve its first t
 TEAM-HC-028 | T-HC.36 | RAD BOMBARDMENT is offered once per battle from TP2: each enemy in the picked objective's control range rolls; 4+ gives APL -1 to the end of its next activation, 6 adds D3 damage, and an enemy under Vantage turns a 6 into 5.
 TEAM-HC-029 | T-HC.37, T-HC.38 | REDUNDANCY SYSTEMS heals D3+2 at activation (never above starting wounds, not in an enemy's control range, once per TP); REFRACTOR FIELD turns Piercing 1 into none and Piercing 2 into 1 for one sequence, once per TP.
 TEAM-HC-030 | T-HC.39 | With EXTREMIS MIND-LINK, CONTROL EDICT costs 0 CP once per battle and both operatives are active together: the player alternates their actions in any order, each spends its own AP, and both are expended at the end.
+TEAM-HC-031 | T-HC.33 | SCRAPCODE OVERLOAD is offered when the friendly Infiltrator itself declares a mission action or Pick Up Marker, in its activation and in a counteraction, and not for its other actions.
 
 ## TEAM-HK - Hearthkyn Salvagers
 

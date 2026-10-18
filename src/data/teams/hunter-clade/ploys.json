@@ -156,6 +156,7 @@
     "cost": 1,
     "window": [
       "firefight.activationStart",
+      "firefight.actionDeclared",
       "firefight.opponentActionDeclared"
     ],
     "effect": {

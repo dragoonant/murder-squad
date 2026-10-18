@@ -200,9 +200,10 @@ registerHook(
     if (!s || !op || !c.targetId || !isHk(s, op)) return null
     const foe = s.operatives[c.targetId]
     if (!foe) return null
-    const data = c.data as { kind: 'shoot' | 'fight'; dice: { kind: string; tag?: string; used?: boolean }[] }
-    // an obscured target shuts every crit-making rule off (R-5.8)
-    if (data.kind === 'shoot' && s.attack?.seq?.obscured) return null
+    const data = c.data as { kind: 'shoot' | 'fight'; dice: { kind: string; tag?: string; used?: boolean }[]; obscured?: boolean }
+    // an obscured target shuts every crit-making rule off (R-5.8); read the hook data, so the odds (query.*, no attack
+    // in state) agree with the real Shoot
+    if (data.kind === 'shoot' && data.obscured) return null
     const n = grudgeCount(s, op.seat, foe)
     if (n <= 0) return null
     let left = n - data.dice.filter((d) => d.tag === 'grudge').length
@@ -299,7 +300,7 @@ registerHook(
     if (data.kind !== 'shoot' || !weapon || !hasRule(weapon.rules, 'beam')) return null
     const target = s.operatives[c.targetId]
     if (!target || data.choices['hk.beam.done']) return null
-    const obscured = s.attack?.seq?.obscured ?? false
+    const obscured = (c.data as { obscured?: boolean }).obscured ?? s.attack?.seq?.obscured ?? false
     const crits = predictedCrits(s, ctx, shooter, target.id, weapon.id, data.dice, obscured)
     if (crits <= 0) return null
     const sets = beamSets(s, shooter, target)
