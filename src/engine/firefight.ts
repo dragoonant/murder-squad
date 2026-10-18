@@ -35,7 +35,9 @@ import {
 } from './abilities'
 import { smokeActivation, smokeTurningPointEnd } from './core-hooks'
 import { expireEffects, removeEffects } from './effects'
-import { getFrameResume } from './hooks'
+import { providerAny, providerChain, providerCostDelta, providerGate, providerReactions, type ReactionOffer } from './team-rules'
+import { getFrameResume, registerFrameResume, runHook } from './hooks'
+import { tokensOnActivationEnd, tokensOnActivationStart, tokensOnTurningPointEnd } from './tokens'
 import { PICK_UP, PLACE } from './markers'
 import { scoreBattleEnd, scoreTurningPointEnd } from './missions'
 import { openPloyWindow } from './ploys'
@@ -65,7 +67,7 @@ export const ACTION_ORDER = ['reposition', 'dash', 'fallBack', 'charge', 'guard'
 /** Action cost after modifiers (Mobile makes Fall Back cost 1 less); never below 0 (R-3.6). */
 export function actionCost(state: GameState, op: Operative, actionId: string, act: Activation | null = null): number {
   const base = ACTIONS[actionId]?.cost ?? 0
-  return Math.max(0, base + actionCostDelta(state, op, actionId, act))
+  return Math.max(0, base + actionCostDelta(state, op, actionId, act) + providerCostDelta(state, op, actionId))
 }
 
 function hasExplosive(state: GameState, op: Operative): boolean {
@@ -94,6 +96,8 @@ export function actionAvailability(
   const counteract = activation?.counteract ?? false
   const performed = activation?.performed ?? []
   const restricted = (reason: string): Rejection => ({ code: 'E_ACTION_RESTRICTED', reason })
+  // M9 prep: an operative out of the killzone (HIDING) takes only the unique actions its team offers
+  if (op.status !== 'active') return restricted(`${op.name} is not in the killzone`)
   const cost = actionCost(state, op, actionId, activation)
 
   const forbidden = actionForbidden(state, op, actionId)
@@ -131,15 +135,15 @@ export function actionAvailability(
       }
       break
     case 'guard':
-      if (op.order === 'conceal') return restricted('a Conceal operative cannot go on Guard')
+      if (op.order === 'conceal' && !providerAny(state, op, 'guardUnderConceal')) return restricted('a Conceal operative cannot go on Guard')
       if (inEnemyCr) return restricted('cannot go on Guard while in an enemy control range')
       break
     case 'shoot':
-      if (op.order === 'conceal' && !hasSilentRanged(state, op)) {
+      if (op.order === 'conceal' && !hasSilentRanged(state, op) && !providerAny(state, op, 'shootUnderConceal')) {
         return restricted('a Conceal operative cannot Shoot except with a Silent weapon')
       }
       // the Bomb Squig's Explosive rule lets it Shoot in an enemy control range (T-KOM 2.3)
-      if (inEnemyCr && !hasExplosive(state, op)) return restricted('cannot Shoot while in an enemy control range')
+      if (inEnemyCr && !hasExplosive(state, op) && !providerAny(state, op, 'shootInControlRange')) return restricted('cannot Shoot while in an enemy control range')
       break
     case 'fight':
       if (!inEnemyCr) return restricted('Fight needs an enemy in control range')
@@ -171,6 +175,8 @@ export function startFirefight(ctx: Ctx): void {
   s.phase = 'firefight'
   ctx.emit({ type: 'PhaseStarted', name: 'firefight' }, null)
   s.firefight = { turn: s.initiative!, activation: null }
+  // M9 shared: a ploy window as the phase begins (initiative seat first); strategy or firefight ploys may name it
+  if (openFirefightWindow(ctx, 'firefight.start', {}, 'firefightStart')) return
   advance(ctx)
 }
 
@@ -181,9 +187,23 @@ export function counteractCandidates(state: GameState, seat: Seat): Operative[] 
 
 function advance(ctx: Ctx): void {
   const s = ctx.state
+  // M9 prep: a chained activation is owed (Group Activation): the same seat activates one of those next
+  const chain = s.firefight.chain
+  if (chain) {
+    const owed = readyOps(s, chain.seat).filter((o) => chain.ids.includes(o.id))
+    if (owed.length > 0) {
+      s.firefight.turn = chain.seat
+      raiseActivate(ctx, chain.seat, owed, [])
+      return
+    }
+    s.firefight.chain = null
+  }
   for (let i = 0; i < 4; i++) {
     const seat = s.firefight.turn
-    const mine = readyOps(s, seat)
+    const gated = s.firefight.gated ?? []
+    const all = readyOps(s, seat)
+    // operatives a rule stopped from activating this time (Vision of Madness), unless nothing else is ready
+    const mine = all.filter((o) => !gated.includes(o.id)).length > 0 ? all.filter((o) => !gated.includes(o.id)) : all
     const theirs = readyOps(s, otherSeat(seat))
     if (mine.length === 0 && theirs.length === 0) {
       endTurningPoint(ctx)
@@ -248,10 +268,17 @@ export function raiseAction(ctx: Ctx): void {
   const act = s.firefight.activation!
   const op = getOp(s, act.operativeId)
   const options: OptionInput[] = []
+  const delegated = act.frame?.data?.delegated as DelegatedRules | undefined
+  // M9 shared: a rule ended this activation early; it ends now that the action is done
+  if (act.endsAfterAction && !act.frame && !act.counteract) {
+    endActivation(ctx)
+    return
+  }
   for (const id of ACTION_ORDER) {
     const def = ACTIONS[id]!
     if (!def.implemented) continue
     if (actionAvailability(s, op, id, act)) continue
+    if (delegated && !delegatedAllows(delegated, id, actionCost(s, op, id, act), false)) continue
     options.push({
       id,
       labelKey: `action.${id}`,
@@ -261,10 +288,15 @@ export function raiseAction(ctx: Ctx): void {
     })
   }
   // unique, mission, equipment and marker actions (M2b-game)
-  for (const offer of abilityOffers(s, op, act)) options.push(abilityOption(offer))
+  for (const offer of abilityOffers(s, op, act)) {
+    const mission = (s.data.abilities[offer.abilityId]?.keywords ?? []).includes('MISSION')
+    if (delegated && !delegatedAllows(delegated, offer.action, offer.cost, mission)) continue
+    options.push(abilityOption(offer))
+  }
   if (options.length === 0) {
-    // Nothing left to do: the activation (or counteraction) ends by itself.
-    if (act.counteract) endCounteract(ctx)
+    // Nothing left to do: the activation (or counteraction, or delegated free action) ends by itself.
+    if (act.frame) closeFrame(ctx, 'cancelled')
+    else if (act.counteract) endCounteract(ctx)
     else endActivation(ctx)
     return
   }
@@ -301,6 +333,20 @@ function endActivation(ctx: Ctx): void {
   const act = s.firefight.activation!
   const op = getOp(s, act.operativeId)
   op.ready = false
+  // M9 shared: the owner's end-of-activation ploy window (Slink Into Darkness style), while the operative is still
+  // in its activation: "until the end of its activation" effects still apply and the activation.end hooks see
+  // what a ploy did. Only offered while the operative is in the killzone; resumes in finishEndActivation.
+  if (op.status === 'active' && !s.window && openFirefightWindow(ctx, 'firefight.activationEnded', { subjectId: op.id, counteracting: false }, 'activationEnded')) return
+  finishEndActivation(ctx)
+}
+
+function finishEndActivation(ctx: Ctx): void {
+  const s = ctx.state
+  const act = s.firefight.activation!
+  const op = getOp(s, act.operativeId)
+  // M9 prep: "at the end of its activation" team rules, then holder-activation tokens
+  runHook('activation.end', { seat: op.seat, state: s, engine: ctx, operativeId: op.id, data: { counteract: false } })
+  tokensOnActivationEnd(ctx, op.id)
   // M2b-attack: timed APL effects (Stun) end with the operative's activation; a point-blank restriction too
   expireAplEffects(ctx, op.id)
   for (const o of Object.values(s.operatives)) delete o.flags.cannotRetaliate
@@ -309,6 +355,13 @@ function endActivation(ctx: Ctx): void {
   ctx.emit({ type: 'OperativeExpended', operativeId: op.id }, op.seat)
   s.firefight.activation = null
   s.firefight.turn = otherSeat(act.seat)
+  s.firefight.gated = []
+  // M9 prep: Group Activation and the like owe the same seat another activation
+  const owed = providerChain(s, op, act.chained === true).filter((id) => id !== op.id && readyOps(s, op.seat).some((o) => o.id === id))
+  if (owed.length > 0) {
+    s.firefight.chain = { seat: op.seat, ids: owed, from: op.id }
+    ctx.emit({ type: 'ActivationChained', fromId: op.id, operativeIds: owed }, op.seat)
+  }
   advance(ctx)
 }
 
@@ -339,6 +392,10 @@ export function finishAction(ctx: Ctx): void {
   // an action "treated as" another counts as it for every restriction (Grappling Hook as Reposition, R-4.13)
   const treated = decl.params?.treatedAs
   if (typeof treated === 'string' && !act.performed.includes(treated)) act.performed.push(treated)
+  // M9 prep: per-TP action history (Interstitial Command) and the after-action team hook (Tesla Weave, decay)
+  op.actionsThisTp = [...(op.actionsThisTp ?? []), decl.action, ...(typeof treated === 'string' ? [treated] : [])]
+  const activeSeat = (act.frame ? (s.firefight.stack ?? []).at(-1)?.seat : undefined) ?? act.seat
+  runHook('action.ended', { seat: op.seat, state: s, engine: ctx, operativeId: op.id, data: { action: decl.action, counteract: act.counteract, free, activeSeat } })
   if (decl.action !== 'guard') clearGuard(ctx, op, 'action')
   ctx.emit({ type: 'ActionResolved', operativeId: op.id, action: decl.action }, op.seat)
   act.declared = null
@@ -367,7 +424,7 @@ export function openFirefightWindow(ctx: Ctx, window: TimingWindowId, info: Omit
   return openPloyWindow(ctx, window, { window, ...info }, [first, otherSeat(first)], resume)
 }
 
-export function afterActionStages(ctx: Ctx, stage: 'ploys' | 'guard' | 'continue'): void {
+export function afterActionStages(ctx: Ctx, stage: 'ploys' | 'reactions' | 'guard' | 'continue'): void {
   const s = ctx.state
   const act = s.firefight.activation
   if (!act) return
@@ -376,8 +433,12 @@ export function afterActionStages(ctx: Ctx, stage: 'ploys' | 'guard' | 'continue
     if (op && op.status === 'active') {
       const last = act.performed[act.performed.length - 1]
       const info = { subjectId: op.id, counteracting: act.counteract, ...(last ? { action: last } : {}) }
-      if (openFirefightWindow(ctx, 'firefight.actionEnded', info, 'actionEnded.guard')) return
+      if (openFirefightWindow(ctx, 'firefight.actionEnded', info, 'actionEnded.reactions')) return
     }
+    stage = 'reactions'
+  }
+  if (stage === 'reactions') {
+    if (offerReactions(ctx)) return
     stage = 'guard'
   }
   if (stage === 'guard') {
@@ -416,8 +477,17 @@ export function firefightResume(ctx: Ctx, token: string): void {
     case 'actionEnded.guard':
       afterActionStages(ctx, 'guard')
       return
+    case 'actionEnded.reactions':
+      afterActionStages(ctx, 'reactions')
+      return
     case 'turningPointEnd':
       finishTurningPoint(ctx)
+      return
+    case 'firefightStart':
+      advance(ctx)
+      return
+    case 'activationEnded':
+      if (ctx.state.firefight.activation) finishEndActivation(ctx)
       return
     default:
       throw new Error(`unknown firefight resume token ${token}`)
@@ -430,7 +500,15 @@ export function firefightResume(ctx: Ctx, token: string): void {
 
 export interface FreeActionOpts {
   operativeId: string
-  action: 'dash' | 'reposition' | 'shoot' | 'fight'
+  /** M9 prep: 'charge' and 'fallBack' as well (Expert Swordsman, Creeping Shadow, Divert and Disappear) */
+  action: 'dash' | 'reposition' | 'shoot' | 'fight' | 'charge' | 'fallBack'
+  /** M9 prep: cap on the move's distance (3" free Charges, 2" delegated moves); Charge then gets no +2" beyond it */
+  maxMove?: number
+  /**
+   * M9 prep: the move must end in this operative's control range: an enemy for a Charge (Assassinate,
+   * Quicksilver Strike), a friendly for other moves (Medic!'s free Dash into the medic's control range)
+   */
+  endWithinCrOf?: string
   /** name of the FrameResume registered with hooks.registerFrameResume */
   resume: string
   data?: Record<string, unknown>
@@ -443,10 +521,17 @@ export interface FreeActionOpts {
 function freeActionProblem(state: GameState, op: Operative, o: FreeActionOpts): Rejection | null {
   const inCr = enemiesInControlRange(state, op, op.seat).length > 0
   const bad = (reason: string): Rejection => ({ code: 'E_ACTION_RESTRICTED', reason })
+  const forbidden = actionForbidden(state, op, o.action)
+  if (forbidden) return bad(forbidden)
   switch (o.action) {
     case 'dash':
     case 'reposition':
       return inCr ? bad('cannot move while in an enemy control range') : null
+    case 'charge':
+      if (op.order === 'conceal' && !chargeUnderConceal(state, op)) return bad('a Conceal operative cannot Charge')
+      return inCr && !chargeFromControlRange(state, op) ? bad('cannot Charge while in an enemy control range') : null
+    case 'fallBack':
+      return inCr ? null : bad('Fall Back needs an enemy in control range')
     case 'fight':
       return fightAvailability(state, op, null)
     case 'shoot':
@@ -489,8 +574,14 @@ export function startFreeAction(ctx: Ctx, o: FreeActionOpts): boolean {
     stage: 'action',
     apSpent: 0,
     performed: [],
-    declared: { action: o.action, cost: 0, free: true },
+    declared: {
+      action: o.action,
+      cost: 0,
+      free: true,
+      ...(o.maxMove !== undefined || o.endWithinCrOf ? { params: { ...(o.maxMove !== undefined ? { maxInches: o.maxMove } : {}), ...(o.endWithinCrOf ? { endWithinCrOf: o.endWithinCrOf } : {}) } } : {}),
+    },
     frame: { kind: o.interrupt ? 'interrupt' : 'free', resume: o.resume, data },
+    declaredSeq: s.seq,
   }
   ;(s.firefight.stack ??= []).push(s.firefight.activation)
   s.firefight.activation = frame
@@ -528,16 +619,48 @@ export function closeFrame(ctx: Ctx, outcome: 'finished' | 'cancelled'): void {
     op.weapons = (data.savedWeapons as string[]).filter((w) => keep.has(w) || !(s.data.weapons[w]?.name ?? '').toLowerCase().includes(filter))
   }
   s.firefight.activation = (s.firefight.stack ?? []).pop() ?? null
+  // M9 shared: a move made in the Strategy phase (a gambit's free Dash) and a finished Guard interrupt are reaction
+  // points too (Quicksilver Strike; Medic! when the save happened inside the interrupt)
+  if (op && outcome === 'finished' && frameReaction(ctx, op, String(data.kind ?? ''), info, data)) return
+  afterFrame(ctx, info.resume, outcome, data)
+}
+
+/** The rest of closing a frame: the next free action of its queue, or the frame's resume. */
+function afterFrame(ctx: Ctx, resume: string, outcome: 'finished' | 'cancelled', data: Record<string, unknown>): void {
+  const s = ctx.state
   const queue = data.queue
   const hasQueue = Array.isArray(queue) && queue.length > 0
   if (!hasQueue && data.savedWindow) s.window = data.savedWindow as typeof s.window
   if (Array.isArray(queue) && queue.length > 0) {
     const carry = { ...data }
     for (const k of ['savedWeapons', 'nameFilter', 'queue', 'kind', 'pointBlank']) delete carry[k]
-    startFreeSequence(ctx, { kind: data.kind as FreeActionOpts['action'], resume: info.resume, queue: queue as string[], data: carry })
+    startFreeSequence(ctx, { kind: data.kind as FreeActionOpts['action'], resume, queue: queue as string[], data: carry })
     return
   }
-  getFrameResume(info.resume)?.(ctx, outcome, data)
+  getFrameResume(resume)?.(ctx, outcome, data)
+}
+
+const MOVE_KINDS = ['reposition', 'dash', 'fallBack', 'charge']
+
+/**
+ * Reaction points at the end of a frame (team-rules `reactions`): a free move outside any activation in the
+ * Strategy phase (info.strategy = true), and a Guard interrupt that finished (info.interrupt = true; the seat
+ * whose activation was interrupted may react). The frame's closing waits in `firefight.reactionAfter`;
+ * reactionDone finishes it. Not offered for a frame that is itself part of a reaction. True when raised.
+ */
+function frameReaction(ctx: Ctx, actor: Operative, kind: string, frame: NonNullable<Activation['frame']>, data: Record<string, unknown>): boolean {
+  const s = ctx.state
+  if (s.firefight.reactionAfter || frame.resume === REACTION_DONE || actor.status !== 'active') return false
+  const strategy = s.phase === 'strategy' && !s.firefight.activation && MOVE_KINDS.includes(kind)
+  const interrupt = frame.kind === 'interrupt' && s.phase === 'firefight'
+  if (!strategy && !interrupt) return false
+  const seat = otherSeat(actor.seat)
+  const info = { actorId: actor.id, action: kind, activeSeat: actor.seat, moved: MOVE_KINDS.includes(kind), ...(strategy ? { strategy: true } : { interrupt: true }) }
+  const offers = providerReactions(s, seat, info)
+  if (offers.length === 0) return false
+  s.firefight.reactionAfter = { resume: frame.resume, outcome: 'finished', data }
+  raiseReaction(ctx, seat, actor.id, kind, offers, strategy ? 'strategy.gambit' : 'firefight.actionEnded')
+  return true
 }
 
 /**
@@ -562,7 +685,8 @@ export function cancelAction(ctx: Ctx): void {
   ctx.emit({ type: 'ActionCancelled', operativeId: act.operativeId, action: decl.action }, act.seat)
   act.declared = null
   delete act.surcharge
-  if (act.frame) {
+  // a delegated free action goes back to its choice (R-3.8: as if never declared); other frames end
+  if (act.frame && act.frame.data?.kind !== 'delegated') {
     closeFrame(ctx, 'cancelled')
     return
   }
@@ -581,7 +705,10 @@ export function endTurningPoint(ctx: Ctx): void {
 /** Score the crit op, expire turning-point effects, then start the next turning point or end the battle. */
 function finishTurningPoint(ctx: Ctx): void {
   const s = ctx.state
+  // M9 prep: end-of-TP team rules (HIDING deadline) run before the crit op is scored
+  runHook('turningPoint.end', { seat: s.initiative ?? 'A', state: s, engine: ctx, data: { turningPoint: s.turningPoint } })
   scoreTurningPointEnd(ctx)
+  tokensOnTurningPointEnd(ctx)
   expireEffects(ctx, 'turningPoint')
   smokeTurningPointEnd(ctx)
   for (const seat of ['A', 'B'] as const) {
@@ -611,6 +738,121 @@ export function endGame(ctx: Ctx, reason: 'turningPoint' | 'resign', resigned?: 
 }
 
 // ---------------------------------------------------------------------------
+// M9 prep: delegated free actions, reactions, control between steps
+// ---------------------------------------------------------------------------
+
+/** What a delegated free action may be (Interstitial Command, Remote Pilot, A Worthy Cause); stored in frame data. */
+export interface DelegatedRules {
+  /** only actions whose cost after modifiers is exactly 1 AP (as for counteract, R-3.12) */
+  oneApOnly?: boolean
+  /** cap on any move during it (2") */
+  maxMove?: number
+  /** only these actions: universal ids, `ability:<id>`, `marker:pickUp`, or 'mission' for MISSION actions */
+  allow?: string[]
+  /** never these actions */
+  deny?: string[]
+  /** also bar actions the operative already performed this turning point (Interstitial Command) */
+  notDoneThisTp?: boolean
+  /** free text the team hook may read (Remote Pilot lifts the Drone whitelist through its own provider) */
+  tag?: string
+}
+
+function delegatedAllows(r: DelegatedRules, actionId: string, cost: number, mission: boolean): boolean {
+  if (r.oneApOnly && cost !== 1) return false
+  if (r.deny?.includes(actionId)) return false
+  if (r.allow && !r.allow.includes(actionId) && !(mission && r.allow.includes('mission'))) return false
+  return true
+}
+
+/**
+ * Let `operativeId` perform one free action of its player's choice right now, outside its own activation
+ * (Interstitial Command, Remote Pilot, A Worthy Cause, Plan Generations). It runs as a frame: the
+ * operative gets a firefight.action decision filtered by `rules`, no AP is spent, and `resume` runs once
+ * the action finishes or the player picks 'end'. False when it has nothing it could do (nothing starts).
+ */
+export function startDelegatedAction(ctx: Ctx, o: { operativeId: string; resume: string; rules: DelegatedRules; data?: Record<string, unknown> }): boolean {
+  const s = ctx.state
+  const op = s.operatives[o.operativeId]
+  if (!op || op.status !== 'active') return false
+  const data: Record<string, unknown> = { ...(o.data ?? {}), kind: 'delegated', delegated: { ...o.rules } }
+  if (s.window) {
+    data.savedWindow = s.window
+    s.window = null
+  }
+  const frame: Activation = {
+    operativeId: op.id,
+    seat: op.seat,
+    counteract: false,
+    stage: 'action',
+    apSpent: 0,
+    performed: o.rules.notDoneThisTp ? [...(op.actionsThisTp ?? [])] : [],
+    declared: null,
+    frame: { kind: 'free', resume: o.resume, data },
+  }
+  ;(s.firefight.stack ??= []).push(s.firefight.activation)
+  s.firefight.activation = frame
+  raiseAction(ctx)
+  return true
+}
+
+/**
+ * After an action, the non-active player may react with a team rule (Quicksilver Strike): one
+ * ability.choice listing every offer plus pass. The choosing hook starts its free action with
+ * `resume: REACTION_DONE` (or calls reactionDone itself). True when a decision was raised.
+ */
+function offerReactions(ctx: Ctx): boolean {
+  const s = ctx.state
+  const act = s.firefight.activation
+  if (!act || act.frame) return false
+  if (act.reactedAt === act.performed.length) return false
+  act.reactedAt = act.performed.length
+  const actor = s.operatives[act.operativeId]
+  const last = act.performed[act.performed.length - 1]
+  if (!actor || !last) return false
+  const moved = ['reposition', 'dash', 'fallBack', 'charge'].includes(last) || (actor.actionsThisTp ?? []).slice(-1)[0] === 'reposition'
+  const seat = otherSeat(act.seat)
+  const offers = providerReactions(s, seat, { actorId: actor.id, action: last, activeSeat: act.seat, moved })
+  if (offers.length === 0) return false
+  raiseReaction(ctx, seat, actor.id, last, offers, 'firefight.actionEnded')
+  return true
+}
+
+function raiseReaction(ctx: Ctx, seat: Seat, actorId: string, last: string, offers: ReactionOffer[], window: TimingWindowId): void {
+  ctx.raise({
+    kind: 'ability.choice',
+    seat,
+    window,
+    context: { hook: 'reaction', reaction: true, actorId, action: last, offers },
+    options: offers.map((r, i) => ({
+      id: `react:${i}`,
+      labelKey: r.labelKey,
+      type: 'ability.choice' as const,
+      payload: { option: String(i) },
+      data: { hook: r.hook, operativeId: r.operativeId, ...(r.data ?? {}) },
+    })),
+    canPass: true,
+  })
+}
+
+/** Name of the frame resume a reaction's free action uses; it carries on with the Guard interrupt stage. */
+export const REACTION_DONE = 'reaction.done'
+
+/** The reaction is over (performed, impossible or declined): Guard interrupts, then the activation goes on. */
+export function reactionDone(ctx: Ctx): void {
+  const s = ctx.state
+  const after = s.firefight.reactionAfter
+  if (after) {
+    // a reaction at the end of a frame (Strategy-phase move, Guard interrupt): finish closing that frame
+    s.firefight.reactionAfter = null
+    afterFrame(ctx, after.resume, after.outcome, after.data)
+    return
+  }
+  if (s.firefight.activation) afterActionStages(ctx, 'guard')
+}
+
+registerFrameResume(REACTION_DONE, (ctx) => reactionDone(ctx))
+
+// ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
 
@@ -627,8 +869,13 @@ function handleActivate(state: GameState, action: Action): Handled {
   if (action.type !== 'firefight.activate') return reject('E_WRONG_DECISION', 'expected an activation')
   const { operativeId, counteract } = action.payload
   const op = state.operatives[operativeId]
-  if (!op || op.seat !== action.seat || op.status !== 'active') {
+  const offboard = op?.status === 'reserve' && op.offboard !== undefined && counteract !== true
+  if (!op || op.seat !== action.seat || (op.status !== 'active' && !offboard)) {
     return reject('E_NOT_AN_OPTION', `${operativeId} cannot activate`)
+  }
+  const chain = state.firefight.chain
+  if (chain && chain.seat === action.seat && counteract !== true && !chain.ids.includes(operativeId) && readyOps(state, chain.seat).some((o) => chain.ids.includes(o.id))) {
+    return reject('E_ACTION_RESTRICTED', 'a chained activation is owed: activate one of the operatives the rule names')
   }
   if (counteract === true) {
     if (op.ready) return reject('E_ACTION_RESTRICTED', 'only an expended operative can counteract')
@@ -642,6 +889,7 @@ function handleActivate(state: GameState, action: Action): Handled {
         const s = ctx.state
         const o = getOp(s, operativeId)
         o.flags.counteractedThisTP = true
+        o.movedThisActivation = 0
         clearGuard(ctx, o, 'counteract')
         ctx.emit({ type: 'Counteracted', operativeId: o.id })
         s.firefight.activation = {
@@ -664,6 +912,20 @@ function handleActivate(state: GameState, action: Action): Handled {
     run(ctx) {
       const s = ctx.state
       const o = getOp(s, operativeId)
+      const chained = s.firefight.chain?.seat === o.seat && s.firefight.chain.ids.includes(o.id)
+      // M9 prep: a rule may stop this operative activating this time (Vision of Madness); never the last choice
+      const others = readyOps(s, o.seat).filter((x) => x.id !== o.id && !(s.firefight.gated ?? []).includes(x.id))
+      if (!chained && others.length > 0) {
+        const by = providerGate(ctx, o)
+        if (by) {
+          s.firefight.gated = [...(s.firefight.gated ?? []), o.id]
+          ctx.emit({ type: 'ActivationGated', operativeId: o.id, by }, o.seat)
+          advance(ctx)
+          return
+        }
+      }
+      s.firefight.chain = null
+      s.firefight.gated = []
       s.firefight.activation = {
         operativeId: o.id,
         seat: o.seat,
@@ -672,8 +934,11 @@ function handleActivate(state: GameState, action: Action): Handled {
         apSpent: 0,
         performed: [],
         declared: null,
+        ...(chained ? { chained: true } : {}),
       }
+      o.movedThisActivation = 0
       ctx.emit({ type: 'OperativeActivated', operativeId: o.id })
+      tokensOnActivationStart(ctx, o.id)
       // effects that last "until the start of its next activation" (OPTICS) end now
       removeEffects(ctx, (e) => e.expires === `startOfActivation:${o.id}`)
       ctx.raise({
@@ -704,10 +969,19 @@ function handleOrder(state: GameState, action: Action): Handled {
       const s = ctx.state
       const act = s.firefight.activation!
       const o = getOp(s, act.operativeId)
+      const previousOrder = o.order
       if (o.order !== order) clearGuard(ctx, o, 'order')
       o.order = order
       act.stage = 'action'
       ctx.emit({ type: 'OrderSet', operativeId: o.id, order })
+      // M9 prep: "when this operative is activated" team rules (Poison, Cult Ambush); damage may end the activation
+      if (!act.frame && !act.counteract) {
+        runHook('activation.start', { seat: o.seat, state: s, engine: ctx, operativeId: o.id, data: { previousOrder, order } })
+        if (o.status !== 'active' && o.offboard === undefined) {
+          afterActiveOperativeRemoved(ctx)
+          return
+        }
+      }
       // firefight.activationStart ploy window (Shake It Off, Heroic Leader's Combat Doctrine)
       if (openFirefightWindow(ctx, 'firefight.activationStart', { subjectId: o.id, counteracting: false }, 'activationStart')) return
       raiseAction(ctx)
@@ -733,12 +1007,22 @@ function dispatchDeclared(ctx: Ctx): void {
   const def = ACTIONS[id]
   if (def?.move) {
     const kind = def.move
+    // M9 prep: free and delegated moves may be capped (3" free Charge, 2" Interstitial Command) or tied to one enemy
+    const capFrame = (a.frame?.data?.delegated as DelegatedRules | undefined)?.maxMove
+    const capDecl = decl.params?.maxInches as number | undefined
+    const caps = [capFrame, capDecl].filter((x): x is number => typeof x === 'number')
+    if (caps.length > 0 && capDecl !== Math.min(...caps)) decl.params = { ...(decl.params ?? {}), maxInches: Math.min(...caps) }
+    const constraints = moveConstraints(o, kind, a.counteract, s)
+    const limit = decl.params?.maxInches as number | undefined
+    if (limit !== undefined) constraints.maxInches = Math.min(constraints.maxInches ?? limit, limit)
+    const endWithin = decl.params?.endWithinCrOf as string | undefined
+    if (endWithin) constraints.mustEndInControlRangeOfId = endWithin
     ctx.raise({
       kind: 'move.path',
       seat: o.seat,
       window: 'firefight.actionDeclared',
-      context: { operativeId: o.id, action: id, maxInches: moveLimit(o, kind, a.counteract) },
-      constraints: moveConstraints(o, kind, a.counteract),
+      context: { operativeId: o.id, action: id, maxInches: constraints.maxInches ?? moveLimit(o, kind, a.counteract, s) },
+      constraints,
       canPass: true,
     })
     return
@@ -771,7 +1055,7 @@ function handleAction(state: GameState, action: Action): Handled {
   if (!act) return reject('E_WRONG_DECISION', 'no operative is active')
   const id = action.payload.action
   if (id === 'end') {
-    return { run: (ctx) => (act.counteract ? endCounteract(ctx) : endActivation(ctx)) }
+    return { run: (ctx) => (act.frame ? closeFrame(ctx, 'cancelled') : act.counteract ? endCounteract(ctx) : endActivation(ctx)) }
   }
   const op = getOp(state, act.operativeId)
   if (id.startsWith(ABILITY_PREFIX) || id === PICK_UP || id === PLACE) {
@@ -786,6 +1070,7 @@ function handleAction(state: GameState, action: Action): Handled {
         const o = getOp(s, a.operativeId)
         ctx.emit({ type: 'ActionDeclared', operativeId: o.id, action: id, cost: offer.cost }, o.seat)
         a.declared = { action: id, cost: offer.cost, params: { abilityId: offer.abilityId, offer: offer.params } }
+        a.declaredSeq = s.seq
         const mission = (s.data.abilities[offer.abilityId]?.keywords ?? []).includes('MISSION')
         consumeDiscounts(s, o, a, id === PICK_UP ? 'pick-up-marker' : id === PLACE ? 'place-marker' : offer.abilityId, mission)
         dispatchDeclared(ctx)
@@ -804,6 +1089,7 @@ function handleAction(state: GameState, action: Action): Handled {
       const o = getOp(s, a.operativeId)
       ctx.emit({ type: 'ActionDeclared', operativeId: o.id, action: id, cost }, o.seat)
       a.declared = { action: id, cost }
+      a.declaredSeq = s.seq
       consumeDiscounts(s, o, a, id, false)
       // firefight.actionDeclared ploy window for attacks (Adjust Doctrine)
       if ((id === 'shoot' || id === 'fight') && openFirefightWindow(ctx, 'firefight.actionDeclared', { subjectId: o.id, counteracting: a.counteract, action: id }, 'declared')) return

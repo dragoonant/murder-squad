@@ -5,6 +5,7 @@
 import { useEffect, type CSSProperties } from 'react'
 import { colors, fontStack, panel } from '../ui/theme'
 import { useFormFactor } from '../ui/formFactor'
+import { Keyword, KeywordText } from '../ui/Keyword'
 import { seatColor } from '../ui/widgets'
 import { poolSummary, useTray, type TrayDie, type TrayPool } from './trayStore'
 
@@ -96,7 +97,9 @@ function Pool({ pool, testId }: { pool: TrayPool | null; testId: string }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, marginBottom: 4, minWidth: 0 }}>
         {pool.seat && <span style={{ width: 8, height: 8, borderRadius: 4, background: seatColor(pool.seat), flex: '0 0 auto' }} />}
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pool.label}</span>
-        <span style={{ color: colors.muted, fontWeight: 600, flex: '0 0 auto' }}>{pool.word} {pool.need}+</span>
+        <span style={{ color: colors.muted, fontWeight: 600, flex: '0 0 auto', pointerEvents: 'auto' }}>
+          <Keyword term={pool.word}>{pool.word}</Keyword> {pool.need}+
+        </span>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
         {pool.dice.map((d, i) => (
@@ -104,7 +107,9 @@ function Pool({ pool, testId }: { pool: TrayPool | null; testId: string }) {
         ))}
       </div>
       <div data-testid={`${testId}-summary`} style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>
-        {poolSummary(pool)}
+        <span style={{ pointerEvents: 'auto' }}>
+          <KeywordText text={poolSummary(pool)} />
+        </span>
       </div>
     </div>
   )

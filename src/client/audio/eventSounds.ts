@@ -7,6 +7,7 @@ import type { GameEvent, GameState, Seat } from '@/engine'
 import { flavourOf, type WeaponFlavour } from '../weaponFlavour'
 import type { PlayOptions } from './manager'
 import type { SoundId } from './ids'
+import { teamTable } from '../teams'
 
 export interface EventSound {
   id: SoundId
@@ -92,6 +93,8 @@ export const WEAPON_SOUND: Record<string, WeaponSfx> = {
   'core.w.frag-grenade': { id: 'wpn-grenade-frag' },
   'core.w.krak-grenade': { id: 'wpn-grenade-krak' },
 }
+// M9 prep: teams added later bring their own entries (src/client/teams)
+Object.assign(WEAPON_SOUND, teamTable('sound'))
 
 const FLAVOUR_FALLBACK: Record<WeaponFlavour, SoundId> = {
   bolter: 'wpn-bolt-rifle',
@@ -232,6 +235,13 @@ export const EVENT_POLICY: Record<GameEvent['type'], 'sound' | 'conditional' | '
   ConfigChanged: 'silent',
   EffectStarted: 'silent',
   EffectEnded: 'silent',
+  // M9 prep: generic team capabilities (bookkeeping until a team gives them a sound)
+  TokenChanged: 'silent',
+  WoundsRegained: 'silent',
+  OperativeSetAside: 'silent',
+  OperativeReturned: 'silent',
+  ActivationChained: 'silent',
+  ActivationGated: 'silent',
   DiceRolled: 'sound',
   ActionRejected: 'silent',
   DecisionRequested: 'silent',

@@ -1,6 +1,7 @@
 // Label building: every sentence the UI shows about a decision, option, event or rejection. Own wording
 // only (no Games Workshop text). Unknown decision kinds and label keys degrade to a readable generic form,
 // never a crash, so decision kinds added by the engine later still render as an option list.
+import { tokenDef } from '../ui/tokenDefs'
 import type { DecisionKind, DecisionOption, GameEvent, GameState, PendingDecision, Rejection, Seat } from '@/engine'
 
 export const SEAT_NAME: Record<Seat, string> = { A: 'Seat A', B: 'Seat B' }
@@ -38,7 +39,7 @@ export const ACTION_HELP: Record<string, string> = {
 
 export const ORDER_HELP: Record<'engage' | 'conceal', string> = {
   engage:
-    'Engage: stays visible and can Charge, Guard and Shoot freely. Can counteract later. Enemies can see it even behind light cover.',
+    'Engage: can Charge, Guard and Shoot freely and can counteract later. Enemies can target it even in cover (it keeps the cover save).',
   conceal:
     'Conceal: harder to target while in cover and out of sight, but it cannot Charge or Shoot (unless the weapon is Silent) and cannot counteract.',
 }
@@ -403,6 +404,25 @@ export function describeEvent(ev: GameEvent, state: GameState | null): string | 
       return `A mine hits ${who(ev.operativeId)} for ${ev.damage}.`
     case 'AbilityUsed':
       return `${ev.operativeId ? `${who(ev.operativeId)}: ` : ''}${humanize(ev.abilityId)}${ev.detail ? ` (${ev.detail})` : ''}.`
+    case 'TokenChanged': {
+      if (ev.delta === 0) return null
+      const d = tokenDef(ev.kind)
+      const n = Math.abs(ev.delta)
+      const noun = `${d.label} token${n === 1 ? '' : 's'}`
+      return ev.delta > 0
+        ? `${who(ev.operativeId)} gains ${n === 1 ? 'a' : n} ${noun} (${SEAT_NAME[ev.owner]}), now ${ev.count}.`
+        : `${who(ev.operativeId)} loses ${n === 1 ? 'a' : n} ${noun} (${SEAT_NAME[ev.owner]}), ${ev.count} left.`
+    }
+    case 'WoundsRegained':
+      return `${who(ev.operativeId)} regains ${ev.amount} wound${ev.amount === 1 ? '' : 's'} (${ev.wounds} now).`
+    case 'OperativeSetAside':
+      return `${who(ev.operativeId)} is set aside, out of the killzone.`
+    case 'OperativeReturned':
+      return `${who(ev.operativeId)} ${ev.kind === 'emerge' ? 'emerges from hiding' : ev.kind === 'reanimated' ? 'is reanimated' : 'returns to the killzone'}.`
+    case 'ActivationChained':
+      return `${who(ev.fromId)} hands the next activation on (${ev.operativeIds.map(who).join(', ')}).`
+    case 'ActivationGated':
+      return `${who(ev.operativeId)} cannot activate this time (${humanize(ev.by)}).`
     case 'EffectStarted':
     case 'EffectEnded':
     case 'ConfigChanged':

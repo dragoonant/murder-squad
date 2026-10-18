@@ -9,6 +9,7 @@ import { getWindowOpener, runHook } from './hooks'
 import type { OptionInput, Ctx } from './registry'
 import { enemiesOf, getOp, hasInjuredPenalty, isInjured, otherSeat } from './state'
 import { terrainOf } from './terrain'
+import { providerAny, providerRerollsBanned } from './team-rules'
 import type {
   Action,
   AttackDie,
@@ -222,6 +223,25 @@ export function effectiveRules(
   return rules
 }
 
+/**
+ * M9 prep: the Normal and Critical Dmg of a weapon against a target after `modifyDamage` hooks (Toxic).
+ * Every place that turns attack dice into damage reads Dmg through this.
+ */
+export function weaponDamage(
+  state: GameState,
+  attackerId: string,
+  weaponId: string,
+  targetId: string,
+  kind: 'shoot' | 'fight',
+  ctx?: Ctx,
+): { normal: number; crit: number } {
+  const w = weaponOf(state, weaponId)
+  const data = { kind, weaponId, dmg: { normal: w.dmg.normal, crit: w.dmg.crit } }
+  const op = state.operatives[attackerId]
+  runHook('modifyDamage', { seat: op?.seat ?? 'A', state, ...(ctx ? { engine: ctx } : {}), operativeId: attackerId, targetId, weaponId, data })
+  return { normal: Math.max(0, Math.floor(data.dmg.normal)), crit: Math.max(0, Math.floor(data.dmg.crit)) }
+}
+
 export function ruleSetFor(state: GameState, op: Operative, weaponId: string, kind: 'shoot' | 'fight', targetId?: string, ctx?: Ctx): RuleSet {
   return parseRules(effectiveRules(state, op, weaponOf(state, weaponId), kind, targetId, ctx))
 }
@@ -247,7 +267,7 @@ export function weaponUnusable(
     return { code: 'E_ACTION_RESTRICTED', reason: `${w.name} has been used ${rules.limited} time(s) already (Limited)` }
   }
   if (kind === 'shoot') {
-    if (op.order === 'conceal' && !rules.silent) {
+    if (op.order === 'conceal' && !rules.silent && !providerAny(state, op, 'shootUnderConceal')) {
       return { code: 'E_ACTION_RESTRICTED', reason: `${w.name} is not Silent` }
     }
     if (rules.heavy) {
@@ -321,7 +341,7 @@ export function attackStats(
     weaponId,
     targetId,
     atk: weapon.atk,
-    hitDelta: (hasInjuredPenalty(op) ? 1 : 0) + (o.pointBlank ? 1 : 0) - (o.assists?.length ?? 0),
+    hitDelta: (hasInjuredPenalty(op) || providerAny(state, op, 'injuredEquivalent') ? 1 : 0) + (o.pointBlank ? 1 : 0) - (o.assists?.length ?? 0),
     accurate: [...rules.accurate, ...(o.vantageAccurate ? [o.vantageAccurate] : [])],
     lethal: rules.lethal,
     rerolls: grantsFor(rules, weapon.id),
@@ -462,7 +482,9 @@ export interface RerollOptions {
 
 /** Enumerate the re-rolls a side can make right now. Equal results are equivalent, so one die per result is offered. */
 export function rerollOptions(state: GameState, side: DiceSide): RerollOptions {
-  const elig = eligibleDice(side)
+  // M9 prep: a rule can bar every re-roll of a side (Nightmare Shroud, Suppressing Fire)
+  const banned = side.noRerolls === true || (state.attack ? providerRerollsBanned(state, side, state.attack) : false)
+  const elig = banned ? [] : eligibleDice(side)
   const grants: OptionInput[] = []
   const command: OptionInput[] = []
   if (elig.length === 0) return { grants, command }
@@ -775,9 +797,14 @@ function applyTargetStatus(state: GameState, shooter: Operative, target: Operati
   return { ...verdict, inCover: data.inCover, obscured: data.obscured, forcedChoice: false, ifCover: { ...both }, ifObscured: { ...both } }
 }
 
-export function targetInfo(state: GameState, shooter: Operative, target: Operative, rules: RuleSet): TargetInfo {
+/**
+ * Cover, obscured and visibility of `target` for `shooter`. M9 prep: `viewpoint` (Magnify's proxy) is the
+ * operative the verdict is worked out from; the target.status hook still names the real shooter.
+ */
+export function targetInfo(state: GameState, shooter: Operative, target: Operative, rules: RuleSet, viewpoint?: Operative): TargetInfo {
   if (shooter.id === target.id) return selfInfo(state, shooter)
-  const verdict = applyTargetStatus(state, shooter, target, targetVerdict(state, bodyOf(shooter), { ...bodyOf(target), order: target.order }))
+  const from = viewpoint ?? shooter
+  const verdict = applyTargetStatus(state, shooter, target, targetVerdict(state, bodyOf(from), { ...bodyOf(target), order: target.order }))
   const coverBlocks = target.order === 'conceal' && coverForSelection(state, verdict, rules)
   return {
     id: target.id,
@@ -828,17 +855,19 @@ export function selfInfo(state: GameState, op: Operative): TargetInfo {
  * range, visibility, and for Conceal targets not in cover (R-5.2). `beforeShootTargetSelect` may add
  * or remove candidates.
  */
-export function validTargets(state: GameState, shooter: Operative, weaponId: string, ctx?: Ctx): TargetInfo[] {
+export function validTargets(state: GameState, shooter: Operative, weaponId: string, ctx?: Ctx, viewpoint?: Operative): TargetInfo[] {
   const rules = ruleSetFor(state, shooter, weaponId, 'shoot', undefined, ctx)
   const infos = new Map<string, TargetInfo>()
   const ids: string[] = []
   const sb = bodyOf(shooter)
   for (const e of enemiesOf(state, shooter)) {
     if (e.wounds <= 0) continue
+    // Range stays with the real shooter; validity, cover and obscured come from the viewpoint (Magnify)
     if (rules.range !== null && !isWithin(sb, bodyOf(e), rules.range)) continue
     if (enemiesInControlRange(state, e, e.seat).length > 0) continue
-    const info = targetInfo(state, shooter, e, rules)
+    const info = targetInfo(state, shooter, e, rules, viewpoint)
     if (!info.verdict.visible) continue
+    if (viewpoint && !visible(state, sb, bodyOf(e))) continue
     if (info.coverBlocks) continue
     infos.set(e.id, info)
     ids.push(e.id)
@@ -862,9 +891,34 @@ export function validTargets(state: GameState, shooter: Operative, weaponId: str
     const t = state.operatives[id]
     if (!t || t.status !== 'active' || t.wounds <= 0) continue
     if (t.seat === shooter.seat && t.id !== shooter.id) continue
-    out.push(targetInfo(state, shooter, t, rules))
+    out.push(targetInfo(state, shooter, t, rules, viewpoint))
   }
   return out
+}
+
+/**
+ * M9 prep (generic capability "targetRedirect"): a defender's rule swaps the operative being attacked for
+ * one of its own (Saviour Protocols, Unquestioning Loyalty). Call from a ploy or hook at the
+ * `shoot.targetSelected` window (the current Shoot target) or at `fight.weaponsSelected` (the fight
+ * opponent; the new defender retaliates with its first fight weapon). `status` replaces the shoot
+ * sequence's cover / obscured verdict (copy the original target's, or AND it with the new one's).
+ */
+export function redirectAttack(ctx: Ctx, newTargetId: string, status?: { cover: boolean; obscured: boolean; improvedCover?: boolean }): boolean {
+  const a = ctx.state.attack
+  const t = ctx.state.operatives[newTargetId]
+  if (!a || !t || t.status !== 'active') return false
+  if (a.kind === 'shoot') {
+    if (a.index >= a.targets.length) return false
+    a.targets[a.index] = newTargetId
+    if (status) a.status = { cover: status.cover, obscured: status.obscured, improvedCover: status.improvedCover ?? false }
+    return true
+  }
+  if (!a.fight) return false
+  a.fight.targetId = newTargetId
+  a.targets = [newTargetId]
+  const weapons = t.weapons.filter((w) => ctx.state.data.weapons[w]?.type === 'melee' && weaponUnusable(ctx.state, t, w, [], 'fight') === null)
+  a.fight.weaponD = weapons[0] ?? null
+  return true
 }
 
 /** Blast secondaries (R-10.3): operatives visible to and within x of the primary, friendly included, not the shooter. */
@@ -882,10 +936,10 @@ export function blastSecondaries(state: GameState, shooter: Operative, primary: 
 }
 
 /** Torrent secondaries (R-10.23): other valid targets within x of the primary. */
-export function torrentCandidates(state: GameState, shooter: Operative, weaponId: string, primaryId: string, inches: number, ctx?: Ctx): string[] {
+export function torrentCandidates(state: GameState, shooter: Operative, weaponId: string, primaryId: string, inches: number, ctx?: Ctx, viewpoint?: Operative): string[] {
   if (inches <= 0) return []
   const pb = bodyOf(getOp(state, primaryId))
-  return validTargets(state, shooter, weaponId, ctx)
+  return validTargets(state, shooter, weaponId, ctx, viewpoint)
     .filter((t) => t.id !== primaryId && isWithin(pb, bodyOf(getOp(state, t.id)), inches))
     .map((t) => t.id)
 }
@@ -921,7 +975,23 @@ export function inflict(
   if (amount === 0) return 0
   const before = target.wounds
   target.wounds = Math.max(0, before - amount)
+  // M9 prep: a rule may stop the incapacitation at this moment (Medic!): it sets the wounds back above 0
+  if (before > 0 && target.wounds <= 0) {
+    const save = { source: o.source, attackerId: o.attackerId, weaponId: o.weaponId, wounds: 0 }
+    runHook('beforeIncapacitated', { seat: target.seat, state: s, engine: ctx, operativeId: target.id, targetId: o.attackerId, ...(o.weaponId ? { weaponId: o.weaponId } : {}), data: save })
+    if (save.wounds > 0) target.wounds = Math.min(target.maxWounds, Math.floor(save.wounds))
+  }
   ctx.emit({ type: 'DamageInflicted', operativeId: target.id, sourceId: o.attackerId, amount, source: o.source, wounds: target.wounds })
+  // M9 prep: wounds actually lost, for rules that react to it (Grandfather's Blessing)
+  runHook('damage.inflicted', {
+    seat: target.seat,
+    state: s,
+    engine: ctx,
+    operativeId: target.id,
+    targetId: o.attackerId,
+    ...(o.weaponId ? { weaponId: o.weaponId } : {}),
+    data: { source: o.source, attackerId: o.attackerId, weaponId: o.weaponId, amount: before - target.wounds, woundsBefore: before, woundsAfter: target.wounds },
+  })
   if (!target.flags.injured && isInjured(target) && target.wounds > 0) {
     target.flags.injured = true
     ctx.emit({ type: 'OperativeInjured', operativeId: target.id })
@@ -959,6 +1029,11 @@ function processRemovals(ctx: Ctx): boolean {
         runHook('operative.incapacitated', { seat: op.seat, state: s, engine: ctx, operativeId: id })
         if (s.pending) return false
       }
+      // M9 shared: then the owner's `operative.incapacitated` ploy window (Poisonous Demise style), before removal
+      if (!(r.windowed ?? []).includes(id)) {
+        r.windowed = [...(r.windowed ?? []), id]
+        if (removalWindow?.(ctx, op)) return false
+      }
       op.status = 'removed'
       op.ready = false
       op.flags.guard = false
@@ -971,6 +1046,15 @@ function processRemovals(ctx: Ctx): boolean {
 }
 
 let removalsDone: ((ctx: Ctx) => void) | null = null
+let removalWindow: ((ctx: Ctx, op: Operative) => boolean) | null = null
+
+/**
+ * ploys.ts registers the `operative.incapacitated` ploy window of the removal queue: true when it raised a
+ * decision (the queue then waits; closing the window calls continueRemovals).
+ */
+export function registerRemovalWindow(fn: ((ctx: Ctx, op: Operative) => boolean) | null): void {
+  removalWindow = fn
+}
 
 /** shoot.ts registers what happens once every removal is finished (finishAction). */
 export function registerRemovalsDone(fn: (ctx: Ctx) => void): void {

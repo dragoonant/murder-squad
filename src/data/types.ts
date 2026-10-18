@@ -56,6 +56,7 @@ export type TerrainTrait =
 export type TimingWindowId =
   | 'turningPoint.start'
   | 'strategy.gambit'
+  | 'firefight.start'
   | 'firefight.activationStart'
   | 'firefight.actionDeclared'
   | 'firefight.actionEnded'
@@ -66,6 +67,8 @@ export type TimingWindowId =
   | 'fight.weaponsSelected'
   | 'fight.rolled'
   | 'fight.resolved'
+  | 'shoot.beforeDefenceRerolls'
+  | 'fight.beforeRerolls'
   | 'operative.incapacitated'
   | 'firefight.activationEnded'
   | 'turningPoint.end'
@@ -256,6 +259,10 @@ export interface EquipmentData {
   team?: Id
   count: number
   enabled?: boolean
+  /** M9 prep: the opponent cannot see its markers until they trigger (as Mines) */
+  hidden?: boolean
+  /** M9 prep: equipment ids this option cannot be taken with */
+  excludes?: Id[]
   setup?: {
     type: 'marker' | 'terrain'
     markerMm?: number
@@ -267,7 +274,7 @@ export interface EquipmentData {
   }
   terrain?: { model?: Slug; traits?: TerrainTrait[]; tags?: Slug[]; height?: Inches }
   choice?: { pick: number; from: Id[]; repeatable?: boolean }
-  grants?: { weapons?: Id[]; abilities?: Id[]; actions?: Id[] }
+  grants?: { weapons?: Id[]; abilities?: Id[]; actions?: Id[]; to?: { keyword?: Keyword; notKeywords?: Keyword[] } }
   actions?: Id[]
   limits?: { uses: number; per: 'battle' | 'turningPoint'; scope?: 'team' | 'operative' }
   window?: WindowSet
@@ -325,6 +332,10 @@ export interface SelectionSlot {
   from: Id[]
   repeatable?: Id[]
   halfSelections?: Id[]
+  /** M9 prep: datacard id -> selections it counts as (2 for the MB3 Recon Drone and Wyrmblade cult agents) */
+  weights?: Record<Id, number>
+  /** M9 prep: at most `max` operatives from `from` together */
+  caps?: { label?: string; from: Id[]; max: number }[]
 }
 export interface TeamChoice {
   id: Slug
@@ -342,6 +353,10 @@ export interface TeamData {
   factionRules: Id[]
   ploys: Id[]
   equipment: Id[]
+  /** false while the team is scaffolded: validated and loaded, but left out of the picker, sims and bench */
+  playable?: boolean
+  /** default roster (datacard ids, first legal loadout each), equipment and team picks for realSetup */
+  defaults?: { roster?: Id[]; equipment?: Id[]; teamChoices?: Record<Slug, Id> }
   paint: { major: Hsl; minor: Hsl }
   text: string
   source: Source

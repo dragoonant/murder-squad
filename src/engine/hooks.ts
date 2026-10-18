@@ -26,7 +26,48 @@ export const HOOK_NAMES = [
   'operative.incapacitated',
   // M2b-game: the cover/obscured status of a shooter-target pair (OPTICS, Auspex, Smoke); see TargetStatusData
   'target.status',
+  // M9 prep: after any action of any operative has resolved (Tesla Weave, Markerlight decay); see ActionEndedData
+  'action.ended',
 ] as const
+
+/*
+ * M9 prep: lifecycle hook points that now run with `engine` (the step Ctx) so team files can act on them.
+ * Handlers may change state through `engine`, roll dice, inflict damage (effects.directDamage) and emit
+ * events, but must not raise decisions (a lifecycle point has no resume): rules that need a choice pick
+ * the best option themselves (record a RULING) or open a ploy window elsewhere.
+ *  - 'turningPoint.start': the Ready step of the Strategy phase, after the initiative roll-off and before CP
+ *    are gained and operatives readied (Living Metal, Reanimation Protocols, Tesseract Cube). data: { turningPoint }
+ *  - 'activation.start': an operative was activated and its order chosen, before its first action
+ *    (Poison damage, Cult Ambush). operativeId = the activated operative; data: { previousOrder, order }.
+ *    Not run for counteractions or free-action frames. If a handler incapacitates the operative its
+ *    activation ends.
+ *  - 'activation.end': the operative's activation ends, before "until the end of its activation" effects
+ *    expire. operativeId; data: { counteract }
+ *  - 'turningPoint.end': after the end-of-Firefight ploy window, before the TP's crit op scoring
+ *    (Wyrmblade HIDING deadline). data: { turningPoint }
+ *  - 'damage.inflicted': after wounds were lost (any source); operativeId = the operative that lost them,
+ *    targetId = the attacker or rule source. data: DamageInflictedData
+ *  - 'action.ended': see ActionEndedData
+ */
+
+/** damage.inflicted (M9 prep): the wounds actually lost, after onDamageInflicted reductions. */
+export interface DamageInflictedData {
+  source: string
+  attackerId: string
+  weaponId: string | null
+  amount: number
+  woundsBefore: number
+  woundsAfter: number
+}
+
+/** action.ended (M9 prep): `operativeId` performed `action` (universal id or ability:<id>); the step Ctx is `engine`. */
+export interface ActionEndedData {
+  action: string
+  counteract: boolean
+  free: boolean
+  /** seat of the activation the action belongs to (the frame's owner for free actions) */
+  activeSeat: Seat
+}
 
 /**
  * target.status (M2b-game): `operativeId` is the shooter, `targetId` the target. Handlers may set
@@ -90,7 +131,32 @@ export const ATTACK_HOOKS = [
   'beforeStrike',
   'onFightResolved',
   'afterShootResolved',
+  // M9 prep
+  'modifyDamage',
+  'beforeIncapacitated',
 ] as const
+
+/**
+ * modifyDamage (M9 prep): the Normal and Critical Dmg a weapon deals in this sequence (Toxic +1/+1).
+ * `operativeId` is the attacker, `targetId` the operative the dice resolve against. Mutate `dmg`.
+ */
+export interface ModifyDamageData {
+  kind: 'shoot' | 'fight'
+  weaponId: string
+  dmg: { normal: number; crit: number }
+}
+
+/**
+ * beforeIncapacitated (M9 prep): damage has just taken `operativeId` to 0 wounds, before
+ * OperativeIncapacitated is emitted. A handler may set `wounds` above 0 to stop the incapacitation
+ * (Medic!); it must not raise a decision.
+ */
+export interface BeforeIncapacitatedData {
+  source: string
+  attackerId: string
+  weaponId: string | null
+  wounds: number
+}
 
 export type AttackHookName = (typeof ATTACK_HOOKS)[number]
 

@@ -58,3 +58,78 @@ All 31 slugs saved and checked by eye on contact sheets: one object, side view, 
 - `w-power-fist` is angled slightly; `e-dynamite` is a bundle viewed from the side with ropes at both ends; frag/krak grenades and `e-stikkbomb` are not perfectly horizontal (grenade pin ring at left).
 - Mid-run problem: a reload of the first chat lost the in-page bundle; recovered by loading each lh3 image URL top-level, converting to PNG and passing the data to a Gemini tab through `window.name`.
 - Bundle files in Downloads: ms-attach-aod.json, ms-attach-aod-b.json, ms-attach-aod-c.json, ms-attach-aod-r1.png, ms-attach-kom.json, ms-attach-kom-a.json, ms-attach-kom-b.json (all intermediate).
+
+# Second batch: Pathfinders, Hierotek Circle, Plague Marines, Wyrmblade (2026-10-18)
+
+Same method as day one (Gemini Flash through Claude in Chrome, text prompts only, one chat per team, PNG exported from the in-page blob image at 1024x572). 42 new props: 8 Pathfinders (`pf-`), 10 Hierotek Circle (`ht-`), 6 Plague Marines (`pm-`), 18 Wyrmblade (`wb-`). Files are named `<prefix><w|e>-<item>.png`. Every prompt used the full base wording (no "Same style" follow-ups, which returned duplicates in the Kommando chat), so there are no duplicate designs.
+
+## Base prompt
+"Generate an image: a single <weapon> prop from a super-deformed SD model kit (Bandai MGSD style): chunky, slightly oversized and simplified proportions, crisp hard-surface panel detail, <colours>, <one-sentence design>. Exact side view, horizontal, barrel or blade pointing RIGHT, grip at the bottom left, no hands, no figure, no base, no text, no logos or symbols, plain white background, even soft lighting, no shadows, exactly ONE object centred and not cropped."
+Colours: Pathfinders "ochre and grey colours with pale blue glowing accents"; Hierotek "dark bronze and black metal with gold trim and glowing green energy lines"; Plague Marines "sickly pale green and rust-brown colours with green slime stains and bare bone-coloured trim"; Wyrmblade "dark purple and mustard yellow colours with worn grey metal". Mounted or staff items changed the orientation clause to "mounting bracket at the left" or "grip point near the middle left".
+
+## Pathfinders (chat gemini.google.com/app/cf769dfa9bb1f926)
+| Slug | Design sentence |
+|---|---|
+| pf-w-pulse-carbine | compact carbine, short barrel, side-mounted scope, curved magazine |
+| pf-w-suppressed-pulse-carbine | same carbine with a long cylindrical silencer on the muzzle and a small scope |
+| pf-w-ion-rifle | large energy rifle, thick barrel with glowing blue coils, big cylindrical power cell on top, heat vent at the front |
+| pf-w-rail-rifle | long sleek rail gun, two parallel rails along the barrel, boxy battery pack behind the grip, scope |
+| pf-w-marksman-rail-rifle | very long slim sniper rifle, long optical scope, small folded bipod; "soft grey and ochre colours" |
+| pf-e-fusion-grenade | "one chunky round-bodied grenade with a flat shaped-charge nose with a glowing blue ring and a small pull ring on top", one grenade only |
+| pf-w-burst-cannon | drone-mounted rotary cannon, four short barrels in a ring, boxy feed housing, flat mounting bracket at the left instead of a grip |
+| pf-w-twin-pulse-carbine | drone-mounted weapon of two short carbine barrels stacked in one housing, flat mounting bracket at the left |
+
+## Hierotek Circle (chat gemini.google.com/app/3d3eea5d133d08e7)
+| Slug | Design sentence |
+|---|---|
+| ht-w-gauss-blaster | ancient robotic rifle, long barrel, glowing green core in the receiver, ribbed tubing, short blade bayonet under the muzzle |
+| ht-w-tesla-carbine | short carbine with a spherical lightning-coil emitter at the muzzle crackling with green arcs, short bayonet |
+| ht-w-synaptic-disintegrator | long slim sniper rifle, large glowing green eye-lens scope, small green crystal at the muzzle |
+| ht-w-aeonstave | tall ornate gold staff, glowing green hourglass-shaped crystal head, sharp blade at the tip |
+| ht-w-entropic-lance | long lance-cannon ending in a forked glowing green emitter, gold ribbed grip, cable loop |
+| ht-w-abyssal-lance | long dark ornate lance-staff, swirling glowing green void-orb in a gold claw cage at the tip, tattered dark green cloth strip |
+| ht-w-staff-of-light | second attempt (the first was too close to the aeonstave): short thick bronze staff topped by one very large round glowing green lens-disc with six short prongs, flared base spike, no blade |
+| ht-w-arcane-conduit | short handheld energy conduit weapon like a thick wand-pistol, glowing green crystal cell, ribbed cables, flared gold muzzle |
+| ht-w-spark | small back-mounted tesla coil: short bronze arch coil crackling with green lightning on a flat mounting plate |
+| ht-w-atomiser-beam | small mounted ray emitter: thin bronze nozzle with a glowing green lens tip, small glowing green canister, flat mounting plate |
+
+## Plague Marines (chat gemini.google.com/app/e13989987d5c6ab8)
+The existing Angels of Death bolt pistol and plasma pistol are meant to be reused (hue-band repaint), so only Plague-specific props were made.
+| Slug | Design sentence |
+|---|---|
+| pm-w-boltgun | corroded chunky assault rifle, stubby barrel, rusty box magazine, pitted receiver |
+| pm-w-plague-sword | broad notched rusty sword, pitted blade, corroded guard, slime-dripping edge |
+| pm-w-flail-of-corruption | short rusty handle, heavy chain, big spiked rusty iron ball at the right (first wording returned an empty response; reworded as "spiked flail") |
+| pm-w-plague-spewer | heavy corroded sprayer with a wide dripping nozzle, rusty round tank under the body, thick hose coil |
+| pm-w-plague-knife | short thick rusty knife, serrated pitted blade, wrapped bone-coloured handle |
+| pm-w-corrupted-staff | tall twisted rusty iron staff topped with a knot of pipes and a glowing sickly green orb, small bell below |
+
+## Wyrmblade (chat gemini.google.com/app/9ad4643e6b9b71e0, then 9cb1b1a01942380e after the usage cap)
+Gemini hit its image usage cap after the first three props; the run waited for the reset (about two hours) and continued in a fresh chat on the same model. The Angels of Death bolt pistol and chainsword are meant to be reused for the Leader's pistol and chainsword options.
+| Slug | Design sentence |
+|---|---|
+| wb-w-autogun | rugged improvised assault rifle, stock wrapped in yellow tape, long thin barrel with a heat shield, straight magazine |
+| wb-w-shotgun | chunky double-barrelled mining shotgun, pump grip, yellow-taped stock |
+| wb-w-master-crafted-autopistol | finely made compact automatic pistol, long slim barrel, curved magazine, gold-etched slide |
+| wb-w-web-pistol | chunky pistol, wide funnel muzzle, round canister of sticky yellow-green goo on top |
+| wb-w-power-maul | one-handed mining maul, thick yellow striking head wrapped in energy coils, short handle with wrist strap |
+| wb-w-power-pick | mining pickaxe, curved double-pointed head glowing yellow at the edges, wrist strap |
+| wb-w-flamer | mining-torch flamethrower, wide nozzle, small pilot flame, round yellow fuel canister, short hose |
+| wb-w-grenade-launcher | short fat-barrelled launcher, wide round muzzle, revolving drum, yellow-taped stock |
+| wb-w-webber | bulky goo sprayer rifle, wide funnel nozzle, large round yellow-green goo tank on top, thick hose |
+| wb-w-heavy-stubber | big belt-fed machine gun, long finned barrel, large ammo box, carrying handle, folded bipod |
+| wb-w-mining-laser | big rock-cutting laser cannon, thick yellow barrel, glowing orange lens, power cell, cooling fins, carry handle |
+| wb-w-seismic-cannon | heavy cannon with a very wide flared bell muzzle, thick resonator drum with yellow rings, carry handle |
+| wb-w-liberator-autostubs | large ornate revolver-style heavy pistol, long barrel, chunky cylinder, gold filigree ("polished grey metal and gold engraving"); one pistol shown, the weapon is a pair |
+| wb-w-kelermorph-knife | slim curved dagger, gold guard, dark purple leather-wrapped handle |
+| wb-w-barbed-tail | segmented grey-purple chitin tail curving upward to a barbed spear point, round attachment socket at the left (grey-purple chitin colours) |
+| wb-w-locus-blades | pair of long curved scythe-like bone blades side by side on a short shared base, no hands inside |
+| wb-w-sanctus-sniper-rifle | very long ornate sniper rifle, muzzle brake, large tri-lens scope with three yellow lenses, folding bipod, purple wrapped stock |
+| wb-w-sanctus-bio-dagger | short curved alien bone-and-steel dagger, faintly glowing yellow-green venom channel, purple wrapped handle |
+
+## QC notes (second batch)
+- All 42 checked by eye on contact sheets: one object, side view, pointing right, no hands, no text. No duplicates.
+- Hierotek `ht-w-gauss-blaster` and `ht-w-tesla-carbine` have the bayonet as a separate floating blade under the barrel; treat it as part of the weapon or drop it in the mesh pass. `ht-w-aeonstave` and the first `ht-w-staff-of-light` render were near-identical; the retry replaced it.
+- `wb-w-autogun` reads as a light machine gun; `wb-w-master-crafted-autopistol` and `wb-w-power-maul` are slightly angled; `pf-e-fusion-grenade` is shown at a three-quarter angle.
+- `pm-w-plague-knife` has a small skull-like pommel; check it reads as a plain knob. Pathfinder and Hierotek weapon sets share one receiver language each (consistent family, little variety).
+- Not made: Pathfinder markerlight (a handheld device is not visible on any figure), gun butts, fists, bionic arm, claws, Ram, Shas'ui/others' melee (body parts), psychic Plague Marine attacks, Plasmacyte claws.

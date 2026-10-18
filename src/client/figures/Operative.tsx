@@ -5,12 +5,14 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Billboard, Html } from '@react-three/drei'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
-import { Color, Euler, type Group } from 'three'
-import type { Operative as EngineOperative, Order } from '@/engine'
+import { Color, DoubleSide, Euler, type Group } from 'three'
+import type { Operative as EngineOperative, OperativeToken, Order } from '@/engine'
 import { effectiveApl } from '@/engine/state'
 import { dataBundle, engineBundle } from '../game/adapter'
 import { animPosition } from '../presentation/animStore'
 import { AP_DARK, AP_LIT, ORDER_COLOR, apTip, orderTip, useBoardTip, woundTip, type MarkerTip } from '../ui/markerInfo'
+import { tokenDef } from '../ui/tokenDefs'
+import { tokenTip } from '../ui/tokenInfo'
 import { colors } from '../ui/theme'
 import { cuePose, deathAge, deathMs, installCueFeed, isDying, cueActive } from './cues'
 import { glbReady, useGlbAnimated, useGlbInstance } from './glbLoader'
@@ -122,9 +124,14 @@ function PlaceholderWeapon({ hold, spec, socket, color }: { hold: HoldClass; spe
 export function planAttachments(shown: { ranged: ShownWeapon | null; melee: ShownWeapon | null }, manifest: ModelManifest): Placed[] {
   const out: Placed[] = []
   let rightTaken = false
+  const drawn = new Set<string>()
   for (const w of [shown.ranged, shown.melee]) {
     if (!w) continue
     const slugs = attachmentFor(w.id) ?? [null]
+    // one physical weapon with a ranged and a melee profile (a stave you shoot and swing) is drawn once
+    const key = slugs.join('|')
+    if (slugs.length && slugs.every((s) => s !== null) && drawn.has(key)) continue
+    if (slugs.length && slugs.every((s) => s !== null)) drawn.add(key)
     slugs.forEach((slug, i) => {
       const hold = (slug && manifest.attachments[slug]?.holdClass) || w.hold
       let spec = HOLDS[hold]
@@ -263,6 +270,23 @@ function Pips({ count, lit }: { count: number; lit: number }) {
         <mesh key={i} position={[(i - (count - 1) / 2) * gap, 0, 0]}>
           <circleGeometry args={[0.085, 12]} />
           <meshBasicMaterial color={i < lit ? AP_LIT : AP_DARK} />
+        </mesh>
+      ))}
+    </>
+  )
+}
+
+/** One token stack as small glyphs (a filled polygon or a ring in the kind colour), one per token up to four. */
+function TokenGlyphs({ kind, count }: { kind: string; count: number }) {
+  const g = tokenDef(kind).glyph
+  const gap = 0.22
+  const n = Math.min(count, 4)
+  return (
+    <>
+      {Array.from({ length: n }, (_, i) => (
+        <mesh key={i} position={[(i - (n - 1) / 2) * gap, 0, 0]} rotation={[0, 0, g.sides === 4 ? 0 : Math.PI / 2]}>
+          {g.ring ? <ringGeometry args={[0.055, 0.1, g.sides]} /> : <circleGeometry args={[0.1, g.sides]} />}
+          <meshBasicMaterial color={g.color} side={DoubleSide} />
         </mesh>
       ))}
     </>
@@ -440,6 +464,13 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
         <TipArea tip={woundTip(op.wounds, op.maxWounds, op.flags.injured)} w={1.2} h={0.24} y={0}>
           <WoundBar ratio={op.wounds / op.maxWounds} />
         </TipArea>
+        {tokenLayout(op.tokens).map((t) => (
+          <group key={t.key} position={[t.x, 0, 0]}>
+            <TipArea tip={tokenTip(t.token)} w={t.w} h={0.26} y={-0.3}>
+              <TokenGlyphs kind={t.token.kind} count={t.token.count} />
+            </TipArea>
+          </group>
+        ))}
       </Billboard>
       {(selected || hovered) && (
         <Html position={[0, top + 1.25, 0]} center zIndexRange={[10, 0]} distanceFactor={14} style={{ pointerEvents: 'none' }}>
@@ -450,6 +481,19 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
       )}
     </group>
   )
+}
+
+/** Left-to-right x offsets (centred) for the operative's token stacks under its wound bar. */
+function tokenLayout(tokens: EngineOperative['tokens']): { key: string; token: OperativeToken; x: number; w: number }[] {
+  const list = (tokens ?? []).filter((t) => t.count > 0)
+  const widths = list.map((t) => Math.min(t.count, 4) * 0.22 + 0.04)
+  const total = widths.reduce((a, b) => a + b, 0) + Math.max(0, list.length - 1) * 0.08
+  let at = -total / 2
+  return list.map((t, i) => {
+    const x = at + widths[i]! / 2
+    at += widths[i]! + 0.08
+    return { key: `${t.kind}:${t.owner}`, token: t, x, w: widths[i]! }
+  })
 }
 
 function teamOf(op: EngineOperative): string {

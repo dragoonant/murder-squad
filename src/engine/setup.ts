@@ -10,6 +10,8 @@ import { EngineInvariantError, hashState, otherSeat, SEATS } from './state'
 import { placementProblem } from './terrain'
 // M2b-game
 import { allowedOrders, initTeamState } from './abilities'
+import { setAside } from './reserve'
+import { providerAny, providerSetAsideCap } from './team-rules'
 import { handleEquipMarker, nextPlacer, placeItem, selectionProblem, suggestEquipPlacement, territoryOf, DEFAULT_EQUIPMENT_LIMIT } from './equipment'
 import { chooseMission, missionDef, objectiveOptions, objectiveSeat, placeObjective } from './missions'
 import { OBJECTIVE_RADIUS } from './missions'
@@ -203,8 +205,18 @@ function raiseDropZone(ctx: Ctx, seat: Seat): void {
   })
 }
 
+/** Operatives still to be set up (not those set aside on purpose, reserve.ts). */
 function reserveOf(s: GameState, seat: Seat): Operative[] {
-  return Object.values(s.operatives).filter((o) => o.seat === seat && o.status === 'reserve')
+  return Object.values(s.operatives).filter((o) => o.seat === seat && o.status === 'reserve' && o.offboard === undefined)
+}
+
+/** M9 prep: operatives the owner may still set aside instead of deploying (Wyrmblade HIDING), within the cap. */
+export function setAsideChoices(s: GameState, seat: Seat): string[] {
+  const taken = Object.values(s.operatives).filter((o) => o.seat === seat && o.offboard !== undefined).length
+  if (taken >= providerSetAsideCap(s, seat)) return []
+  return reserveOf(s, seat)
+    .filter((o) => providerAny(s, o, 'setAsideAtSetup'))
+    .map((o) => o.id)
 }
 
 function raiseDeploy(ctx: Ctx): void {
@@ -216,7 +228,7 @@ function raiseDeploy(ctx: Ctx): void {
     kind: 'setup.deploy',
     seat,
     window: 'setup.*',
-    context: { left: s.setup.deploy.left, reserveIds: reserve.map((o) => o.id), zoneId: zone.id },
+    context: { left: s.setup.deploy.left, reserveIds: reserve.map((o) => o.id), zoneId: zone.id, setAsideIds: setAsideChoices(s, seat) },
     constraints: { kind: 'deploy', operativeIds: reserve.map((o) => o.id), region: zone.polygon },
   })
 }
@@ -263,6 +275,18 @@ function numeric(v: unknown): v is number {
 function handleDeploy(state: GameState, action: Action): Handled {
   if (action.type !== 'setup.deploy') return reject('E_WRONG_DECISION', 'expected a deploy action')
   const p = action.payload
+  // M9 prep: set the operative aside instead of deploying it (payload { operativeId, setAside: true })
+  if (p && p.setAside === true && typeof p.operativeId === 'string') {
+    const id = p.operativeId
+    if (!setAsideChoices(state, action.seat).includes(id)) return reject('E_NOT_AN_OPTION', `${id} cannot be set aside`)
+    return {
+      run(ctx) {
+        setAside(ctx, id, 'setAside')
+        ctx.state.setup.deploy.left -= 1
+        advanceDeploy(ctx, action.seat)
+      },
+    }
+  }
   if (!p || typeof p.operativeId !== 'string' || !numeric(p.x) || !numeric(p.z) || (p.y !== undefined && !numeric(p.y))) {
     return reject('E_SCHEMA', 'deploy needs operativeId, x and z')
   }

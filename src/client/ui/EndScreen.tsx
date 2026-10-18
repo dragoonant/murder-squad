@@ -8,6 +8,7 @@ import { useGame } from '../store/game'
 import { randomSeed, useSession } from '../store/session'
 import { colors, fontStack, panel } from './theme'
 import { Tooltip } from './Tooltip'
+import { Keyword, KeywordText } from './Keyword'
 import { Btn, Dot, Muted } from './widgets'
 
 export interface VpLine {
@@ -103,20 +104,24 @@ export function EndScreen() {
                   {SEAT_NAME[seat]} &middot; {team?.name}
                 </div>
                 <div style={{ fontSize: 28, fontWeight: 800 }} data-testid={`end-vp-${seat}`}>
-                  {r.vp[seat]} VP
+                  {r.vp[seat]} <Keyword term="VP" />
                 </div>
                 <div style={{ fontSize: 12, marginBottom: 4, color: colors.muted }}>By source</div>
                 {vp[seat].length === 0 && <Muted>No VP scored from the mission.</Muted>}
                 {vp[seat].map((l) => (
                   <div key={l.id} data-testid={`end-source-${seat}-${l.id}`} style={{ fontSize: 12, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                     <span>
-                      <span style={{ color: colors.muted }}>{l.op === 'kill' ? 'Kill op' : l.op === 'crit' ? 'Crit op' : 'Mission'} · </span>
-                      {humanize(l.id)}
+                      <span style={{ color: colors.muted }}>
+                        {l.op === 'kill' ? <Keyword term="Kill op" /> : l.op === 'crit' ? <Keyword term="Crit op" /> : 'Mission'} ·{' '}
+                      </span>
+                      <KeywordText text={humanize(l.id)} />
                     </span>
                     <b>{l.vp}</b>
                   </div>
                 ))}
-                <div style={{ fontSize: 12, marginTop: 8, color: colors.muted }}>Kill grade</div>
+                <div style={{ fontSize: 12, marginTop: 8, color: colors.muted }}>
+                  <Keyword term="Kill grade" />
+                </div>
                 <div data-testid={`end-kill-${seat}`} style={{ fontSize: 13 }}>
                   Grade <b>{k.grade}</b>/5 with {k.kills} enemy operatives down
                   <div style={{ color: colors.muted, fontSize: 11 }}>Grades at {k.thresholds.join(', ') || 'n/a'}</div>

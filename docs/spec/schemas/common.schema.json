@@ -54,6 +54,7 @@
           "enum": [
             "turningPoint.start",
             "strategy.gambit",
+            "firefight.start",
             "firefight.activationStart",
             "firefight.actionDeclared",
             "firefight.actionEnded",
@@ -64,6 +65,8 @@
             "fight.weaponsSelected",
             "fight.rolled",
             "fight.resolved",
+            "shoot.beforeDefenceRerolls",
+            "fight.beforeRerolls",
             "operative.incapacitated",
             "firefight.activationEnded",
             "turningPoint.end",

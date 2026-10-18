@@ -6,6 +6,7 @@ import { placeItem, placementIssue, noteWeaponUses, restoreTurningPointWeapons, 
 import { smokeActivation, smokeObscures, smokeReady, smokeTurningPointEnd, whollyInSmoke } from '@/engine/core-hooks'
 import { ScriptedRng } from '@/engine/rng'
 import type { GameState, TerrainFeatureDef } from '@/engine/types'
+import { play } from '../fixtures/attack'
 import { place } from '../fixtures/helpers'
 import { activateOp, edit, hasOption, openReal, opOf, optionIds, passIt, realBundle, realSetupWith, realGame, take, withCtx } from '../fixtures/real'
 
@@ -323,6 +324,23 @@ describe('Grenades (M-5.5, M-5.6)', () => {
     const two = shot(one, opOf(s, 'B', 'kom.burna-boy'))
     expect(two.operatives[boy]!.weapons).not.toContain('core.w.frag-grenade')
     expect(two.ledger.B.uses['limit:core.w.frag-grenade']).toBe(2)
+  })
+
+  it('MISSION-013b a real Shoot with a team-limited grenade counts the use (the action is declared when the weapon is picked)', () => {
+    const one = { 'core.e.explosive-grenades': ['core.w.frag-grenade', 'core.w.krak-grenade'] }
+    let s = openReal({ teams: ['kommandos', 'angels-of-death'], equipmentA: ['core.e.explosive-grenades'], equipmentChoices: { A: one, B: {} } })
+    const boy = opOf(s, 'A', 'kom.boy')
+    const target = Object.values(s.operatives).find((o) => o.seat === 'B')!.id
+    s = place(place(s, boy, 0, 0), target, 4, 0)
+    s = take(take(activateOp(s, boy), 'shoot').state, 'core.w.frag-grenade').state
+    // mid-Shoot: counted once, and the shooter keeps the weapon it is resolving
+    expect(s.ledger.A.uses['limit:core.w.frag-grenade']).toBe(1)
+    expect(s.operatives[boy]!.weapons).toContain('core.w.frag-grenade')
+    const pass = (p: { seat: 'A' | 'B'; id: string }) => ({ type: 'pass' as const, seat: p.seat, decisionId: p.id, payload: {} as Record<string, never> })
+    const r = play(s, new ScriptedRng(Array(40).fill(1)), { 'ploy.firefight': pass })
+    // after the action: still one use, and the spent grenade has left every operative of the team
+    expect(r.state.ledger.A.uses['limit:core.w.frag-grenade']).toBe(1)
+    expect(Object.values(r.state.operatives).filter((o) => o.seat === 'A' && o.weapons.includes('core.w.frag-grenade'))).toEqual([])
   })
 })
 

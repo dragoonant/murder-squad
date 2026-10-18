@@ -4,6 +4,7 @@
 // returns an action the engine would reject. All randomness comes from `SeededRng(seed + decision id)`.
 import { SeededRng, validate, type Action, type Decider, type DecisionKind, type GameState, type PendingDecision, type PlayerView } from '@/engine'
 import { answerDecision } from '@/engine/query'
+import * as choices from './choices'
 import * as fight from './fight'
 import * as moves from './moves'
 import * as ploys from './ploys'
@@ -42,6 +43,7 @@ export const POLICIES: Partial<Record<DecisionKind, Policy>> = {
   'dice.reroll': ploys.ruleReroll,
   'dice.commandReroll': ploys.commandReroll,
   'ploy.firefight': ploys.firefightPloy,
+  'ability.choice': choices.abilityChoice,
   'guard.interrupt': (ctx) => fight.guardInterrupt(ctx) ?? passAction(ctx.pending),
   confirm: (ctx) => ctx.legal?.[0] ?? (ctx.pending.canPass ? passAction(ctx.pending) : null),
 }

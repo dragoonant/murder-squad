@@ -22,6 +22,15 @@ Fan game: 3D Warhammer 40,000: Kill Team (2024 edition, mechanics 1:1, our own p
 | Repo | Public, Pages from `main`, pushes after each stage pre-approved | owner |
 | Animation | v1 ships rigid whole-body cues (walk bob, recoil, lunge, flinch, topple). Target is **true skeletal rigging** (owner, 2026-10-17): after M7, pilot a local auto-rigger (UniRig) on two bodies, retarget a small clip set (idle, run, shoot, melee, hit, death), and roll it out if the skin holds on the fused MGSD meshes; part-split articulation is the fallback | owner |
 | Process | Lean stages, Sonnet implementers, about 2.5M tokens per push, check-ins <= 10 lines with a screenshot, no approval stops | owner |
+| M9 teams | Pathfinders, Hierotek Circle, Plague Marines, Wyrmblade, built by four parallel implementers after one engine-prep stage; spec in `13-teams.md` sections 3 to 6 | owner brief 2026-10-18 |
+| Team extension | Shared files never name a team again: team rules answer through `team-rules.ts` providers, tokens, reserve, delegated/free actions and lifecycle hooks are generic; v1 team branches stay where they are but new teams need no shared-file edit | engine prep: parallel implementers must not collide |
+| Scaffold flag | `playable: false` in team.json hides a team from the picker, the real-team sims (which now pair every playable team) and the client presentation coverage tests; implementers flip it when complete | one obvious per-team switch in a file the implementer owns |
+| Code-hook list | `src/data/code-hooks.json` removed; `CODE_HOOKS` derived from the data at load; per-team firing scenarios in `tests/engine/teams/<team>.hooks.ts` merged by the shared code-hook test | a generated shared file would conflict across four parallel branches |
+| Client presentation per team | weapon flavour, VFX family, sound and attachment entries for new teams live in `src/client/teams/<team>.ts` (merged into the shared tables); figure archetypes without a body GLB are listed as `standIns` | keeps implementers out of shared client tables; art arrives later |
+| Lifecycle hooks | Ready-step, activation-start/end and TP-end team rules run as non-decision hooks; owner choices there are picked by the team code (RULING) | hook points have no resume; the choices rarely matter |
+| Kill op reversal | an operative that returns (Reanimation) is no longer incapacitated: kill grade recomputed, its VP taken back | T-HIE.27; RULING logged |
+| Hidden operatives (HIDING) | Open information: `view` redacts nothing and the client tray and feed show the opponent's set-aside operatives too, marked as theirs (no contract change) | core sequence reveals selections and sets up in the open; Wyrmblade rule only puts them "to one side"; RULING logged |
+| Bench coverage | `bench:ai` tests every playable team in turn against a rotating opponent (`--games` stays the total), report per team; `--pair a,b` keeps the old two-team bench | M9 batch A polish |
 
 ## Architecture
 ```

@@ -1,6 +1,8 @@
 // MRK: marker.* - Pick Up / Place Marker, contest and control by APL, carrying, and the rules that
 // run after every accepted action: control changes, Mines, removals feeding the mission, and the
 // activating operative being removed (R-4.5, R-4.6, R-5.18, R-8.5, R-8.6, M-5.2).
+import { tokensOnRemoval } from './tokens'
+import { providerIgnoresMine } from './team-rules'
 import { markerInControlRange, enemiesInControlRange } from './measure'
 import { bodyOf } from './los'
 import { directDamage } from './effects'
@@ -170,9 +172,17 @@ export const markersModule: ModuleDef = {
 
 const MINE = 'core.e.mines'
 
+/** M9 prep: an equipment marker is a mine when its equipment's effect is the `mines` code (Explosive Traps too). */
+export function isMine(state: GameState, m: Marker): boolean {
+  if (!m.equipmentId) return false
+  if (m.equipmentId === MINE) return true
+  const e = state.data.equipment?.[m.equipmentId]?.effect as { code?: string } | { code?: string }[] | undefined
+  return (Array.isArray(e) ? e : e ? [e] : []).some((x) => x.code === 'mines')
+}
+
 function triggerMines(ctx: Ctx): void {
   const s = ctx.state
-  if (!s.markers.some((m) => m.equipmentId === MINE)) return
+  if (!s.markers.some((m) => isMine(s, m))) return
   // RULING (needs-rules-check): checked after set-up and after every completed move increment, not along continuous paths.
   const points: { op: Operative; pos: Operative['pos'] }[] = []
   for (const ev of ctx.events) {
@@ -183,9 +193,10 @@ function triggerMines(ctx: Ctx): void {
     }
   }
   for (const op of activeOps(s)) points.push({ op, pos: op.pos })
-  for (const mine of [...s.markers.filter((m) => m.equipmentId === MINE)]) {
+  for (const mine of [...s.markers.filter((m) => isMine(s, m))]) {
     for (const { op, pos } of points) {
       if (op.status !== 'active') continue
+      if (providerIgnoresMine(s, op, mine)) continue
       const body = bodyOf({ ...op, pos })
       if (!markerInControlRange(s, body, mine)) continue
       markFired('mines')
@@ -217,6 +228,8 @@ function processRemovals(ctx: Ctx, seen: Set<string>): void {
     if (!op) continue
     dropCarried(ctx, op)
     onOperativeRemoved(ctx, op)
+    // M9 prep: tokens it held, and tokens it placed that end with it, go
+    tokensOnRemoval(ctx, op.id)
   }
 }
 
@@ -228,9 +241,10 @@ export function updateControl(ctx: Ctx): void {
   const s = ctx.state
   const seen = new Set<string>()
   processRemovals(ctx, seen)
+  // limited-weapon uses are counted in the step the weapon is picked, which is inside the declared Shoot
+  noteWeaponUses(ctx)
   if (s.firefight.activation?.declared) return
   syncCarried(s)
-  noteWeaponUses(ctx)
   const before = ctx.events.length
   triggerMines(ctx)
   if (ctx.events.length > before) processRemovals(ctx, seen)

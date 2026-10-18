@@ -125,6 +125,8 @@ export interface RuntimeTeam {
   factionRules?: string[]
   ploys?: string[]
   equipment?: string[]
+  /** M9 prep: false while the team is scaffolded (left out of the picker, sims and bench) */
+  playable?: boolean
 }
 
 /** M2b-game: strategy and firefight ploys, equipment and missions are the data records themselves. */
@@ -320,6 +322,35 @@ export interface Operative {
   aplFx?: { delta: number; source: string }[]
   /** M2b-game: Chapter Veteran tactic ids this operative has in addition to the team's */
   extraTactics?: string[]
+  /** M9 prep: tokens other rules put on this operative (Markerlight, Poison, Chronometron...); see tokens.ts */
+  tokens?: OperativeToken[]
+  /** M9 prep: inches of movement spent (climb, drop and Accessible costs included) in its current activation */
+  movedThisActivation?: number
+  /** M9 prep: every action it performed this turning point (activations, counteractions and free actions) */
+  actionsThisTp?: string[]
+  /**
+   * M9 prep: why the operative is out of the killzone while `status` is 'reserve' after set-up (reserve.ts):
+   * 'setAside' (set aside at set-up: Wyrmblade HIDING) or any kind a team rule passes to setAside()
+   */
+  offboard?: string
+  /** M9 prep: an incapacitated operative that may still return (Reanimation Protocols); removed operatives keep it */
+  returnable?: boolean
+}
+
+/** M9 prep: one stack of tokens of one kind, owned by one player, on an operative (tokens.ts). */
+export interface OperativeToken {
+  /** token kind, e.g. 'pf.markerlight', 'pm.poison' */
+  kind: string
+  /** the player whose rule placed it */
+  owner: Seat
+  count: number
+  /** operative whose rule placed it (for expiry on its next activation or incapacitation) */
+  sourceId?: string
+  /** when it goes: 'battle' (default), 'turningPointEnd', 'sourceNextActivation', 'sourceIncapacitated', 'holderActivationEnd' */
+  expires?: string[]
+  /** state.seq of the step that first placed the stack (heldSinceActionStart: Toxic) */
+  since?: number
+  data?: Record<string, unknown>
 }
 
 export interface PlayerState {
@@ -397,6 +428,14 @@ export interface Activation {
   surcharge?: number
   /** M2b-game: once-per-activation features already used (I Got a Plan, Ladz) */
   used?: string[]
+  /** M9 prep: state.seq of the step that declared the current action */
+  declaredSeq?: number
+  /** M9 prep: this activation was owed to a chain (Group Activation), so it cannot chain again */
+  chained?: boolean
+  /** M9 prep: performed.length when reactions were last offered (one reaction window per action) */
+  reactedAt?: number
+  /** M9 shared: a rule ended the activation early (Medic!): it ends once the current action is done, AP untouched */
+  endsAfterAction?: boolean
 }
 
 export interface ActivationFrame {
@@ -410,6 +449,15 @@ export interface FirefightState {
   activation: Activation | null
   /** M2b-game: activations suspended under a frame (innermost last) */
   stack?: (Activation | null)[]
+  /** M9 prep: a chained activation is owed (Group Activation): the seat must activate one of these next */
+  chain?: { seat: Seat; ids: string[]; from: string } | null
+  /** M9 prep: operatives a rule stopped from activating at this activate decision (Vision of Madness) */
+  gated?: string[]
+  /**
+   * M9 shared: a reaction offered after a Strategy-phase move (no activation to go back to) is in progress;
+   * firefight.reactionDone finishes closing the mover's frame with these (resume name, outcome, frame data)
+   */
+  reactionAfter?: { resume: string; outcome: 'finished' | 'cancelled'; data: Record<string, unknown> } | null
 }
 
 export interface GameResult {
@@ -451,7 +499,7 @@ export interface GameState {
   /** the Shoot or Fight sequence in progress (M2b-attack); absent or null between actions */
   attack?: AttackState | null
   /** incapacitated operatives waiting for their "before removal" hooks and removal (R-5.18); M2b-attack */
-  removal?: { ids: string[]; hooked: string[] } | null
+  removal?: { ids: string[]; hooked: string[]; /** M9 shared: ids whose operative.incapacitated ploy window was offered */ windowed?: string[] } | null
   // M2b-game
   /** team configuration per seat: Chapter Tactics, Adaptive Tactics, Combat Doctrine */
   config: Record<Seat, TeamConfig>
@@ -599,6 +647,8 @@ export interface DiceSide {
   lethal: number | null
   grants: RerollGrant[]
   commandUsed: boolean
+  /** M9 prep: no die of this side may be re-rolled by any rule (Nightmare Shroud, Suppressing Fire) */
+  noRerolls?: boolean
   /** re-roll window progress for this side */
   phase: 'grants' | 'command' | 'done'
 }
@@ -671,7 +721,15 @@ export interface AttackState {
     turn: Seat
     passes: number
     shockUsed: Record<Seat, boolean>
+    /** M9 prep: resolutions owed out of the normal alternation (Bladed Stance, Assassinate), consumed first */
+    queue?: { seat: Seat; blockOnly?: boolean; resume?: Seat }[]
+    /** M9 prep: seats that cannot block in this sequence (Point-Blank Fusillade) */
+    noBlock?: Seat[]
+    /** M9 prep: fightResolveStart providers have run for this sequence */
+    started?: boolean
   }
+  /** M9 prep: the operative used as the active operative for target selection, cover and obscured (Magnify) */
+  viewpointId?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -682,6 +740,8 @@ export type TimingWindowId =
   | 'setup.*'
   | 'turningPoint.start'
   | 'strategy.gambit'
+  // M9 shared: the Firefight phase begins, before the first activation (A Worthy Cause)
+  | 'firefight.start'
   | 'firefight.activationStart'
   | 'firefight.actionDeclared'
   | 'firefight.actionEnded'
@@ -692,6 +752,10 @@ export type TimingWindowId =
   | 'fight.weaponsSelected'
   | 'fight.rolled'
   | 'fight.resolved'
+  // M9 shared: right after the dice are rolled, before any re-roll (Curse of Rot): the attacker after the defence
+  // roll of a Shoot; both fighters after the fight roll
+  | 'shoot.beforeDefenceRerolls'
+  | 'fight.beforeRerolls'
   | 'operative.incapacitated'
   | 'firefight.activationEnded'
   | 'turningPoint.end'
@@ -742,7 +806,8 @@ export interface ActionPayloadMap {
   'setup.initiative': Record<string, never>
   'setup.decideInitiative': { seat: Seat }
   'setup.dropZone': { zoneId: string }
-  'setup.deploy': { operativeId: string; x: number; z: number; y?: number }
+  /** M9 prep: `setAside: true` keeps the operative out of the killzone instead (reserve.ts; x and z are ignored) */
+  'setup.deploy': { operativeId: string; x: number; z: number; y?: number; setAside?: boolean }
   'setup.equipMarker': { x: number; z: number; yaw?: number }
   'setup.objective': { x: number; z: number }
   'strategy.initiative': Record<string, never>
@@ -805,6 +870,8 @@ export interface MoveConstraints {
   allowClimb?: boolean
   allowEnterEnemyControlRange?: boolean
   mustEndInControlRangeOf?: 'enemy'
+  /** M9 prep: a Charge that must end in this particular enemy's control range (Assassinate, Quicksilver Strike) */
+  mustEndInControlRangeOfId?: string
   mustEndOutsideControlRange?: boolean
   counteract?: boolean
   /** deploy: the polygon the base must lie wholly within */

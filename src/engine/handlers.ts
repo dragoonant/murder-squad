@@ -3,6 +3,7 @@
 // live `data` object of that hook, as documented there. Declarative effects (grantWeaponRule,
 // removeWeaponRule, modifyStat) are interpreted generically; the rest belong to a named rule.
 import { inflict } from './attack-common'
+import { providerStealthy } from './team-rules'
 import { ruleName } from './bundle'
 import { bodyOf, targetVerdict } from './los'
 import { distanceBetween, enemiesInControlRange } from './measure'
@@ -230,11 +231,10 @@ registerHook(
         } else if (m.stat === 'atk') data.atk += m.value
       }
     }
-    // And They Shall Know No Fear: the injured Hit penalty is ignored, weapons included
-    if (op.flags.ignoreInjured && isInjured(op)) {
-      data.hitDelta -= 1
-      markFired('ignoreInjuredChanges')
-    }
+    // And They Shall Know No Fear (and team equivalents such as Plague Bells): the injured Hit penalty is
+    // ignored, weapons included. attackStats already leaves the +1 out (hasInjuredPenalty), so ignoring the
+    // penalty only removes it; it never improves Hit past the printed value (core rules: injured worsens Hit by 1).
+    if (op.flags.ignoreInjured && isInjured(op)) markFired('ignoreInjuredChanges')
     // Ammo Cache: one attack die may be re-rolled when shooting with a datacard weapon (M-5.3)
     if (data.kind === 'shoot' && state.effects.some((e) => e.source === ID.ammo && e.operativeId === op.id)) {
       const card = state.data.datacards[op.datacardId]
@@ -298,7 +298,8 @@ interface DieLike {
 }
 
 function fails(dice: DieLike[]): DieLike[] {
-  return dice.filter((d) => d.kind === 'fail' && d.value !== null && !d.used)
+  // a tagged failure was set by a rule (an obscured discard, a team rule's locked fail) and is left alone
+  return dice.filter((d) => d.kind === 'fail' && d.value !== null && !d.used && !d.tag)
 }
 
 registerHook(
@@ -339,7 +340,8 @@ export function stealthyLevel(state: GameState, op: Operative): number {
   const team = [cfg.choices['primary-tactic'], cfg.adaptive ?? cfg.choices['secondary-tactic'], ...(op.extraTactics ?? [])]
   const fromTeam = team.includes(ID.tactic('stealthy')) ? 1 : 0
   const camo = hasAbility(state, op, 'aod.a.camo-cloak') ? 1 : 0
-  return fromTeam + camo
+  // M9 prep: other teams' Stealthy-style rules (Wyrmblade Cult Agent) through team-rules.ts
+  return fromTeam + camo + providerStealthy(state, op)
 }
 
 registerHook(

@@ -1,6 +1,6 @@
 # 12 - Rules test checklist
 
-Engine tests are named by these IDs (for example `it('SHOOT-004 ...')`). Format: `ID | rule ref | expected behaviour`. Rule refs: R-x.y = `10-rules-core.md`, M-x.y = `11-missions.md`, T-AOD.n / T-KOM.n = `13-teams.md`, GOLD-n = `14-golden-examples.md`. Every test pins its dice with a forced stream unless it checks pure legality.
+Engine tests are named by these IDs (for example `it('SHOOT-004 ...')`). Format: `ID | rule ref | expected behaviour`. Rule refs: R-x.y = `10-rules-core.md`, M-x.y = `11-missions.md`, T-AOD.n / T-KOM.n / T-PF.n / T-HIE.n / T-PM.n / T-WYR.n = `13-teams.md`, GOLD-n = `14-golden-examples.md`. Every test pins its dice with a forced stream unless it checks pure legality.
 
 ## SEQ - game sequence
 
@@ -159,6 +159,7 @@ MISSION-010 | M-4.1 | No crit op action or crit op VP in TP1.
 MISSION-011 | M-5.2 | A Mines marker triggers on the first operative CR contact: removed and D3+3 damage dealt.
 MISSION-012 | M-5.5 | Stun Grenade: D6 3+ for the target and every operative within 1" of it gives APL -1; smoke obscures operatives wholly inside it to those more than 2" away and lasts a D3 count of activations.
 MISSION-013 | M-5.6 | Frag and krak grenades are limited by the number picked and use the printed profiles.
+MISSION-013b | M-5.6 | A real Shoot with a team-limited grenade counts the use when the weapon is picked and strips the spent grenade from the team after the action.
 
 ## TEAM-AOD - Angels of Death
 
@@ -188,6 +189,144 @@ TEAM-KOM-010 | T-KOM strategy and firefight ploys | Dakka, Waaagh, Skulk About, 
 TEAM-KOM-011 | 13-teams.md section 2.3 | Concealed Position profile is usable only on the Snipa Boy's first Shoot action of the battle.
 TEAM-KOM-012 | T-KOM stat tables | Every operative stat, base size and weapon profile matches sections 2.2 and 2.3.
 
+## GEN - generic team capabilities (M9 engine prep)
+
+GEN-001 | tokens.ts | Tokens stack per owner up to a cap, emit TokenChanged, can be removed, and are visible to both seats.
+GEN-002 | tokens.ts | A token that lasts until its source next activates is removed when that operative activates.
+GEN-003 | effects.regainWounds | Regained wounds never exceed starting wounds and clear the injured state.
+GEN-004 | hooks activation.start | The hook runs after the order is chosen; damage that incapacitates there ends the activation.
+GEN-005 | hooks turningPoint.start | The hook runs in the Ready step before CP are gained and operatives readied.
+GEN-006 | team-rules.ts | A provider changes repeats, orders, counteract, forbidden actions and action costs.
+GEN-007 | reserve.ts | An operative set aside at set-up (within the cap) stays out of the killzone, is readied, is visible in view, and can return.
+GEN-008 | reserve.ts | An operative that never comes back is incapacitated and counts for the kill op.
+GEN-009 | reserve.ts, M-2 | A removed operative that returns lowers the opponent's kill grade and takes back its VP.
+GEN-010 | team-rules chainActivation | A chained activation makes the same seat activate a named operative next, once.
+GEN-011 | team-rules gateActivation | A gate stops the picked operative this time and the seat picks another.
+GEN-012 | team-rules reactions | The non-active player may react after an action; reacting or passing carries on the activation.
+GEN-013 | firefight.startDelegatedAction | A delegated free action offers only allowed actions, caps its move and returns to the activation.
+GEN-014 | firefight.startFreeAction | A free Charge can be capped and tied to one enemy control range.
+GEN-015 | team-rules controlApl / controlTotal | Control providers change an operative's contribution and a side total without touching APL.
+GEN-016 | team-rules moveDelta / injuredEquivalent | Move changes apply with the 4" floor; an injury-equivalent worsens Hit once and never stacks with injury.
+GEN-017 | hooks modifyDamage | Dmg can change against one target only.
+GEN-018 | hooks beforeIncapacitated, damage.inflicted | An incapacitation can be stopped; damage.inflicted reports wounds actually lost.
+GEN-019 | team-rules rerollsBanned | A re-roll ban removes every re-roll option of a side, Command Re-roll included.
+GEN-020 | team-rules fightResolveStart | Fight providers set an owed block-only resolution before the alternation and bar blocking for a seat.
+GEN-021 | team-rules shootViewpoints | A shooter may use a viewpoint operative; the Shoot records it.
+GEN-022 | team.json weights / caps | An entry can count as several selections and a group of entries can be capped.
+GEN-023 | equipment grants.to | Granted weapons go only to the operatives the equipment data names.
+GEN-024 | Operative.movedThisActivation / actionsThisTp | Moves add to the distance spent this activation; actions join the TP history.
+GEN-025 | reserve.placementSpots | Placement spots are placeable, pass the rule's test and are capped.
+GEN-026 | attack-common.redirectAttack | A Shoot target or fight opponent can be swapped, keeping a given cover verdict.
+GEN-027 | team-rules moveSurcharge | A surcharge adds to a move's cost and can push it over its limit.
+GEN-028 | team-rules actionForbidden | An action a team rule forbids cannot be taken as a free action either.
+GEN-029 | markers.isMine, ignoresMine, equipment excludes | Equipment with the mines code is a mine; a rule can exempt operatives; excluded options are rejected together.
+GEN-030 | team-rules stealthyCover | Stealthy-style cover sources from team rules add to the defender's level.
+GEN-031 | team-rules shootViewpoints, shootAvailability | The Shoot action is available when only a team-rule viewpoint (Magnify) has a valid target.
+GEN-032 | window firefight.activationEnded | The owner gets a ploy window at the end of an activation, before the operative is expended; nothing is asked without a usable ploy.
+GEN-033 | window operative.incapacitated | An operative incapacitated by an attack gives its owner a ploy window before removal; code ploys without ploy handlers are not offered there.
+GEN-034 | team-rules reactions (strategy) | A free move in the Strategy phase is a reaction point for the other seat; the gambit step and the free-move queue go on afterwards.
+GEN-035 | abilities maxRepeats | A unique action is taken once per activation unless a team rule's maxRepeats allows more.
+GEN-036 | windows shoot.beforeDefenceRerolls, fight.beforeRerolls | The attacker gets a ploy window on the fresh defence roll before any re-roll (both fighters on the fresh fight rolls).
+GEN-037 | window firefight.start | The Firefight phase opens with a ploy window; strategy and firefight ploys may name it.
+GEN-038 | team-rules reactions (interrupt) | A finished Guard interrupt is a reaction point for the interrupted seat; its activation goes on afterwards.
+## TEAM-PF - Pathfinders
+
+TEAM-PF-000 | registration | The team is registered with the engine and the data, is `playable`, and every code hook its data names is registered and fires in a real game (the scenarios in `tests/engine/teams/pathfinders.hooks.ts`).
+TEAM-PF-001 | T-PF.1 to T-PF.3 | Roster validation: 1 Shas'ui plus 11 selections; MB3 counts as two; Shas'la unlimited; Weapons Expert at most two with its loadout option; every other entry at most once.
+TEAM-PF-002 | T-PF.27, T-PF.29 | Markerlight adds one token to a visible enemy, caps at 4, persists across TPs; one token is removed once per enemy activation on Dash, Charge, Fall Back or Reposition, never in a counteraction.
+TEAM-PF-003 | T-PF.28, T-PF.21 | Shoot and Markerlight in one activation must share the target (both orders); the MB3 is exempt; Guard shots are not linked.
+TEAM-PF-004 | T-PF.30 | Token rows apply cumulatively: 1 Saturate and Balanced, 2 Hit +1 capped at 3+, 3 no obscured, 4 Seek Light (changes valid targets), 5 Seek; fusion and frag/krak grenades get nothing.
+TEAM-PF-005 | T-PF.7, T-PF.8 | Art of War: each option once per battle; Mont'ka +1" Move; Kauyon free Markerlight only for Conceal-ordered operatives with the action; Blooded may swap options for its activation.
+TEAM-PF-006 | T-PF.12, T-PF.20 | Drone whitelist enforced; Remote Pilot lets a drone do a forbidden action with a 2" move cap, repeatable but never the same drone-action pair twice per activation; drone control APL counts 1 lower.
+TEAM-PF-007 | T-PF.14, T-PF.15 | Medic! saves a non-drone within 3" once per TP at 1 wound, free Dash into medic CR, both -1 APL, ends that operative's activation; saved inside an enemy Guard interrupt, the Dash is a reaction once the interrupt is over; blocked if the medic is a target or either is in enemy CR; Medikit heals 2D3 capped, not the Medic! target.
+TEAM-PF-008 | T-PF.16 | Group Activation forces a second ready Shas'la activation, never a third.
+TEAM-PF-009 | T-PF.37, T-PF.11, T-PF.22 | Saviour Protocols redirects to a drone within 3", ignores validity, cover/obscured capped by the original, no effect vs Blast/Torrent; 0 CP with Drone Controller or MV4.
+TEAM-PF-010 | T-PF.38 | Point-Blank Fusillade: ranged weapon as melee, no blocking, Devastating/Piercing/Torrent off, resolve-first only when ready, Engage and pulse.
+TEAM-PF-011 | T-PF.25, T-PF.26 | Grav-inhibitor adds 2" once to enemy non-Dash moves entering its 6" visible zone, ignoring Obstructing/Accessible extras; worsens enemy melee Hit by 1 within 6".
+TEAM-PF-012 | T-PF.32, T-PF.36 | Suppressing Fire bans enemy attack re-rolls when the target is not the closest non-ignored valid target; Supporting Fire allows targets within 6" that have friendly Pathfinders in their CR.
+TEAM-PF-013 | T-PF.39 to T-PF.42 | Equipment limits (TAO 1/TP, HIML 2/TP, Photon 1/TP, OSU 1/TP); Photon Grenade on 3+ gives Move -2" (floor 4") and no Dash; OSU picks any enemy, never combined with HIML or Analyse.
+TEAM-PF-014 | T-PF.22, T-PF.24 | MV4 ignores Piercing and Piercing Crits and one Normal Dmg per TP; Pulse Accelerator gives pulse weapons within 3" Lethal 5+ and Severe until the drone's next activation or death.
+TEAM-PF-015 | stat tables | Every operative stat, base size and weapon profile matches 3.2 and 3.3 (dart round 3/4, fusion grenade 4/3).
+TEAM-PF-016 | T-PF.31, T-PF.35 | Recon Sweep (not in TP1, never the own edge, order chosen by the player, Dash refused unless it ends wholly within 6" of a non-own edge) and A Worthy Cause (in the firefight.start ploy window, a free mission action only, then the window carries on).
+TEAM-PF-017 | T-PF.10 | SIGNAL may be done in a counteraction (no ban is printed), needs sight of the friendly operative and stays within 6".
+
+## TEAM-HIE - Hierotek Circle
+
+TEAM-HIE-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-HIE-001 | T-HIE.1 to T-HIE.5 | Roster validation: exactly 1 Cryptek, 1 Accelerator, 1 Reanimator, 5 from the list; Deathmark and Guardian repeat; Apprentek and Despotek at most once; loadouts enforced.
+TEAM-HIE-002 | T-HIE.24, T-HIE.26 | First incapacitation places a tied Reanimation marker and strips tokens; a REANIMATED operative returns within 3", outside enemy CR, at 1 wound (injured), chosen order, ready; second incapacitation places no marker.
+TEAM-HIE-003 | T-HIE.25, T-HIE.29 | Ready step: Living Metal heals D3+1 first; then markers are rolled in owner order until one 3+; a reanimated operative stays at 1 wound that TP.
+TEAM-HIE-004 | T-HIE.27 | Opponent kill grade and kill op VP fall when an operative is REANIMATED and rise again if it is incapacitated later.
+TEAM-HIE-005 | T-HIE.19 | Reanimate: 1 AP rolls (3+), 2 AP is automatic; an operative already expended this TP returns expended, otherwise ready.
+TEAM-HIE-006 | T-HIE.28, T-HIE.38 | Magnify: target validity, cover and obscured from the proxy, Ceaseless granted; Relentless Onslaught 8" from the shooter; Conduits widens the proxy set once per TP.
+TEAM-HIE-007 | T-HIE.6, T-HIE.7 | Interstitial Command: free 1 AP action, 2" move cap, repeat-in-TP ban both ways, Despotek relay distance; Despotek version cannot pick Accelerate.
+TEAM-HIE-008 | T-HIE.8 | Timesplinter: expended friendly within 5" re-set within 5" horizontally and visible; not TP1; once per team per TP; Comms Device does not extend it.
+TEAM-HIE-009 | T-HIE.10 | Chronometron: attacker Atk -1 when shooting, fighting or retaliating against the token holder; ends at the Chronomancer's next activation, its incapacitation, or a repeat.
+TEAM-HIE-010 | T-HIE.12 | Nightmare Shroud: enemy within 4" cannot re-roll attack dice (Balanced, Ceaseless, Command Re-roll) and Lethal 5+ does not make crits.
+TEAM-HIE-011 | T-HIE.13 | Vision of Madness: activation denied on D6 >= current APL; token removed on successful activation or when no alternative exists.
+TEAM-HIE-012 | T-HIE.9, T-HIE.11 | Nanomine -2" Move within 4" (floor 4"); Despair +1 AP on mission actions within 2" and -1 to the enemy control total.
+TEAM-HIE-013 | T-HIE.14, T-HIE.15, T-HIE.16 | Canoptek Repair 2D3 capped, once per team per TP; Augment Weapon picks two rules on one profile of staff or conduit; Reinforce Metal reduces 3+ die damage by 1 but not Devastating.
+TEAM-HIE-014 | T-HIE.17 | Scuttler: Conceal and in cover is untargetable beyond 2" even against Seek or from Vantage; Fall Back costs 1 AP; no grenades.
+TEAM-HIE-015 | T-HIE.20 | Apprentek has the roster Cryptek's actions, only one per TP; its distances measure from itself; shared team limits.
+TEAM-HIE-016 | T-HIE.21, T-HIE.23 | Deathmarked token grants Seek to Deathmarks only; Steadfast counts APL 3 for control and Despair's -1 still applies.
+TEAM-HIE-017 | T-HIE.37, T-HIE.36 | Dimensional Ambush allows Guard on Conceal and flips to Engage at the interrupt; Living Lightning turns the carbine into Devastating 1 with Blast 2".
+
+## TEAM-PM - Plague Marines
+
+TEAM-PM-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-PM-001 | T-PM.1, T-PM.2 | Roster of Champion plus 5 distinct main-list operatives validates; a duplicate main pick or a 7th operative is rejected.
+TEAM-PM-002 | T-PM.16 | Bombardier may Shoot twice with the boltgun; Champion cannot take a second Shoot (no bolt or PSYCHIC weapon); Heavy Gunner cannot use the plague spewer for both Shoots.
+TEAM-PM-003 | T-PM.16 | Plaguecaster may Shoot Entropy then Plague wind but not Entropy twice; any PLAGUE MARINE with a Conceal order can counteract.
+TEAM-PM-004 | T-PM.17 | A Poison weapon that inflicts damage gives the target one token; a second hit gives no second token; a friendly PLAGUE MARINE Blast secondary gains none.
+TEAM-PM-005 | T-PM.18 | A poisoned enemy takes 1 damage when activated, before any other activation effect; no damage when it counteracts.
+TEAM-PM-006 | T-PM.19 | A 3-damage die on a Plague Marine with D6 4+ inflicts 2; a 2-damage die is never rolled for; Poison and FLAIL damage are never reduced.
+TEAM-PM-007 | T-PM.8 | Toxic adds 1/1 Dmg only against targets poisoned at the start of the action; in a Blast, an unpoisoned primary that gains a token does not upgrade the secondaries.
+TEAM-PM-008 | T-PM.7 | Champion regains wounds equal to wounds a poisoned enemy within 7" lost, capped at 3 per TP and at starting wounds; nothing when the enemy is unpoisoned or beyond 7".
+TEAM-PM-009 | T-PM.9 | Bombardier throws blight at 3+ with Toxic and krak at 3+ without spending the team's Blight Grenades uses; its own allowance runs out after 2 blight and 1 krak.
+TEAM-PM-010 | T-PM.10 | FLAIL deals D3+2 to every operative (friend and foe) visible and within 2"; a D3 of 3 poisons an enemy; Fight + FLAIL and FLAIL + FLAIL are legal, Fight + FLAIL + Fight is not; blocked by a Conceal order.
+TEAM-PM-011 | T-PM.11 | Icon Bearer with APL 3 contributes 4 to marker control, and 5 with a +1 APL change.
+TEAM-PM-012 | T-PM.12, T-PM.20 | Contagion costs 0 CP while the Icon Bearer is in the opponent's territory, 1 CP otherwise.
+TEAM-PM-013 | T-PM.13 | Poisonous Miasma poisons an unpoisoned target and deals 3 damage to a poisoned one; legal on a concealed enemy in cover visible within 7"; illegal in an enemy's CR.
+TEAM-PM-014 | T-PM.14 | Putrescent Vitality heals 7 on a total of 7, else the higher die, capped at starting wounds; can target the Plaguecaster; second use in a TP rejected.
+TEAM-PM-015 | T-PM.15 | Warrior's defence dice of 5 are crits when shot.
+TEAM-PM-016 | T-PM.20 | Under Contagion a poisoned enemy within 3" of a Plague Marine has Move -2" and Hit worsened by 1; an injured enemy gets no extra penalty; an unpoisoned enemy is affected only near the Icon Bearer.
+TEAM-PM-017 | T-PM.21 | Lumbering Death grants Ceaseless after a 3" move, not after a 3.5" move or a 2" move plus a 2" climb cost; always when retaliating; not while counteracting.
+TEAM-PM-018 | T-PM.22 | Cloud of Flies obscures a Plague Marine wholly within 1" of the marker against a shooter more than 3" away, not against one within 3"; the marker is gone at the next Ready step.
+TEAM-PM-019 | T-PM.23 | Nurglings: APL -1 on an enemy within 3", or a poisoned enemy within 7"; an unpoisoned enemy 5" away is not selectable; the cap holds with Stun.
+TEAM-PM-020 | T-PM.24 | Virulent Poison poisons an enemy within 3" behind a wall, or one visible within 7"; not one hidden at 5".
+TEAM-PM-021 | T-PM.25 | After Sickening Resilience a 4-damage die becomes 3 with no roll, a 3 becomes 2, a 2 stays 2.
+TEAM-PM-022 | T-PM.26 | Poisonous Demise poisons unpoisoned enemies visible within 3" and deals 1 damage to already-poisoned ones, including one poisoned earlier in the same action; after an attack it is offered in the operative.incapacitated ploy window before removal (passing keeps the CP).
+TEAM-PM-023 | T-PM.27 | Curse of Rot: used before re-rolls (shoot.beforeDefenceRerolls, fight.beforeRerolls), each opponent 3 deals 1 damage and becomes a fail that cannot be re-rolled, shooting or fighting; not offered while retaliating, beyond the range or without a 3.
+TEAM-PM-024 | T-PM.28 | With Plague Bells an injured Plague Marine keeps Move 5" and its printed Hit.
+TEAM-PM-025 | T-PM.29 | With Plague Rounds a bolt pistol hit poisons; the Warrior's boltgun has Poison, Severe and Toxic; plasma pistols are unchanged.
+TEAM-PM-026 | T-PM.30 | Third team blight grenade use in a battle is rejected.
+TEAM-PM-027 | T-PM.31 | Poison Vents: a poisoned enemy activated within 3" takes D3 instead of 1; an unpoisoned one gains a token on a D3 of 3 and takes no damage that activation.
+
+## TEAM-WYR - Wyrmblade
+
+TEAM-WYR-000 | scaffold | Superseded: the team is complete and flagged `playable: true`; TEAM-WYR-001 to TEAM-WYR-021 below cover it.
+TEAM-WYR-001 | T-WYR.1, T-WYR.5 | Roster validator accepts 1 Leader + 13 Warriors (14 ops) and Leader + 2 cult agents + 9 (12 ops); rejects 3 cult agents and 12 weighted selections.
+TEAM-WYR-002 | T-WYR.4 | Two flamer Gunners rejected; flamer + webber Gunner accepted; three Heavy Gunners rejected.
+TEAM-WYR-003 | T-WYR.24 | Set-up allows at most 4 NEOPHYTE in HIDING; a cult agent cannot be marked hiding.
+TEAM-WYR-004 | T-WYR.25 | Emerge offers only positions wholly within 6" of the drop zone and >6" from enemies; costs 1 AP; Charge and Fall Back then illegal; expend always legal.
+TEAM-WYR-005 | T-WYR.25 | An emerged Heavy Gunner cannot shoot its heavy stubber that activation.
+TEAM-WYR-006 | T-WYR.26 | Operatives still hiding at end of TP2 are incapacitated and raise the opponent's kill grade.
+TEAM-WYR-007 | T-WYR.27 | With a ready hiding operative the Wyrmblade player cannot counteract; the opponent's view lists the hiding operative (open information; the client tray shows it too, M9C-009).
+TEAM-WYR-008 | T-WYR.29 | Ceaseless when switched Conceal→Engage at activation start; Ceaseless when unseen at activation start; no Ceaseless on retaliation or counteract.
+TEAM-WYR-009 | T-WYR.23 | Expending a Warrior forces the next decision to be a ready Warrior; after the second Warrior, the opponent activates.
+TEAM-WYR-010 | T-WYR.14 | After an enemy Dash ending 2.5" from the Locus, Quicksilver Strike Charges into its CR; when no ≤3" Charge exists it is not offered and the TP use stays; an enemy gambit Dash in the Strategy phase triggers it too (FAQ).
+TEAM-WYR-011 | T-WYR.13 | Retaliating Locus blocks an enemy success before the attacker's first strike.
+TEAM-WYR-012 | T-WYR.22 | Assassinate is legal only vs an enemy that cannot see the Talon and is reachable within 6"; the double strike resolves before the defender acts.
+TEAM-WYR-013 | T-WYR.36 | Unquestioning Loyalty swaps a Shoot target onto a Neophyte out of the shooter's sight; refused vs a Blast weapon.
+TEAM-WYR-014 | T-WYR.15 | Stationary Heavy Gunner gets Ceaseless; with Cult Ambush active it gets Relentless instead.
+TEAM-WYR-015 | T-WYR.17, T-WYR.37 | Neophyte shot dead near the Icon Bearer makes a free Shoot before removal; one killed in melee has an enemy in its CR, so it can neither Shoot nor take a mission action (both keep their conditions) and is simply removed; one shot dead on an objective can take Plan Generations at 0 CP through Overthrow, or at 1 CP in the operative.incapacitated ploy window.
+TEAM-WYR-016 | T-WYR.33 | Divert and Disappear: a cult agent uses two of the three slots; its Fall Back applies −1 APL to its next activation.
+TEAM-WYR-017 | T-WYR.40 | A Wyrmblade operative passes over its own mine without triggering it; an enemy triggers it.
+TEAM-WYR-018 | T-WYR.10, 18, 19, 21, 28, 30, 31 | Rule grants: Soulsight (Saturate on the Sniper's rifle, Brutal and Balanced on the Talon's dagger), Target Vulnerability (Lethal 5+ on the stationary profile), Heroic Inspiration (Severe after a Kelermorph kill, within 3" and in sight), Crossfire (Accurate 1 after another operative shot the target), The Day Is At Hand (Rending, +1 Atk capped at 5), Cult Agent (Piercing and Saturate ignored).
+TEAM-WYR-019 | T-WYR.11, 19, 32, 41 | Obscured: Hypersense, a Soulsight token and Spotlights remove it; One With The Shadows adds it from Light terrain more than 1" from both operatives.
+TEAM-WYR-020 | T-WYR.8, 12, 34, 35 | After a Fight that leaves no enemy in CR the Locus is offered a free 3" Charge (not counted as its Charge action); Slink Into Darkness in the end-of-activation window (AP spent or not; never mid-activation, in a counteraction or twice per operative) costs 0 CP for a Neophyte the Leader sees (not for the Leader) and sets Conceal; Coiled Serpent makes a normal success a critical success, only after a Conceal to Engage switch.
+TEAM-WYR-021 | T-WYR.9, 12, 16, 19, 20, 21 | Kelermorph shoots twice and the Locus fights twice; the Talon can Charge under Conceal; the Icon Bearer counts one more at an objective without changing its APL; one Soulsight token per team moves when the other cult agent takes the action.
+
 ## SIM - simulation invariants
 
 SIM-001 | CLAUDE.md contract | A pending decision's legalActions list is never empty.
@@ -197,3 +336,4 @@ SIM-004 | R-7.2 | No operative with 0 or fewer wounds remains in the killzone af
 SIM-005 | R-3.6, R-2.4 | AP spent never exceeds APL (with R-3.15 exception) and CP never go negative.
 SIM-006 | R-9.2 | The same seed and the same action list reproduce the same state and event log.
 SIM-007 | R-8.1 | After every action no two bases overlap and none lies outside the killzone or inside terrain.
+SIM-008 | R-8.x kill op, R-3.4 | VP falls only by the kill op VP a returning operative takes back; a Conceal shooter firing a non-Silent weapon without a viewpoint or team rule is flagged.

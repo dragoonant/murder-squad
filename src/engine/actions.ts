@@ -28,4 +28,6 @@ export const act = {
   order: (p: P, order: 'engage' | 'conceal') => makeAction('firefight.order', p, { order }),
   action: (p: P, action: string) => makeAction('firefight.action', p, { action }),
   path: (p: P, waypoints: Waypoint[]) => makeAction('move.path', p, { waypoints }),
+  /** M9 prep: answer setup.deploy by setting the operative aside (HIDING) instead of placing it */
+  setAside: (p: P, operativeId: string) => makeAction('setup.deploy', p, { operativeId, x: 0, z: 0, setAside: true }),
 }

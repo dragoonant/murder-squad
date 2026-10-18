@@ -13,6 +13,7 @@ import { addUse, usesOf } from './effects'
 import { fnv1a } from './rng'
 import { markFired } from './code-hooks'
 import { hasKeyword, isExpendable } from './conditions'
+import { providerEquipmentEligible } from './team-rules'
 import { newMarkerId } from './markers'
 import { stubModule, type Ctx, type Handled } from './registry'
 import { otherSeat, SEATS } from './state'
@@ -68,6 +69,8 @@ export function selectionProblem(
     if (!e) return `unknown equipment ${id}`
     if (e.enabled === false) return `${e.name} is not offered`
     if (e.scope === 'faction' && e.team !== data.teamId) return `${e.name} belongs to another team`
+    // M9 prep: options that cannot be taken together (Explosive Traps and the universal Mines)
+    for (const other of e.excludes ?? []) if (picks.includes(other)) return `${e.name} cannot be taken with ${data.equipment[other]?.name ?? other}`
     if (e.choice) {
       const chosen = setup.equipmentChoices?.[seat]?.[id] ?? []
       if (chosen.length !== e.choice.pick) return `${e.name}: pick ${e.choice.pick} (${e.choice.from.join(' / ')})`
@@ -110,7 +113,11 @@ function eligibleForGrant(state: GameState, op: Operative, e: RuntimeEquipment):
   const card = state.data.datacards[op.datacardId]
   if (!card) return false
   if (state.data.abilities['kom.a.stoopid'] && card.abilities.includes('kom.a.stoopid')) return false
-  if (e.team === 'kommandos') return hasKeyword(state, op, 'KOMMANDO') && !hasKeyword(state, op, 'BOMB SQUIG') && !hasKeyword(state, op, 'GROT')
+  const team = providerEquipmentEligible(state, op, e.id)
+  if (team !== null) return team
+  // who receives the weapons is data (grants.to); without it every non-Expendable operative does
+  const to = e.grants?.to
+  if (to) return (!to.keyword || hasKeyword(state, op, to.keyword)) && !(to.notKeywords ?? []).some((k) => hasKeyword(state, op, k))
   return !isExpendable(state, op)
 }
 
@@ -158,7 +165,9 @@ export function initEquipment(state: GameState, setup: GameSetup): void {
 /**
  * Count a Shoot with a team-limited weapon and strip the weapon from the team once the totals are
  * spent (R-10.11 style; M-5.6, Dynamite once per battle, Harpoon once per turning point). Driven by
- * the ShootStarted events of the step, so the attack code needs no call.
+ * the ShootStarted events of the step, so the attack code needs no call. Uses are counted in the step
+ * the weapon is picked, which is always inside a declared Shoot action; the spent weapon is taken away
+ * only once no action is declared, so the Shoot in progress keeps the weapon it is resolving.
  */
 export function noteWeaponUses(ctx: Ctx): void {
   const s = ctx.state
@@ -167,10 +176,8 @@ export function noteWeaponUses(ctx: Ctx): void {
     const op = s.operatives[ev.operativeId]
     if (!op) continue
     const w = ev.weaponId
-    const own = s.data.datacards[op.datacardId]?.abilities.includes('aod.a.grenadier') && (w === 'core.w.frag-grenade' || w === 'core.w.krak-grenade')
-    if (own) {
+    if (ownGrenade(s, op, w)) {
       op.usedLimited[w] = (op.usedLimited[w] ?? 0) + 1
-      if (op.usedLimited[w]! >= 1) op.weapons = op.weapons.filter((x) => x !== w)
       continue
     }
     const limit = teamLimits(s, op.seat).find((l) => l.weaponId === w)
@@ -178,9 +185,30 @@ export function noteWeaponUses(ctx: Ctx): void {
     const key = `${TEAM_LIMIT_PREFIX}${w}`
     if (limit.per === 'battle') addUse(s, op.seat, key)
     else s.ledger[op.seat].tpUses[key] = (s.ledger[op.seat].tpUses[key] ?? 0) + 1
-    const used = limit.per === 'battle' ? usesOf(s, op.seat, key) : (s.ledger[op.seat].tpUses[key] ?? 0)
-    if (used >= limit.total) {
-      for (const o of Object.values(s.operatives)) if (o.seat === op.seat) o.weapons = o.weapons.filter((x) => x !== w)
+  }
+  if (!s.firefight.activation?.declared) stripSpentWeapons(s)
+}
+
+/** Grenadiers carry frag and krak grenades of their own: those throws are limited per operative, not by the team picks. */
+const OWN_GRENADIERS = ['aod.a.grenadier', 'pf.a.grenadier-specialist']
+function ownGrenade(s: GameState, op: Operative, w: string): boolean {
+  const abilities = s.data.datacards[op.datacardId]?.abilities ?? []
+  return OWN_GRENADIERS.some((a) => abilities.includes(a)) && (w === 'core.w.frag-grenade' || w === 'core.w.krak-grenade')
+}
+
+/** Take away every limited weapon whose uses are spent (idempotent; runs between actions). */
+function stripSpentWeapons(s: GameState): void {
+  for (const op of Object.values(s.operatives)) {
+    for (const w of ['core.w.frag-grenade', 'core.w.krak-grenade']) {
+      if ((op.usedLimited[w] ?? 0) >= 1 && ownGrenade(s, op, w) && op.weapons.includes(w)) op.weapons = op.weapons.filter((x) => x !== w)
+    }
+  }
+  for (const seat of SEATS) {
+    for (const limit of teamLimits(s, seat)) {
+      const key = `${TEAM_LIMIT_PREFIX}${limit.weaponId}`
+      const used = limit.per === 'battle' ? usesOf(s, seat, key) : (s.ledger[seat].tpUses[key] ?? 0)
+      if (used < limit.total || used === 0) continue
+      for (const o of Object.values(s.operatives)) if (o.seat === seat && o.weapons.includes(limit.weaponId)) o.weapons = o.weapons.filter((x) => x !== limit.weaponId)
     }
   }
 }
@@ -400,7 +428,7 @@ export function placeItem(ctx: Ctx, seat: Seat, item: EquipItem, pos: Vec2, yaw:
       carriedBy: null,
       controller: null,
       equipmentId: item.equipmentId,
-      hidden: item.equipmentId === 'core.e.mines',
+      hidden: item.equipmentId === 'core.e.mines' || e.hidden === true,
     }
     s.markers.push(marker)
     s.equipment.placed.push({ ...placed, markerId: marker.id })
@@ -411,7 +439,7 @@ export function placeItem(ctx: Ctx, seat: Seat, item: EquipItem, pos: Vec2, yaw:
     s.equipment.placed.push({ ...placed, featureId: feature.id })
   }
   s.equipment.queue[seat] = s.equipment.queue[seat].filter((i) => i.key !== item.key)
-  ctx.emit({ type: 'EquipmentPlaced', equipmentId: item.equipmentId, key: item.key, pos: p, yaw, hidden: item.equipmentId === 'core.e.mines' }, seat)
+  ctx.emit({ type: 'EquipmentPlaced', equipmentId: item.equipmentId, key: item.key, pos: p, yaw, hidden: item.equipmentId === 'core.e.mines' || e.hidden === true }, seat)
   void e
 }
 

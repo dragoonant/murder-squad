@@ -1,5 +1,7 @@
 // Figure manifest: every datacard archetype has a measured body entry whose GLB exists, sockets are sane,
 // every hold class has a HOLDS mount, and the rigid cues behave.
+import { isPresented } from '../fixtures/presentation'
+import { STAND_INS } from '@/client/teams'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -11,7 +13,7 @@ import type { HoldClass, ModelManifest } from '@/client/figures/manifest'
 
 const modelsDir = resolve(__dirname, '../../public/assets/models')
 const manifest = JSON.parse(readFileSync(resolve(modelsDir, 'manifest.json'), 'utf8')) as ModelManifest
-const cards = Object.values(dataBundle().byId).filter((r) => 'figure' in r) as unknown as { id: string; figure: { archetype: string } }[]
+const cards = Object.values(dataBundle().byId).filter((r) => 'figure' in r && isPresented(r)) as unknown as { id: string; figure: { archetype: string } }[]
 
 describe('figure manifest', () => {
   it('has datacards to check', () => {
@@ -19,7 +21,8 @@ describe('figure manifest', () => {
   })
 
   it('every datacard archetype has a manifest entry', () => {
-    const missing = cards.filter((c) => !manifest.bodies[c.figure.archetype]).map((c) => `${c.id} -> ${c.figure.archetype}`)
+    // archetypes a team draws as procedural stand-ins on purpose (src/client/teams standIns) need no body yet
+    const missing = cards.filter((c) => !manifest.bodies[c.figure.archetype] && !STAND_INS.has(c.figure.archetype)).map((c) => `${c.id} -> ${c.figure.archetype}`)
     expect(missing).toEqual([])
   })
 
