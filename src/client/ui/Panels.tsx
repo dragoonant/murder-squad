@@ -1,7 +1,7 @@
 // Side panels of the battle screen: operative card, event feed, dice log, mission panel, settings. On the
 // compact (phone) layout they become right-edge drawers opened from the HUD menu; on desktop they stack in
 // two columns. All numbers are read from the DISPLAY state.
-import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import type { DatacardData } from '@/data'
 import type { Seat } from '@/engine'
 import { effectiveApl } from '@/engine/state'
@@ -32,12 +32,17 @@ const drawerStyle: CSSProperties = {
   padding: 10,
   boxSizing: 'border-box',
   overflowY: 'auto',
+  display: 'flex',
+  flexDirection: 'column',
   pointerEvents: 'auto',
   zIndex: 50,
   fontFamily: fontStack,
 }
 
-const floatStyle: CSSProperties = { ...panel, padding: 10, boxSizing: 'border-box', pointerEvents: 'auto', fontFamily: fontStack, overflowY: 'auto' }
+// Panels are flex columns so a scrolling child (feed, dice log) can fill the remaining height with
+// `scrollFill` instead of guessing the chrome height; the box itself then never grows a second scroll bar.
+const floatStyle: CSSProperties = { ...panel, padding: 10, boxSizing: 'border-box', pointerEvents: 'auto', fontFamily: fontStack, overflowY: 'auto', display: 'flex', flexDirection: 'column' }
+export const scrollFill: CSSProperties = { flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }
 
 /** One panel: a drawer on compact, a floating box on desktop. `open` is the desktop visibility. */
 export function PanelBox({ id, title, testId, open, children, style }: { id: DrawerId; title: string; testId: string; open: boolean; children: ReactNode; style?: CSSProperties }) {
@@ -47,7 +52,7 @@ export function PanelBox({ id, title, testId, open, children, style }: { id: Dra
     if (drawer !== id) return null
     return (
       <div data-testid={testId} className="ms-touch" style={drawerStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flex: '0 0 auto' }}>
           <b>{title}</b>
           <Btn onClick={() => useUi.setState({ drawer: null })}>
             Close
@@ -60,7 +65,7 @@ export function PanelBox({ id, title, testId, open, children, style }: { id: Dra
   if (!open) return null
   return (
     <div data-testid={testId} style={{ ...floatStyle, ...style }}>
-      <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 6 }}>{title}</div>
+      <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 6, flex: '0 0 auto' }}>{title}</div>
       {children}
     </div>
   )
@@ -173,14 +178,22 @@ export function OperativeCard({ docked }: { docked?: boolean }) {
 export function EventFeed() {
   const feed = useFeedStore((s) => s.feed)
   const panels = useUi((s) => s.panels)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const el = ref.current
+  const ref = useRef<HTMLDivElement | null>(null)
+  // Pinned to the newest entry. Keyed on its id, not the length: the store caps the feed, so the length
+  // stops changing while entries keep arriving. Pinned again whenever the list mounts: toggling the panel
+  // (or opening the drawer) remounts the list but not this component, so the effect alone would miss it.
+  const lastId = feed.length > 0 ? feed[feed.length - 1]!.id : -1
+  const pin = (el: HTMLDivElement | null) => {
     if (el) el.scrollTop = el.scrollHeight
-  }, [feed.length])
+  }
+  const attach = useCallback((el: HTMLDivElement | null) => {
+    ref.current = el
+    pin(el)
+  }, [])
+  useEffect(() => pin(ref.current), [lastId])
   return (
     <PanelBox id="feed" title="Event feed" testId="event-feed-panel" open={panels.feed} style={{ maxHeight: '28vh' }}>
-      <div ref={ref} data-testid="event-feed" style={{ maxHeight: 'calc(28vh - 40px)', overflowY: 'auto', fontSize: 12, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div ref={attach} data-testid="event-feed" style={{ ...scrollFill, fontSize: 12, display: 'flex', flexDirection: 'column', gap: 2 }}>
         {feed.length === 0 && <Muted>Nothing yet.</Muted>}
         {groupFeed(feed.slice(-80)).map((g) =>
           g.length > 1 && g[0]!.dice ? (
@@ -208,7 +221,7 @@ export function DiceLog() {
   const panels = useUi((s) => s.panels)
   return (
     <PanelBox id="log" title="Dice log" testId="dice-log-panel" open={panels.log} style={{ maxHeight: '24vh' }}>
-      <div data-testid="dice-log" style={{ maxHeight: 'calc(24vh - 40px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div data-testid="dice-log" style={{ ...scrollFill, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {dice.length === 0 && <Muted>No rolls yet.</Muted>}
         {dice.slice(-30).map((d) => (
           <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
