@@ -26,6 +26,7 @@ Written 2026-10-17 as the first step of the Kill Team project ("wh40k-murder-squ
 10. **GPU etiquette:** announce GPU work; never two GPU jobs at once; never kill node by image name. The owner waived the ask-first gate on 2026-10-17 for Fell-in and said to use the studios to develop the look and sound.
 11. **Privacy:** credit "evilgouki"; never the real name or home path in anything that can become public; grep before every commit.
 12. Questions go through the multiple-choice UI, batched (two batches of at most 4), recommended option first, everything else stated as a default.
+13. **Pipeline everything; never idle a stage.** Each finished item moves to the next stage straight away: a concept PNG goes into the GLB queue the moment it renders, and a GLB is finalised and wired the moment it lands. Both GPUs (this PC and Alteisen) stay busy while concepts are still coming. The same goes for code: a team's verification starts when its implementer finishes, not when the whole batch does. Waiting for a full batch before starting the next stage was called out as inefficient (Murder Squad, 2026-10-18).
 
 ## The proven build recipe (what every 3D port since Mallet has done)
 1. **M0 scaffold** copied from the previous sibling (Vite 8 + React 19 + three 0.186 + R3F 9 + drei 10 + zustand 5 + TS 7 strict + Vitest 5 + Playwright + ajv + tsx; `deploy.yml` to Pages; `vite.config.ts` with sub-path `base`, chunk splitting and a second `sounds.html` entry; `playwright.config.ts` with `PW_PORT`; `.gitignore` for secrets, PDFs, `docs/sources/`, `e2e-out`, `tools/out`; `.gitattributes` LF for workflow scripts; `.claude/launch.json`). Write `CLAUDE.md`, `PLAN.md`, `HANDOFF.md`, `STATUS.md`.
@@ -34,7 +35,7 @@ Written 2026-10-17 as the first step of the Kill Team project ("wh40k-murder-squ
 4. **M2 engine** (pure reducer, seeded RNG, action log, replay, headless `sim` with invariants and a stall cap, tests named by checklist ID, `action-fuzz`).
 5. **M3 playable slice** on Pages with procedural stand-in figures, a random bot, briefing, objective tracker, dice tray, event feed, explanatory prompts, presentation director with presented-state cursor and bot idle wait.
 6. **M4 AI** (utility decider in a Web Worker, tiers, `ai-bench` gate: normal beats random >= 95%).
-7. **M5 art** (concepts -> Hunyuan GLBs -> `models:optimize` -> `?gallery` check -> wire), terrain and boards, army painter.
+7. **M5 art** (concepts -> Hunyuan GLBs -> `models:optimize` -> `?gallery` check -> wire), streamed: launch the GLB agent alongside the concept agent, polling the concept folders and queueing each new PNG on whichever GPU frees up first. Also terrain and boards, army painter.
 8. **M6 audio** (weapon-flavour map first, manifest, idempotent generator, `measure-audio` trims, `sounds.html`, music director with calm/battle/tense/victory/defeat).
 9. **M7 polish** (narration pauses, hover help, settings, end screen, phone layout via Mallet's form-factor layer).
 10. More teams/factions in parallel worktrees, one Workflow run apiece.
