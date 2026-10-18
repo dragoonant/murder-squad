@@ -406,6 +406,19 @@
           1.32,
           0.118
         ]
+      },
+      "rigged": "bodies/rigged/aod-intercessor-warrior.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint rig from sockets; UniRig pilot returned a 3-joint spine)",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
+        ]
       }
     },
     "aod-space-marine-captain": {
@@ -599,6 +612,19 @@
           0.007,
           1.27,
           -0.141
+        ]
+      },
+      "rigged": "bodies/rigged/kom-boy.glb",
+      "rig": {
+        "tool": "split-body.py + rig-clips.py (procedural 17-joint rig from sockets; UniRig pilot returned a 3-joint spine)",
+        "bones": 17,
+        "clips": [
+          "idle",
+          "walk",
+          "shoot",
+          "melee",
+          "hit",
+          "death"
         ]
       }
     },

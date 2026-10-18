@@ -11,6 +11,8 @@ import { colors, fontStack } from '../ui/theme'
 import { glbStats } from './glbLoader'
 import { AOD_SLUGS, KOMMANDO_SLUGS } from './attachmentFor'
 import { HOLDS } from './hold'
+import { clearCues } from './cueCore'
+import { ANIM_TICK_MS, galleryAnimStep } from './galleryAnim'
 import { Figure, hasGlbBody, seatColor } from './Operative'
 import { useModelManifest, type SocketName, type V3 } from './manifest'
 
@@ -106,9 +108,14 @@ function AttachmentGrid({ team, page }: { team: (typeof ATT_TEAMS)[number]; page
 export function Gallery() {
   const b = dataBundle()
   const manifest = useModelManifest()
-  const [view, setView] = useState<View>('front')
+  // ?gallery&team=<ix>&zoom=<factor>&view=three-quarter: close-up captures (tools/out/rig-closeup.mjs)
+  const q = useMemo(() => new URLSearchParams(window.location.search), [])
+  const [view, setView] = useState<View>(q.get('view') === 'three-quarter' ? 'three-quarter' : 'front')
   const [sockets, setSockets] = useState(false)
-  const [teamIx, setTeamIx] = useState<number | null>(null)
+  const [animate, setAnimate] = useState(false)
+  const [bones, setBones] = useState(false)
+  const [teamIx, setTeamIx] = useState<number | null>(q.has('team') ? Number(q.get('team')) : null)
+  const zoomParam = Number(q.get('zoom')) || 1
   // attachment pages: null = bodies gallery; else the attachment team index and page (null = all of the team)
   const [attTeam, setAttTeam] = useState<number | null>(null)
   const [attPage, setAttPage] = useState<number | null>(null)
@@ -121,8 +128,25 @@ export function Gallery() {
       ),
     [b],
   )
-  const cards = teamIx === null ? allCards : allCards.filter((c) => c.team.id === teamList(b)[teamIx]?.id)
-  const rows = Math.ceil(cards.length / COLS)
+  const only = q.get('only')
+  const cards = only ? allCards.filter((c) => c.card.figure.archetype === only).slice(0, 1) : teamIx === null ? allCards : allCards.filter((c) => c.team.id === teamList(b)[teamIx]?.id)
+  const rows = Math.ceil(cards.length / Math.min(COLS, cards.length))
+  const animIds = useMemo(() => cards.map((c) => `g-${c.card.id}`), [cards])
+
+  // the animate script: ticks through the cue store while on, clears it when switched off
+  useEffect(() => {
+    if (!animate) {
+      clearCues()
+      return
+    }
+    let n = 0
+    galleryAnimStep(animIds, n)
+    const h = window.setInterval(() => galleryAnimStep(animIds, ++n), ANIM_TICK_MS)
+    return () => {
+      window.clearInterval(h)
+      clearCues()
+    }
+  }, [animate, animIds])
 
   // load counters for e2e (window.__ms is installed for ?gallery by store/testHooks)
   useEffect(() => {
@@ -130,11 +154,12 @@ export function Gallery() {
       const ms = (window.__ms ?? (window.__ms = {} as NonNullable<typeof window.__ms>)) as unknown as Record<string, unknown>
       ms.glbStats = (prefix = 'bodies/') => glbStats(prefix)
       ms.glbBodiesLoaded = () => glbStats('bodies/').loaded
-      ms.galleryView = () => ({ view, sockets, attTeam, attPage })
+      ms.galleryView = () => ({ view, sockets, attTeam, attPage, animate, bones })
       ms.attachmentsLoaded = () => glbStats('attachments/').loaded
+      ms.riggedLoaded = () => glbStats('bodies/rigged/').loaded
     }
     publish()
-  }, [view, sockets, attTeam, attPage])
+  }, [view, sockets, attTeam, attPage, animate, bones])
 
   const btn = (active: boolean): React.CSSProperties => ({
     background: active ? colors.accent : '#262a36',
@@ -169,6 +194,12 @@ export function Gallery() {
         <button data-testid="toggle-sockets" style={btn(sockets)} onClick={() => setSockets((s) => !s)}>
           Sockets {sockets ? 'on' : 'off'}
         </button>
+        <button data-testid="toggle-animate" style={btn(animate)} onClick={() => setAnimate((s) => !s)}>
+          Animate {animate ? 'on' : 'off'}
+        </button>
+        <button data-testid="toggle-bones" style={btn(bones)} onClick={() => setBones((s) => !s)}>
+          Bones {bones ? 'on' : 'off'}
+        </button>
         <button data-testid="att-off" style={btn(attTeam === null)} onClick={() => setAttTeam(null)}>
           Bodies
         </button>
@@ -191,9 +222,10 @@ export function Gallery() {
         <gridHelper args={[COLS * GAP_X + 2, COLS * 2, '#3a3f4a', '#242833']} position={[0, 0, 0]} />
         {attTeam !== null && <AttachmentGrid team={ATT_TEAMS[attTeam]!} page={attPage} />}
         {attTeam === null && cards.map(({ card, team, seat }, n) => {
-          const col = n % COLS
-          const row = Math.floor(n / COLS)
-          const x = (col - (COLS - 1) / 2) * GAP_X
+          const cols = Math.min(COLS, cards.length)
+          const col = n % cols
+          const row = Math.floor(n / cols)
+          const x = (col - (cols - 1) / 2) * GAP_X
           const z = (row - (rows - 1) / 2) * GAP_Z
           const weaponIds = [...new Set([...card.weapons.fixed.flatMap((r) => expandWeaponRef(r, b.weaponGroups)), ...chosenWeaponIds(card, defaultLoadout(card))])]
           const body = manifest.bodies[card.figure.archetype]
@@ -209,20 +241,22 @@ export function Gallery() {
                   minor: team.paint.minor,
                   weaponIds,
                   seatColor: seatColor(seat),
+                  animId: `g-${card.id}`,
+                  bones,
                 }}
               />
               {sockets && body?.sockets && <Sockets sockets={body.sockets} />}
               <Html position={[0, 0, 0.75]} center distanceFactor={9} style={{ pointerEvents: 'none' }}>
                 <div data-testid={`gallery-${card.id}`} style={{ font: '600 11px system-ui', color: '#fff', textAlign: 'center', whiteSpace: 'nowrap', textShadow: '0 0 3px #000' }}>
                   {card.figure.archetype}
-                  <div style={{ color: glb ? '#6dff9a' : '#ffcf5a', fontWeight: 400 }}>{glb ? 'GLB body' : 'stand-in'}</div>
+                  <div style={{ color: body?.rigged ? '#7ad7ff' : glb ? '#6dff9a' : '#ffcf5a', fontWeight: 400 }}>{body?.rigged ? 'rigged GLB' : glb ? 'GLB body' : 'stand-in'}</div>
                 </div>
               </Html>
             </group>
           )
         })}
         <OrbitControls makeDefault target={TARGET} maxPolarAngle={Math.PI / 2.05} />
-        <CameraPreset view={view} zoom={attTeam !== null ? (attPage === null ? 1.25 : 0.82) : teamIx === null ? 1 : 0.95} />
+        <CameraPreset view={view} zoom={zoomParam * (attTeam !== null ? (attPage === null ? 1.25 : 0.82) : teamIx === null ? 1 : 0.95)} />
       </Canvas>
     </div>
   )

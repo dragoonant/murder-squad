@@ -69,12 +69,37 @@ export function aimCue(id: string, yaw: number, holdMs: number, now = performanc
   repaint()
 }
 
+/** Figures marked as walking without a move tween (the gallery's animate toggle, scripted scenes). */
+const walkers = new Set<string>()
+export function setWalking(id: string, on: boolean): void {
+  if (on) walkers.add(id)
+  else walkers.delete(id)
+  repaint()
+}
+export const isWalking = (id: string): boolean => walkers.has(id)
+
+export interface CueState {
+  kind: CueKind
+  /** progress 0..1 through CUE_MS */
+  t: number
+}
+/** The one-shot cue (shoot / melee / hit) running on `id` right now with its progress, or null. Deaths: `deathAge`. */
+export function cueState(id: string, now = performance.now()): CueState | null {
+  const a = active.get(id)
+  if (!a) return null
+  const t = (now - a.t0) / CUE_MS[a.kind]
+  return t >= 1 ? null : { kind: a.kind, t }
+}
+/** The death style of a dying figure (topple when the killer is unknown), or null while alive. */
+export const deathStyleOf = (id: string): DeathStyle | null => (dead.has(id) ? (deathInfo.get(id)?.style ?? 'topple') : null)
+
 export function clearCues(): void {
   aims.clear()
   active.clear()
   dead.clear()
   deathInfo.clear()
   beat.clear()
+  walkers.clear()
 }
 export const isDying = (id: string): boolean => dead.has(id)
 export const deathAge = (id: string, now = performance.now()): number => (dead.has(id) ? now - dead.get(id)! : -1)
@@ -103,8 +128,26 @@ export interface CuePose {
 const smooth = (t: number) => t * t * (3 - 2 * t)
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t))
 
-/** Pose for one figure. `walking` adds the bob, `phase` de-syncs idle breathing between figures. */
-export function cuePose(id: string, now: number, walking: boolean, phase = 0): CuePose {
+/**
+ * Pose for one figure. `walking` adds the bob, `phase` de-syncs idle breathing between figures. `skinned` is the
+ * reduced pose for a body whose skeleton plays the clips (skinned.tsx): only the aim turn survives while alive;
+ * a death keeps its travel, sink and fade but drops the whole-body fall for topple / slump (the death clip does
+ * that), and keeps the tumble for blast and the shiver / collapse for burn.
+ */
+export function cuePose(id: string, now: number, walking: boolean, phase = 0, skinned = false): CuePose {
+  const p = rigidPose(id, now, walking, phase)
+  if (!skinned) return p
+  const style = deathStyleOf(id)
+  if (style === null) return { dx: 0, dy: 0, dz: 0, rx: 0, ry: p.ry, rz: 0, sy: 1, vis: 1 }
+  if (style === 'topple' || style === 'slump') {
+    p.rx = 0
+    p.rz = 0
+    p.sy = 1
+  }
+  return p
+}
+
+function rigidPose(id: string, now: number, walking: boolean, phase: number): CuePose {
   const p: CuePose = { dx: 0, dy: 0, dz: 0, rx: 0, ry: 0, rz: 0, sy: 1 + 0.012 * Math.sin(now / 520 + phase), vis: 1 }
   const m = aims.get(id)
   if (m && !walking && !dead.has(id)) {

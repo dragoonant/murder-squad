@@ -5,8 +5,9 @@ import { resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { screenshotRendered } from './helpers'
 
-const manifest = JSON.parse(readFileSync(resolve(process.cwd(), 'public/assets/models/manifest.json'), 'utf8')) as { attachments: Record<string, unknown> }
+const manifest = JSON.parse(readFileSync(resolve(process.cwd(), 'public/assets/models/manifest.json'), 'utf8')) as { bodies: Record<string, { rigged?: string }>; attachments: Record<string, unknown> }
 const attachmentCount = Object.keys(manifest.attachments).length
+const riggedCount = Object.values(manifest.bodies).filter((b) => b.rigged).length
 
 test.use({ viewport: { width: 2200, height: 1250 } })
 
@@ -49,6 +50,45 @@ test('gallery loads every body GLB and draws sockets', async ({ page }) => {
   await page.getByTestId('view-three-quarter').click()
   await screenshotRendered(page, 'e2e-out/gallery-06-team1-3q.png')
 
+  expect(errors).toEqual([])
+})
+
+test('gallery animate toggle plays the clip set on rigged bodies and the rigid cues elsewhere', async ({ page }) => {
+  test.setTimeout(120_000)
+  const errors: string[] = []
+  page.on('console', (m) => {
+    if (m.type() === 'error') errors.push(m.text())
+  })
+  page.on('pageerror', (e) => errors.push(String(e)))
+
+  await page.goto('./?gallery')
+  await page.getByTestId('gallery').waitFor()
+  await page.getByTestId('toggle-sockets').click()
+  await page.waitForFunction(() => ((window.__ms as unknown as { glbBodiesLoaded?: () => number } | undefined)?.glbBodiesLoaded?.() ?? 0) >= 20, undefined, { timeout: 60_000 })
+  if (riggedCount > 0) {
+    await page.waitForFunction((want) => ((window.__ms as unknown as { riggedLoaded?: () => number }).riggedLoaded?.() ?? 0) >= want, riggedCount, { timeout: 60_000 })
+  }
+  await page.getByTestId('toggle-animate').click()
+  await page.getByTestId('toggle-bones').click()
+  await page.getByTestId('view-three-quarter').click()
+  // team close-ups: mid walk burst (ticks 0..3 walk) on team 0, then the one-shot ticks on team 1
+  await page.getByTestId('team-0').click()
+  await page.waitForTimeout(700)
+  await screenshotRendered(page, 'e2e-out/gallery-07-animate-walk.png')
+  await page.getByTestId('team-1').click()
+  await page.waitForTimeout(2400)
+  await screenshotRendered(page, 'e2e-out/gallery-08-animate-cues.png')
+  await page.getByTestId('view-front').click()
+  await page.waitForTimeout(600)
+  await screenshotRendered(page, 'e2e-out/gallery-09-animate-front.png')
+  const view = await page.evaluate(() => (window.__ms as unknown as { galleryView(): { animate: boolean; bones: boolean } }).galleryView())
+  expect(view.animate).toBe(true)
+  expect(view.bones).toBe(true)
+  const stats = await page.evaluate(() => (window.__ms as unknown as { glbStats(p?: string): { loaded: number; failed: number } }).glbStats('bodies/rigged/'))
+  console.log(`gallery rigged: ${JSON.stringify(stats)} of ${riggedCount} listed`)
+  expect(stats.loaded).toBe(riggedCount)
+  expect(stats.failed).toBe(0)
+  await page.getByTestId('toggle-animate').click()
   expect(errors).toEqual([])
 })
 

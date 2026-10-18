@@ -12,7 +12,8 @@ import { dataBundle, engineBundle } from '../game/adapter'
 import { animPosition } from '../presentation/animStore'
 import { colors } from '../ui/theme'
 import { cuePose, deathAge, deathMs, installCueFeed, isDying, cueActive } from './cues'
-import { useGlbInstance } from './glbLoader'
+import { glbReady, useGlbAnimated, useGlbInstance } from './glbLoader'
+import { SkinnedBody, type SkinnedMount } from './skinned'
 import { attachmentFor } from './attachmentFor'
 import { HOLDS, SHEATHED, handRight, heaviestHold, holdClassOf, type HoldSpec } from './hold'
 import { modelManifest, pointOf, slugOf, useModelManifest, type BodyEntry, type HoldClass, type ModelManifest, type V3 } from './manifest'
@@ -29,6 +30,10 @@ export interface FigureSpec {
   attachSlugs?: string[]
   seatColor: string
   dim?: boolean
+  /** cue-store id the figure animates under (operative id in battle, a gallery id); unset = static, rigid cues only */
+  animId?: string
+  /** QC: draw the skeleton of a skinned body */
+  bones?: boolean
 }
 
 const SEAT_COLOR = { A: colors.playerA, B: colors.playerB }
@@ -138,17 +143,38 @@ export function planSlugs(slugs: string[], manifest: ModelManifest): Placed[] {
   })
 }
 
+/** Slug of a body's rigged GLB (manifest `rigged`), or undefined. */
+export const riggedSlug = (body: BodyEntry | undefined): string | undefined => (body?.rigged ? slugOf(body.rigged, 'bodies') : undefined)
+
+/** True when the figure is drawn by its skinned body right now (rigged GLB listed, loaded, and the figure animates). */
+export function isSkinned(spec: FigureSpec, manifest = modelManifest()): boolean {
+  return !!spec.animId && glbReady(riggedSlug(manifest.bodies[spec.archetype]))
+}
+
 export function GlbBody({ body, spec, ranged, melee }: { body: BodyEntry; spec: FigureSpec; ranged: HoldClass | null; melee: HoldClass | null }) {
   const manifest = useModelManifest()
   const obj = useGlbInstance(slugOf(body.file, 'bodies'))
+  const rigged = useGlbAnimated(spec.animId ? riggedSlug(body) : undefined)
   const shown = useMemo(() => shownWeapons(spec.weaponIds), [spec.weaponIds])
   const cols = useMemo(() => ({ ranged: hslColor(spec.minor, 0.1), melee: hslColor(spec.major, 0.12) }), [spec.major, spec.minor])
   const placed = useMemo(() => (spec.attachSlugs ? planSlugs(spec.attachSlugs, manifest) : planAttachments(shown, manifest)), [spec.attachSlugs, shown, manifest])
-  if (!obj) return <Procedural height={spec.height} baseRadius={spec.baseRadius} major={spec.major} minor={spec.minor} ranged={ranged} melee={melee} seatColor={spec.seatColor} dim={spec.dim} />
+  if (!obj && !rigged) return <Procedural height={spec.height} baseRadius={spec.baseRadius} major={spec.major} minor={spec.minor} ranged={ranged} melee={melee} seatColor={spec.seatColor} dim={spec.dim} />
   const sockets = body.sockets ?? {}
   // natural weapons (no hand sockets, e.g. the bomb squig) draw nothing
   const armed = !!(sockets.handR || sockets.handL)
   const flip = body.facing === '-Z'
+  if (rigged && rigged.clips.length) {
+    // skinned body: attachments ride the bones nearest their sockets (mounted at the socket's own origin)
+    const mounts: SkinnedMount[] = armed
+      ? placed.flatMap((p) =>
+          sockets[p.spec.socket]
+            ? [{ key: p.key, socket: p.spec.socket, node: <Attachment slug={p.slug} hold={p.hold} spec={p.spec} socket={[0, 0, 0]} color={p.spec.socket === 'handL' ? cols.melee : cols.ranged} /> }]
+            : [],
+        )
+      : []
+    return <SkinnedBody id={spec.animId!} obj={rigged.obj} clips={rigged.clips} sockets={sockets} flip={flip} mounts={mounts} bones={spec.bones} />
+  }
+  if (!obj) return <Procedural height={spec.height} baseRadius={spec.baseRadius} major={spec.major} minor={spec.minor} ranged={ranged} melee={melee} seatColor={spec.seatColor} dim={spec.dim} />
   return (
     <group>
       <group rotation={[0, flip ? Math.PI : 0, 0]}>
@@ -247,9 +273,9 @@ export interface BattleOperativeProps {
 
 // ------------------------------------------------ rigid cues + corpses
 
-function applyPose(g: Group | null, id: string, now: number, walking: boolean, phase: number): boolean {
+function applyPose(g: Group | null, id: string, now: number, walking: boolean, phase: number, skinned = false): boolean {
   if (!g) return false
-  const p = cuePose(id, now, walking, phase)
+  const p = cuePose(id, now, walking, phase, skinned)
   g.position.set(p.dx, p.dy, p.dz)
   g.rotation.set(p.rx, p.ry, p.rz)
   g.scale.set(p.vis, p.vis * p.sy, p.vis)
@@ -293,7 +319,7 @@ function CorpseFigure({ corpse }: { corpse: Corpse }) {
       if (corpses.delete(corpse.id)) emitCorpses()
       return
     }
-    applyPose(ref.current, corpse.id, performance.now(), false, 0)
+    applyPose(ref.current, corpse.id, performance.now(), false, 0, isSkinned(corpse.spec))
     state.invalidate()
   })
   return (
@@ -313,7 +339,7 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
   const paint = team?.paint ?? { major: { h: 0.6, s: 0.5, l: 0.4 }, minor: { h: 0.1, s: 0.6, l: 0.4 } }
   const archetype = (dataBundle().byId[op.datacardId] as { figure?: { archetype: string } } | undefined)?.figure?.archetype ?? op.datacardId
   const spec: FigureSpec = useMemo(
-    () => ({ archetype, height: op.height, baseRadius: op.baseRadius, major: paint.major, minor: paint.minor, weaponIds: op.weapons, seatColor: seatColor(op.seat), dim: !op.ready }),
+    () => ({ archetype, height: op.height, baseRadius: op.baseRadius, major: paint.major, minor: paint.minor, weaponIds: op.weapons, seatColor: seatColor(op.seat), dim: !op.ready, animId: op.id }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [archetype, op.height, op.baseRadius, op.weapons, op.seat, op.ready, team],
   )
@@ -337,7 +363,7 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
     const a = animPosition(op.id)
     // idle breathe only shows on frames that are drawn anyway (the board is demand-driven); walk bob and
     // shoot / melee / hit cues keep requesting frames while they run
-    if (applyPose(poseRef.current, op.id, performance.now(), !!a, phase)) state.invalidate()
+    if (applyPose(poseRef.current, op.id, performance.now(), !!a, phase, isSkinned(spec))) state.invalidate()
     if (a) {
       g.position.set(a.x, a.y, a.z)
       g.rotation.y = a.heading

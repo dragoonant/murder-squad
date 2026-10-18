@@ -24,6 +24,11 @@ export interface BodyEntry {
   facing?: '+Z' | '-Z'
   sockets?: Partial<Record<SocketName, V3>>
   poses?: Partial<Record<'long' | 'heavy' | 'melee2h' | 'shield', string>>
+  /** skinned copy of the body with the clip set (idle walk shoot melee hit death), e.g. `bodies/rigged/<slug>.glb`
+   * (docs/spec/30-figures.md section 7); the renderer plays it when loaded and keeps the rigid cues otherwise */
+  rigged?: string
+  /** how the rigged body was made (UniRig skeleton + skin, procedural clips) and its QC notes */
+  rig?: { tool: string; bones: number; clips: string[]; notes?: string }
 }
 /** A point in the attachment's own frame: [x, y, z] or {x, y, z}. */
 export type PointLike = V3 | { x: number; y: number; z: number }

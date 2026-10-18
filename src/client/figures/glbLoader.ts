@@ -4,12 +4,12 @@
 // compressed by tools/models/optimize.mjs).
 import { useEffect, useMemo, useState } from 'react'
 import { useThree } from '@react-three/fiber'
-import { Mesh, type Object3D } from 'three'
+import { Mesh, type AnimationClip, type Object3D, type SkinnedMesh } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
 
-type Entry = { status: 'loading' | 'ready' | 'failed'; scene?: Object3D; t0: number; ms?: number }
+type Entry = { status: 'loading' | 'ready' | 'failed'; scene?: Object3D; animations?: AnimationClip[]; t0: number; ms?: number }
 const cache = new Map<string, Entry>()
 const listeners = new Set<() => void>()
 
@@ -28,8 +28,11 @@ function request(slug: string): Entry {
       .then((gltf) => {
         gltf.scene.traverse((o) => {
           if ((o as Mesh).isMesh) (o as Mesh).castShadow = true
+          // a skinned mesh's bounds move with its bones; cull by hand (never) instead of popping mid-clip
+          if ((o as SkinnedMesh).isSkinnedMesh) o.frustumCulled = false
         })
         entry.scene = gltf.scene
+        entry.animations = gltf.animations
         entry.status = 'ready'
         entry.ms = performance.now() - entry.t0
       })
@@ -63,6 +66,16 @@ export function useGlbInstance(slug: string | undefined): Object3D | null {
   const scene = entry?.status === 'ready' ? entry.scene : undefined
   return useMemo(() => (scene ? cloneSkinned(scene) : null), [scene])
 }
+
+/** A private clone plus the file's animation clips (skinned bodies), or null while loading / unavailable. */
+export function useGlbAnimated(slug: string | undefined): { obj: Object3D; clips: AnimationClip[] } | null {
+  const obj = useGlbInstance(slug)
+  const clips = slug ? cache.get(slug)?.animations : undefined
+  return useMemo(() => (obj ? { obj, clips: clips ?? [] } : null), [obj, clips])
+}
+
+/** True once the slug's GLB finished loading successfully (no request is started). */
+export const glbReady = (slug: string | undefined): boolean => !!slug && cache.get(slug)?.status === 'ready'
 
 /** Load counters for slugs starting with `prefix` (e.g. 'bodies/'); `maxMs` is the slowest finished load. */
 export function glbStats(prefix = ''): { loaded: number; failed: number; loading: number; maxMs: number; totalMs: number } {
