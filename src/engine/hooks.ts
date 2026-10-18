@@ -28,7 +28,22 @@ export const HOOK_NAMES = [
   'target.status',
   // M9 prep: after any action of any operative has resolved (Tesla Weave, Markerlight decay); see ActionEndedData
   'action.ended',
+  // M9 batch B: an action was just declared, before it resolves; a handler may cancel it (Daemonic Aura); see ActionDeclaredData
+  'action.declared',
+  // M9 batch B: a seat passed in the Gambit step (explicitly or with nothing usable); see GambitPassedData (Cunning)
+  'gambit.passed',
 ] as const
+
+/**
+ * gambit.passed (M9 batch B): `seat` passed in the Gambit step. `explicit` is false for the implicit pass of a seat
+ * with nothing usable; `usedThisStep` lists the gambit ids both seats used in this step so far, in order, with the
+ * seat that used each. Runs with `engine` (CP may change; no decisions).
+ */
+export interface GambitPassedData {
+  explicit: boolean
+  usedThisStep: { seat: Seat; gambitId: string }[]
+  passes: number
+}
 
 /*
  * M9 prep: lifecycle hook points that now run with `engine` (the step Ctx) so team files can act on them.
@@ -77,6 +92,23 @@ export interface ActionEndedData {
 export interface TargetStatusData {
   obscured: boolean
   inCover: boolean
+}
+
+/**
+ * action.declared (M9 batch B): `operativeId` has just declared `action` (universal id or ability:<id>), normal or
+ * free, before any ploy window and before it resolves; the step Ctx is `engine` (dice may be rolled, no decisions).
+ * A handler may set `cancel` (the action is cancelled as R-3.8: no AP spent) with a `reason`, and `bar` to stop the
+ * operative taking that action again for the rest of its activation or counteraction (Daemonic Aura, Chain Snare).
+ */
+export interface ActionDeclaredData {
+  action: string
+  counteract: boolean
+  free: boolean
+  /** seat of the activation the action belongs to */
+  activeSeat: Seat
+  cancel: boolean
+  bar: boolean
+  reason?: string
 }
 
 export type HookName = (typeof HOOK_NAMES)[number]
@@ -134,7 +166,21 @@ export const ATTACK_HOOKS = [
   // M9 prep
   'modifyDamage',
   'beforeIncapacitated',
+  // M9 batch B: a side has just been rolled, before any re-roll (Omen: the opponent must re-roll 6s); see DiceRolledData
+  'diceRolled',
 ] as const
+
+/**
+ * diceRolled (M9 batch B): `operativeId` has just rolled `dice` (shoot attack, shoot defence, or one fighter's dice),
+ * before any re-roll window or grant. Runs with `engine`; a handler may re-roll dice at once with
+ * attack-common.forcedReroll (which marks them re-rolled, R-9.2). `targetId` is its opponent in the sequence.
+ */
+export interface DiceRolledData {
+  kind: 'shoot' | 'fight'
+  side: 'attack' | 'defence'
+  /** the live side (attack-common DiceSide) */
+  diceSide: unknown
+}
 
 /**
  * modifyDamage (M9 prep): the Normal and Critical Dmg a weapon deals in this sequence (Toxic +1/+1).

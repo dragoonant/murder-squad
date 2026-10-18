@@ -1,0 +1,184 @@
+[
+  {
+    "id": "hc.w.arc-pistol",
+    "name": "Arc pistol",
+    "team": "hunter-clade",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      },
+      {
+        "rule": "core.wr.stun"
+      }
+    ],
+    "text": "A crackling sidearm that leaves its target's systems jolted.",
+    "source": "team-hunter-clade.pdf (January '26); docs/spec/13-teams.md section 9.3"
+  },
+  {
+    "id": "hc.w.galvanic-rifle",
+    "name": "Galvanic rifle",
+    "team": "hunter-clade",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.heavy",
+        "only": "reposition"
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1,
+        "crits": true
+      }
+    ],
+    "text": "A long hunting rifle whose rounds overload the victim's nerves on a clean hit.",
+    "source": "team-hunter-clade.pdf (January '26); docs/spec/13-teams.md section 9.3"
+  },
+  {
+    "id": "hc.w.master-crafted-radium-pistol",
+    "name": "Master-crafted radium pistol",
+    "team": "hunter-clade",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 2,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.balanced"
+      },
+      {
+        "rule": "core.wr.rending"
+      }
+    ],
+    "text": "A finely tuned pistol firing irradiated slugs.",
+    "source": "team-hunter-clade.pdf (January '26); docs/spec/13-teams.md section 9.3"
+  },
+  {
+    "id": "hc.w.phosphor-blast-pistol",
+    "name": "Phosphor blast pistol",
+    "team": "hunter-clade",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.blast",
+        "inches": 1
+      },
+      {
+        "rule": "core.wr.severe"
+      }
+    ],
+    "text": "Lobs a burning phosphor charge that splashes onto anyone close to the target.",
+    "source": "team-hunter-clade.pdf (January '26); docs/spec/13-teams.md section 9.3"
+  },
+  {
+    "id": "hc.w.arc-maul",
+    "name": "Arc maul",
+    "team": "hunter-clade",
+    "type": "melee",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.shock"
+      }
+    ],
+    "text": "A charged club that staggers whoever it strikes.",
+    "source": "team-hunter-clade.pdf (January '26); docs/spec/13-teams.md section 9.3"
+  },
+  {
+    "id": "hc.w.gun-butt",
+    "name": "Gun butt",
+    "team": "hunter-clade",
+    "type": "melee",
+    "atk": 3,
+    "hit": "4+",
+    "dmg": {
+      "normal": 2,
+      "crit": 3
+    },
+    "rules": [],
+    "text": "The stock of a rifle, swung when the enemy gets too close.",
+    "source": "team-hunter-clade.pdf (January '26); docs/spec/13-teams.md section 9.3"
+  },
+  {
+    "id": "hc.w.power-weapon-skitarii",
+    "name": "Power weapon",
+    "team": "hunter-clade",
+    "type": "melee",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 4,
+      "crit": 6
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "A blade sheathed in a disruptive energy field.",
+    "source": "team-hunter-clade.pdf (January '26); docs/spec/13-teams.md section 9.3"
+  },
+  {
+    "id": "hc.w.taser-goad-skitarii",
+    "name": "Taser goad",
+    "team": "hunter-clade",
+    "type": "melee",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      },
+      {
+        "rule": "core.wr.shock"
+      }
+    ],
+    "text": "A prod that dumps a heavy electrical charge into its victim.",
+    "source": "team-hunter-clade.pdf (January '26); docs/spec/13-teams.md section 9.3"
+  }
+]

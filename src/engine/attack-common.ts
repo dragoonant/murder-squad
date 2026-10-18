@@ -484,12 +484,15 @@ export interface RerollOptions {
 export function rerollOptions(state: GameState, side: DiceSide): RerollOptions {
   // M9 prep: a rule can bar every re-roll of a side (Nightmare Shroud, Suppressing Fire)
   const banned = side.noRerolls === true || (state.attack ? providerRerollsBanned(state, side, state.attack) : false)
-  const elig = banned ? [] : eligibleDice(side)
+  const eligAll = banned ? [] : eligibleDice(side)
   const grants: OptionInput[] = []
   const command: OptionInput[] = []
-  if (elig.length === 0) return { grants, command }
+  if (eligAll.length === 0) return { grants, command }
   for (const g of side.grants) {
     if (g.used) continue
+    // M9 batch B: a grant limited to some values (Omen: 1s only)
+    const elig = g.values ? eligAll.filter((i) => g.values!.includes(side.dice[i]!.value!)) : eligAll
+    if (elig.length === 0) continue
     if (g.mode === 'one') {
       for (const i of firstOfEachValue(side, elig)) {
         grants.push({ id: `${g.id}:${i}`, labelKey: `reroll.${g.id}`, type: 'dice.reroll', payload: { grant: g.id, dice: [i] }, data: { source: g.source, value: side.dice[i]!.value } })
@@ -511,7 +514,7 @@ export function rerollOptions(state: GameState, side: DiceSide): RerollOptions {
     }
   }
   if (!side.commandUsed && state.players[side.seat].cp >= 1) {
-    for (const i of firstOfEachValue(side, elig)) {
+    for (const i of firstOfEachValue(side, eligAll)) {
       command.push({ id: `command:${i}`, labelKey: 'reroll.command', type: 'dice.commandReroll', payload: { command: true, dice: [i] }, data: { value: side.dice[i]!.value, cost: 1 } })
     }
   }
@@ -531,6 +534,12 @@ export function policyReroll(dice: AttackDie[], grants: RerollGrant[]): { grant:
   if (failed.length === 0) return null
   for (const g of grants) {
     if (g.used) continue
+    if (g.values) {
+      // M9 batch B: a value-limited grant re-rolls the failed dice it allows
+      const ok = failed.filter((i) => g.values!.includes(dice[i]!.value!))
+      if (ok.length === 0) continue
+      return { grant: g.id, dice: g.mode === 'one' ? [ok[0]!] : ok }
+    }
     if (g.mode === 'one') return { grant: g.id, dice: [failed[0]!] }
     if (g.mode === 'any') return { grant: g.id, dice: failed }
     const tally = new Map<number, number[]>()
@@ -579,6 +588,9 @@ export function parseReroll(
   }
   const grant = side.grants.find((g) => g.id === payload.grant && !g.used)
   if (!grant) return { rejection: { code: 'E_NOT_AN_OPTION', reason: 'that re-roll is not available' } }
+  if (grant.values && !(dice as number[]).every((i) => grant.values!.includes(side.dice[i]!.value!))) {
+    return { rejection: { code: 'E_NOT_AN_OPTION', reason: `that re-roll only re-rolls dice showing ${grant.values.join(' or ')}` } }
+  }
   return { grantId: grant.id, command: false, dice: dice as number[] }
 }
 
@@ -613,6 +625,31 @@ export function applyReroll(
     { type: 'DiceRerolled', side: label, operativeId: side.operativeId, source: parsed.command ? 'command' : (parsed.grantId ?? 'unknown'), indexes: dice, before, after: rolled },
     side.seat,
   )
+}
+
+/**
+ * M9 batch B: re-roll dice of a side because a rule forces it (Omen: re-roll 6s), outside any grant or Command
+ * Re-roll. Only dice that were rolled and not yet re-rolled are touched; they count as re-rolled (R-9.2).
+ */
+export function forcedReroll(ctx: Ctx, side: DiceSide, indexes: number[], source: string, label: 'attack' | 'defence', prefix: string): number[] {
+  const elig = new Set(eligibleDice(side))
+  const dice = indexes.filter((i) => elig.has(i))
+  if (dice.length === 0) return []
+  const before = dice.map((i) => side.dice[i]!.value)
+  const rolled = ctx.roll(`${prefix}.${label}.forced`, dice.length)
+  dice.forEach((i, k) => {
+    const d = side.dice[i]!
+    d.value = rolled[k]!
+    d.rerolled = true
+    d.kind = kindOf(d.value, side.need, side.lethal)
+  })
+  ctx.emit({ type: 'DiceRerolled', side: label, operativeId: side.operativeId, source, indexes: dice, before, after: rolled }, side.seat)
+  return dice
+}
+
+/** M9 batch B: run the diceRolled hook for a freshly rolled side. */
+export function runDiceRolled(ctx: Ctx, kind: 'shoot' | 'fight', which: 'attack' | 'defence', side: DiceSide, opponentId: string): void {
+  runHook('diceRolled', { seat: side.seat, state: ctx.state, engine: ctx, operativeId: side.operativeId, targetId: opponentId, ...(side.weaponId ? { weaponId: side.weaponId } : {}), data: { kind, side: which, diceSide: side } })
 }
 
 /** Index of the next option phase for a side, given that it has just made (or passed) a re-roll. */
@@ -1011,8 +1048,8 @@ export function inflict(
  * suspended and the owner of that decision calls `continueRemovals(ctx)` when it is finished.
  * Returns true when every operative has been removed.
  */
-export function beginRemovals(ctx: Ctx, ids: string[]): boolean {
-  ctx.state.removal = { ids: ids.slice(), hooked: [] }
+export function beginRemovals(ctx: Ctx, ids: string[], killers?: Record<string, string>): boolean {
+  ctx.state.removal = { ids: ids.slice(), hooked: [], ...(killers && Object.keys(killers).length > 0 ? { killers: { ...killers } } : {}) }
   return processRemovals(ctx)
 }
 
@@ -1038,6 +1075,14 @@ function processRemovals(ctx: Ctx): boolean {
       op.ready = false
       op.flags.guard = false
       ctx.emit({ type: 'OperativeRemoved', operativeId: id }, op.seat)
+      // M9 batch B: the killer's seat may answer the removal (operative.killed window)
+      if (!(r.killWindowed ?? []).includes(id)) {
+        r.killWindowed = [...(r.killWindowed ?? []), id]
+        if (killWindow?.(ctx, op)) {
+          r.ids.shift()
+          return false
+        }
+      }
     }
     r.ids.shift()
   }
@@ -1047,6 +1092,12 @@ function processRemovals(ctx: Ctx): boolean {
 
 let removalsDone: ((ctx: Ctx) => void) | null = null
 let removalWindow: ((ctx: Ctx, op: Operative) => boolean) | null = null
+let killWindow: ((ctx: Ctx, op: Operative) => boolean) | null = null
+
+/** M9 batch B: ploys.ts registers the `operative.killed` window, offered after a removal (true: the queue waits). */
+export function registerKillWindow(fn: ((ctx: Ctx, op: Operative) => boolean) | null): void {
+  killWindow = fn
+}
 
 /**
  * ploys.ts registers the `operative.incapacitated` ploy window of the removal queue: true when it raised a

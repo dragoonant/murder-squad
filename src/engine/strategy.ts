@@ -10,7 +10,8 @@ import { removeEffects } from './effects'
 import { runHook } from './hooks'
 import { restoreTurningPointWeapons } from './equipment'
 import { onTurningPointStart } from './missions'
-import { findGambit, gambitOffers, usePloy } from './ploys'
+import { findGambit, gambitOffers, openOpponentUsedWindow, usePloy } from './ploys'
+import { providerInitiativeReroll } from './team-rules'
 
 export const TURNING_POINTS = 4
 
@@ -51,12 +52,25 @@ function raiseInitiativeRoll(ctx: Ctx, seat: Seat): void {
   })
 }
 
-function handleRoll(_state: GameState, action: Action): Handled {
+function handleRoll(state: GameState, action: Action): Handled {
   if (action.type !== 'strategy.initiative') return reject('E_WRONG_DECISION', 'expected an initiative roll')
+  const reroll = (action.payload as { reroll?: unknown }).reroll
+  const asking = state.strategy.rolls.A !== undefined && state.strategy.rolls.B !== undefined
+  if (asking && typeof reroll !== 'boolean') return reject('E_SCHEMA', 'answer the re-roll offer with reroll true or false')
   return {
     run(ctx) {
       const s = ctx.state
       const seat = action.seat
+      if (asking) {
+        // M9 batch B: a team rule's initiative re-roll (Writ of Claim), once per seat per TP
+        if (reroll === true) {
+          for (const p of providerInitiativeReroll(s, seat)) p.onInitiativeReroll?.(ctx, seat)
+          const [v] = ctx.roll('strategy.initiative.reroll', 1)
+          s.strategy.rolls[seat] = v!
+        }
+        resolveRolls(ctx)
+        return
+      }
       const [v] = ctx.roll('strategy.initiative', 1)
       s.strategy.rolls[seat] = v!
       const { A, B } = s.strategy.rolls
@@ -64,28 +78,51 @@ function handleRoll(_state: GameState, action: Action): Handled {
         raiseInitiativeRoll(ctx, otherSeat(seat))
         return
       }
-      if (A !== B) {
-        decideInitiative(ctx, A > B ? 'A' : 'B')
-        return
-      }
-      // R-2.1: on a tie the player who did not hold initiative decides (TP1: who lacked it in setup).
-      const previous = s.initiative ?? 'A'
-      const decider = otherSeat(previous)
-      s.strategy.step = 'decide'
-      ctx.raise({
-        kind: 'strategy.decideInitiative',
-        seat: decider,
-        window: 'turningPoint.start',
-        context: { rolls: { A, B }, tie: true },
-        options: SEATS.map((x) => ({
-          id: x,
-          labelKey: x === decider ? 'strategy.initiativeSelf' : 'strategy.initiativeOpponent',
-          type: 'strategy.decideInitiative' as const,
-          payload: { seat: x },
-        })),
-      })
+      resolveRolls(ctx)
     },
   }
+}
+
+/** Both dice are rolled: offer any initiative re-roll a team rule allows (M9 batch B), then the result or the tie. */
+function resolveRolls(ctx: Ctx): void {
+  const s = ctx.state
+  const { A, B } = s.strategy.rolls as { A: number; B: number }
+  for (const seat of SEATS) {
+    if ((s.strategy.rerollAsked ?? []).includes(seat)) continue
+    if (providerInitiativeReroll(s, seat).length === 0) continue
+    s.strategy.rerollAsked = [...(s.strategy.rerollAsked ?? []), seat]
+    ctx.raise({
+      kind: 'strategy.initiative',
+      seat,
+      window: 'turningPoint.start',
+      context: { rolls: { A, B }, holder: s.initiative, reroll: true },
+      options: [
+        { id: 'reroll', labelKey: 'strategy.rerollInitiative', type: 'strategy.initiative', payload: { reroll: true } },
+        { id: 'keep', labelKey: 'strategy.keepInitiative', type: 'strategy.initiative', payload: { reroll: false } },
+      ],
+    })
+    return
+  }
+  if (A !== B) {
+    decideInitiative(ctx, A > B ? 'A' : 'B')
+    return
+  }
+  // R-2.1: on a tie the player who did not hold initiative decides (TP1: who lacked it in setup).
+  const previous = s.initiative ?? 'A'
+  const decider = otherSeat(previous)
+  s.strategy.step = 'decide'
+  ctx.raise({
+    kind: 'strategy.decideInitiative',
+    seat: decider,
+    window: 'turningPoint.start',
+    context: { rolls: { A, B }, tie: true },
+    options: SEATS.map((x) => ({
+      id: x,
+      labelKey: x === decider ? 'strategy.initiativeSelf' : 'strategy.initiativeOpponent',
+      type: 'strategy.decideInitiative' as const,
+      payload: { seat: x },
+    })),
+  })
 }
 
 function handleDecide(_state: GameState, action: Action): Handled {
@@ -169,6 +206,7 @@ function advanceGambit(ctx: Ctx): void {
       return
     }
     ctx.emit({ type: 'GambitPassed' }, g.turn)
+    gambitPassedHook(ctx, g.turn, false)
     g.passes += 1
     g.turn = otherSeat(g.turn)
   }
@@ -183,6 +221,7 @@ function handleGambit(state: GameState, action: Action): Handled {
       run(ctx) {
         const g = ctx.state.strategy.gambit
         ctx.emit({ type: 'GambitPassed' }, action.seat)
+        gambitPassedHook(ctx, action.seat, true)
         g.passes += 1
         g.turn = otherSeat(g.turn)
         advanceGambit(ctx)
@@ -210,11 +249,20 @@ function handleGambit(state: GameState, action: Action): Handled {
       g.turn = otherSeat(seat)
       usePloy(ctx, seat, offer, { window: 'strategy.gambit' })
       ctx.emit({ type: 'GambitUsed', gambitId: gambit.id })
+      ;(g.order ??= []).push({ seat, gambitId: gambit.id })
       // a gambit may start decisions of its own (SSSSHHHH! free Dashes); they resume the step
       if (s.pending) return
+      // M9 batch B: the other seat may answer the gambit (Devious Scheme); the step resumes afterwards
+      if (openOpponentUsedWindow(ctx, seat, gambit.id, 'gambit')) return
       advanceGambit(ctx)
     },
   }
+}
+
+/** M9 batch B: run the gambit.passed hooks (Cunning). */
+function gambitPassedHook(ctx: Ctx, seat: Seat, explicit: boolean): void {
+  const g = ctx.state.strategy.gambit
+  runHook('gambit.passed', { seat, state: ctx.state, engine: ctx, data: { explicit, usedThisStep: [...(g.order ?? [])], passes: g.passes } })
 }
 
 export const strategyModule: ModuleDef = {

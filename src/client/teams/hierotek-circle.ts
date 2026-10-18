@@ -2,9 +2,8 @@
 // this team's weapons and datacards (teams/types.ts). Owned by the team implementer. Coverage tests require an
 // entry for every weapon once team.json says `playable`.
 //
-// Until the Necron attachment GLBs exist (concept art: art/attachment-concepts/ht-w-*.png) every weapon reuses the
-// nearest existing mesh, so the figures hold something sensible and the attachment tests stay green. The bodies
-// are procedural stand-ins (ht-*). Glossary entries for this team's keywords, abilities, ploys and equipment come
+// Bodies (ht-*) and attachments (ht-w-*) are Hunyuan GLBs from the concept art; a staff's melee profile maps to the
+// same mesh as its ranged one (drawn once), and the bayonet and claws draw nothing (part of the rifle / the body). Glossary entries for this team's keywords, abilities, ploys and equipment come
 // from the data records themselves (game/glossary.ts builds them), so there is nothing to register here.
 import type { TeamPresentation } from './types'
 
@@ -69,17 +68,6 @@ export const PRESENTATION: TeamPresentation = {
     [id('tesla-carbine')]: ['ht-w-tesla-carbine'],
     [id('bayonet')]: [],
   },
-  standIns: [
-    'ht-chronomancer',
-    'ht-psychomancer',
-    'ht-technomancer',
-    'ht-plasmacyte-accelerator',
-    'ht-plasmacyte-reanimator',
-    'ht-apprentek',
-    'ht-deathmark',
-    'ht-immortal-despotek',
-    'ht-immortal-guardian',
-  ],
   // Keywords and rule terms in our own wording (game/glossary.ts merges them over the generic fallbacks).
   glossary: [
     { term: 'NECRON', kind: 'keyword', body: 'Species keyword carried by every Hierotek Circle operative. No current rule names it, so it only identifies the operative.' },

@@ -1,0 +1,45 @@
+{
+  "id": "legionaries",
+  "name": "Legionaries",
+  "factionKeyword": "LEGIONARY",
+  "archetypes": [
+    "security",
+    "seek-and-destroy"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "lg.aspiring-champion"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "lg.aspiring-champion"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.0,
+      "s": 0.05,
+      "l": 0.12
+    },
+    "minor": {
+      "h": 0.12,
+      "s": 0.65,
+      "l": 0.5
+    }
+  },
+  "text": "Six traitor veterans, each bearing a mark of a dark god, who kill twice where others kill once and twist every pact to their advantage.",
+  "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md section 7"
+}

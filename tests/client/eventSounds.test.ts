@@ -213,6 +213,78 @@ describe('a whole game on the real engine', () => {
   })
 })
 
+// ---------------------------------------------------------------- batch A teams
+
+/** A minimal state: one operative per seat with the given datacard keywords. */
+function stubState(a: string[], b: string[]): GameState {
+  return {
+    operatives: { A1: { id: 'A1', seat: 'A', datacardId: 'dcA' }, B1: { id: 'B1', seat: 'B', datacardId: 'dcB' } },
+    data: { datacards: { dcA: { keywords: a }, dcB: { keywords: b } } },
+  } as unknown as GameState
+}
+
+const TEAM_KEYWORDS: Record<string, { kw: string[]; faction: string; death: string; initiative: string | null }> = {
+  drone: { kw: ['PATHFINDER', "T'AU EMPIRE", 'DRONE', 'MB3 RECON'], faction: 'drone', death: 'death-drone', initiative: 'narr-initiative-pf' },
+  tau: { kw: ['PATHFINDER', "T'AU EMPIRE", "SHAS'LA"], faction: 'tau', death: 'death-tau', initiative: 'narr-initiative-pf' },
+  necron: { kw: ['HIEROTEK CIRCLE', 'NECRON', 'IMMORTAL'], faction: 'necron', death: 'death-necron', initiative: 'narr-initiative-ht' },
+  plague: { kw: ['PLAGUE MARINE', 'CHAOS', 'HERETIC ASTARTES', 'FIGHTER'], faction: 'plague', death: 'death-plague', initiative: 'narr-initiative-pm' },
+  cultist: { kw: ['WYRMBLADE', 'TYRANIDS', 'GENESTEALER CULTS'], faction: 'cultist', death: 'death-cultist', initiative: 'narr-initiative-wb' },
+  marine: { kw: ['ADEPTUS ASTARTES', 'ANGEL OF DEATH'], faction: 'marine', death: 'death-marine', initiative: 'narr-initiative-aod' },
+  ork: { kw: ['ORK', 'KOMMANDO'], faction: 'ork', death: 'death-ork', initiative: 'narr-initiative-kom' },
+}
+
+describe('batch A team sounds (Pathfinders, Hierotek Circle, Plague Marines, Wyrmblade)', () => {
+  it('sorts operatives into factions by keyword, and deaths and initiative lines follow', () => {
+    for (const [name, t] of Object.entries(TEAM_KEYWORDS)) {
+      const state = stubState(t.kw, ['ORK'])
+      expect(factionOf(state, 'A1'), name).toBe(t.faction)
+      const death = soundsForEvent(ev({ type: 'OperativeIncapacitated', operativeId: 'A1', seq: 1 }), { ...EMPTY_CONTEXT, state })
+      expect(death[0]!.id.startsWith(t.death), name).toBe(true)
+      const init = soundsForEvent(ev({ type: 'InitiativeDecided', holder: 'A', setup: false }), { ...EMPTY_CONTEXT, state })
+      expect(init.map((s) => s.id), name).toContain(t.initiative)
+    }
+    expect(factionOf(stubState(['SOMETHING ELSE'], []), 'A1')).toBe('other')
+  })
+
+  it('every new team death, initiative and effect id exists as an mp3', () => {
+    const ids = ['death-drone', 'death-tau', 'death-necron', 'death-plague', 'death-cultist', 'fx-reanimate', 'fx-ambush-emerge', 'ui-markerlight', 'fx-flies-swarm', 'fx-plague-bell', 'shout-brood-hiss', 'narr-initiative-pf', 'narr-initiative-ht', 'narr-initiative-pm', 'narr-initiative-wb']
+    for (const id of ids) {
+      expect(SOUND_IDS).toContain(id)
+      expect(existsSync(mp3(id)), id).toBe(true)
+    }
+  })
+
+  it('a reanimated or emerging operative gets its sting; other returns are silent', () => {
+    const back = (kind: string) => soundsForEvent(ev({ type: 'OperativeReturned', operativeId: 'A1', pos: { x: 0, y: 0, z: 0 }, wounds: 1, ready: true, kind }), EMPTY_CONTEXT).map((s) => s.id)
+    expect(back('reanimated')).toEqual(['fx-reanimate'])
+    expect(back('emerge')).toEqual(['fx-ambush-emerge'])
+    expect(back('somethingElse')).toEqual([])
+  })
+
+  it('gaining a markerlight token pings; losing one or other tokens does not', () => {
+    const token = (kind: string, delta: number) => soundsForEvent(ev({ type: 'TokenChanged', operativeId: 'B1', kind, owner: 'A', count: 1, delta, reason: 'markerlight' }), EMPTY_CONTEXT).map((s) => s.id)
+    expect(token('pf.markerlight', 1)).toEqual(['ui-markerlight'])
+    expect(token('pf.markerlight', -1)).toEqual([])
+    expect(token('other.token', 1)).toEqual([])
+  })
+
+  it('Plague Marine and Wyrmblade moments add their effect on top of the ploy click', () => {
+    const ploy = (ployId: string) => soundsForEvent(ev({ type: 'PloyUsed', ployId }), EMPTY_CONTEXT).map((s) => s.id)
+    expect(ploy('pm.p.cloud-of-flies')).toEqual(['ui-order-engage', 'fx-flies-swarm'])
+    expect(ploy('pm.p.contagion')).toEqual(['ui-order-engage', 'fx-plague-bell'])
+    expect(ploy('other.p.x')).toEqual(['ui-order-engage'])
+    const ability = (abilityId: string) => soundsForEvent(ev({ type: 'AbilityUsed', operativeId: 'A1', abilityId }), EMPTY_CONTEXT).map((s) => s.id)
+    expect(ability('wyr.a.quicksilver-strike')).toEqual(['shout-brood-hiss'])
+    expect(ability('pm.a.icon-of-contagion')).toEqual(['fx-plague-bell'])
+    expect(ability('aod.a.optics')).toEqual([])
+  })
+
+  it('a Wyrmblade interrupt hisses', () => {
+    const state = stubState(TEAM_KEYWORDS.cultist!.kw, ['ORK'])
+    expect(soundsForEvent(ev({ type: 'GuardInterrupt', operativeId: 'A1' }), { ...EMPTY_CONTEXT, state }).map((s) => s.id)).toEqual(['shout-brood-hiss'])
+  })
+})
+
 // ---------------------------------------------------------------- music and settings
 
 describe('music plan', () => {

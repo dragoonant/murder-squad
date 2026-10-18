@@ -35,15 +35,15 @@ import {
 } from './abilities'
 import { smokeActivation, smokeTurningPointEnd } from './core-hooks'
 import { expireEffects, removeEffects } from './effects'
-import { providerAny, providerChain, providerCostDelta, providerGate, providerReactions, type ReactionOffer } from './team-rules'
-import { getFrameResume, registerFrameResume, runHook } from './hooks'
+import { providerAny, providerCanActivate, providerChain, providerCostDelta, providerGate, providerReactions, type ReactionOffer } from './team-rules'
+import { getFrameResume, registerFrameResume, runHook, type ActionDeclaredData } from './hooks'
 import { tokensOnActivationEnd, tokensOnActivationStart, tokensOnTurningPointEnd } from './tokens'
 import { PICK_UP, PLACE } from './markers'
 import { scoreBattleEnd, scoreTurningPointEnd } from './missions'
 import { openPloyWindow } from './ploys'
 import { handleInterrupt, offerInterrupt } from './guard'
 import type { PloyWindowInfo } from './code-hooks'
-import type { TimingWindowId } from './types'
+import type { Order, TimingWindowId } from './types'
 
 export interface ActionDef {
   cost: number
@@ -102,6 +102,8 @@ export function actionAvailability(
 
   const forbidden = actionForbidden(state, op, actionId)
   if (forbidden) return restricted(forbidden)
+  // M9 batch B: an action.declared rule cancelled this action and barred it for the rest of the activation
+  if (activation?.barred?.includes(actionId)) return restricted(`${actionId} was stopped and cannot be tried again this activation`)
   if (!counteract && performed.filter((p) => p === actionId).length >= maxRepeats(state, op, actionId, performed)) {
     return restricted(`${actionId} cannot be performed twice in one activation`)
   }
@@ -190,7 +192,11 @@ function advance(ctx: Ctx): void {
   // M9 prep: a chained activation is owed (Group Activation): the same seat activates one of those next
   const chain = s.firefight.chain
   if (chain) {
-    const owed = readyOps(s, chain.seat).filter((o) => chain.ids.includes(o.id))
+    let owed = readyOps(s, chain.seat).filter((o) => chain.ids.includes(o.id))
+    // M9 batch B: an owed operative a rule blocks (System Jam) is skipped while an unblocked ready one exists
+    const unblocked = owed.filter((o) => providerCanActivate(s, o))
+    if (unblocked.length > 0) owed = unblocked
+    else if (readyOps(s, chain.seat).some((o) => providerCanActivate(s, o))) owed = []
     if (owed.length > 0) {
       s.firefight.turn = chain.seat
       raiseActivate(ctx, chain.seat, owed, [])
@@ -203,13 +209,27 @@ function advance(ctx: Ctx): void {
     const gated = s.firefight.gated ?? []
     const all = readyOps(s, seat)
     // operatives a rule stopped from activating this time (Vision of Madness), unless nothing else is ready
-    const mine = all.filter((o) => !gated.includes(o.id)).length > 0 ? all.filter((o) => !gated.includes(o.id)) : all
+    let mine = all.filter((o) => !gated.includes(o.id)).length > 0 ? all.filter((o) => !gated.includes(o.id)) : all
+    // M9 batch B: operatives a rule blocks while another is ready (System Jam); never all of them
+    const free = mine.filter((o) => providerCanActivate(s, o))
+    if (free.length > 0) mine = free
     const theirs = readyOps(s, otherSeat(seat))
     if (mine.length === 0 && theirs.length === 0) {
       endTurningPoint(ctx)
       return
     }
     if (mine.length > 0) {
+      // M9 batch B: a ploy window for the seat before it picks (Heinous Arrogance may pass the activation)
+      if (s.firefight.beforeActivationFor !== seat && openPloyWindow(ctx, 'firefight.beforeActivation', { window: 'firefight.beforeActivation', seat }, [seat], 'beforeActivation')) {
+        s.firefight.beforeActivationFor = seat
+        return
+      }
+      if (s.firefight.skipping === seat) {
+        s.firefight.skipping = null
+        s.firefight.beforeActivationFor = null
+        s.firefight.turn = otherSeat(seat)
+        continue
+      }
       raiseActivate(ctx, seat, mine, [])
       return
     }
@@ -291,6 +311,7 @@ export function raiseAction(ctx: Ctx): void {
   for (const offer of abilityOffers(s, op, act)) {
     const mission = (s.data.abilities[offer.abilityId]?.keywords ?? []).includes('MISSION')
     if (delegated && !delegatedAllows(delegated, offer.action, offer.cost, mission)) continue
+    if (act.barred?.includes(offer.action)) continue
     options.push(abilityOption(offer))
   }
   if (options.length === 0) {
@@ -299,6 +320,16 @@ export function raiseAction(ctx: Ctx): void {
     else if (act.counteract) endCounteract(ctx)
     else endActivation(ctx)
     return
+  }
+  // M9 batch B: a joint activation lets the player switch to the other operative at any point between actions
+  if (act.partner && !act.frame && !act.counteract) {
+    options.push({
+      id: 'switch',
+      labelKey: 'action.switchOperative',
+      type: 'firefight.action',
+      payload: { action: 'switch' },
+      data: { operativeId: act.partner.operativeId },
+    })
   }
   options.push({
     id: 'end',
@@ -349,6 +380,22 @@ function finishEndActivation(ctx: Ctx): void {
   tokensOnActivationEnd(ctx, op.id)
   // M2b-attack: timed APL effects (Stun) end with the operative's activation; a point-blank restriction too
   expireAplEffects(ctx, op.id)
+  // M9 batch B: one half of a joint activation ended: the other operative carries on (activation-wide expiry waits)
+  const partner = act.partner
+  if (partner) {
+    smokeActivation(ctx)
+    ctx.emit({ type: 'OperativeExpended', operativeId: op.id }, op.seat)
+    delete partner.partner
+    s.firefight.activation = partner
+    const p = s.operatives[partner.operativeId]
+    if (!p || p.status !== 'active') {
+      if (p && p.status !== 'removed') p.ready = false
+      endActivation(ctx)
+      return
+    }
+    raiseAction(ctx)
+    return
+  }
   for (const o of Object.values(s.operatives)) delete o.flags.cannotRetaliate
   expireEffects(ctx, 'activation')
   smokeActivation(ctx)
@@ -362,6 +409,8 @@ function finishEndActivation(ctx: Ctx): void {
     s.firefight.chain = { seat: op.seat, ids: owed, from: op.id }
     ctx.emit({ type: 'ActivationChained', fromId: op.id, operativeIds: owed }, op.seat)
   }
+  // M9 batch B: the other seat may react now that the activation is over (the Butcher's free Charge)
+  if (offerEndReaction(ctx, op, false)) return
   advance(ctx)
 }
 
@@ -372,7 +421,55 @@ function endCounteract(ctx: Ctx): void {
   expireEffects(ctx, 'activation')
   s.firefight.activation = null
   s.firefight.turn = otherSeat(act.seat)
+  const op = s.operatives[act.operativeId]
+  if (op && offerEndReaction(ctx, op, true)) return
   advance(ctx)
+}
+
+/**
+ * M9 batch B: reaction point at the end of an activation or counteraction (team-rules `reactions` with
+ * `activationEnded`), offered to the other seat after the end-of-activation window, hooks and expiry, before the
+ * next activation is chosen. reactionDone then advances. True when a decision was raised.
+ */
+function offerEndReaction(ctx: Ctx, actor: Operative, counteract: boolean): boolean {
+  const s = ctx.state
+  if (s.phase !== 'firefight' || s.firefight.activation || s.firefight.reactionAtEnd) return false
+  const seat = otherSeat(actor.seat)
+  const offers = providerReactions(s, seat, { actorId: actor.id, action: 'activationEnded', activeSeat: actor.seat, moved: false, activationEnded: true, counteract })
+  if (offers.length === 0) return false
+  s.firefight.reactionAtEnd = true
+  raiseReaction(ctx, seat, actor.id, 'activationEnded', offers, 'firefight.activationEnded')
+  return true
+}
+
+/**
+ * M9 batch B: run the action.declared hooks for the action just declared in the current activation or frame. True
+ * when a handler cancelled it (cancelAction has run: no AP spent; with `bar` it cannot be tried again this activation).
+ */
+function declaredVeto(ctx: Ctx, op: Operative, actionId: string, free: boolean): boolean {
+  const s = ctx.state
+  const a = s.firefight.activation!
+  const activeSeat = (a.frame ? (s.firefight.stack ?? []).at(-1)?.seat : undefined) ?? a.seat
+  const data: ActionDeclaredData = { action: actionId, counteract: a.counteract, free, activeSeat, cancel: false, bar: false }
+  runHook('action.declared', { seat: op.seat, state: s, engine: ctx, operativeId: op.id, action: actionId, data: data as unknown as Record<string, unknown> })
+  if (!data.cancel) return false
+  if (data.bar) {
+    // bar it on the activation (and on the operative's own activation under a free-action frame)
+    a.barred = [...new Set([...(a.barred ?? []), actionId])]
+    const under = (s.firefight.stack ?? []).at(-1)
+    if (a.frame && under && under.operativeId === op.id) under.barred = [...new Set([...(under.barred ?? []), actionId])]
+  }
+  cancelAction(ctx)
+  return true
+}
+
+/** M9 batch B: after the active player's own declaration window, the opponent's (Scrapcode Overload), then the action runs. */
+function declaredOpponentWindow(ctx: Ctx): void {
+  const s = ctx.state
+  const a = s.firefight.activation!
+  const decl = a.declared!
+  if (openFirefightWindow(ctx, 'firefight.opponentActionDeclared', { actorId: a.operativeId, counteracting: a.counteract, action: decl.action }, 'declared.opponent')) return
+  dispatchDeclared(ctx)
 }
 
 /** Called by the movement module (or any action module) once the declared action completed. */
@@ -472,7 +569,10 @@ export function firefightResume(ctx: Ctx, token: string): void {
       raiseAction(ctx)
       return
     case 'declared':
-      dispatchDeclared(ctx)
+      if (ctx.state.firefight.activation?.declared) declaredOpponentWindow(ctx)
+      return
+    case 'declared.opponent':
+      if (ctx.state.firefight.activation?.declared) dispatchDeclared(ctx)
       return
     case 'actionEnded.guard':
       afterActionStages(ctx, 'guard')
@@ -484,6 +584,9 @@ export function firefightResume(ctx: Ctx, token: string): void {
       finishTurningPoint(ctx)
       return
     case 'firefightStart':
+      advance(ctx)
+      return
+    case 'beforeActivation':
       advance(ctx)
       return
     case 'activationEnded':
@@ -586,7 +689,8 @@ export function startFreeAction(ctx: Ctx, o: FreeActionOpts): boolean {
   ;(s.firefight.stack ??= []).push(s.firefight.activation)
   s.firefight.activation = frame
   ctx.emit({ type: 'ActionDeclared', operativeId: op.id, action: o.action, cost: 0 }, op.seat)
-  dispatchDeclared(ctx)
+  if (declaredVeto(ctx, op, o.action, true)) return true
+  declaredOpponentWindow(ctx)
   return true
 }
 
@@ -677,6 +781,39 @@ export function afterActiveOperativeRemoved(ctx: Ctx): void {
   else endActivation(ctx)
 }
 
+/**
+ * M9 batch B: activate `partnerId` together with the operative whose activation is in progress (Extremis Mind-Link,
+ * from a ploy at its firefight.activationStart). The partner takes `order`, is activated ("is activated" rules run
+ * for it), and keeps its own AP and actions; the player switches between the two. False when it cannot join (not a
+ * ready friendly operative in the killzone, or the activation is a counteraction, a free action or already joint).
+ */
+export function joinActivation(ctx: Ctx, partnerId: string, order: Order): boolean {
+  const s = ctx.state
+  const act = s.firefight.activation
+  const p = s.operatives[partnerId]
+  if (!act || act.frame || act.counteract || act.partner || !p || p.id === act.operativeId) return false
+  if (p.seat !== act.seat || !p.ready || p.status !== 'active') return false
+  if (!allowedOrders(s, p).includes(order)) return false
+  p.movedThisActivation = 0
+  ctx.emit({ type: 'OperativeActivated', operativeId: p.id })
+  tokensOnActivationStart(ctx, p.id)
+  removeEffects(ctx, (e) => e.expires === `startOfActivation:${p.id}`)
+  const previousOrder = p.order
+  if (p.order !== order) clearGuard(ctx, p, 'order')
+  p.order = order
+  ctx.emit({ type: 'OrderSet', operativeId: p.id, order })
+  p.ready = false
+  act.partner = { operativeId: p.id, seat: p.seat, counteract: false, stage: 'action', apSpent: 0, performed: [], declared: null }
+  runHook('activation.start', { seat: p.seat, state: s, engine: ctx, operativeId: p.id, data: { previousOrder, order, joint: true } })
+  if (p.status !== 'active') delete act.partner
+  return true
+}
+
+/** M9 batch B: a ploy used in firefight.beforeActivation makes `seat` pass this activation (Heinous Arrogance). */
+export function skipActivation(ctx: Ctx, seat: Seat): void {
+  ctx.state.firefight.skipping = seat
+}
+
 /** A declared action that cannot be completed is cancelled: nothing changes, no AP is spent (R-3.8). */
 export function cancelAction(ctx: Ctx): void {
   const s = ctx.state
@@ -695,6 +832,7 @@ export function cancelAction(ctx: Ctx): void {
 
 export function endTurningPoint(ctx: Ctx): void {
   const s = ctx.state
+  if (s.firefight.beforeActivationFor) s.firefight.beforeActivationFor = null
   ctx.emit({ type: 'PhaseEnded', name: 'firefight' }, null)
   // KRUMP 'EM! and other end-of-phase ploys
   void s
@@ -847,6 +985,12 @@ export function reactionDone(ctx: Ctx): void {
     afterFrame(ctx, after.resume, after.outcome, after.data)
     return
   }
+  // M9 batch B: a reaction at the end of an activation or counteraction: the next activation is chosen
+  if (s.firefight.reactionAtEnd && !s.firefight.activation) {
+    s.firefight.reactionAtEnd = false
+    advance(ctx)
+    return
+  }
   if (s.firefight.activation) afterActionStages(ctx, 'guard')
 }
 
@@ -890,6 +1034,7 @@ function handleActivate(state: GameState, action: Action): Handled {
         const o = getOp(s, operativeId)
         o.flags.counteractedThisTP = true
         o.movedThisActivation = 0
+        if (s.firefight.beforeActivationFor) s.firefight.beforeActivationFor = null
         clearGuard(ctx, o, 'counteract')
         ctx.emit({ type: 'Counteracted', operativeId: o.id })
         s.firefight.activation = {
@@ -926,6 +1071,7 @@ function handleActivate(state: GameState, action: Action): Handled {
       }
       s.firefight.chain = null
       s.firefight.gated = []
+      if (s.firefight.beforeActivationFor) s.firefight.beforeActivationFor = null
       s.firefight.activation = {
         operativeId: o.id,
         seat: o.seat,
@@ -1057,6 +1203,19 @@ function handleAction(state: GameState, action: Action): Handled {
   if (id === 'end') {
     return { run: (ctx) => (act.frame ? closeFrame(ctx, 'cancelled') : act.counteract ? endCounteract(ctx) : endActivation(ctx)) }
   }
+  if (id === 'switch') {
+    if (!act.partner || act.frame || act.counteract) return reject('E_NOT_AN_OPTION', 'no other operative is activated with this one')
+    return {
+      run(ctx) {
+        const a = ctx.state.firefight.activation!
+        const p = a.partner!
+        delete a.partner
+        p.partner = a
+        ctx.state.firefight.activation = p
+        raiseAction(ctx)
+      },
+    }
+  }
   const op = getOp(state, act.operativeId)
   if (id.startsWith(ABILITY_PREFIX) || id === PICK_UP || id === PLACE) {
     // unique, mission, equipment and marker actions
@@ -1073,7 +1232,8 @@ function handleAction(state: GameState, action: Action): Handled {
         a.declaredSeq = s.seq
         const mission = (s.data.abilities[offer.abilityId]?.keywords ?? []).includes('MISSION')
         consumeDiscounts(s, o, a, id === PICK_UP ? 'pick-up-marker' : id === PLACE ? 'place-marker' : offer.abilityId, mission)
-        dispatchDeclared(ctx)
+        if (declaredVeto(ctx, o, id, a.frame !== undefined)) return
+        declaredOpponentWindow(ctx)
       },
     }
   }
@@ -1091,9 +1251,10 @@ function handleAction(state: GameState, action: Action): Handled {
       a.declared = { action: id, cost }
       a.declaredSeq = s.seq
       consumeDiscounts(s, o, a, id, false)
+      if (declaredVeto(ctx, o, id, a.frame !== undefined)) return
       // firefight.actionDeclared ploy window for attacks (Adjust Doctrine)
       if ((id === 'shoot' || id === 'fight') && openFirefightWindow(ctx, 'firefight.actionDeclared', { subjectId: o.id, counteracting: a.counteract, action: id }, 'declared')) return
-      dispatchDeclared(ctx)
+      declaredOpponentWindow(ctx)
     },
   }
 }

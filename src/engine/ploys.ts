@@ -5,7 +5,7 @@
 // through effects.ts.
 // first import on purpose: the leaf module is evaluated before anything that can cycle back into this file
 import { ployRules, registerPloyRule, type PloyOffer, type PloyRule } from './ploy-rules'
-import { continueRemovals, registerRemovalWindow, resumeAttack } from './attack-common'
+import { continueRemovals, registerKillWindow, registerRemovalWindow, resumeAttack } from './attack-common'
 import { getCodeHook, type PloyOfferSeed, type PloyWindowInfo } from './code-hooks'
 import { effectList } from './conditions'
 import { evalCondition, hasKeyword, inScope } from './conditions'
@@ -53,6 +53,14 @@ function declarativeCost(state: GameState, seat: Seat, ploy: RuntimePloy, info: 
 }
 
 function priceOf(state: GameState, seat: Seat, ploy: RuntimePloy, seed: PloyOfferSeed, info: PloyWindowInfo): { cost: number; via?: string } {
+  const base = basePriceOf(state, seat, ploy, seed, info)
+  // M9 batch B: surcharges after every reduction (Devious Scheme)
+  let extra = 0
+  for (const r of ployRules()) extra += r.costSurcharge?.(state, seat, ploy, seed, info) ?? 0
+  return extra > 0 ? { ...base, cost: base.cost + extra } : base
+}
+
+function basePriceOf(state: GameState, seat: Seat, ploy: RuntimePloy, seed: PloyOfferSeed, info: PloyWindowInfo): { cost: number; via?: string } {
   let cost = seed.cost ?? ploy.cost
   const decl = declarativeCost(state, seat, ploy, info)
   if (decl !== null && decl < cost) return { cost: decl, via: 'equipment' }
@@ -146,14 +154,19 @@ function applyRetain(state: GameState, opId: string, r: NonNullable<Effect['reta
 }
 
 /** Every usable (ploy, variant) the seat can pick at this timing. */
+/** M9 batch B: firefight windows that name no subject operative (scope and `when` are checked over the seat's operatives). */
+const SUBJECTLESS = ['firefight.opponentActionDeclared', 'firefight.beforeActivation', 'ploy.opponentUsed']
+
 export function offersFor(state: GameState, seat: Seat, window: string, info: PloyWindowInfo): PloyOffer[] {
   const out: PloyOffer[] = []
   const want = window === 'strategy.gambit' ? 'strategy' : 'firefight'
   // M9 shared: the Firefight phase start is a phase-level timing: strategy and firefight ploys may both name it, and
   // they are offered like gambits (no window subject; scope and `when` checked over the seat's operatives)
-  const phaseLevel = window === 'firefight.start'
+  // M9 batch B: windows with no subject operative are offered the same way (firefight ploys only)
+  const subjectless = SUBJECTLESS.includes(window)
+  const phaseLevel = window === 'firefight.start' || subjectless
   for (const ploy of Object.values(state.data.ploys ?? {})) {
-    if ((phaseLevel ? ploy.type !== 'strategy' && ploy.type !== 'firefight' : ploy.type !== want) || !ployUsable(state, seat, ploy, window, info)) continue
+    if ((phaseLevel ? (subjectless ? ploy.type !== 'firefight' : ploy.type !== 'strategy' && ploy.type !== 'firefight') : ploy.type !== want) || !ployUsable(state, seat, ploy, window, info)) continue
     const subject = info.subjectId ? state.operatives[info.subjectId] : undefined
     const when = ploy.when as Condition | undefined
     // free-action ploys (KRUMP 'EM!) name any one operative of their scope; every other firefight ploy names the window subject
@@ -323,10 +336,16 @@ export function findGambit(state: GameState, seat: Seat, gambitId: string, param
 // Firefight windows
 // ---------------------------------------------------------------------------
 
-const ATTACKER_ONLY: string[] = ['shoot.attackRolled', 'shoot.beforeDefenceRerolls']
-const DEFENDER_ONLY: string[] = ['shoot.defenceRolled']
+const ATTACKER_ONLY: string[] = ['shoot.attackRolled', 'shoot.beforeDefenceRerolls', 'shoot.beforeAttackRerolls']
+const DEFENDER_ONLY: string[] = ['shoot.defenceRolled', 'shoot.beforeDefenceRoll', 'shoot.defenderBeforeRerolls']
 
 function infoForSeat(state: GameState, window: string, base: PloyWindowInfo, seat: Seat): PloyWindowInfo | null {
+  // M9 batch B: an action was declared; only the declaring operative's opponent is asked (actorId = that enemy)
+  if (window === 'firefight.opponentActionDeclared') {
+    const actor = base.actorId ? state.operatives[base.actorId] : undefined
+    if (!actor || actor.seat === seat) return null
+    return { ...base }
+  }
   if (base.attackerId && base.targetId) {
     const a = state.operatives[base.attackerId]
     const t = state.operatives[base.targetId]
@@ -353,6 +372,24 @@ export function openPloyWindow(ctx: Ctx, window: TimingWindowId, info: PloyWindo
   ctx.state.window = { id: window, seats: [...seats], info: info as Record<string, unknown>, resume, used: [] }
   return advanceWindow(ctx)
 }
+
+/**
+ * M9 batch B: `usedBy` has just used `ployId` (a firefight ploy in a window, or a gambit): the other seat gets the
+ * `ploy.opponentUsed` window (Devious Scheme) before play goes on. An open window waits on `windowStack` and is
+ * resumed afterwards. Never nested twice; true when a decision was raised.
+ */
+export function openOpponentUsedWindow(ctx: Ctx, usedBy: Seat, ployId: string, resume: string): boolean {
+  const s = ctx.state
+  if (s.window?.id === 'ploy.opponentUsed' || (s.windowStack ?? []).some((w) => w.id === 'ploy.opponentUsed')) return false
+  const info: PloyWindowInfo = { window: 'ploy.opponentUsed', ployId, usedBy }
+  const other = otherSeat(usedBy)
+  if (offersFor(s, other, 'ploy.opponentUsed', info).length === 0) return false
+  const parent = s.window
+  if (parent) (s.windowStack ??= []).push(parent)
+  return openPloyWindow(ctx, 'ploy.opponentUsed', info, [other], parent ? NESTED_RESUME : resume)
+}
+
+const NESTED_RESUME = 'nested'
 
 function advanceWindow(ctx: Ctx): boolean {
   const s = ctx.state
@@ -389,7 +426,17 @@ function advanceWindow(ctx: Ctx): boolean {
 
 /** The window is exhausted: hand control back to whoever opened it. */
 function closeWindow(ctx: Ctx, resume: string): void {
-  if (resume === 'attack') resumeAttack(ctx)
+  if (resume === NESTED_RESUME) {
+    // M9 batch B: back to the window the nested ploy.opponentUsed window interrupted
+    const s = ctx.state
+    const parent = (s.windowStack ?? []).pop() ?? null
+    if (s.windowStack && s.windowStack.length === 0) delete s.windowStack
+    s.window = parent
+    if (parent && !advanceWindow(ctx)) closeWindow(ctx, parent.resume)
+    return
+  }
+  if (resume === 'gambit') resumeGambit(ctx)
+  else if (resume === 'attack') resumeAttack(ctx)
   else if (resume === REMOVAL_RESUME) continueRemovals(ctx)
   else firefightResume(ctx, resume)
 }
@@ -401,6 +448,18 @@ const REMOVAL_RESUME = 'removal'
 registerRemovalWindow((ctx, op) => {
   if (ctx.state.window) return false
   return openPloyWindow(ctx, 'operative.incapacitated', { window: 'operative.incapacitated', subjectId: op.id }, [op.seat], REMOVAL_RESUME)
+})
+
+// M9 batch B: once an attack's victim is removed, the seat whose operative incapacitated it gets `operative.killed`
+// (Vitalised Surge, Brutal Display): the shooter, or the other fighter. Not for self-inflicted removals (Hot).
+registerKillWindow((ctx, op) => {
+  const s = ctx.state
+  if (s.window) return false
+  const killerId = s.removal?.killers?.[op.id]
+  const killer = killerId ? s.operatives[killerId] : undefined
+  if (!killer || killer.seat === op.seat || killer.status !== 'active') return false
+  const info: PloyWindowInfo = { window: 'operative.killed', subjectId: killer.id, removedId: op.id, removedPos: { ...op.pos } }
+  return openPloyWindow(ctx, 'operative.killed', info, [killer.seat], REMOVAL_RESUME)
 })
 
 // The attack sequences open windows through this registered opener (hooks.ts).
@@ -459,6 +518,8 @@ function handlePloy(state: GameState, action: { type: string; seat: Seat; payloa
       usePloy(ctx, seat, offer, info!)
       // a ploy may have started a free action or a decision of its own; otherwise keep offering
       if (ctx.state.pending) return
+      // M9 batch B: the other seat may answer the ploy (Devious Scheme); this window resumes afterwards
+      if (openOpponentUsedWindow(ctx, seat, offer.ployId, win.resume)) return
       if (!advanceWindow(ctx)) closeWindow(ctx, win.resume)
     },
   }

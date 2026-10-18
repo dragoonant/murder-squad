@@ -1,8 +1,8 @@
 // Wyrmblade client presentation: weapon flavours, VFX families, sounds, attachments and figure stand-ins for
 // this team's weapons and datacards (teams/types.ts). Every weapon has an explicit entry (the coverage tests
-// require one for each playable team). Sounds reuse the existing mp3 set; attachments reuse the closest
-// existing mesh until Wyrmblade meshes exist (concept art: art/attachment-concepts/wb-w-*.png), and the natural
-// weapons (gun butt, fists, barbed tail) draw nothing. Figures use the procedural stand-in until the GLBs exist.
+// require one for each playable team). Sounds reuse the existing mp3 set; bodies (wb-*) and
+// attachments (wb-w-*) are Hunyuan GLBs from the concept art, the bolt pistol, chainsword and dynamite reuse the shared
+// meshes, and the natural weapons (gun butt, fists, barbed tail) draw nothing.
 import type { TeamPresentation } from './types'
 
 const f = (id: string) => `wyr.w.${id}`
@@ -144,17 +144,6 @@ export const PRESENTATION: TeamPresentation = {
     [f('blasting-charge')]: ['e-dynamite'],
     [f('cult-knife')]: ['w-throwing-knife'],
   },
-  standIns: [
-    'wb-neophyte-leader',
-    'wb-kelermorph',
-    'wb-locus',
-    'wb-neophyte-gunner',
-    'wb-neophyte-heavy-gunner',
-    'wb-neophyte-icon-bearer',
-    'wb-sanctus-sniper',
-    'wb-sanctus-talon',
-    'wb-neophyte-warrior',
-  ],
   // Keywords and rule terms in our own wording (game/glossary.ts merges them over the generic fallbacks).
   glossary: [
     { term: 'TYRANIDS', kind: 'keyword', body: 'Species keyword carried by every Wyrmblade operative. No current rule names it, so it only identifies the operative.' },

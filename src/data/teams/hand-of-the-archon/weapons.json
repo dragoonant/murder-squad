@@ -1,0 +1,151 @@
+[
+  {
+    "id": "ha.w.blast-pistol",
+    "name": "Blast pistol",
+    "team": "hand-of-the-archon",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 2
+      }
+    ],
+    "text": "A sidearm that spits a short beam of darklight.",
+    "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md section 8"
+  },
+  {
+    "id": "ha.w.splinter-pistol",
+    "name": "Splinter pistol",
+    "team": "hand-of-the-archon",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 2,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "A light pistol firing slivers soaked in venom.",
+    "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md section 8"
+  },
+  {
+    "id": "ha.w.splinter-rifle",
+    "name": "Splinter rifle",
+    "team": "hand-of-the-archon",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 2,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "A long, slender rifle whose toxic shards need only a scratch.",
+    "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md section 8"
+  },
+  {
+    "id": "ha.w.agoniser",
+    "name": "Agoniser",
+    "team": "hand-of-the-archon",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.brutal"
+      },
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      },
+      {
+        "rule": "core.wr.shock"
+      }
+    ],
+    "text": "A barbed lash that floods the victim's nerves with agony.",
+    "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md section 8"
+  },
+  {
+    "id": "ha.w.power-weapon",
+    "name": "Power weapon",
+    "team": "hand-of-the-archon",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 6
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "A blade sheathed in a field that parts armour like cloth.",
+    "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md section 8"
+  },
+  {
+    "id": "ha.w.venom-blade",
+    "name": "Venom blade",
+    "team": "hand-of-the-archon",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "4+"
+      }
+    ],
+    "text": "A slim knife that injects a killing toxin with every cut.",
+    "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md section 8"
+  },
+  {
+    "id": "ha.w.array-of-blades",
+    "name": "Array of blades",
+    "team": "hand-of-the-archon",
+    "type": "melee",
+    "atk": 3,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [],
+    "text": "An assortment of hooked knives and spurs kept within easy reach.",
+    "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md section 8"
+  }
+]

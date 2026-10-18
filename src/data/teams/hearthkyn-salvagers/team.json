@@ -1,0 +1,45 @@
+{
+  "id": "hearthkyn-salvagers",
+  "name": "Hearthkyn Salvagers",
+  "factionKeyword": "HEARTHKYN SALVAGER",
+  "archetypes": [
+    "recon",
+    "security"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "hk.theyn"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "hk.theyn"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.08,
+      "s": 0.62,
+      "l": 0.45
+    },
+    "minor": {
+      "h": 0.58,
+      "s": 0.12,
+      "l": 0.34
+    }
+  },
+  "text": "Ten stocky void-salvagers who stake claims on objectives and hold a grudge against whoever kills one of their kin.",
+  "source": "Hearthkyn Salvagers team PDF (April '26); docs/spec/13-teams.md section 10"
+}

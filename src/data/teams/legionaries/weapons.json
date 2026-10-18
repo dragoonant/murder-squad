@@ -1,0 +1,161 @@
+[
+  {
+    "id": "lg.w.plasma-pistol-standard",
+    "name": "Plasma pistol",
+    "team": "legionaries",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      }
+    ],
+    "profileGroup": "lg.wg.plasma-pistol",
+    "profile": "standard",
+    "text": "A heretic plasma sidearm fired at a safe setting.",
+    "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md section 7.3"
+  },
+  {
+    "id": "lg.w.plasma-pistol-supercharge",
+    "name": "Plasma pistol",
+    "team": "legionaries",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.hot"
+      },
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      }
+    ],
+    "profileGroup": "lg.wg.plasma-pistol",
+    "profile": "supercharge",
+    "text": "The same pistol pushed past its limits, at a risk to the bearer.",
+    "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md section 7.3"
+  },
+  {
+    "id": "lg.w.tainted-bolt-pistol",
+    "name": "Tainted bolt pistol",
+    "team": "legionaries",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.rending"
+      }
+    ],
+    "text": "A bolt pistol loaded with warp-cursed rounds that find the gaps in armour.",
+    "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md section 7.3"
+  },
+  {
+    "id": "lg.w.power-fist",
+    "name": "Power fist",
+    "team": "legionaries",
+    "type": "melee",
+    "atk": 5,
+    "hit": "4+",
+    "dmg": {
+      "normal": 5,
+      "crit": 7
+    },
+    "rules": [
+      {
+        "rule": "core.wr.brutal"
+      }
+    ],
+    "text": "A crackling gauntlet that crushes whatever it grips; only a solid parry turns it.",
+    "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md section 7.3"
+  },
+  {
+    "id": "lg.w.power-maul",
+    "name": "Power maul",
+    "team": "legionaries",
+    "type": "melee",
+    "atk": 5,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 6
+    },
+    "rules": [
+      {
+        "rule": "core.wr.shock"
+      }
+    ],
+    "text": "An energised bludgeon whose best blows knock aside the foe's guard.",
+    "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md section 7.3"
+  },
+  {
+    "id": "lg.w.power-weapon",
+    "name": "Power weapon",
+    "team": "legionaries",
+    "type": "melee",
+    "atk": 5,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 6
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "A blade sheathed in a disruption field, quick to land a killing cut.",
+    "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md section 7.3"
+  },
+  {
+    "id": "lg.w.tainted-chainsword",
+    "name": "Tainted chainsword",
+    "team": "legionaries",
+    "type": "melee",
+    "atk": 5,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.rending"
+      }
+    ],
+    "text": "A corrupted chain blade whose teeth chew deep once they bite.",
+    "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md section 7.3"
+  }
+]

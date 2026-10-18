@@ -18,7 +18,10 @@ export function normAction(id: string): string {
 }
 
 export function hasKeyword(state: GameState, op: Operative, kw: string): boolean {
-  return state.data.datacards[op.datacardId]?.keywords.includes(kw) ?? false
+  if (state.data.datacards[op.datacardId]?.keywords.includes(kw)) return true
+  // M9 batch B: keywords picked at selection (Marks of Chaos) are real keywords
+  if (op.picks) for (const k of Object.values(op.picks)) if (k === kw) return true
+  return false
 }
 
 export function isExpendable(state: GameState, op: Operative): boolean {

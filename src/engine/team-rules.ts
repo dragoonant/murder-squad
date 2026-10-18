@@ -37,6 +37,12 @@ export interface ReactionInfo {
   strategy?: boolean
   /** M9 shared: a Guard interrupt (actorId = the guarding operative) has just finished; activeSeat is the guard's seat */
   interrupt?: boolean
+  /**
+   * M9 batch B: actorId's activation (or counteraction, with `counteract`) has just ended, after its end-of-activation
+   * window and hooks, before the next activation is chosen (the Butcher's free Charge); action is 'activationEnded'
+   */
+  activationEnded?: boolean
+  counteract?: boolean
 }
 
 export interface TeamRuleProvider {
@@ -104,6 +110,17 @@ export interface TeamRuleProvider {
   chainActivation?(state: GameState, expended: Operative, wasChained: boolean): string[] | null
   /** the seat picked `op` to activate: true stops it this time (Vision of Madness); only asked when another ready operative exists */
   gateActivation?(ctx: Ctx, op: Operative): boolean
+  /**
+   * M9 batch B: false keeps the ready operative out of its seat's activate options while that seat has another ready
+   * operative no provider blocks (System Jam); never empties the options
+   */
+  canActivate?(state: GameState, op: Operative): boolean
+  /**
+   * M9 batch B: once both initiative dice are rolled, may `seat` re-roll its own die (Writ of Claim)? Asked once per
+   * seat per TP; `onInitiativeReroll` runs when the seat does (spend the once-per-battle use)
+   */
+  initiativeReroll?(state: GameState, seat: Seat): boolean
+  onInitiativeReroll?(ctx: Ctx, seat: Seat): void
   /** reactions the non-active `seat` may take after an action (Quicksilver Strike), offered as one ability.choice */
   reactions?(state: GameState, seat: Seat, info: ReactionInfo): ReactionOffer[]
 
@@ -114,6 +131,8 @@ export interface TeamRuleProvider {
   extraFightWeapons?(state: GameState, op: Operative, retaliating: boolean): string[]
   /** once per fight sequence, before the first strike or block: who resolves first, owed resolutions, seats that cannot block */
   fightResolveStart?(state: GameState, attack: AttackState): { first?: Seat; queue?: { seat: Seat; blockOnly?: boolean }[]; noBlock?: Seat[] } | null
+  /** M9 batch B: how many unresolved enemy successes one block with die `die` of `seat` cancels (Tangle: 2); highest answer wins, default 1 */
+  blockCapacity?(state: GameState, attack: AttackState, seat: Seat, die: number): number | null
   /** after `seat` struck or blocked: resolutions owed before the alternation continues (Assassinate's second strike) */
   afterFightResolution?(state: GameState, attack: AttackState, seat: Seat, op: 'strike' | 'block'): { seat: Seat; blockOnly?: boolean }[] | null
   /** friendly operatives the shooter may use as its viewpoint for this weapon (Magnify proxies); offered as weapon options */
@@ -128,6 +147,14 @@ export interface TeamRuleProvider {
    * amount to cancel Accessible or Obstructing extras). Summed; the move fails if it then exceeds its limit.
    */
   moveSurcharge?(state: GameState, op: Operative, kind: string, points: Vec3[], breakdown: { horizontal: number; accessible: number; climb: number; drop: number }): number
+  /**
+   * M9 batch B: grenades this operative carries on its own, apart from the team's picks and totals (Hearthkyn
+   * Grenadier): weapon ids (frag, krak) and grenade action ability ids (smoke, stun) to uses per battle. The weapons
+   * are added at set-up; the actions still have to be offered (card, extraActions); grenadeSource then pays them
+   */
+  ownGrenades?(state: GameState, op: Operative): { weapons?: Record<string, number>; actions?: Record<string, number> } | null
+  /** M9 batch B: the operative may FLY in this move action (Jump Pack): set up within its move horizontally, ignoring terrain between */
+  canFly?(state: GameState, op: Operative, kind: string): boolean
   /** the operative never triggers this mine (Explosive Traps: friendly Wyrmblade operatives) */
   ignoresMine?(state: GameState, op: Operative, mine: Marker): boolean
 }
@@ -273,6 +300,17 @@ export function providerGate(ctx: Ctx, op: Operative): string | null {
   return null
 }
 
+/** M9 batch B: providers that let `seat` re-roll its initiative die now (Writ of Claim). */
+export function providerInitiativeReroll(state: GameState, seat: Seat): TeamRuleProvider[] {
+  return [...providers.values()].filter((p) => p.initiativeReroll?.(state, seat) === true)
+}
+
+/** M9 batch B: every provider lets the operative activate now (System Jam). */
+export function providerCanActivate(state: GameState, op: Operative): boolean {
+  for (const p of providers.values()) if (p.canActivate?.(state, op) === false) return false
+  return true
+}
+
 export function providerReactions(state: GameState, seat: Seat, info: ReactionInfo): ReactionOffer[] {
   const out: ReactionOffer[] = []
   for (const p of providers.values()) out.push(...(p.reactions?.(state, seat, info) ?? []))
@@ -300,6 +338,15 @@ export function providerFightStart(state: GameState, attack: AttackState): { fir
   return out
 }
 
+export function providerBlockCapacity(state: GameState, attack: AttackState, seat: Seat, die: number): number {
+  let n = 1
+  for (const p of providers.values()) {
+    const c = p.blockCapacity?.(state, attack, seat, die)
+    if (c !== null && c !== undefined && c > n) n = c
+  }
+  return n
+}
+
 export function providerAfterResolution(state: GameState, attack: AttackState, seat: Seat, op: 'strike' | 'block'): { seat: Seat; blockOnly?: boolean }[] {
   const out: { seat: Seat; blockOnly?: boolean }[] = []
   for (const p of providers.values()) out.push(...(p.afterFightResolution?.(state, attack, seat, op) ?? []))
@@ -320,6 +367,23 @@ export function providerMoveSurcharge(state: GameState, op: Operative, kind: str
   let n = 0
   for (const p of providers.values()) n += p.moveSurcharge?.(state, op, kind, points, breakdown) ?? 0
   return n
+}
+
+/** M9 batch B: every provider's own-grenade allowances for the operative, merged (largest allowance wins). */
+export function providerOwnGrenades(state: GameState, op: Operative): { weapons: Record<string, number>; actions: Record<string, number> } {
+  const out = { weapons: {} as Record<string, number>, actions: {} as Record<string, number> }
+  for (const p of providers.values()) {
+    const g = p.ownGrenades?.(state, op)
+    if (!g) continue
+    for (const [k, n] of Object.entries(g.weapons ?? {})) out.weapons[k] = Math.max(out.weapons[k] ?? 0, n)
+    for (const [k, n] of Object.entries(g.actions ?? {})) out.actions[k] = Math.max(out.actions[k] ?? 0, n)
+  }
+  return out
+}
+
+export function providerCanFly(state: GameState, op: Operative, kind: string): boolean {
+  for (const p of providers.values()) if (p.canFly?.(state, op, kind)) return true
+  return false
 }
 
 export function providerIgnoresMine(state: GameState, op: Operative, mine: Marker): boolean {

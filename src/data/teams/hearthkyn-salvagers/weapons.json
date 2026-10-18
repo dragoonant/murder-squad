@@ -1,0 +1,178 @@
+[
+  {
+    "id": "hk.w.autoch-bolt-pistol-theyn",
+    "name": "Autoch-pattern bolt pistol",
+    "team": "hearthkyn-salvagers",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.accurate",
+        "x": 1
+      }
+    ],
+    "text": "A steady-handed leader's sidearm with a smart sight.",
+    "source": "Hearthkyn Salvagers team PDF (April '26); docs/spec/13-teams.md section 10.3"
+  },
+  {
+    "id": "hk.w.autoch-bolter",
+    "name": "Autoch-pattern bolter",
+    "team": "hearthkyn-salvagers",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.accurate",
+        "x": 1
+      }
+    ],
+    "text": "The standard Kin bolt rifle, its targeting aid steadying the first shot.",
+    "source": "Hearthkyn Salvagers team PDF (April '26); docs/spec/13-teams.md section 10.3"
+  },
+  {
+    "id": "hk.w.bolt-revolver-theyn",
+    "name": "Bolt revolver",
+    "team": "hearthkyn-salvagers",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      }
+    ],
+    "text": "A heavy-calibre revolver that hits hard on a clean shot.",
+    "source": "Hearthkyn Salvagers team PDF (April '26); docs/spec/13-teams.md section 10.3"
+  },
+  {
+    "id": "hk.w.etacarn-plasma-pistol",
+    "name": "EtaCarn plasma pistol",
+    "team": "hearthkyn-salvagers",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 3,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      }
+    ],
+    "text": "A stable Votann plasma sidearm that punches through armour without overheating.",
+    "source": "Hearthkyn Salvagers team PDF (April '26); docs/spec/13-teams.md section 10.3"
+  },
+  {
+    "id": "hk.w.ion-blaster",
+    "name": "Ion blaster",
+    "team": "hearthkyn-salvagers",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.piercing",
+        "x": 1,
+        "crits": true
+      }
+    ],
+    "text": "An ion rifle whose best hits strip away the target's protection.",
+    "source": "Hearthkyn Salvagers team PDF (April '26); docs/spec/13-teams.md section 10.3"
+  },
+  {
+    "id": "hk.w.ion-pistol",
+    "name": "Ion pistol",
+    "team": "hearthkyn-salvagers",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1,
+        "crits": true
+      }
+    ],
+    "text": "A short-ranged ion sidearm in a practised hand.",
+    "source": "Hearthkyn Salvagers team PDF (April '26); docs/spec/13-teams.md section 10.3"
+  },
+  {
+    "id": "hk.w.concussion-gauntlet",
+    "name": "Concussion gauntlet",
+    "team": "hearthkyn-salvagers",
+    "type": "melee",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 5,
+      "crit": 7
+    },
+    "rules": [
+      {
+        "rule": "core.wr.brutal"
+      },
+      {
+        "rule": "core.wr.shock"
+      }
+    ],
+    "text": "A powered fist that releases a shockwave on impact.",
+    "source": "Hearthkyn Salvagers team PDF (April '26); docs/spec/13-teams.md section 10.3"
+  },
+  {
+    "id": "hk.w.plasma-weapon",
+    "name": "Plasma weapon",
+    "team": "hearthkyn-salvagers",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 6
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "A superheated close-combat blade or axe.",
+    "source": "Hearthkyn Salvagers team PDF (April '26); docs/spec/13-teams.md section 10.3"
+  }
+]

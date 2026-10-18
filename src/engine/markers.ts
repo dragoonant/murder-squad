@@ -5,6 +5,7 @@ import { tokensOnRemoval } from './tokens'
 import { providerIgnoresMine } from './team-rules'
 import { markerInControlRange, enemiesInControlRange } from './measure'
 import { bodyOf } from './los'
+import { footprintOf, pointGapToFootprint } from './footprint'
 import { directDamage } from './effects'
 import { afterActiveOperativeRemoved, cancelAction, finishAction } from './firefight'
 import { registerHook } from './hooks'
@@ -138,7 +139,7 @@ function handlePlace(state: GameState, action: { type: string; payload?: unknown
   if (typeof p.x !== 'number' || typeof p.z !== 'number' || !Number.isFinite(p.x) || !Number.isFinite(p.z)) {
     return reject('E_SCHEMA', 'a marker position needs x and z')
   }
-  const gap = Math.hypot(p.x - op.pos.x, p.z - op.pos.z) - op.baseRadius
+  const gap = pointGapToFootprint({ x: p.x, z: p.z }, footprintOf(op))
   if (gap > 1 + 1e-6) return reject('E_OUT_OF_RANGE', 'a marker is placed within the operative control range (1")')
   const id = op.flags.carrying
   if (!id) return reject('E_ACTION_RESTRICTED', 'the operative carries no marker')

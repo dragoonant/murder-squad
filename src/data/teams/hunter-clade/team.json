@@ -1,0 +1,45 @@
+{
+  "id": "hunter-clade",
+  "name": "Hunter Clade",
+  "factionKeyword": "HUNTER CLADE",
+  "archetypes": [
+    "recon",
+    "seek-and-destroy"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "hc.skitarii-ranger-alpha"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "hc.skitarii-ranger-alpha"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.0,
+      "s": 0.6,
+      "l": 0.33
+    },
+    "minor": {
+      "h": 0.1,
+      "s": 0.55,
+      "l": 0.45
+    }
+  },
+  "text": "Ten cyborg hunters of the Machine God: Skitarii marksmen and irradiated vanguard, Sicarian killers, steered by battlefield doctrines that trade one strength for another.",
+  "source": "team-hunter-clade.pdf (January '26); docs/spec/13-teams.md section 9"
+}

@@ -69,6 +69,14 @@ export type TimingWindowId =
   | 'fight.resolved'
   | 'shoot.beforeDefenceRerolls'
   | 'fight.beforeRerolls'
+  // M9 batch B
+  | 'firefight.opponentActionDeclared'
+  | 'firefight.beforeActivation'
+  | 'ploy.opponentUsed'
+  | 'operative.killed'
+  | 'shoot.beforeAttackRerolls'
+  | 'shoot.beforeDefenceRoll'
+  | 'shoot.defenderBeforeRerolls'
   | 'operative.incapacitated'
   | 'firefight.activationEnded'
   | 'turningPoint.end'
@@ -313,6 +321,10 @@ export interface DatacardData {
   team: Id
   stats: { apl: number; move: Inches; save: RollTarget; wounds: number }
   base: number
+  /** M9 batch B: extra equipment options the team may take while this operative is on the roster (Hearthkyn Lugger) */
+  extraEquipment?: number
+  /** M9 batch B: oval base in mm (long axis along the facing), optionally only for loadouts with one of `weapons` */
+  ovalBase?: { long: number; short: number; weapons?: Id[] }
   keywords: Keyword[]
   weapons: { fixed: Id[]; options?: LoadoutSlot[] }
   abilities: Id[]
@@ -337,26 +349,70 @@ export interface SelectionSlot {
   /** M9 prep: at most `max` operatives from `from` together */
   caps?: { label?: string; from: Id[]; max: number }[]
 }
+/** M9 batch B: at most `max` operatives (over every slot) that have `keyword` or are one of `from`. */
+export interface TeamCap {
+  label?: string
+  keyword?: Keyword
+  from?: Id[]
+  max: number
+}
+/**
+ * M9 batch B: at most `max` operatives of the roster carry any of `weapons` (profile or profileGroup ids), or, with
+ * `each`, at most `max` carry each one of them. Fixed weapons count too.
+ */
+export interface LoadoutCap {
+  label?: string
+  weapons: Id[]
+  max: number
+  each?: boolean
+}
 export interface TeamChoice {
   id: Slug
   label: string
   group: Slug
   distinctFrom?: Slug[]
 }
+/**
+ * M9 batch B: a keyword each operative of the team takes at selection (Legionaries Marks of Chaos). `forKeyword`
+ * limits it to operatives with that keyword; `exclude` bars some keywords for some datacards.
+ */
+export interface OperativeChoice {
+  id: Slug
+  label: string
+  keywords: Keyword[]
+  forKeyword?: Keyword
+  exclude?: { datacards: Id[]; keywords: Keyword[] }[]
+}
 export interface TeamData {
   id: Id
   name: string
   factionKeyword: Keyword
   archetypes: Slug[]
-  selection: { slots: SelectionSlot[] }
+  selection: {
+    slots: SelectionSlot[]
+    /** M9 batch B: caps counted over every slot (at most five SICARIAN operatives, the leader included) */
+    caps?: TeamCap[]
+    /** M9 batch B: caps on chosen weapons across the whole roster (one arc rifle, one plasma caliver, one arquebus) */
+    loadoutCaps?: LoadoutCap[]
+  }
   teamChoices?: TeamChoice[]
+  /** M9 batch B: per-operative keyword picks made at selection (Marks of Chaos) */
+  operativeChoices?: OperativeChoice[]
   factionRules: Id[]
   ploys: Id[]
   equipment: Id[]
   /** false while the team is scaffolded: validated and loaded, but left out of the picker, sims and bench */
   playable?: boolean
   /** default roster (datacard ids, first legal loadout each), equipment and team picks for realSetup */
-  defaults?: { roster?: Id[]; equipment?: Id[]; teamChoices?: Record<Slug, Id> }
+  defaults?: {
+    roster?: Id[]
+    equipment?: Id[]
+    teamChoices?: Record<Slug, Id>
+    /** M9 batch B: operative choice picks per default roster entry (same order); missing picks take the first allowed keyword */
+    operativePicks?: Record<Slug, Keyword>[]
+    /** M9 batch B: loadout answers per default roster entry (same order) where the first legal loadout will not do (loadout caps) */
+    loadouts?: Record<Slug, Id[]>[]
+  }
   paint: { major: Hsl; minor: Hsl }
   text: string
   source: Source

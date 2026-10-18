@@ -23,8 +23,16 @@ MANIFEST = ROOT / "public" / "assets" / "models" / "manifest.json"
 UNITS = ROOT / "tools" / "local-gen" / "ms_units.json"
 
 DEFAULT_BAND = (0.20, 0.60)  # spec says 35-60%; these hands hang lower, so the band reaches down to the fists
-HAND_BAND: dict[str, tuple[float, float]] = {}
+HAND_BAND: dict[str, tuple[float, float]] = {
+    # banner poles and a raised bionic arm sit inside the default band; keep the band on the hanging fists
+    "pm-plague-marine-icon-bearer": (0.12, 0.36),
+    "wb-neophyte-icon-bearer": (0.12, 0.36),
+    "pf-blooded": (0.15, 0.42),
+    "pm-plague-marine-heavy-gunner": (0.2, 0.32),
+}
 NO_HANDS = {"kom-bomb-squig"}
+# hose loops and pouches pull the measured hand behind the body; force the z of both hands (inches, +Z front)
+HAND_Z = {"pm-plague-marine-heavy-gunner": 0.1}
 # Facing is +Z by contract; the feet-based vote below is a diagnostic. List a slug here (verified in ?gallery) if
 # its mesh really faces -Z. Sockets are then measured on the mesh turned 180 degrees about y, i.e. ALL sockets in
 # the manifest are in the displayed +Z-facing frame, and the renderer turns such a body by PI (manifest `facing`).
@@ -82,6 +90,10 @@ def measure(slug: str):
     if slug not in NO_HANDS:
         hr = hand(v, -1, at(band[0]), at(band[1]), hf)
         hl = hand(v, +1, at(band[0]), at(band[1]), hf)
+        if slug in HAND_Z:
+            for h_ in (hr, hl):
+                if h_ is not None:
+                    h_[2] = HAND_Z[slug]
         if hr is not None:
             out["handR"] = r3(hr)
         if hl is not None:

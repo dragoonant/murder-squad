@@ -13,6 +13,7 @@ const TEAMS = {
   ht: { name: 'figures-hierotek-circle', teamId: 'hierotek-circle', att: 'att-ht' },
   pm: { name: 'figures-plague-marines', teamId: 'plague-marines', att: 'att-pm' },
   wb: { name: 'figures-wyrmblade', teamId: 'wyrmblade', att: 'att-wb' },
+  aod: { name: 'figures-angels-of-death', teamId: 'angelsofdeath', att: 'att-aod' },
 }
 const out = 'tools/out/screens'
 mkdirSync(out, { recursive: true })
@@ -29,7 +30,19 @@ const settle = async () => {
 }
 const teamIndex = async (id) =>
   page.evaluate((tid) => [...document.querySelectorAll('[data-testid^="team-"]')].map((e) => e.getAttribute('data-testid')).filter((t) => t !== 'team-all').indexOf(`team-${tid}`), id)
+if (process.env.SOCKETS === '1') await page.getByTestId('toggle-sockets').click()
 for (const key of want.length ? want : Object.keys(TEAMS)) {
+  if (key === 'all') {
+    await page.getByTestId('team-all').click()
+    await page.getByTestId('att-off').click()
+    await page.getByTestId('view-front').click()
+    await page.waitForTimeout(4000)
+    await page.mouse.move(1100, 650)
+    await page.mouse.wheel(0, 900)
+    await page.waitForTimeout(1500)
+    await page.screenshot({ path: `${out}/figures-all.png` })
+    continue
+  }
   const t = TEAMS[key]
   // the team buttons are numbered by position in teamList; find the one whose text matches
   const buttons = await page.$$('[data-testid^="team-"]')
@@ -47,8 +60,10 @@ for (const key of want.length ? want : Object.keys(TEAMS)) {
   if (!clicked) throw new Error(`no gallery button for ${t.teamId}`)
   await page.getByTestId('att-off').click()
   await page.getByTestId('view-front').click()
-  await page.getByTestId('toggle-sockets').evaluate(() => {})
   await settle()
+  await page.mouse.move(1100, 650)
+  await page.mouse.wheel(0, Number(process.env.ZOOM ?? 400))
+  await page.waitForTimeout(800)
   await page.screenshot({ path: `${out}/${t.name}.png` })
   await page.getByTestId('view-three-quarter').click()
   await page.waitForTimeout(1200)

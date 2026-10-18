@@ -43,6 +43,31 @@ import wyrWeapons from './teams/wyrmblade/weapons.json'
 import wyrAbilities from './teams/wyrmblade/abilities.json'
 import wyrPloys from './teams/wyrmblade/ploys.json'
 import wyrEquipment from './teams/wyrmblade/equipment.json'
+// M9 batch B scaffold (team.json `playable: false` until complete)
+import lgTeam from './teams/legionaries/team.json'
+import lgOperatives from './teams/legionaries/operatives.json'
+import lgWeapons from './teams/legionaries/weapons.json'
+import lgAbilities from './teams/legionaries/abilities.json'
+import lgPloys from './teams/legionaries/ploys.json'
+import lgEquipment from './teams/legionaries/equipment.json'
+import haTeam from './teams/hand-of-the-archon/team.json'
+import haOperatives from './teams/hand-of-the-archon/operatives.json'
+import haWeapons from './teams/hand-of-the-archon/weapons.json'
+import haAbilities from './teams/hand-of-the-archon/abilities.json'
+import haPloys from './teams/hand-of-the-archon/ploys.json'
+import haEquipment from './teams/hand-of-the-archon/equipment.json'
+import hcTeam from './teams/hunter-clade/team.json'
+import hcOperatives from './teams/hunter-clade/operatives.json'
+import hcWeapons from './teams/hunter-clade/weapons.json'
+import hcAbilities from './teams/hunter-clade/abilities.json'
+import hcPloys from './teams/hunter-clade/ploys.json'
+import hcEquipment from './teams/hunter-clade/equipment.json'
+import hkTeam from './teams/hearthkyn-salvagers/team.json'
+import hkOperatives from './teams/hearthkyn-salvagers/operatives.json'
+import hkWeapons from './teams/hearthkyn-salvagers/weapons.json'
+import hkAbilities from './teams/hearthkyn-salvagers/abilities.json'
+import hkPloys from './teams/hearthkyn-salvagers/ploys.json'
+import hkEquipment from './teams/hearthkyn-salvagers/equipment.json'
 import f17 from './missions/preliminary-ops-secure.json'
 import f18 from './missions/preliminary-ops-loot.json'
 import f19 from './missions/preliminary-ops-transmission.json'
@@ -102,6 +127,30 @@ const FILES: Record<string, unknown> = {
   'teams/wyrmblade/abilities.json': wyrAbilities,
   'teams/wyrmblade/ploys.json': wyrPloys,
   'teams/wyrmblade/equipment.json': wyrEquipment,
+  'teams/legionaries/team.json': lgTeam,
+  'teams/legionaries/operatives.json': lgOperatives,
+  'teams/legionaries/weapons.json': lgWeapons,
+  'teams/legionaries/abilities.json': lgAbilities,
+  'teams/legionaries/ploys.json': lgPloys,
+  'teams/legionaries/equipment.json': lgEquipment,
+  'teams/hand-of-the-archon/team.json': haTeam,
+  'teams/hand-of-the-archon/operatives.json': haOperatives,
+  'teams/hand-of-the-archon/weapons.json': haWeapons,
+  'teams/hand-of-the-archon/abilities.json': haAbilities,
+  'teams/hand-of-the-archon/ploys.json': haPloys,
+  'teams/hand-of-the-archon/equipment.json': haEquipment,
+  'teams/hunter-clade/team.json': hcTeam,
+  'teams/hunter-clade/operatives.json': hcOperatives,
+  'teams/hunter-clade/weapons.json': hcWeapons,
+  'teams/hunter-clade/abilities.json': hcAbilities,
+  'teams/hunter-clade/ploys.json': hcPloys,
+  'teams/hunter-clade/equipment.json': hcEquipment,
+  'teams/hearthkyn-salvagers/team.json': hkTeam,
+  'teams/hearthkyn-salvagers/operatives.json': hkOperatives,
+  'teams/hearthkyn-salvagers/weapons.json': hkWeapons,
+  'teams/hearthkyn-salvagers/abilities.json': hkAbilities,
+  'teams/hearthkyn-salvagers/ploys.json': hkPloys,
+  'teams/hearthkyn-salvagers/equipment.json': hkEquipment,
   'missions/preliminary-ops-secure.json': f17,
   'missions/preliminary-ops-loot.json': f18,
   'missions/preliminary-ops-transmission.json': f19,
