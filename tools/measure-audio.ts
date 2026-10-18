@@ -23,6 +23,8 @@ const GUNSHOTS = new Set([
   'wpn-bolt-rifle', 'wpn-auto-bolt-rifle', 'wpn-stalker-bolt-rifle', 'wpn-heavy-bolt-pistol', 'wpn-bolt-pistol',
   'wpn-plasma-pistol', 'wpn-plasma-pistol-supercharge', 'wpn-heavy-bolter', 'wpn-bolt-sniper-rifle', 'wpn-grenade-launcher',
   'wpn-slugga', 'wpn-dakka-shoota', 'wpn-rokkit-launcha', 'wpn-shokka-pistol', 'wpn-scoped-big-shoota',
+  'wpn-autogun', 'wpn-burst-cannon', 'wpn-gauss-blaster', 'wpn-ion-rifle', 'wpn-pulse-burst', 'wpn-pulse-carbine',
+  'wpn-rail-rifle', 'wpn-tesla-carbine',
 ])
 const isBed = (id: string) => id.startsWith('music-') || id.startsWith('amb-')
 

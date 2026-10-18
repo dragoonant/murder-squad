@@ -626,6 +626,274 @@
       "bpm": 60,
       "key": "D minor",
       "timesig": "4"
+    },
+    {
+      "id": "wpn-pulse-carbine",
+      "kind": "sfx",
+      "group": "weapons-pf",
+      "prompt": "single sharp transient crack, dry, percussive, a bright futuristic energy pulse shot, a quick high pitched zap followed by a soft thump, clean and precise, close-miked, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 1.2
+    },
+    {
+      "id": "wpn-pulse-burst",
+      "kind": "sfx",
+      "group": "weapons-pf",
+      "prompt": "four bright energy pulse shots in rapid succession, each one a sharp transient zap with a soft thump, clear gaps between shots, clean futuristic carbine, close-miked, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 1.8
+    },
+    {
+      "id": "wpn-ion-rifle",
+      "kind": "sfx",
+      "group": "weapons-pf",
+      "prompt": "a rising electrical charge whine for half a second then one single heavy energy bolt discharge, a deep thump and a bright crackle, short energy ring after, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 2.0
+    },
+    {
+      "id": "wpn-rail-rifle",
+      "kind": "sfx",
+      "group": "weapons-pf",
+      "prompt": "single sharp transient crack, dry, percussive, one hard supersonic snap like a whip crack, very short metallic ping after it, tight and punchy, close-miked, no echo, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 1.2
+    },
+    {
+      "id": "wpn-burst-cannon",
+      "kind": "sfx",
+      "group": "weapons-pf",
+      "prompt": "a heavy rapid burst of energy pulse shots, fast thumping zaps in a tight rhythm, powerful mounted weapon, twelve rounds, close-miked, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 2.0
+    },
+    {
+      "id": "ui-markerlight",
+      "kind": "sfx",
+      "group": "ui",
+      "prompt": "a targeting laser lock-on, three quick rising electronic beeps then a short bright beam pulse, crisp and clean, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 1.0
+    },
+    {
+      "id": "death-drone",
+      "kind": "sfx",
+      "group": "deaths",
+      "prompt": "a small hovering machine shot down, a descending electric whine, sparks crackling, a clatter of plastic and metal casing on the ground, a last short fizz, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 2.0
+    },
+    {
+      "id": "death-tau",
+      "kind": "sfx",
+      "group": "deaths",
+      "prompt": "a light armoured soldier killed, a short sharp gasp and exhale, a rifle clattering on the floor, a soft body collapse, quiet and brief, no music, no words",
+      "negative": "music, singing, long reverb tail, background noise, hiss",
+      "seconds": 2.0
+    },
+    {
+      "id": "wpn-gauss-blaster",
+      "kind": "sfx",
+      "group": "weapons-ht",
+      "prompt": "single sharp transient crack, dry, percussive, an ancient metal weapon firing a green lightning flay beam, a harsh electric zap with a sizzling flaying crackle, close-miked, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 1.5
+    },
+    {
+      "id": "wpn-tesla-carbine",
+      "kind": "sfx",
+      "group": "weapons-ht",
+      "prompt": "a burst of crackling electric arcs, jagged lightning snapping and jumping, harsh buzzing discharge with sharp cracks, short, close-miked, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 1.8
+    },
+    {
+      "id": "wpn-staff-beam",
+      "kind": "sfx",
+      "group": "weapons-ht",
+      "prompt": "a deep humming energy charge for a third of a second then a thick energy beam blast, low resonant pulse with a bright metallic ring, ancient alien weapon, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 2.2
+    },
+    {
+      "id": "wpn-staff-strike",
+      "kind": "sfx",
+      "group": "weapons-ht",
+      "prompt": "a heavy metal staff swung through the air with an energy hum, then a hard crackling blow, a sharp electric crack and a metallic clang, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 1.5
+    },
+    {
+      "id": "fx-reanimate",
+      "kind": "sfx",
+      "group": "fx",
+      "prompt": "a fallen metal body reassembling, scraping and clicking metal plates sliding back together, a low green energy hum rising, then a sudden bright power-up pulse, eerie, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 3.0
+    },
+    {
+      "id": "wpn-scarab-skitter",
+      "kind": "sfx",
+      "group": "weapons-ht",
+      "prompt": "a swarm of small metal beetles skittering across a stone floor, hundreds of tiny clicking metal legs, rapid scuttling and snipping mandibles, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 2.0
+    },
+    {
+      "id": "death-necron",
+      "kind": "sfx",
+      "group": "deaths",
+      "prompt": "a metal skeletal warrior destroyed, a harsh electrical fizz and crackle, metal limbs clattering to the ground, a fading low power-down whine, final faint spark, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 3.0
+    },
+    {
+      "id": "wpn-plague-spewer",
+      "kind": "sfx",
+      "group": "weapons-pm",
+      "prompt": "a thick wet gurgling spray, a heavy liquid spurt shot out of a nozzle with a hissing pressure release, bubbling and splattering, disgusting and heavy, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise",
+      "seconds": 2.0
+    },
+    {
+      "id": "wpn-plague-blade",
+      "kind": "sfx",
+      "group": "weapons-pm",
+      "prompt": "a rusty heavy blade swung and slicing through wet flesh, a dull slash with a wet squelch and a short metallic scrape, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 1.0
+    },
+    {
+      "id": "wpn-flail-corruption",
+      "kind": "sfx",
+      "group": "weapons-pm",
+      "prompt": "a heavy chained flail swung round, chain links rattling and whirring, then a hard crunching blow with a wet thud, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 1.8
+    },
+    {
+      "id": "fx-flies-swarm",
+      "kind": "sfx",
+      "group": "fx",
+      "prompt": "a dense swarm of flies, loud buzzing wings that rise to a thick droning cloud then fade, sickly and unsettling, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise",
+      "seconds": 3.0
+    },
+    {
+      "id": "fx-plague-bell",
+      "kind": "sfx",
+      "group": "fx",
+      "prompt": "a single large cracked iron bell tolling slowly, a deep dull clang with a long low metallic ring and faint rattle, ominous, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise",
+      "seconds": 3.5
+    },
+    {
+      "id": "death-plague",
+      "kind": "sfx",
+      "group": "deaths",
+      "prompt": "a huge rotting armoured warrior killed, a wet wheezing groan, a gurgle, then a very heavy collapse of armour plates with a sloppy thud, flies buzzing briefly, no music, no words",
+      "negative": "music, singing, long reverb tail, background noise",
+      "seconds": 3.5
+    },
+    {
+      "id": "wpn-autogun",
+      "kind": "sfx",
+      "group": "weapons-wb",
+      "prompt": "four separate gunshots in quick succession, each one a single sharp transient crack, dry, percussive, light rifle rounds, clear gaps between rounds, close-miked, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 1.6
+    },
+    {
+      "id": "wpn-mining-laser",
+      "kind": "sfx",
+      "group": "weapons-wb",
+      "prompt": "an industrial mining laser, a thick pulsing buzzing beam with a harsh rising whine, rock crackling and cracking as it cuts, powerful, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 2.5
+    },
+    {
+      "id": "wpn-seismic-cannon",
+      "kind": "sfx",
+      "group": "weapons-wb",
+      "prompt": "a seismic cannon shot, a deep sub bass thump, ground shaking rumble rolling outward, rocks cracking and debris falling, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 2.8
+    },
+    {
+      "id": "wpn-webber",
+      "kind": "sfx",
+      "group": "weapons-wb",
+      "prompt": "a webbing gun, a compressed air puff, a wet stringy spray of sticky strands splattering and stretching against a wall, quick and gloopy, no music, no voices",
+      "negative": "music, voices, speech, singing, long reverb tail, background noise, hiss",
+      "seconds": 1.8
+    },
+    {
+      "id": "wpn-claws-rend",
+      "kind": "sfx",
+      "group": "weapons-wb",
+      "prompt": "sharp claws raking and tearing through flesh and cloth, a fast ripping slash, a short animal hiss, no music, no words",
+      "negative": "music, singing, long reverb tail, background noise",
+      "seconds": 1.2
+    },
+    {
+      "id": "shout-brood-hiss",
+      "kind": "sfx",
+      "group": "deaths",
+      "prompt": "a long guttural reptilian hiss and rasping snarl, a predatory alien creature threatening, breath and throat rattle, no music, no words",
+      "negative": "music, speech, singing, long reverb tail, background noise",
+      "seconds": 1.8
+    },
+    {
+      "id": "fx-ambush-emerge",
+      "kind": "sfx",
+      "group": "fx",
+      "prompt": "a creature bursting out of hiding, rubble and loose stones shifting then a fast scrabbling lunge, a sharp hiss, cloth rustle and boots, sudden and quick, no music, no words",
+      "negative": "music, singing, long reverb tail, background noise",
+      "seconds": 1.8
+    },
+    {
+      "id": "death-cultist",
+      "kind": "sfx",
+      "group": "deaths",
+      "prompt": "a human cultist shot, a short harsh cry of pain cut off, a thud as the body hits stone, a clatter of a dropped weapon, no music, no words",
+      "negative": "music, singing, long reverb tail, background noise, hiss",
+      "seconds": 2.0
+    },
+    {
+      "id": "narr-initiative-pf",
+      "kind": "voice",
+      "group": "narrator",
+      "text": "Initiative to the Pathfinders.",
+      "instruct": "a calm, kind and steady male narrator in his forties, warm low voice, clear measured delivery, serious and reassuring, slight military authority, studio quality",
+      "language": "English",
+      "seed": 40421
+    },
+    {
+      "id": "narr-initiative-ht",
+      "kind": "voice",
+      "group": "narrator",
+      "text": "Initiative to the Hierotek Circle.",
+      "instruct": "a calm, kind and steady male narrator in his forties, warm low voice, clear measured delivery, serious and reassuring, slight military authority, studio quality",
+      "language": "English",
+      "seed": 40421
+    },
+    {
+      "id": "narr-initiative-pm",
+      "kind": "voice",
+      "group": "narrator",
+      "text": "Initiative to the Plague Marines.",
+      "instruct": "a calm, kind and steady male narrator in his forties, warm low voice, clear measured delivery, serious and reassuring, slight military authority, studio quality",
+      "language": "English",
+      "seed": 40421
+    },
+    {
+      "id": "narr-initiative-wb",
+      "kind": "voice",
+      "group": "narrator",
+      "text": "Initiative to the Wyrmblade.",
+      "instruct": "a calm, kind and steady male narrator in his forties, warm low voice, clear measured delivery, serious and reassuring, slight military authority, studio quality",
+      "language": "English",
+      "seed": 40421
     }
   ]
 }

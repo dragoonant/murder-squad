@@ -7,6 +7,7 @@ import { threatShowing, useSightData, type SightData } from '../interaction/sigh
 import { useSight } from '../interaction/sightStore'
 import type { SightEntry, ThreatEntry, ThreatSet } from '../interaction/sightlines'
 import { BottomSheet } from './BottomSheet'
+import { Keyword, KeywordText } from './Keyword'
 import { useFormFactor } from './formFactor'
 import { colors, fontStack, panel } from './theme'
 import { Tooltip } from './Tooltip'
@@ -64,11 +65,19 @@ function Row({ e, was, showWas }: { e: SightEntry; was: SightEntry | null; showW
           {e.name} <span style={{ color: colors.muted, fontWeight: 500 }}>{e.id}</span>
         </b>
         <span data-testid={`sight-dmg-${e.id}`} style={{ color, fontWeight: 800, whiteSpace: 'nowrap' }}>
-          {e.expected !== null ? `${f1(e.expected)} dmg` : e.status === 'unseen' ? 'not visible' : 'no shot'}
+          {e.expected !== null ? (
+            <>
+              {f1(e.expected)} <Keyword term="Dmg">dmg</Keyword>
+            </>
+          ) : e.status === 'unseen' ? (
+            'not visible'
+          ) : (
+            'no shot'
+          )}
         </span>
       </div>
       <div style={{ fontSize: 11, color: colors.muted }}>
-        {f1(e.distance)}″ · {statusText(e)}
+        {f1(e.distance)}″ · <KeywordText text={statusText(e)} keywords={false} />
         {e.kill !== null && ` · kill ${pct(e.kill)}`}
         {e.weaponName && e.expected !== null && ` · ${e.weaponName}`}
         {wasText && <span data-testid={`sight-was-${e.id}`}> · {wasText}</span>}
@@ -80,7 +89,7 @@ function Row({ e, was, showWas }: { e: SightEntry; was: SightEntry | null; showW
 function ThreatSummary({ label, set, wounds, testId, mine }: { label: string; set: ThreatSet; wounds: number; testId: string; mine: boolean }) {
   return (
     <div data-testid={testId} style={{ fontSize: 12, color: set.entries.length === 0 ? colors.muted : THREAT_COLOR }}>
-      <b>{label}</b>
+      <b><KeywordText text={label} /></b>
       {mine && <span style={{ color: colors.muted }}> (current)</span>}
       {': '}
       {set.entries.length === 0
@@ -108,9 +117,7 @@ function ThreatRow({ t, c }: { t: ThreatEntry; c: ThreatEntry | undefined }) {
       </div>
       <div style={{ fontSize: 11, color: colors.muted }}>
         {f1(t.distance)}″ · {t.weaponName}
-        {t.inCover ? ' · you in cover' : ''}
-        {t.obscured ? ' · obscured' : ''}
-        {' · Engage / Conceal'}
+        <KeywordText text={`${t.inCover ? ' · you in cover' : ''}${t.obscured ? ' · obscured' : ''} · Engage / Conceal`} />
       </div>
     </div>
   )
@@ -120,7 +127,9 @@ function UnseenChips({ entries }: { entries: SightEntry[] }) {
   if (entries.length === 0) return null
   return (
     <div data-testid="sight-unseen" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', borderLeft: `4px solid ${SIGHT_COLOR.unseen}`, padding: '3px 6px', background: 'rgba(255,255,255,0.03)', borderRadius: 4, opacity: 0.6 }}>
-      <span style={{ fontSize: 11, color: colors.muted }}>Not visible:</span>
+      <span style={{ fontSize: 11, color: colors.muted }}>
+        Not <Keyword term="Visible">visible</Keyword>:
+      </span>
       {entries.map((e) => (
         <span
           key={e.id}
@@ -160,9 +169,17 @@ function Body({ d, compact }: { d: SightData; compact: boolean }) {
             The staged path is not allowed: showing the current position.
           </div>
         )}
-        {sight.concealLocked && <Muted>On Conceal only Silent weapons may fire: odds assume Engage.</Muted>}
+        {sight.concealLocked && (
+          <Muted>
+            <KeywordText text="On Conceal only Silent weapons may fire: odds assume Engage." />
+          </Muted>
+        )}
         {sight.noWeapon && !sight.concealLocked && <Muted>No ranged weapon can be used from here.</Muted>}
-        {sight.inControlRangeOf.length > 0 && <Muted>Inside the control range of {sight.inControlRangeOf.join(', ')}.</Muted>}
+        {sight.inControlRangeOf.length > 0 && (
+          <Muted>
+            <KeywordText text={`Inside the control range of ${sight.inControlRangeOf.join(', ')}.`} keywords={false} />
+          </Muted>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <Tooltip title="Threat view (T)" body="Who could see and target this operative at this spot, and the damage they would expect, if it ends on Engage and if it ends on Conceal.">
             <Btn data-testid="sight-threat-toggle" variant={threatOn ? 'active' : 'base'} style={{ padding: '2px 8px', fontSize: 12 }} onClick={() => threatToggle(threatOn)}>
@@ -170,7 +187,11 @@ function Body({ d, compact }: { d: SightData; compact: boolean }) {
             </Btn>
           </Tooltip>
           <span style={{ fontSize: 11, color: colors.muted, display: compact ? 'none' : undefined }}>
-            <span style={{ color: SIGHT_COLOR.valid }}>clear</span> · <span style={{ color: SIGHT_COLOR.cover }}>cover / obscured</span> · <span style={{ color: SIGHT_COLOR.unseen }}>unseen (no line)</span>
+            <span style={{ color: SIGHT_COLOR.valid }}>clear</span> ·{' '}
+            <span style={{ color: SIGHT_COLOR.cover }}>
+              <Keyword term="In cover">cover</Keyword> / <Keyword term="Obscured" />
+            </span>{' '}
+            · <span style={{ color: SIGHT_COLOR.unseen }}>unseen (no line)</span>
             {threatOn && <> · <span style={{ color: THREAT_COLOR }}>threat</span></>}
           </span>
         </div>
@@ -189,7 +210,9 @@ function Body({ d, compact }: { d: SightData; compact: boolean }) {
         <UnseenChips entries={unseen} />
         {threatOn && threat && threat.engage.entries.length > 0 && (
           <>
-            <div style={{ fontWeight: 800, fontSize: 12, color: THREAT_COLOR, marginTop: 2 }}>Could shoot {sight.name} here (Engage / Conceal)</div>
+            <div style={{ fontWeight: 800, fontSize: 12, color: THREAT_COLOR, marginTop: 2 }}>
+              <KeywordText text={`Could shoot ${sight.name} here (Engage / Conceal)`} keywords={false} />
+            </div>
             {threat.engage.entries.map((t) => (
               <ThreatRow key={t.id} t={t} c={conceal.get(t.id)} />
             ))}

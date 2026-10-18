@@ -3,6 +3,7 @@
 // only with spare command points. Never spends the last point on a marginal gain.
 import { dieOdds } from '@/engine/dice'
 import { answerDecision } from '@/engine/query'
+import { hasKeyword } from '@/engine/conditions'
 import { enemiesOf, seatOps } from '@/engine/state'
 import { distanceBetween } from '@/engine/measure'
 import { bodyOf } from '@/engine/los'
@@ -103,6 +104,32 @@ const GAMBIT_SCORE: Record<string, number> = {
   'kom.p.waaagh': 2.0,
   'kom.p.skulk-about': 1.7,
   'kom.p.ssssshhhh': 1.0,
+  // Legionaries
+  'lg.p.blood-for-the-blood-god': 1.7,
+  'lg.p.implacable': 1.1,
+  'lg.p.quicksilver-speed': 1.1,
+  'lg.p.fickle-fates': 1.7,
+  'lg.p.warded-armour': 1.6,
+  'lg.p.chaos-talismans': 1.2,
+  // Hand of the Archon
+  'ha.p.blade-artists': 2.0,
+  'ha.p.merciless-sadists': 1.8,
+  'ha.p.from-darkness-death': 1.5,
+  'ha.p.denizens-of-night': 1.2,
+  // Hunter Clade
+  'hc.p.doctrina': 2.0,
+  'hc.p.debilitating-irradiation': 1.0,
+  'hc.p.neurostatic-interference': 1.2,
+  'hc.p.scouting-protocol': 1.4,
+  'hc.p.accelerant-agents': 1.6,
+  'hc.p.rad-bombardment': 1.5,
+  // Hearthkyn Salvagers
+  'hk.p.eye-of-the-ancestors': 1.7,
+  'hk.p.tactician': 1.6,
+  'hk.p.need-keeps': 1.4,
+  'hk.p.toil-earns': 1.1,
+  'hk.p.wrought-defence': 1.4,
+  'hk.p.proximate-firepower': 2.0,
 }
 
 function nearestEnemyDistances(view: GameState, seat: string): number[] {
@@ -121,24 +148,129 @@ function doctrineScore(view: GameState, seat: string, param: string): number {
   return 1
 }
 
+const liveOps = (view: GameState, seat: string): Operative[] => seatOps(view, seat as 'A' | 'B').filter((o) => o.status === 'active' && o.wounds > 0)
+
+/** How many of our live operatives carry a ranged weapon and a named melee weapon (not bare fists). */
+function mix(view: GameState, seat: string): { ranged: number; melee: number } {
+  let ranged = 0
+  let melee = 0
+  for (const o of liveOps(view, seat)) {
+    if (o.weapons.some((w) => view.data.weapons[w]?.type === 'ranged')) ranged++
+    if (o.weapons.some((w) => view.data.weapons[w]?.type === 'melee' && !/fists$/.test(w))) melee++
+  }
+  return { ranged, melee }
+}
+
+const countKeyword = (view: GameState, seat: string, kw: string): number => liveOps(view, seat).filter((o) => hasKeyword(view, o, kw)).length
+
+/** Hunter Clade Imperatives (Doctrina, Command Override): the mode that suits the team's weapons and the fight ahead. */
+function imperativeScore(view: GameState, seat: string, param: string): number {
+  const [mode, flag] = param.split(':')
+  const { ranged, melee } = mix(view, seat)
+  const total = Math.max(1, ranged + melee)
+  const d = nearestEnemyDistances(view, seat)
+  const avg = d.length ? d.reduce((s, x) => s + x, 0) / d.length : 12
+  let s: number
+  switch (mode) {
+    case 'protector':
+      // Ceaseless ranged weapons, worse melee Hit: best for a shooting team
+      s = 1 + (ranged / total) * 1.6 - (melee / total) * 0.9
+      break
+    case 'conqueror':
+      s = 1 + (melee / total) * 1.6 - (ranged / total) * 0.9 + (avg < 6 ? 0.3 : 0)
+      break
+    case 'bulwark':
+      // less damage from heavy hits, 1 inch less Move: best when the enemy is already close
+      s = 1.1 + (avg < 7 ? 0.4 : 0)
+      break
+    case 'aggressor':
+      s = 1.0 + (avg > 9 ? 0.5 : 0)
+      break
+    default:
+      s = 0.3
+  }
+  // the Deprecation-ignoring pick of the Primary Mode costs a once-per-battle use: worth it while it still helps
+  if (flag === 'ignore') s += 0.35
+  return s
+}
+
+/** Param-aware value of one gambit option. */
+function gambitScore(view: GameState, seat: string, gambitId: string, param: string | undefined): number {
+  const s = GAMBIT_SCORE[gambitId] ?? 0.8
+  if (gambitId === 'aod.p.combat-doctrine' && param) return doctrineScore(view, seat, param)
+  if (gambitId === 'hc.p.doctrina' && param) return imperativeScore(view, seat, param) + 0.8
+  const { ranged, melee } = mix(view, seat)
+  switch (gambitId) {
+    case 'lg.p.blood-for-the-blood-god':
+      return countKeyword(view, seat, 'KHORNE') > 0 || melee >= 2 ? s : 0.3
+    case 'lg.p.implacable':
+      return countKeyword(view, seat, 'NURGLE') > 0 ? s + 0.4 : 0.7
+    case 'lg.p.quicksilver-speed':
+      return countKeyword(view, seat, 'SLAANESH') > 0 ? s + 0.4 : 0.7
+    case 'lg.p.fickle-fates':
+      return ranged >= 2 ? s : 0.6
+    case 'lg.p.warded-armour': {
+      // the Legionary closest to the enemy with the weakest Save gains the most
+      const op = param ? view.operatives[param] : undefined
+      if (!op) return s
+      const near = Math.min(99, ...enemiesOf(view, op).map((e) => distanceBetween(bodyOf(op), bodyOf(e))))
+      return s + (op.save - 2) * 0.25 + (near < 10 ? 0.4 : 0) + op.wounds * 0.03
+    }
+    case 'lg.p.chaos-talismans':
+      return s + (param ? countKeyword(view, seat, param) * 0.15 : 0)
+    case 'ha.p.blade-artists':
+      return melee >= 2 ? s : 0.8
+    case 'ha.p.merciless-sadists':
+      return view.turningPoint >= 2 ? s : s - 0.5
+    case 'hc.p.scouting-protocol':
+    case 'hc.p.rad-bombardment':
+      return view.turningPoint >= 2 ? s : 0
+    case 'hc.p.accelerant-agents':
+      return liveOps(view, seat).some((o) => hasKeyword(view, o, 'RUSTSTALKER')) ? s : 0.3
+    case 'hc.p.debilitating-irradiation':
+      return liveOps(view, seat).some((o) => hasKeyword(view, o, 'VANGUARD')) ? s : 0.3
+    case 'hc.p.neurostatic-interference':
+      return liveOps(view, seat).some((o) => hasKeyword(view, o, 'INFILTRATOR')) ? s : 0.3
+    case 'hk.p.tactician':
+      return param === 'defence' ? s - 0.3 : s
+    case 'hk.p.eye-of-the-ancestors': {
+      // a Grudge token on the enemy nearest to us (the mark is wasted on one that never meets us)
+      const first = (param ?? '').split('+')[0] ?? ''
+      const e = view.operatives[first]
+      if (!e) return s
+      const near = Math.min(99, ...liveOps(view, seat).map((m) => distanceBetween(bodyOf(m), bodyOf(e))))
+      return s - Math.min(near, 20) * 0.03 + (param?.includes('+') ? 0.3 : 0)
+    }
+    case 'hk.p.need-keeps':
+    case 'hk.p.toil-earns': {
+      const m = param ? view.markers.find((k) => k.id === param) : undefined
+      if (!m) return s
+      const near = Math.min(99, ...liveOps(view, seat).map((o) => Math.hypot(o.pos.x - m.pos.x, o.pos.z - m.pos.z)))
+      return s - Math.min(near, 20) * 0.04
+    }
+    default:
+      return s
+  }
+}
+
 /** strategy.gambit: the best gambit when it is worth the point, else pass. One reserve point stays for re-rolls after the first. */
 export function gambit(ctx: AiCtx): Action {
   const { pending, view } = ctx
   const cp = view.players[ctx.seat].cp
   const used = view.strategy.gambit.used[ctx.seat].length
-  let best: { o: DecisionOption; s: number } | null = null
+  let best: { o: DecisionOption; s: number; free: boolean } | null = null
   for (const o of pending.options ?? []) {
     const p = o.action.payload as { gambitId: string; param?: string }
     const cost = Number(o.data?.cost ?? 1)
     if (cost > cp) continue
-    if (used > 0 && cp - cost < 1) continue
-    let s = GAMBIT_SCORE[p.gambitId] ?? 0.8
-    if (p.gambitId === 'aod.p.combat-doctrine' && p.param) s = doctrineScore(view, ctx.seat, p.param)
-    if (!ctx.params.tacAware) s *= 0.7
-    if (!best || s > best.s) best = { o, s }
+    const free = cost === 0
+    if (!free && used > 0 && cp - cost < 1) continue
+    let s = gambitScore(view, ctx.seat, p.gambitId, p.param)
+    if (!ctx.params.tacAware && !free) s *= 0.7
+    if (!best || s > best.s) best = { o, s, free }
   }
-  // the first gambit of the turning point is almost always worth it; the next ones need clear value
-  if (best && best.s >= (used === 0 ? 0.8 : 1.6)) return best.o.action
+  // the first gambit of the turning point is almost always worth it; the next ones need clear value; a free one needs little
+  if (best && best.s >= (best.free ? 0.5 : used === 0 ? 0.8 : 1.6)) return best.o.action
   return passAction(pending)
 }
 
@@ -155,27 +287,92 @@ const PLOY_SCORE: Record<string, number> = {
   'kom.p.krump-em': 2.4,
   'aod.p.adjust-doctrine': 0,
   'kom.p.shake-it-off': 0.4,
+  // Legionaries
+  'lg.p.unending-bloodshed': 2.0,
+  'lg.p.mutability-and-change': 1.5,
+  'lg.p.malignant-aura': 1.6,
+  'lg.p.sickening-captivation': 1.6,
+  // Hand of the Archon: paid ploys
+  'ha.p.cruel-deception': 0.7,
+  'ha.p.devious-scheme': 1.2,
+  // skipping the AI's own activation is never a good turn
+  'ha.p.heinous-arrogance': 0,
+  'ha.p.prey-on-the-wounded': 2.0,
+  // Hand of the Archon: free offers (Pain invigorations and the rest)
+  'ha.inv.animus': 1.8,
+  'ha.inv.rejuvenation': 1.5,
+  'ha.inv.surge': 1.1,
+  'ha.inv.senses': 1.3,
+  'ha.tv': 1.6,
+  'ha.flay': 1.2,
+  'ha.omen': 1.4,
+  'ha.bd': 1.0,
+  'ha.fdd': 1.5,
+  'ha.e.refined-poison': 1.6,
+  'ha.e.toxin-coating': 1.6,
+  // Hunter Clade
+  'hc.p.control-edict': 1.8,
+  'hc.p.scrapcode-overload': 1.3,
+  'hc.p.command-override': 1.7,
+  'hc.p.omnissiahs-imperative': 1.9,
+  'hc.e.redundancy-systems': 1.3,
+  'hc.e.refractor-field': 1.3,
+  // Hearthkyn Salvagers
+  'hk.p.the-ancestors-are-watching': 2.1,
+  'hk.p.worth-it': 1.4,
+  'hk.p.sturdy': 2.0,
+  'hk.p.engage-to-acquire': 2.0,
+  'hk.medicDash': 1.0,
 }
 
-/** ploy.firefight: use the best offered ploy when the window's swing is positive, else pass. */
+/** Value of one offered firefight ploy, from the id and the operative or parameter it names. */
+function ployScore(view: GameState, seat: string, p: { ployId: string; param?: string; operativeId?: string }, windowId: string): number {
+  const s = PLOY_SCORE[p.ployId] ?? (p.ployId.startsWith('ha.inv.') ? 1.4 : 0.9)
+  const op = p.operativeId ? view.operatives[p.operativeId] : undefined
+  switch (p.ployId) {
+    case 'ha.inv.rejuvenation':
+      // D3+1 wounds back: worth what is actually missing
+      return op ? Math.min(op.maxWounds - op.wounds, 3) * 0.55 : s
+    case 'ha.omen': {
+      // an enemy re-rolls its 6s (best on the one that hits hardest); a friend re-rolls its 1s
+      const t = p.param ? view.operatives[p.param] : undefined
+      if (!t) return s
+      return t.seat === seat ? 0.9 + t.wounds * 0.02 : 1.3 + t.maxWounds * 0.03
+    }
+    case 'ha.flay':
+      return p.param && view.operatives[p.param]?.seat === seat ? 1.2 : 0.2
+    case 'ha.fdd': {
+      const t = p.param ? view.operatives[p.param] : undefined
+      return t ? 1.2 + t.wounds * 0.03 : s
+    }
+    case 'hc.p.omnissiahs-imperative':
+      // the extra rule helps most once the dice are in play
+      return windowId === 'firefight.activationStart' || windowId === 'firefight.actionDeclared' ? s - 0.4 : s
+    default:
+      return s
+  }
+}
+
+/** ploy.firefight: use the best offered ploy when the window's swing is positive, else pass. Free (0 CP) offers need little. */
 export function firefightPloy(ctx: AiCtx): Action {
   const { pending, view } = ctx
   const cp = view.players[ctx.seat].cp
   const info = (view.window?.info ?? {}) as { attackFails?: number; defenceFails?: number; critRetained?: boolean }
-  let best: { o: DecisionOption; s: number } | null = null
+  let best: { o: DecisionOption; margin: number } | null = null
   for (const o of pending.options ?? []) {
-    const p = o.action.payload as { ployId: string }
+    const p = o.action.payload as { ployId: string; param?: string; operativeId?: string }
     const cost = Number(o.data?.cost ?? 1)
     if (cost > cp) continue
-    let s = PLOY_SCORE[p.ployId] ?? 0.9
+    let s = ployScore(view, ctx.seat, p, String(pending.window ?? ''))
     // defensive dice ploys matter when the attack is heavy; offensive ones when the swing is open
     if (pending.window === 'shoot.defenceRolled' && (info.attackFails ?? 0) > 3) s *= 0.7
-    if (!ctx.params.tacAware) s *= 0.6
-    if (!best || s > best.s) best = { o, s }
+    if (!ctx.params.tacAware && cost > 0) s *= 0.6
+    // a free offer costs nothing but its usage limit, so the bar is low; paid ploys keep the threshold for the CP left
+    const need = cost <= 0 ? 0.3 : threshold(cp) - 0.3
+    const margin = s - need
+    if (margin >= 0 && (!best || margin > best.margin)) best = { o, margin }
   }
-  const need = threshold(cp) - 0.3
-  if (best && best.s >= need) return best.o.action
-  return passAction(pending)
+  return best ? best.o.action : passAction(pending)
 }
 
 export type { Operative }

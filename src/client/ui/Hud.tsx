@@ -10,7 +10,7 @@ import { useFormFactor } from './formFactor'
 import { MeasureButton, MeasurePanel } from './MeasureTool'
 import { SightlinePanel } from './SightlinePanel'
 import { colors, fontStack, panel } from './theme'
-import { Tooltip } from './Tooltip'
+import { Keyword } from './Keyword'
 import { useUi, type DrawerId } from './uiStore'
 import { Btn, seatColor } from './widgets'
 
@@ -46,25 +46,19 @@ function SeatBlock({ seat }: { seat: Seat }) {
         <div style={{ fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {compact ? seat : `${seat} · ${team?.name ?? p.teamId}`} {mode === 'bot' && <span style={{ color: colors.muted, fontWeight: 500 }}>(bot)</span>}
           {holder && (
-            <Tooltip title="Initiative" body="This side holds initiative: it activates first this turning point.">
-              <span data-testid={`hud-initiative-${seat}`} style={{ marginLeft: 6, color: colors.accent }}>
-                {'★'}
-              </span>
-            </Tooltip>
+            <span data-testid={`hud-initiative-${seat}`} style={{ marginLeft: 6, color: colors.accent }}>
+              <Keyword term="Initiative">{'★'}</Keyword>
+            </span>
           )}
         </div>
         <div style={{ fontSize: 12, color: colors.muted, whiteSpace: 'nowrap' }}>
-          <Tooltip title="Command points" body="Spent on gambits, ploys and Command Re-rolls.">
-            <span data-testid={`hud-cp-${seat}`} style={{ color: colors.text, fontWeight: 700 }}>
-              CP {p.cp}
-            </span>
-          </Tooltip>
+          <span data-testid={`hud-cp-${seat}`} style={{ color: colors.text, fontWeight: 700 }}>
+            <Keyword term="CP" /> {p.cp}
+          </span>
           {' · '}
-          <Tooltip title="Victory points" body="Scored from the mission: crit op, tac op and kill op.">
-            <span data-testid={`hud-vp-${seat}`} style={{ color: colors.text, fontWeight: 700 }}>
-              VP {p.vp}
-            </span>
-          </Tooltip>
+          <span data-testid={`hud-vp-${seat}`} style={{ color: colors.text, fontWeight: 700 }}>
+            <Keyword term="VP" /> {p.vp}
+          </span>
           {' · '}
           <span data-testid={`hud-ops-${seat}`}>
             {alive}/{ops.length} ops
@@ -104,11 +98,24 @@ export function Hud() {
       <SeatBlock seat="A" />
       <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
         <div data-testid="hud-tp" style={{ fontWeight: 800, fontSize: 14, whiteSpace: 'nowrap' }}>
-          {state.turningPoint > 0 ? `${ff.compact ? 'TP' : 'Turning point'} ${state.turningPoint}/4` : 'Set-up'}
+          {state.turningPoint > 0 ? (
+            <>
+              <Keyword term="Turning point">{ff.compact ? 'TP' : 'Turning point'}</Keyword> {state.turningPoint}/4
+            </>
+          ) : (
+            'Set-up'
+          )}
         </div>
         <div data-testid="hud-phase" style={{ fontSize: 12, color: colors.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {phase}
-          {state.initiative ? ` · initiative ${state.initiative}` : ''}
+          {state.initiative ? (
+            <>
+              {' · '}
+              <Keyword term="Initiative">initiative</Keyword> {state.initiative}
+            </>
+          ) : (
+            ''
+          )}
         </div>
       </div>
       <SeatBlock seat="B" />

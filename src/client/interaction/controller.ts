@@ -4,7 +4,8 @@
 // candidate actions.
 import { act, validate, type Action, type GameState, type PendingDecision, type Rejection, type Waypoint } from '@/engine'
 import { markerRadius } from '@/engine/state'
-import { planMove, type MoveKind, type MovePlan } from '@/engine/movement'
+import { planFly, planMove, type MoveKind, type MovePlan } from '@/engine/movement'
+import { providerCanFly } from '@/engine/team-rules'
 import { humanToAct, useGame } from '../store/game'
 import { useUi, type Pt } from '../ui/uiStore'
 import { rejectionText } from '../game/labels'
@@ -23,14 +24,62 @@ export interface MovePreview {
   rejection: Rejection | null
 }
 
-/** The engine's verdict on a path for the pending move decision. */
-export function previewMove(state: GameState, pending: PendingDecision, waypoints: Waypoint[]): MovePreview {
+/**
+ * The waypoints a move is planned with: the clicked path, or for an oval base with a chosen facing and no path the base
+ * turning on the spot (one waypoint at its own position, which the engine reads as a turn).
+ */
+export function movePathPoints(op: { pos: { x: number; y: number; z: number }; ovalHalfAxis?: number }, waypoints: Waypoint[], facing: number | null): Waypoint[] {
+  if (waypoints.length > 0) return waypoints
+  return op.ovalHalfAxis && facing !== null ? [{ x: op.pos.x, z: op.pos.z, y: op.pos.y }] : []
+}
+
+/** The engine's verdict on a path for the pending move decision. `facing` turns an oval base at the end (radians, +Z = 0). */
+export function previewMove(state: GameState, pending: PendingDecision, waypoints: Waypoint[], facing: number | null = null, fly = false): MovePreview {
   const c = pending.constraints
-  if (!c || !c.operativeId || !isMoveKind(c.kind) || waypoints.length === 0) return { ok: false, plan: null, rejection: null }
+  if (!c || !c.operativeId || !isMoveKind(c.kind)) return { ok: false, plan: null, rejection: null }
   const op = state.operatives[c.operativeId]
   if (!op) return { ok: false, plan: null, rejection: null }
-  const r = planMove(state, op, c.kind, waypoints, c.counteract === true)
+  const pts = movePathPoints(op, waypoints, facing)
+  if (pts.length === 0) return { ok: false, plan: null, rejection: null }
+  const turn = op.ovalHalfAxis && facing !== null ? facing : undefined
+  const r = fly ? planFly(state, op, c.kind, pts.slice(-1), c.counteract === true, undefined, undefined, turn) : planMove(state, op, c.kind, pts, c.counteract === true, undefined, undefined, turn)
   return r.ok ? { ok: true, plan: r, rejection: null } : { ok: false, plan: null, rejection: r.rejection }
+}
+
+/** Can the operative whose move is pending FLY (Jump Pack)? The engine's team rules answer. */
+export function canFlyNow(state: GameState, pending: PendingDecision): boolean {
+  const c = pending.constraints
+  const op = c?.operativeId ? state.operatives[c.operativeId] : undefined
+  return !!op && isMoveKind(c?.kind) && providerCanFly(state, op, c!.kind!)
+}
+
+/** Bearing from one point to another (radians, +Z = 0, +X = a quarter turn): the engine's facing convention. */
+export function bearingTo(from: { x: number; z: number }, to: { x: number; z: number }): number {
+  return Math.atan2(to.x - from.x, to.z - from.z)
+}
+
+/** Round to the engine's three decimals. */
+export function roundFacing(f: number): number {
+  return Math.round(f * 1000) / 1000
+}
+
+/** Turn `f` by `delta` radians and keep it in (-PI, PI]. */
+export function turnedBy(f: number, delta: number): number {
+  let r = f + delta
+  while (r > Math.PI) r -= Math.PI * 2
+  while (r <= -Math.PI) r += Math.PI * 2
+  return roundFacing(r)
+}
+
+/** Facing that points an oval base at the closest enemy from `from`; null when none is left. */
+export function facingTowardEnemy(state: GameState, op: { seat: 'A' | 'B' }, from: { x: number; z: number }): number | null {
+  let best: { d: number; f: number } | null = null
+  for (const e of Object.values(state.operatives)) {
+    if (e.seat === op.seat || e.status !== 'active' || e.wounds <= 0) continue
+    const d = Math.hypot(e.pos.x - from.x, e.pos.z - from.z)
+    if (!best || d < best.d) best = { d, f: bearingTo(from, e.pos) }
+  }
+  return best ? roundFacing(best.f) : null
 }
 
 /** The operative to deploy next: the user's pick if still in reserve, else the first. */
@@ -39,8 +88,15 @@ export function deployChoice(pending: PendingDecision, picked: string | null): s
   return picked && ids.includes(picked) ? picked : (ids[0] ?? null)
 }
 
-export function deployAction(pending: PendingDecision, opId: string, pt: Pt): Action {
+/** Deploy action; an oval base set up at a chosen facing (radians) uses the facing form, round bases ignore it. */
+export function deployAction(pending: PendingDecision, opId: string, pt: Pt, facing: number | null = null): Action {
+  if (facing !== null) return act.deployFacing(pending, opId, round(pt.x), round(pt.z), facing)
   return act.deploy(pending, opId, round(pt.x), round(pt.z), pt.y)
+}
+
+/** The facing chosen in the UI for the operative about to be deployed, if it has an oval base. */
+function deployFacingFor(state: GameState, opId: string, ui: { facing: number | null }): number | null {
+  return state.operatives[opId]?.ovalHalfAxis ? ui.facing : null
 }
 
 function round(n: number): number {
@@ -116,7 +172,7 @@ export function hoverPoint(pt: Pt | null): void {
   if (pending?.kind === 'setup.deploy' && state && humanToAct()) {
     const id = deployChoice(pending, ui.deployOp)
     if (id) {
-      const rej = validate(state, deployAction(pending, id, pt))
+      const rej = validate(state, deployAction(pending, id, pt, deployFacingFor(state, id, ui)))
       note = rej ? { ok: false, text: rejectionText(rej) } : { ok: true, text: 'Legal spot: click to deploy.' }
     }
   }
@@ -147,7 +203,7 @@ export function clickPoint(pt: Pt): void {
   }
   if (pending.kind === 'setup.deploy') {
     const id = deployChoice(pending, ui.deployOp)
-    if (id) dispatch(deployAction(pending, id, pt))
+    if (id) dispatch(deployAction(pending, id, pt, deployFacingFor(state, id, ui)))
     return
   }
   if (pending.kind === 'setup.objective' || pending.kind === 'ability.choice') {
@@ -163,6 +219,11 @@ export function clickPoint(pt: Pt): void {
   if (pending.kind === 'move.path') {
     if (ui.waypoints.length >= 12) return
     const wp: Waypoint = { x: round(pt.x), z: round(pt.z), y: pt.y }
+    // FLY: one set-up point, replaced by each click
+    if (ui.fly) {
+      useUi.setState({ waypoints: [wp] })
+      return
+    }
     if (ui.jumpNext) wp.jump = true
     useUi.setState({ waypoints: [...ui.waypoints, wp], jumpNext: false })
     return
@@ -210,8 +271,18 @@ export function clickOperative(id: string): void {
 export function confirmPath(): Rejection | null {
   const { pending, dispatch } = useGame.getState()
   const ui = useUi.getState()
-  if (pending?.kind !== 'move.path' || ui.waypoints.length === 0) return null
-  const rej = dispatch(act.path(pending, ui.waypoints))
+  if (pending?.kind !== 'move.path') return null
+  const state = useGame.getState().state
+  const op = state && pending.constraints?.operativeId ? state.operatives[pending.constraints.operativeId] : undefined
+  const turn = op?.ovalHalfAxis && ui.facing !== null ? ui.facing : null
+  const pts = op ? movePathPoints(op, ui.waypoints, turn) : ui.waypoints
+  if (pts.length === 0) return null
+  let action = turn !== null ? act.pathFacing(pending, pts, turn) : act.path(pending, pts)
+  if (ui.fly) {
+    const f = act.fly(pending, pts[pts.length - 1]!)
+    action = turn !== null ? { ...f, payload: { ...f.payload, facing: turn } } : f
+  }
+  const rej = dispatch(action)
   if (!rej) ui.resetPath()
   return rej
 }

@@ -1,8 +1,10 @@
 // Small building blocks shared by the dedicated decision prompts: header, verdict pill, option card, dice row.
 import type { CSSProperties, ReactNode } from 'react'
 import type { PendingDecision } from '@/engine'
+import { lookupTerm } from '../game/glossary'
 import { decisionInfo } from '../game/labels'
 import type { BadgeKind, DieView } from '../game/promptLabels'
+import { KeywordText } from './Keyword'
 import { colors, fontStack } from './theme'
 import { Tooltip } from './Tooltip'
 import { useFormFactor } from './formFactor'
@@ -13,7 +15,7 @@ export function Why({ text }: { text?: string }) {
   if (!text) return null
   return (
     <div data-testid="prompt-why" style={{ fontSize: 12, color: colors.accent, marginTop: 3 }}>
-      Why it matters: <span style={{ color: colors.text }}>{text}</span>
+      Why it matters: <span style={{ color: colors.text }}><KeywordText text={text} /></span>
     </div>
   )
 }
@@ -25,7 +27,7 @@ export function PromptHeader({ pending, hint, title }: { pending: PendingDecisio
   if (compact) {
     return (
       <div style={{ marginBottom: 6 }}>
-        <Muted>{hint ?? info.hint}</Muted>
+        <Muted><KeywordText text={hint ?? info.hint} keywords={false} /></Muted>
         <Why text={info.why} />
       </div>
     )
@@ -36,7 +38,7 @@ export function PromptHeader({ pending, hint, title }: { pending: PendingDecisio
         <Dot seat={pending.seat} />
         {title ?? info.title}
       </div>
-      <Muted>{hint ?? info.hint}</Muted>
+      <Muted><KeywordText text={hint ?? info.hint} keywords={false} /></Muted>
       <Why text={info.why} />
     </div>
   )
@@ -62,7 +64,17 @@ export function Pill({ kind, label, meaning }: { kind: BadgeKind; label: string;
       {label}
     </span>
   )
-  return meaning ? <Tooltip title={label} body={meaning}>{pill}</Tooltip> : pill
+  // the verdict's own sentence (engine odds context) plus what the term means in the rules, when the glossary knows the label
+  const rule = lookupTerm(label)
+  const body = meaning ? (
+    <>
+      {meaning}
+      {rule && <div style={{ marginTop: 4, color: colors.muted }}>{rule.body}</div>}
+    </>
+  ) : rule ? (
+    rule.body
+  ) : null
+  return body ? <Tooltip title={label} body={body}>{pill}</Tooltip> : pill
 }
 
 export function cardStyle(opts: { primary?: boolean; disabled?: boolean } = {}): CSSProperties {
@@ -84,7 +96,7 @@ export function cardStyle(opts: { primary?: boolean; disabled?: boolean } = {}):
 export function DiceRow({ dice, small, highlight, label }: { dice: DieView[]; small?: boolean; highlight?: number[]; label?: string }) {
   return (
     <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }} data-testid="prompt-dice-row">
-      {label && <span style={{ color: colors.muted, fontSize: 12, marginRight: 2 }}>{label}</span>}
+      {label && <span style={{ color: colors.muted, fontSize: 12, marginRight: 2 }}><KeywordText text={label} /></span>}
       {dice.map((d, i) => (
         <span
           key={i}
@@ -111,7 +123,7 @@ export function CountDice({ normal, crit, label }: { normal: number; crit: numbe
   return (
     <div>
       <div style={{ fontSize: 11, color: colors.muted, marginBottom: 2 }}>
-        {label}: {normal} normal, {crit} critical
+        <KeywordText text={`${label}: ${normal} normal, ${crit} critical`} />
       </div>
       <DiceRow dice={dice} small />
     </div>

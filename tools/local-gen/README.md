@@ -13,3 +13,11 @@ Per machine, one GPU job at a time (see docs/knowledge-base/local-ai-studios.md)
   launchers (junctions do not resolve over SSH); pull the finished GLBs back with scp.
 Split the 20 bodies roughly half and half; batches of at most 9 per machine. After finalize: `node tools/models/optimize.mjs`,
 measure sockets, update `public/assets/models/manifest.json`, check `?gallery`.
+
+## M9 batch (Pathfinders, Hierotek Circle, Plague Marines, Wyrmblade): 41 bodies + 42 attachments
+`run_m9_local.bat` (27 bodies, 28 attachments, this PC) and `run_m9_alteisen.bat` (14 + 14, Alteisen, launch with `schtasks`) run the
+same stages as day one; picks are `m9_picks.json` / `m9_attach_picks.json` in each machine's Hunyuan3D-2 folder (the `*.alteisen.json`
+copies here hold the Alteisen paths; the local ones hold absolute concept paths and are not committed). New body sizes are appended to
+`ms_units.json`; attachment finishing data (length, hold class, grip fraction) is in `tools/models/attachments.json`. Finalise bodies
+with `stage_finalize.py` (the bat does it), then `measure-sockets.py`; attachments with `finalize-attachments.py` after copying
+Alteisen's `outputs/<slug>/textured.glb` into `tools/models/raw/<slug>.glb`. QC: `node tools/models/shoot-figures.mjs`.

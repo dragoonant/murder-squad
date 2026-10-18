@@ -122,9 +122,14 @@ export function passIt(state: GameState, rng?: Rng): StepResult {
   return expectOk(step(state, { type: 'pass', seat: p.seat, decisionId: p.id, payload: {} }, rng))
 }
 
-/** Activate an operative (Engage unless said) and answer any activation-start ploy window with a pass. */
+/**
+ * Activate an operative (Engage unless said) and answer any activation-start ploy window with a pass. A ploy window
+ * still open from the previous activation's end (firefight.activationEnded, Slink Into Darkness) is passed first.
+ */
 export function activateOp(state: GameState, id: string, order: 'engage' | 'conceal' = 'engage', rng?: Rng): GameState {
-  let s = take(state, id, rng).state
+  let s = state
+  while (s.pending?.kind === 'ploy.firefight') s = passIt(s, rng).state
+  s = take(s, id, rng).state
   // a Grot cannot Engage and a Squig cannot Conceal: take the one order that is offered
   s = take(s, hasOption(s, order) ? order : order === 'engage' ? 'conceal' : 'engage', rng).state
   while (s.pending?.kind === 'ploy.firefight') s = passIt(s, rng).state

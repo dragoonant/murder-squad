@@ -2,17 +2,18 @@
 // kind (deploy, move path, activate, order, action bar); everything else (setup rolls, drop zones, gambits,
 // shoot/fight/ploy kinds the engine adds later) renders through the generic option list, never a crash.
 import { useEffect, useMemo, type ReactNode } from 'react'
-import { suggestPlacement, type DecisionOption, type GameState, type PendingDecision } from '@/engine'
+import { act, suggestPlacement, type DecisionOption, type GameState, type PendingDecision } from '@/engine'
 import * as firefight from '@/engine/firefight'
 import { effectiveApl } from '@/engine/state'
 import { ACTION_HELP, ACTION_LABEL, ACTION_ORDER_FALLBACK, contextFacts, decisionInfo, humanize, opName, optionDetail, optionLabel, ORDER_HELP, SEAT_NAME } from '../game/labels'
 import { abilityActions, markerActionLabel } from '../game/promptLabels'
 import { AbilityChoiceBody, EquipBody, GuardBody, MarkerPlaceBody, ObjectiveBody, PloyBody } from './GamePrompts'
 import { BlockBody, CoverSaveBody, FightResolveBody, FightTargetBody, FightWeaponBody, RerollBody, ShootTargetBody, ShootWeaponBody } from './AttackPrompts'
-import { cancelPath, confirmPath, deployAction, deployChoice, optionOperative, previewMove } from '../interaction/controller'
+import { bearingTo, canFlyNow, cancelPath, confirmPath, deployAction, deployChoice, facingTowardEnemy, optionOperative, previewMove, turnedBy } from '../interaction/controller'
 import { useSettled } from '../presentation/presentedStore'
 import { useGame } from '../store/game'
 import { BottomSheet } from './BottomSheet'
+import { Keyword, KeywordText } from './Keyword'
 import { Why } from './promptParts'
 import { useFormFactor } from './formFactor'
 import { colors, fontStack, panel } from './theme'
@@ -58,14 +59,14 @@ function Header({ pending, seat }: { pending: PendingDecision; seat?: boolean })
   const info = decisionInfo(pending.kind)
   const compact = useFormFactor().compact
   // on a phone the sheet header already names the decision (seat and title): keep only the one-line hint
-  if (compact) return <div style={{ marginBottom: 6 }}><Muted>{info.hint}</Muted><Why text={info.why} /></div>
+  if (compact) return <div style={{ marginBottom: 6 }}><Muted><KeywordText text={info.hint} keywords={false} /></Muted><Why text={info.why} /></div>
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{ fontWeight: 800, fontSize: 15 }} data-testid="prompt-title">
         {seat && <Dot seat={pending.seat} />}
         {info.title}
       </div>
-      <Muted>{info.hint}</Muted>
+      <Muted><KeywordText text={info.hint} keywords={false} /></Muted>
       <Why text={info.why} />
     </div>
   )
@@ -94,7 +95,7 @@ function GenericBody({ pending, state }: { pending: PendingDecision; state: Game
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px', marginBottom: 8, fontSize: 12, color: colors.muted }} data-testid="prompt-facts">
           {facts.map((f) => (
             <span key={f.key}>
-              {f.key}: <span style={{ color: colors.text }}>{f.value}</span>
+              <KeywordText text={f.key} keywords={false} />: <span style={{ color: colors.text }}><KeywordText text={f.value} keywords={false} /></span>
             </span>
           ))}
         </div>
@@ -129,8 +130,8 @@ function OptionButton({ o, state, pending, onPick }: { o: DecisionOption; state:
       onMouseEnter={() => useUi.setState(isZone ? { hoverZone: (o.action.payload as { zoneId: string }).zoneId } : { hoverOp: optionOperative(o) })}
       onMouseLeave={() => useUi.setState({ hoverZone: null, hoverOp: null })}
     >
-      {optionLabel(o, state, pending)}
-      {detail && <span style={{ display: 'block', fontWeight: 400, fontSize: 11, opacity: 0.85 }}>{detail}</span>}
+      {body ? optionLabel(o, state, pending) : <KeywordText text={optionLabel(o, state, pending)} keywords={false} />}
+      {detail && <span style={{ display: 'block', fontWeight: 400, fontSize: 11, opacity: 0.85 }}>{body ? detail : <KeywordText text={detail} keywords={false} />}</span>}
     </Btn>
   )
   return body ? <Tooltip title={optionLabel(o, state, pending)} body={body}>{btn}</Tooltip> : btn
@@ -165,24 +166,38 @@ function DeployBody({ pending, state }: { pending: PendingDecision; state: GameS
   const ids = pending.constraints?.operativeIds ?? []
   const current = deployChoice(pending, picked)
   const left = Number(pending.context.left ?? 0)
+  const facing = useUi((s) => s.facing)
+  const currentOp = current ? state.operatives[current] : undefined
   const auto = () => {
     if (!current) return
     const spot = suggestPlacement(state, pending, current)
-    if (spot) dispatch(deployAction(pending, current, { x: spot.x, z: spot.z, y: spot.y }))
+    if (spot) dispatch(deployAction(pending, current, { x: spot.x, z: spot.z, y: spot.y }, currentOp?.ovalHalfAxis ? facing : null))
   }
   return (
     <>
       <Header pending={pending} seat />
       <Muted style={{ marginBottom: 6 }}>
-        Place {left} more operative{left === 1 ? '' : 's'} now; every operative starts on Conceal. {ids.length} left in reserve.
+        Place {left} more operative{left === 1 ? '' : 's'} now; every operative starts on <Keyword term="Conceal" />. {ids.length} left in reserve.
       </Muted>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }} data-testid="deploy-tray">
         {ids.map((id) => (
-          <Btn key={id} data-testid={`deploy-op-${id}`} variant={id === current ? 'active' : 'base'} onClick={() => useUi.setState({ deployOp: id })}>
+          <Btn key={id} data-testid={`deploy-op-${id}`} variant={id === current ? 'active' : 'base'} onClick={() => useUi.setState({ deployOp: id, facing: null })}>
             {opName(state, id)}
           </Btn>
         ))}
       </div>
+      <HidingControl pending={pending} state={state} />
+      {currentOp?.ovalHalfAxis ? (
+        <TurnControl
+          current={facing ?? 0}
+          chosen={facing !== null}
+          label="Base facing"
+          help="This operative stands on an oval base. It is set up with its long side along the facing you pick (default: towards the centre of the killzone)."
+          onSet={(f) => useUi.setState({ facing: f })}
+          onEnemy={null}
+          onReset={() => useUi.setState({ facing: null })}
+        />
+      ) : null}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Btn data-testid="deploy-auto" onClick={auto}>
           Auto-place {current ?? ''}
@@ -195,14 +210,102 @@ function DeployBody({ pending, state }: { pending: PendingDecision; state: GameS
   )
 }
 
+/** Set-up option for teams that may start operatives out of the killzone (Wyrmblade HIDING): one button per operative the engine allows. */
+function HidingControl({ pending, state }: { pending: PendingDecision; state: GameState }) {
+  const dispatch = useGame((g) => g.dispatch)
+  const allowed = Array.isArray(pending.context.setAsideIds) ? (pending.context.setAsideIds as string[]) : []
+  const hidden = Object.values(state.operatives).filter((o) => o.seat === pending.seat && o.offboard !== undefined)
+  if (allowed.length === 0 && hidden.length === 0) return null
+  return (
+    <div data-testid="hiding-control" style={{ marginBottom: 8 }}>
+      <Muted style={{ marginBottom: 4 }}>
+        <KeywordText text="Instead of placing an operative you may start it in HIDING: out of the killzone, ready to Emerge near your drop zone later (it is incapacitated if it is still hiding when turning point 2 ends)." />
+      </Muted>
+      {hidden.length > 0 && (
+        <div data-testid="hiding-list" style={{ fontSize: 12, marginBottom: 4 }}>
+          <Keyword term="HIDING" />: {hidden.map((o) => o.name).join(', ')}
+        </div>
+      )}
+      {allowed.length > 0 ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {allowed.map((id) => (
+            <Btn key={id} data-testid={`hide-op-${id}`} onClick={() => dispatch(act.setAside(pending, id))}>
+              Hide {opName(state, id)}
+            </Btn>
+          ))}
+        </div>
+      ) : (
+        <Muted>No more operatives can start hiding (a third of the team at most, Neophytes only).</Muted>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------- oval base turn
+
+/** Turn buttons for an oval base: 30 degree steps, face the nearest enemy, along the last step, and back to the default. */
+function TurnControl({
+  current,
+  chosen,
+  label,
+  help,
+  onSet,
+  onEnemy,
+  onAlong,
+  onReset,
+}: {
+  current: number
+  chosen: boolean
+  label: string
+  help: string
+  onSet(f: number): void
+  onEnemy: (() => void) | null
+  onAlong?: () => void
+  onReset(): void
+}) {
+  const step = Math.PI / 6
+  const degrees = Math.round(((current * 180) / Math.PI + 360) % 360)
+  return (
+    <div data-testid="turn-control" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, margin: '4px 0 8px' }}>
+      <Tooltip title={label} body={help}>
+        <span style={{ fontSize: 12, fontWeight: 700 }}>
+          {label}: <span data-testid="turn-facing">{chosen ? `${degrees}°` : 'as is'}</span>
+        </span>
+      </Tooltip>
+      <Btn data-testid="turn-left" onClick={() => onSet(turnedBy(current, -step))}>
+        ↶ 30°
+      </Btn>
+      <Btn data-testid="turn-right" onClick={() => onSet(turnedBy(current, step))}>
+        30° ↷
+      </Btn>
+      {onEnemy && (
+        <Btn data-testid="turn-enemy" onClick={onEnemy}>
+          Face enemy
+        </Btn>
+      )}
+      {onAlong && (
+        <Btn data-testid="turn-along" onClick={onAlong}>
+          Along move
+        </Btn>
+      )}
+      <Btn data-testid="turn-reset" disabled={!chosen} onClick={onReset}>
+        Default
+      </Btn>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------- move path
 
 function MoveBody({ pending, state }: { pending: PendingDecision; state: GameState }) {
   const waypoints = useUi((s) => s.waypoints)
   const jumpNext = useUi((s) => s.jumpNext)
+  const facing = useUi((s) => s.facing)
+  const fly = useUi((s) => s.fly)
+  const canFly = canFlyNow(state, pending)
   const c = pending.constraints
   const op = c?.operativeId ? state.operatives[c.operativeId] : null
-  const preview = useMemo(() => previewMove(state, pending, waypoints), [state, pending, waypoints])
+  const preview = useMemo(() => previewMove(state, pending, waypoints, facing, fly), [state, pending, waypoints, facing, fly])
   const max = c?.maxInches ?? Number(pending.context.maxInches ?? 0)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -220,12 +323,12 @@ function MoveBody({ pending, state }: { pending: PendingDecision; state: GameSta
     <>
       <Header pending={pending} seat />
       <div style={{ fontSize: 13, marginBottom: 6 }}>
-        <b>{op ? opName(state, op.id) : ''}</b> {kindLabel}: up to <b>{max}&Prime;</b>
-        {c?.kind === 'charge' && ' and finish inside an enemy control range'}
-        {c?.mustEndOutsideControlRange && c.kind !== 'charge' && ', finishing outside every enemy control range'}.
+        <b>{op ? opName(state, op.id) : ''}</b> <Keyword term={kindLabel} />: up to <b>{max}&Prime;</b>
+        {c?.kind === 'charge' && <> and finish inside an enemy <Keyword term="Control range">control range</Keyword></>}
+        {c?.mustEndOutsideControlRange && c.kind !== 'charge' && <>, finishing outside every enemy <Keyword term="Control range">control range</Keyword></>}.
       </div>
       <div data-testid="move-total" style={{ fontSize: 15, fontWeight: 800, color: plan ? colors.text : colors.muted }}>
-        {plan ? `Path cost ${plan.cost}/${plan.maxInches}″` : waypoints.length ? 'Path not allowed' : 'Click the board to lay the first step'}
+        {plan ? `Path cost ${plan.cost}/${plan.maxInches}″` : waypoints.length || facing !== null ? 'Path not allowed' : 'Click the board to lay the first step'}
       </div>
       {plan && (
         <div style={{ fontSize: 12, color: colors.muted, margin: '2px 0 4px' }} data-testid="move-segments">
@@ -242,8 +345,32 @@ function MoveBody({ pending, state }: { pending: PendingDecision; state: GameSta
           {preview.rejection.reason}
         </div>
       )}
+      {op?.ovalHalfAxis ? (
+        <TurnControl
+          current={facing ?? plan?.facing ?? op.facing}
+          chosen={facing !== null}
+          label="Turn base"
+          help="An oval base may turn on the spot at the end of a move. The end of its long side sweeps an arc, and that arc counts as one more step (rounded up to a whole inch) against the move."
+          onSet={(f) => useUi.setState({ facing: f })}
+          onEnemy={() => {
+            const end = plan?.end ?? waypoints[waypoints.length - 1] ?? op.pos
+            const f = facingTowardEnemy(state, op, end)
+            if (f !== null) useUi.setState({ facing: f })
+          }}
+          onAlong={
+            waypoints.length > 0
+              ? () => {
+                  const last = waypoints[waypoints.length - 1]!
+                  const from = waypoints.length > 1 ? waypoints[waypoints.length - 2]! : op.pos
+                  useUi.setState({ facing: bearingTo(from, last) })
+                }
+              : undefined
+          }
+          onReset={() => useUi.setState({ facing: null })}
+        />
+      ) : null}
       <Muted style={{ marginBottom: 8 }}>
-        Each straight step is rounded up to a whole inch. Click ground for flat steps, click a Vantage platform to climb, click ground beside a tower to drop. Use Jump for a leap across a gap.
+        <KeywordText text="Each straight step is rounded up to a whole inch. Click ground for flat steps, click a Vantage platform to climb, click ground beside a tower to drop. Use Jump for a leap across a gap." />
       </Muted>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         <Btn data-testid="move-confirm" variant="primary" disabled={!plan} onClick={() => confirmPath()}>
@@ -255,6 +382,13 @@ function MoveBody({ pending, state }: { pending: PendingDecision; state: GameSta
         <Btn data-testid="move-clear" disabled={waypoints.length === 0} onClick={() => useUi.getState().resetPath()}>
           Clear
         </Btn>
+        {canFly && (
+          <Tooltip title="Fly" body="Jump pack: instead of walking, set the operative up again anywhere within its move, measured in a straight line. Terrain in between, climbs and drops cost nothing. Click the board to choose the spot.">
+            <Btn data-testid="move-fly" variant={fly ? 'active' : 'base'} onClick={() => useUi.setState({ fly: !fly, waypoints: [] })}>
+              Fly
+            </Btn>
+          </Tooltip>
+        )}
         <Tooltip title="Jump" body="Mark the next step as a leap across a gap or down from a platform (up to 4 inches).">
           <Btn data-testid="move-jump" variant={jumpNext ? 'active' : 'base'} onClick={() => useUi.setState({ jumpNext: !jumpNext })}>
             Jump next
@@ -314,8 +448,8 @@ function OrderBody({ pending, state }: { pending: PendingDecision; state: GameSt
     <>
       <Header pending={pending} seat />
       <div style={{ fontSize: 13, marginBottom: 6 }}>
-        Order for <b>{op ? opName(state, op.id) : ''}</b>
-        {op && <> (currently {humanize(op.order)})</>}
+        <Keyword term="Order">Order</Keyword> for <b>{op ? opName(state, op.id) : ''}</b>
+        {op && <> (currently <Keyword term={op.order}>{humanize(op.order)}</Keyword>)</>}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         {(['engage', 'conceal'] as const).map((order) => (
@@ -336,7 +470,9 @@ function OrderBody({ pending, state }: { pending: PendingDecision; state: GameSt
             }}
           >
             <div style={{ fontWeight: 800, fontSize: 14 }}>{order === 'engage' ? 'Engage' : 'Conceal'}</div>
-            <div style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>{ORDER_HELP[order]}</div>
+            <div style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
+              <KeywordText text={ORDER_HELP[order]} />
+            </div>
           </button>
         ))}
       </div>
@@ -411,16 +547,22 @@ function ActionBody({ pending, state }: { pending: PendingDecision; state: GameS
       <div style={{ fontSize: 13, marginBottom: compact ? 4 : 8, display: 'flex', alignItems: 'center', gap: 8 }}>
         <b>{op ? opName(state, op.id) : ''}</b>
         {ctx.counteract ? (
-          <span style={{ color: colors.accent }}>Counteract: one 1 AP action</span>
+          <span style={{ color: colors.accent }}>
+            <KeywordText text="Counteract: one 1 AP action" />
+          </span>
         ) : (
           <>
             <ApPips total={total} left={left} />
             <span data-testid="ap-left">
-              {left}/{total} AP
+              {left}/{total} <Keyword term="AP" />
             </span>
           </>
         )}
-        {op && <span style={{ color: colors.muted }}>{humanize(op.order)}</span>}
+        {op && (
+          <span style={{ color: colors.muted }}>
+            <Keyword term={op.order}>{humanize(op.order)}</Keyword>
+          </span>
+        )}
       </div>
       <div style={compact ? { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 } : { display: 'flex', flexWrap: 'wrap', gap: 6 }} data-testid="action-bar">
         {known.filter((id) => id !== 'end').map(renderAction)}
@@ -433,7 +575,9 @@ function ActionBody({ pending, state }: { pending: PendingDecision; state: GameS
       </div>
       {(abilities.length > 0 || markerOpts.length > 0) && (
         <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 11, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 3 }}>Mission and special actions</div>
+          <div style={{ fontSize: 11, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 3 }}>
+            <Keyword term="Mission action">Mission</Keyword> and special actions
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} data-testid="ability-bar">
             {abilities.map((a) => {
               const why = [a.text, ...a.conditions].filter(Boolean).join(' ')
@@ -473,7 +617,11 @@ function ActionBody({ pending, state }: { pending: PendingDecision; state: GameS
           </div>
         </div>
       )}
-      {(ctx.performed?.length ?? 0) > 0 && <Muted style={{ marginTop: 6 }}>Done this activation: {ctx.performed!.map((a) => ACTION_LABEL[a] ?? humanize(a)).join(', ')}</Muted>}
+      {(ctx.performed?.length ?? 0) > 0 && (
+        <Muted style={{ marginTop: 6 }}>
+          <KeywordText text={`Done this activation: ${ctx.performed!.map((a) => ACTION_LABEL[a] ?? humanize(a)).join(', ')}`} />
+        </Muted>
+      )}
     </>
   )
 }
@@ -501,7 +649,7 @@ export function DecisionPrompt() {
   // Reset path / pick when the decision changes.
   const id = pending?.id
   useEffect(() => {
-    useUi.setState({ waypoints: [], jumpNext: false, deployOp: null, hoverNote: null, hoverZone: null, hoverOp: null, hoverOption: null, hoverSpot: null })
+    useUi.setState({ waypoints: [], jumpNext: false, facing: null, fly: false, deployOp: null, hoverNote: null, hoverZone: null, hoverOp: null, hoverOption: null, hoverSpot: null })
   }, [id])
   if (!pending || !state || state.phase === 'ended') return null
   if (!settled) return <Waiting text="..." />

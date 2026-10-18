@@ -7,9 +7,13 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import type { Group } from 'three'
 import {
+  allowedOperativePicks,
   defaultLoadout,
+  defaultOperativePicks,
   enumerateLoadouts,
+  operativeChoicesFor,
   expandWeaponRef,
+  capProblems,
   slotCost,
   type DatacardData,
   type LoadoutChoice,
@@ -20,12 +24,14 @@ import {
 } from '@/data'
 import type { Seat } from '@/engine'
 import { dataBundle, flattenRoster, type SeatBuild } from '../game/adapter'
-import { buildProblems, choiceOptions, defaultBuild, defaultEquipmentPicks, equipmentFor, teamList } from '../game/defaults'
+import { buildProblems, choiceOptions, defaultBuild, defaultEquipmentPicks, equipmentFor, equipmentLimitOf, teamList } from '../game/defaults'
 import { humanize } from '../game/labels'
 import { Figure, seatColor as figureSeatColor } from '../figures/Operative'
+import { baseOfCard } from '../figures/OvalBase'
 import { chosenWeaponIds } from '../game/adapter'
 import { useSession } from '../store/session'
 import { colors, fontStack, panel } from './theme'
+import { Keyword, KeywordText, WeaponRules } from './Keyword'
 import { Tooltip } from './Tooltip'
 import { Btn, Dot, Muted } from './widgets'
 
@@ -49,6 +55,8 @@ export function addProblem(slot: SelectionSlot, current: string[], id: string): 
   const repeatable = new Set(slot.repeatable ?? [])
   if (current.includes(id) && !repeatable.has(id)) return 'Only one of this operative is allowed.'
   if (slotCost(slot, [...current, id]) > slot.count) return `${slot.label ?? slot.id} is full (${slotCost(slot, current)}/${slot.count}).`
+  const cap = capProblems(slot, [...current, id])[0]
+  if (cap) return `${cap}.`
   return null
 }
 
@@ -62,6 +70,26 @@ export function weaponsOf(ref: string): WeaponData[] {
 function weaponLine(w: WeaponData): string {
   const rules = w.rules.map((r) => `${humanize(r.rule.replace('core.wr.', ''))}${r.inches !== undefined ? ` ${r.inches}″` : r.x !== undefined ? ` ${r.x}` : ''}`).join(', ')
   return `A${w.atk} ${w.hit} ${w.dmg.normal}/${w.dmg.crit}${rules ? ` · ${rules}` : ''}`
+}
+
+/** The stat line of each profile of a weapon, with every weapon rule as its own keyword. */
+function WeaponLines({ ws }: { ws: WeaponData[] }) {
+  return (
+    <>
+      {ws.map((w, i) => (
+        <span key={w.id}>
+          {i > 0 && ' | '}
+          {w.profile ? `${w.profile}: ` : ''}A{w.atk} {w.hit} {w.dmg.normal}/{w.dmg.crit}
+          {w.rules.length > 0 && (
+            <>
+              {' · '}
+              <WeaponRules rules={w.rules} />
+            </>
+          )}
+        </span>
+      ))}
+    </>
+  )
 }
 
 function WeaponName({ id }: { id: string }) {
@@ -177,7 +205,9 @@ function SlotEditor({ card, slot, choice, onChange }: { card: DatacardData; slot
             />
             <span>
               <WeaponName id={ref} />
-              <span style={{ display: 'block', fontSize: 11, color: colors.muted }}>{ws.map((w) => `${w.profile ? `${w.profile}: ` : ''}${weaponLine(w)}`).join(' | ')}</span>
+              <span style={{ display: 'block', fontSize: 11, color: colors.muted }}>
+                <WeaponLines ws={ws} />
+              </span>
             </span>
           </label>
         )
@@ -209,7 +239,7 @@ function Preview({ card, seat, weaponIds, teamId }: { card: DatacardData; seat: 
   const spec = {
     archetype: card.figure.archetype,
     height: h,
-    baseRadius: card.base / 25.4 / 2,
+    ...baseOfCard(card, weaponIds),
     major: paint.major,
     minor: paint.minor,
     weaponIds,
@@ -246,6 +276,8 @@ export function TeamBuilder() {
   const problemsB = useMemo(() => buildProblems(b, s.builds.B, mission.equipmentLimit), [b, s.builds.B, mission.equipmentLimit])
   const problems = seat === 'A' ? problemsA : problemsB
   const set = (next: SeatBuild) => s.setBuild(seat, next)
+  // M9 batch B: a roster bonus (Hearthkyn Lugger) can raise the equipment limit
+  const equipLimit = equipmentLimitOf(b, build, mission.equipmentLimit)
 
   const slotOffset = (slotId: string) => {
     let n = 0
@@ -261,7 +293,10 @@ export function TeamBuilder() {
     const at = slotOffset(slot.id) + cur.length
     const loadouts = [...build.loadouts]
     loadouts.splice(at, 0, defaultLoadout(b.byId[id] as DatacardData))
-    set({ ...build, roster: { ...build.roster, [slot.id]: [...cur, id] }, loadouts })
+    // M9 batch B: per-operative keyword picks stay aligned with the flattened roster
+    const picks = build.picks ? [...build.picks] : undefined
+    if (picks) picks.splice(at, 0, defaultOperativePicks(team, b.byId[id] as DatacardData))
+    set({ ...build, roster: { ...build.roster, [slot.id]: [...cur, id] }, loadouts, ...(picks ? { picks } : {}) })
     setSelectedIdx(at)
   }
   const remove = (slot: SelectionSlot, i: number) => {
@@ -269,7 +304,9 @@ export function TeamBuilder() {
     const at = slotOffset(slot.id) + i
     const loadouts = [...build.loadouts]
     loadouts.splice(at, 1)
-    set({ ...build, roster: { ...build.roster, [slot.id]: cur.filter((_, k) => k !== i) }, loadouts })
+    const picks = build.picks ? [...build.picks] : undefined
+    if (picks) picks.splice(at, 1)
+    set({ ...build, roster: { ...build.roster, [slot.id]: cur.filter((_, k) => k !== i) }, loadouts, ...(picks ? { picks } : {}) })
     setSelectedIdx(Math.max(0, at - 1))
   }
 
@@ -312,7 +349,9 @@ export function TeamBuilder() {
           </Btn>
         </Tooltip>
       </div>
-      <Muted style={{ marginBottom: 10 }}>{team.text}</Muted>
+      <Muted style={{ marginBottom: 10 }}>
+        <KeywordText text={team.text} />
+      </Muted>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 10, alignItems: 'start' }}>
         {/* roster */}
@@ -379,8 +418,31 @@ export function TeamBuilder() {
             <>
               <div style={{ fontWeight: 800, fontSize: 15 }}>{selectedCard.name}</div>
               <div style={{ fontSize: 12, color: colors.muted, marginBottom: 6 }}>
-                APL {selectedCard.stats.apl} &middot; Move {selectedCard.stats.move}&Prime; &middot; Save {selectedCard.stats.save} &middot; Wounds {selectedCard.stats.wounds}
+                <Keyword term="APL" /> {selectedCard.stats.apl} &middot; <Keyword term="Move" /> {selectedCard.stats.move}&Prime; &middot; <Keyword term="Save" /> {selectedCard.stats.save} &middot;{' '}
+                <Keyword term="Wounds" /> {selectedCard.stats.wounds}
               </div>
+              <div data-testid="builder-keywords" style={{ fontSize: 11, color: colors.muted, marginBottom: 6 }}>
+                {selectedCard.keywords.map((k, i) => (
+                  <span key={k}>
+                    {i > 0 && ' · '}
+                    <Keyword term={k} kind="keyword" />
+                  </span>
+                ))}
+              </div>
+              {selectedCard.abilities.length + selectedCard.uniqueActions.length > 0 && (
+                <div data-testid="builder-abilities" style={{ fontSize: 12, marginBottom: 6 }}>
+                  <span style={{ color: colors.muted }}>Abilities: </span>
+                  {[...selectedCard.abilities, ...selectedCard.uniqueActions].map((aid, i) => {
+                    const name = (b.byId[aid] as { name?: string } | undefined)?.name
+                    return name ? (
+                      <span key={aid}>
+                        {i > 0 && ', '}
+                        <Keyword term={name} />
+                      </span>
+                    ) : null
+                  })}
+                </div>
+              )}
               {selectedCard.weapons.fixed.length > 0 && (
                 <div style={{ fontSize: 12, marginBottom: 8 }}>
                   Always carries:{' '}
@@ -392,6 +454,32 @@ export function TeamBuilder() {
                   ))}
                 </div>
               )}
+              {operativeChoicesFor(team, selectedCard).map((oc) => {
+                const current = build.picks?.[idx]?.[oc.id] ?? defaultOperativePicks(team, selectedCard)[oc.id] ?? ''
+                const allowed = allowedOperativePicks(oc, selectedCard)
+                return (
+                  <label key={oc.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 12, marginBottom: 6, alignItems: 'center' }}>
+                    <span>{oc.label}</span>
+                    <select
+                      data-testid={`pick-${oc.id}`}
+                      value={current}
+                      onChange={(e) => {
+                        const picks = ids.map((id, k) => build.picks?.[k] ?? defaultOperativePicks(team, b.byId[id] as DatacardData))
+                        picks[idx] = { ...(picks[idx] ?? {}), [oc.id]: e.target.value }
+                        set({ ...build, picks })
+                      }}
+                      style={{ background: '#171a26', color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 6, padding: 4 }}
+                    >
+                      {oc.keywords.map((k) => (
+                        <option key={k} value={k} disabled={!allowed.includes(k)}>
+                          {humanize(k.toLowerCase())}
+                          {allowed.includes(k) ? '' : ' (not for this operative)'}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )
+              })}
               {(selectedCard.weapons.options ?? []).length === 0 && <Muted>No loadout choices: this operative has a fixed kit.</Muted>}
               {(selectedCard.weapons.options ?? []).map((slot) => (
                 <SlotEditor
@@ -411,7 +499,9 @@ export function TeamBuilder() {
                 <span style={{ color: colors.muted }}>Carrying: </span>
                 {carriedNames(selectedCard, choice).join(', ')}
               </div>
-              <Muted style={{ marginTop: 4 }}>{selectedCard.text}</Muted>
+              <Muted style={{ marginTop: 4 }}>
+                <KeywordText text={selectedCard.text} />
+              </Muted>
             </>
           ) : (
             <Muted>Add operatives to the roster.</Muted>
@@ -439,6 +529,11 @@ export function TeamBuilder() {
                       </option>
                     ))}
                   </select>
+                  {build.choices?.[tc.id] && (
+                    <span style={{ gridColumn: '1 / -1', color: colors.muted }}>
+                      <KeywordText text={(b.byId[build.choices[tc.id]!] as { text?: string } | undefined)?.text ?? ''} />
+                    </span>
+                  )}
                 </label>
               ))}
             </div>
@@ -446,14 +541,14 @@ export function TeamBuilder() {
           <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 4 }}>
             Equipment{' '}
             <span data-testid="equipment-count" style={{ color: colors.muted }}>
-              {build.equipment.length}/{mission.equipmentLimit}
+              {build.equipment.length}/{equipLimit}
             </span>
           </div>
           {equipment.map((e) => {
             const on = build.equipment.includes(e.id)
-            const full = !on && build.equipment.length >= mission.equipmentLimit
+            const full = !on && build.equipment.length >= equipLimit
             const off = e.enabled === false
-            const why = off ? 'Disabled in the current data.' : full ? `You already picked ${mission.equipmentLimit}.` : null
+            const why = off ? 'Disabled in the current data.' : full ? `You already picked ${equipLimit}.` : null
             const picks = build.equipmentChoices?.[e.id] ?? []
             const toggle = () => {
               const choices = { ...(build.equipmentChoices ?? {}) }
@@ -465,8 +560,10 @@ export function TeamBuilder() {
               <label key={e.id} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 12, marginBottom: 4, opacity: why ? 0.45 : 1 }}>
                 <input type="checkbox" data-testid={`equip-${e.id}`} checked={on} disabled={!!why} onChange={toggle} />
                 <span>
-                  <b>{e.name}</b> <span style={{ color: colors.muted }}>({e.scope})</span>
-                  <span style={{ display: 'block', color: colors.muted }}>{e.text}</span>
+                  <b><Keyword term={e.name} kind="equipment" /></b> <span style={{ color: colors.muted }}>({e.scope})</span>
+                  <span style={{ display: 'block', color: colors.muted }}>
+                    <KeywordText text={e.text} />
+                  </span>
                 </span>
               </label>
             )

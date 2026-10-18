@@ -162,6 +162,7 @@ function isDiceLine(ev: GameEvent): boolean {
 
 async function playEvent(ev: GameEvent, state: GameState, gen: number): Promise<void> {
   const f = speedFactor(useSettings.getState().animSpeed)
+  // HIDING is open information: the opponent's set-aside operatives get their feed line like any other event
   let text = describeEvent(ev, state)
   const wait = (ms: number) => sleep(Math.round(ms * f))
   const fx = f > 0

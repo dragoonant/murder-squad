@@ -1,10 +1,14 @@
 // What a board marker is, in words: the hover tip over objectives, equipment markers and action markers
 // (smoke, breach). Control comes from the engine (`markerControl`), mission status (secured / transmitting /
-// looted) from `missionView`; this file only phrases it. All prose is our own wording.
+// looted) from `missionView`; this file only phrases it. All prose is our own wording. The board shows it
+// through the shared board tooltip (`useBoardTip` in ui/markerInfo.ts) via `markerTip`.
 import type { GameState, Marker, Seat } from '@/engine'
 import { markerControl } from '@/engine/query'
 import { markerDiameterMm } from '@/engine/state'
+import { isTainted } from '@/engine/teams/legionaries'
+import type { MarkerTip } from '../ui/markerInfo'
 import { dataBundle } from './adapter'
+import { lookupTerm } from './glossary'
 import { mission } from './kill'
 import { SEAT_NAME } from './labels'
 
@@ -70,6 +74,10 @@ export function describeMarker(state: GameState, marker: Marker, you: Seat | nul
     if (mv?.looted) detail.push('Already looted this turning point.')
     detail.push(CRIT_OP_USE[critOp] ?? 'Score the mission’s crit op by controlling it.')
     detail.push(`Control range: within 1″ and visible. The side with the higher total APL of contesting operatives controls it. ${mm}mm marker.`)
+    if (isTainted(state, marker.id)) {
+      detail.unshift(lookupTerm('Tainted objective')?.body ?? 'Tainted by the Legionaries.')
+      return { title: 'Tainted objective marker', status: control, detail }
+    }
     return { title: 'Objective marker', status: control, detail }
   }
 
@@ -96,4 +104,10 @@ export function describeMarker(state: GameState, marker: Marker, you: Seat | nul
   if (marker.usedTp !== undefined && marker.usedTp === state.turningPoint) detail.push('Already used this turning point.')
   detail.push(`${mm}mm equipment marker. ${control}`)
   return { title, status: `${owned(marker.owner, you) || 'Unowned'} equipment.`, detail }
+}
+
+/** The marker description as one title + body for the shared board tooltip. */
+export function markerTip(state: GameState, marker: Marker, you: Seat | null): MarkerTip {
+  const info = describeMarker(state, marker, you)
+  return { title: info.title, body: [info.status, ...info.detail].join(' ') }
 }

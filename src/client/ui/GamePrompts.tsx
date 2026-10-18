@@ -8,6 +8,7 @@ import { useGame } from '../store/game'
 import { colors } from './theme'
 import { useUi } from './uiStore'
 import { Btn, Muted } from './widgets'
+import { Keyword, KeywordText } from './Keyword'
 import { cardStyle, PromptHeader, Section } from './promptParts'
 
 function PassButton({ pending }: { pending: PendingDecision }) {
@@ -43,21 +44,27 @@ export function PloyBody({ pending, state }: { pending: PendingDecision; state: 
           <button key={o.id} type="button" data-testid={`opt-${o.id}`} style={cardStyle({ disabled: !c.affordable })} onClick={() => choose(o.id)}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
               <b style={{ fontSize: 14 }}>
-                {c.name}
+                <Keyword term={c.name} kind="ploy" />
                 {c.param ? <span style={{ color: colors.muted, fontWeight: 600 }}> · {c.param}</span> : null}
               </b>
-              <span style={{ color: colors.accent, fontWeight: 800 }}>{c.cost !== null ? `${c.cost} CP` : ''}</span>
+              <span style={{ color: colors.accent, fontWeight: 800 }}>{c.cost !== null ? <>{c.cost} <Keyword term="CP" /></> : ''}</span>
             </div>
-            {c.text && <div style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{c.text}</div>}
+            {c.text && (
+              <div style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
+                <KeywordText text={c.text} />
+              </div>
+            )}
           </button>
         ))}
         {off.map((u) => (
           <div key={u.id} data-testid={`ploy-off-${u.id}`} style={{ ...cardStyle({ disabled: true }), cursor: 'not-allowed' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
               <b>{u.name}</b>
-              <span style={{ fontWeight: 800 }}>{u.cost} CP</span>
+              <span style={{ fontWeight: 800 }}>{u.cost} <Keyword term="CP" /></span>
             </div>
-            <div style={{ fontSize: 12, color: '#ff8a80', marginTop: 2 }}>{u.reason}</div>
+            <div style={{ fontSize: 12, color: '#ff8a80', marginTop: 2 }}>
+              <KeywordText text={u.reason} />
+            </div>
           </div>
         ))}
       </div>
@@ -89,7 +96,9 @@ export function GuardBody({ pending, state }: { pending: PendingDecision; state:
               onMouseLeave={() => useUi.setState({ hoverOp: null })}
             >
               <b>{g.label}</b>
-              <div style={{ fontSize: 12, color: colors.muted }}>{g.detail}</div>
+              <div style={{ fontSize: 12, color: colors.muted }}>
+                <KeywordText text={g.detail} keywords={false} />
+              </div>
             </button>
           )
         })}
@@ -121,8 +130,14 @@ export function AbilityChoiceBody({ pending, state }: { pending: PendingDecision
               onMouseEnter={() => useUi.setState({ hoverSpot: o.id })}
               onMouseLeave={() => useUi.setState({ hoverSpot: null })}
             >
-              <b>{c.label}</b>
-              {c.detail && <div style={{ fontSize: 12, color: colors.muted }}>{c.detail}</div>}
+              <b>
+                <KeywordText text={c.label} />
+              </b>
+              {c.detail && (
+                <div style={{ fontSize: 12, color: colors.muted }}>
+                  <KeywordText text={c.detail} />
+                </div>
+              )}
             </button>
           )
         })}

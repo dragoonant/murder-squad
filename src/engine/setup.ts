@@ -2,7 +2,8 @@
 // then deploys operatives alternately in batches of one third (rounded up).
 import type { EngineBundle } from './bundle'
 import { snapshotData } from './bundle'
-import { bearing, circleInsidePolygon, polygonBBox, round3 } from './geometry'
+import { bearing, polygonBBox, round3 } from './geometry'
+import { axisOf, footprintInsidePolygon, footprintOf } from './footprint'
 import { beginTurningPoint } from './strategy'
 import { SeededRng } from './rng'
 import { createCtx, reject, type Ctx, type Handled, type ModuleDef } from './registry'
@@ -10,7 +11,10 @@ import { EngineInvariantError, hashState, otherSeat, SEATS } from './state'
 import { placementProblem } from './terrain'
 // M2b-game
 import { allowedOrders, initTeamState } from './abilities'
-import { handleEquipMarker, nextPlacer, placeItem, selectionProblem, suggestEquipPlacement, territoryOf, DEFAULT_EQUIPMENT_LIMIT } from './equipment'
+import { setAside } from './reserve'
+import { resolvePicks } from './operative-picks'
+import { providerAny, providerSetAsideCap } from './team-rules'
+import { handleEquipMarker, nextPlacer, placeItem, selectionProblem, suggestEquipPlacement, territoryOf, DEFAULT_EQUIPMENT_LIMIT, equipmentLimitFor } from './equipment'
 import { chooseMission, missionDef, objectiveOptions, objectiveSeat, placeObjective } from './missions'
 import { OBJECTIVE_RADIUS } from './missions'
 import {
@@ -62,6 +66,9 @@ function validateSetup(setup: GameSetup, bundle: EngineBundle): void {
       if (!card) fail(`unknown datacard ${entry.datacardId}`)
       else {
         if (card.teamId !== teamId) fail(`${card.id} does not belong to team ${teamId}`)
+        // M9 batch B: per-operative keyword picks (Marks of Chaos)
+        const picked = resolvePicks(bundle.teams[teamId], card, entry.picks)
+        if (picked.problem) fail(picked.problem)
         const chosen = entry.loadout?.weaponIds ?? defaultLoadout(card).weaponIds
         if (card.legalLoadouts) {
           // cards from the data adapter list every legal loadout (sets and profile groups included)
@@ -76,7 +83,7 @@ function validateSetup(setup: GameSetup, bundle: EngineBundle): void {
         }
       }
     }
-    const problem = selectionProblem(setup, seat, { ...(bundle.equipment ? { equipment: bundle.equipment } : {}), teamId, limit: Math.min(MAX_EQUIPMENT, DEFAULT_EQUIPMENT_LIMIT) })
+    const problem = selectionProblem(setup, seat, { ...(bundle.equipment ? { equipment: bundle.equipment } : {}), teamId, limit: equipmentLimitFor(bundle.datacards, roster.map((e) => e.datacardId), Math.min(MAX_EQUIPMENT, DEFAULT_EQUIPMENT_LIMIT)) })
     if (problem) fail(problem)
   }
 }
@@ -91,14 +98,17 @@ export function createGame(setup: GameSetup, seed: string, bundle: EngineBundle)
       cardIds.push(card.id)
       const id = `${seat}${i + 1}`
       const loadout = entry.loadout ?? defaultLoadout(card)
-      const baseRadius = round3(card.baseMm / 25.4 / 2)
+      // M9 batch B: an oval base (Hunter Clade arquebus GUNNER) for every loadout or only loadouts with its weapons
+      const weapons = [...card.fixedWeapons, ...loadout.weaponIds]
+      const oval = card.ovalBase && (!card.ovalBase.weapons || card.ovalBase.weapons.some((w) => weapons.includes(w))) ? card.ovalBase : undefined
+      const baseRadius = oval ? round3(oval.short / 25.4 / 2) : round3(card.baseMm / 25.4 / 2)
       operatives[id] = {
         id,
         seat,
         datacardId: card.id,
         name: entry.name ?? card.name,
         loadout: { weaponIds: [...loadout.weaponIds] },
-        weapons: [...card.fixedWeapons, ...loadout.weaponIds],
+        weapons,
         status: 'reserve',
         pos: { x: 0, y: 0, z: 0 },
         facing: 0,
@@ -116,6 +126,9 @@ export function createGame(setup: GameSetup, seed: string, bundle: EngineBundle)
         usedLimited: {},
         oncePerBattleUsed: [],
       }
+      if (oval && oval.long > oval.short) operatives[id]!.ovalHalfAxis = round3((oval.long - oval.short) / 25.4 / 2)
+      const { picks } = resolvePicks(bundle.teams[seat === 'A' ? setup.teams.A : setup.teams.B], card, entry.picks)
+      if (Object.keys(picks).length > 0) operatives[id]!.picks = picks
     })
   }
 
@@ -203,8 +216,18 @@ function raiseDropZone(ctx: Ctx, seat: Seat): void {
   })
 }
 
+/** Operatives still to be set up (not those set aside on purpose, reserve.ts). */
 function reserveOf(s: GameState, seat: Seat): Operative[] {
-  return Object.values(s.operatives).filter((o) => o.seat === seat && o.status === 'reserve')
+  return Object.values(s.operatives).filter((o) => o.seat === seat && o.status === 'reserve' && o.offboard === undefined)
+}
+
+/** M9 prep: operatives the owner may still set aside instead of deploying (Wyrmblade HIDING), within the cap. */
+export function setAsideChoices(s: GameState, seat: Seat): string[] {
+  const taken = Object.values(s.operatives).filter((o) => o.seat === seat && o.offboard !== undefined).length
+  if (taken >= providerSetAsideCap(s, seat)) return []
+  return reserveOf(s, seat)
+    .filter((o) => providerAny(s, o, 'setAsideAtSetup'))
+    .map((o) => o.id)
 }
 
 function raiseDeploy(ctx: Ctx): void {
@@ -216,7 +239,7 @@ function raiseDeploy(ctx: Ctx): void {
     kind: 'setup.deploy',
     seat,
     window: 'setup.*',
-    context: { left: s.setup.deploy.left, reserveIds: reserve.map((o) => o.id), zoneId: zone.id },
+    context: { left: s.setup.deploy.left, reserveIds: reserve.map((o) => o.id), zoneId: zone.id, setAsideIds: setAsideChoices(s, seat) },
     constraints: { kind: 'deploy', operativeIds: reserve.map((o) => o.id), region: zone.polygon },
   })
 }
@@ -263,6 +286,18 @@ function numeric(v: unknown): v is number {
 function handleDeploy(state: GameState, action: Action): Handled {
   if (action.type !== 'setup.deploy') return reject('E_WRONG_DECISION', 'expected a deploy action')
   const p = action.payload
+  // M9 prep: set the operative aside instead of deploying it (payload { operativeId, setAside: true })
+  if (p && p.setAside === true && typeof p.operativeId === 'string') {
+    const id = p.operativeId
+    if (!setAsideChoices(state, action.seat).includes(id)) return reject('E_NOT_AN_OPTION', `${id} cannot be set aside`)
+    return {
+      run(ctx) {
+        setAside(ctx, id, 'setAside')
+        ctx.state.setup.deploy.left -= 1
+        advanceDeploy(ctx, action.seat)
+      },
+    }
+  }
   if (!p || typeof p.operativeId !== 'string' || !numeric(p.x) || !numeric(p.z) || (p.y !== undefined && !numeric(p.y))) {
     return reject('E_SCHEMA', 'deploy needs operativeId, x and z')
   }
@@ -271,10 +306,13 @@ function handleDeploy(state: GameState, action: Action): Handled {
   if (op.status !== 'reserve') return reject('E_NOT_AN_OPTION', `${op.id} is already set up`)
   const pos: Vec3 = { x: round3(p.x), y: round3(p.y ?? 0), z: round3(p.z) }
   const zone = state.map.dropZones.find((z) => z.id === state.players[op.seat].dropZoneId)!
-  if (!circleInsidePolygon(pos, op.baseRadius, zone.polygon)) {
+  // M9 batch B: an oval base may be set up at any facing (payload `facing`, radians); default faces the centre
+  if (p.facing !== undefined && !numeric(p.facing)) return reject('E_SCHEMA', 'facing is a number (radians)')
+  const facing = op.ovalHalfAxis && p.facing !== undefined ? round3(p.facing as number) : bearing(pos, { x: 0, z: 0 })
+  if (!footprintInsidePolygon(footprintOf(op, pos, facing), zone.polygon)) {
     return reject('E_OUT_OF_RANGE', 'an operative must be set up wholly within its drop zone')
   }
-  const problem = placementProblem(state, { id: op.id, pos, radius: op.baseRadius, height: op.height })
+  const problem = placementProblem(state, { id: op.id, pos, radius: op.baseRadius, height: op.height, ...axisOf(op, facing) })
   if (problem) return { rejection: problem }
   return {
     run(ctx) {
@@ -284,7 +322,7 @@ function handleDeploy(state: GameState, action: Action): Handled {
       // set up with Conceal (R-1.5); the Bomb Squig cannot take Conceal (Stoopid) and is set up Engaged
       o.order = allowedOrders(ctx.state, o).includes('conceal') ? 'conceal' : 'engage'
       o.ready = false
-      o.facing = bearing(pos, { x: 0, z: 0 })
+      o.facing = facing
       ctx.emit({ type: 'OperativeDeployed', operativeId: o.id, pos })
       ctx.state.setup.deploy.left -= 1
       advanceDeploy(ctx, o.seat)
@@ -531,8 +569,9 @@ export function suggestPlacement(
     const x = round3(box.minX + (k % (cols + 1)) * step)
     const z = round3(box.minZ + Math.floor(k / (cols + 1)) * step)
     const pos = { x, y: 0, z }
-    if (!circleInsidePolygon(pos, op.baseRadius, c.region)) continue
-    if (placementProblem(state, { id: op.id, pos, radius: op.baseRadius, height: op.height })) continue
+    const facing = bearing(pos, { x: 0, z: 0 })
+    if (!footprintInsidePolygon(footprintOf(op, pos, facing), c.region)) continue
+    if (placementProblem(state, { id: op.id, pos, radius: op.baseRadius, height: op.height, ...axisOf(op, facing) })) continue
     return { operativeId: op.id, x, z, y: 0 }
   }
   return null

@@ -2,26 +2,32 @@
 // procedural stand-in) plus loadout attachments at manifest sockets (HOLDS table in hold.ts); weapons without an
 // attachment GLB yet get a team-coloured box of the hold class's length at the socket. `BattleOperative` adds the
 // engine position, move tween, rigid cues, order token, APL pips, wound bar and pointer handlers.
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Billboard, Html } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
-import { Color, Euler, type Group } from 'three'
-import type { Operative as EngineOperative } from '@/engine'
+import { useFrame, type ThreeEvent } from '@react-three/fiber'
+import { Color, DoubleSide, Euler, type Group } from 'three'
+import type { Operative as EngineOperative, OperativeToken, Order } from '@/engine'
 import { effectiveApl } from '@/engine/state'
 import { dataBundle, engineBundle } from '../game/adapter'
 import { animPosition } from '../presentation/animStore'
+import { AP_DARK, AP_LIT, ORDER_COLOR, apTip, orderTip, useBoardTip, woundTip, type MarkerTip } from '../ui/markerInfo'
+import { tokenDef } from '../ui/tokenDefs'
+import { tokenTip } from '../ui/tokenInfo'
 import { colors } from '../ui/theme'
 import { cuePose, deathAge, deathMs, installCueFeed, isDying, cueActive } from './cues'
 import { useGlbInstance } from './glbLoader'
 import { attachmentFor } from './attachmentFor'
 import { HOLDS, SHEATHED, handRight, heaviestHold, holdClassOf, type HoldSpec } from './hold'
 import { modelManifest, pointOf, slugOf, useModelManifest, type BodyEntry, type HoldClass, type ModelManifest, type V3 } from './manifest'
+import { BaseRing } from './OvalBase'
 import { Procedural, type HslLike } from './Procedural'
 
 export interface FigureSpec {
   archetype: string
   height: number
   baseRadius: number
+  /** oval bases (engine `ovalHalfAxis`); omitted for a round base */
+  ovalHalfAxis?: number
   major: HslLike
   minor: HslLike
   weaponIds: string[]
@@ -116,9 +122,14 @@ function PlaceholderWeapon({ hold, spec, socket, color }: { hold: HoldClass; spe
 export function planAttachments(shown: { ranged: ShownWeapon | null; melee: ShownWeapon | null }, manifest: ModelManifest): Placed[] {
   const out: Placed[] = []
   let rightTaken = false
+  const drawn = new Set<string>()
   for (const w of [shown.ranged, shown.melee]) {
     if (!w) continue
     const slugs = attachmentFor(w.id) ?? [null]
+    // one physical weapon with a ranged and a melee profile (a stave you shoot and swing) is drawn once
+    const key = slugs.join('|')
+    if (slugs.length && slugs.every((s) => s !== null) && drawn.has(key)) continue
+    if (slugs.length && slugs.every((s) => s !== null)) drawn.add(key)
     slugs.forEach((slug, i) => {
       const hold = (slug && manifest.attachments[slug]?.holdClass) || w.hold
       let spec = HOLDS[hold]
@@ -144,7 +155,7 @@ export function GlbBody({ body, spec, ranged, melee }: { body: BodyEntry; spec: 
   const shown = useMemo(() => shownWeapons(spec.weaponIds), [spec.weaponIds])
   const cols = useMemo(() => ({ ranged: hslColor(spec.minor, 0.1), melee: hslColor(spec.major, 0.12) }), [spec.major, spec.minor])
   const placed = useMemo(() => (spec.attachSlugs ? planSlugs(spec.attachSlugs, manifest) : planAttachments(shown, manifest)), [spec.attachSlugs, shown, manifest])
-  if (!obj) return <Procedural height={spec.height} baseRadius={spec.baseRadius} major={spec.major} minor={spec.minor} ranged={ranged} melee={melee} seatColor={spec.seatColor} dim={spec.dim} />
+  if (!obj) return <Procedural height={spec.height} baseRadius={spec.baseRadius} ovalHalfAxis={spec.ovalHalfAxis} major={spec.major} minor={spec.minor} ranged={ranged} melee={melee} seatColor={spec.seatColor} dim={spec.dim} />
   const sockets = body.sockets ?? {}
   // natural weapons (no hand sockets, e.g. the bomb squig) draw nothing
   const armed = !!(sockets.handR || sockets.handL)
@@ -175,6 +186,7 @@ export function Figure({ spec }: { spec: FigureSpec }) {
     <Procedural
       height={spec.height}
       baseRadius={spec.baseRadius}
+      ovalHalfAxis={spec.ovalHalfAxis}
       major={spec.major}
       minor={spec.minor}
       ranged={holds.ranged}
@@ -192,35 +204,78 @@ export function hasGlbBody(archetype: string, manifest = modelManifest()): boole
 
 // ---------------------------------------------------------------- battle layer
 
-function OrderToken({ order, y }: { order: 'engage' | 'conceal'; y: number }) {
+/** Hover area for one overhead marker: an invisible plane (the pips are too small to hit) that feeds the
+ *  board tooltip. Mouse/pen only; on touch the tap selects the operative and the card shows the legend. */
+function TipArea({ tip, w, h, y, children }: { tip: MarkerTip; w: number; h: number; y: number; children: ReactNode }) {
+  const over = useRef(false)
+  const show = (e: ThreeEvent<PointerEvent>) => {
+    if (e.pointerType === 'touch') return
+    over.current = true
+    useBoardTip.setState({ tip: { ...tip, x: e.nativeEvent.clientX, y: e.nativeEvent.clientY } })
+  }
+  const hide = () => {
+    if (!over.current) return
+    over.current = false
+    useBoardTip.setState({ tip: null })
+  }
+  useEffect(() => hide, [])
   return (
-    <mesh position={[0, y, 0]}>
-      {order === 'engage' ? <octahedronGeometry args={[0.2, 0]} /> : <boxGeometry args={[0.28, 0.28, 0.28]} />}
-      <meshBasicMaterial color={order === 'engage' ? '#ff8a2a' : '#6fb7ff'} />
-    </mesh>
-  )
-}
-
-function Pips({ count, lit, y }: { count: number; lit: number; y: number }) {
-  const gap = 0.24
-  return (
-    <group position={[0, y, 0]}>
-      {Array.from({ length: count }, (_, i) => (
-        <mesh key={i} position={[(i - (count - 1) / 2) * gap, 0, 0]}>
-          <circleGeometry args={[0.085, 12]} />
-          <meshBasicMaterial color={i < lit ? '#ffe066' : '#33343c'} />
-        </mesh>
-      ))}
+    <group position={[0, y, 0]} onPointerOver={show} onPointerMove={show} onPointerOut={hide}>
+      <mesh position={[0, 0, -0.01]}>
+        <planeGeometry args={[w, h]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+      {children}
     </group>
   )
 }
 
-function WoundBar({ ratio, y }: { ratio: number; y: number }) {
+function OrderToken({ order }: { order: Order }) {
+  return (
+    <mesh>
+      {order === 'engage' ? <octahedronGeometry args={[0.2, 0]} /> : <boxGeometry args={[0.28, 0.28, 0.28]} />}
+      <meshBasicMaterial color={ORDER_COLOR[order]} />
+    </mesh>
+  )
+}
+
+function Pips({ count, lit }: { count: number; lit: number }) {
+  const gap = 0.24
+  return (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <mesh key={i} position={[(i - (count - 1) / 2) * gap, 0, 0]}>
+          <circleGeometry args={[0.085, 12]} />
+          <meshBasicMaterial color={i < lit ? AP_LIT : AP_DARK} />
+        </mesh>
+      ))}
+    </>
+  )
+}
+
+/** One token stack as small glyphs (a filled polygon or a ring in the kind colour), one per token up to four. */
+function TokenGlyphs({ kind, count }: { kind: string; count: number }) {
+  const g = tokenDef(kind).glyph
+  const gap = 0.22
+  const n = Math.min(count, 4)
+  return (
+    <>
+      {Array.from({ length: n }, (_, i) => (
+        <mesh key={i} position={[(i - (n - 1) / 2) * gap, 0, 0]} rotation={[0, 0, g.sides === 4 ? 0 : Math.PI / 2]}>
+          {g.ring ? <ringGeometry args={[0.055, 0.1, g.sides]} /> : <circleGeometry args={[0.1, g.sides]} />}
+          <meshBasicMaterial color={g.color} side={DoubleSide} />
+        </mesh>
+      ))}
+    </>
+  )
+}
+
+function WoundBar({ ratio }: { ratio: number }) {
   const w = 1.1
   const r = Math.max(0, Math.min(1, ratio))
   const color = r > 0.6 ? '#5fd35f' : r > 0.3 ? '#e6c84a' : '#e0463c'
   return (
-    <group position={[0, y, 0]}>
+    <group>
       <mesh>
         <planeGeometry args={[w + 0.06, 0.16]} />
         <meshBasicMaterial color="#05050a" />
@@ -313,9 +368,9 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
   const paint = team?.paint ?? { major: { h: 0.6, s: 0.5, l: 0.4 }, minor: { h: 0.1, s: 0.6, l: 0.4 } }
   const archetype = (dataBundle().byId[op.datacardId] as { figure?: { archetype: string } } | undefined)?.figure?.archetype ?? op.datacardId
   const spec: FigureSpec = useMemo(
-    () => ({ archetype, height: op.height, baseRadius: op.baseRadius, major: paint.major, minor: paint.minor, weaponIds: op.weapons, seatColor: seatColor(op.seat), dim: !op.ready }),
+    () => ({ archetype, height: op.height, baseRadius: op.baseRadius, ...(op.ovalHalfAxis ? { ovalHalfAxis: op.ovalHalfAxis } : {}), major: paint.major, minor: paint.minor, weaponIds: op.weapons, seatColor: seatColor(op.seat), dim: !op.ready }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [archetype, op.height, op.baseRadius, op.weapons, op.seat, op.ready, team],
+    [archetype, op.height, op.baseRadius, op.ovalHalfAxis, op.weapons, op.seat, op.ready, team],
   )
   useEffect(() => installCueFeed(), [])
   const last = useRef({ spec, pos: op.pos, facing: op.facing })
@@ -371,31 +426,56 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
         <Figure spec={spec} />
       </group>
       {(selected || hovered || choosable) && (
-        <mesh position={[0, 0.08, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[op.baseRadius + 0.08, op.baseRadius + (choosable ? 0.3 : 0.2), 36]} />
-          <meshBasicMaterial color={selected ? '#ffffff' : choosable ? '#ffe066' : '#9aa0b8'} transparent opacity={0.9} />
-        </mesh>
+        <BaseRing
+          baseRadius={op.baseRadius}
+          ovalHalfAxis={op.ovalHalfAxis}
+          inner={0.08}
+          outer={choosable ? 0.3 : 0.2}
+          color={selected ? '#ffffff' : choosable ? '#ffe066' : '#9aa0b8'}
+          opacity={0.9}
+          y={0.08}
+        />
       )}
       <Billboard position={[0, top + 0.3, 0]} follow>
-        <OrderToken order={op.order} y={0.62} />
-        <Pips count={apl} lit={lit} y={0.28} />
-        <WoundBar ratio={op.wounds / op.maxWounds} y={0} />
+        <TipArea tip={orderTip(op.order)} w={0.5} h={0.4} y={0.62}>
+          <OrderToken order={op.order} />
+        </TipArea>
+        <TipArea tip={apTip(apl, lit, apSpent !== null, op.ready)} w={Math.max(0.5, apl * 0.24 + 0.1)} h={0.26} y={0.28}>
+          <Pips count={apl} lit={lit} />
+        </TipArea>
+        <TipArea tip={woundTip(op.wounds, op.maxWounds, op.flags.injured)} w={1.2} h={0.24} y={0}>
+          <WoundBar ratio={op.wounds / op.maxWounds} />
+        </TipArea>
+        {tokenLayout(op.tokens).map((t) => (
+          <group key={t.key} position={[t.x, 0, 0]}>
+            <TipArea tip={tokenTip(t.token)} w={t.w} h={0.26} y={-0.3}>
+              <TokenGlyphs kind={t.token.kind} count={t.token.count} />
+            </TipArea>
+          </group>
+        ))}
       </Billboard>
       {(selected || hovered) && (
         <Html position={[0, top + 1.25, 0]} center zIndexRange={[10, 0]} distanceFactor={14} style={{ pointerEvents: 'none' }}>
-          <div style={{ background: 'rgba(8,8,14,0.85)', color: '#fff', font: '600 11px system-ui', padding: '3px 7px', borderRadius: 4, whiteSpace: 'nowrap', lineHeight: 1.35 }}>
-            <div>
-              {op.id} {op.name}
-            </div>
-            <div style={{ color: '#c9cde0', fontWeight: 500 }}>
-              {op.order === 'engage' ? 'Engage order' : 'Conceal order'} · APL {apl}
-              {apSpent !== null ? ` (${lit} left)` : op.ready ? '' : ' · activated'} · {op.wounds}/{op.maxWounds} wounds
-            </div>
+          <div style={{ background: 'rgba(8,8,14,0.85)', color: '#fff', font: '600 11px system-ui', padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap' }}>
+            {op.id} {op.name} {op.wounds}/{op.maxWounds}
           </div>
         </Html>
       )}
     </group>
   )
+}
+
+/** Left-to-right x offsets (centred) for the operative's token stacks under its wound bar. */
+function tokenLayout(tokens: EngineOperative['tokens']): { key: string; token: OperativeToken; x: number; w: number }[] {
+  const list = (tokens ?? []).filter((t) => t.count > 0)
+  const widths = list.map((t) => Math.min(t.count, 4) * 0.22 + 0.04)
+  const total = widths.reduce((a, b) => a + b, 0) + Math.max(0, list.length - 1) * 0.08
+  let at = -total / 2
+  return list.map((t, i) => {
+    const x = at + widths[i]! / 2
+    at += widths[i]! + 0.08
+    return { key: `${t.kind}:${t.owner}`, token: t, x, w: widths[i]! }
+  })
 }
 
 function teamOf(op: EngineOperative): string {

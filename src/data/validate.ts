@@ -28,13 +28,12 @@ import type {
 import { MANIFEST, SCHEMA_NAMES } from './manifest'
 import { TYPE_OF_SCHEMA, buildIndex, checkRefs, recordCodes, type RecordIndex, type RecordType } from './refs'
 import { defaultLoadout, enumerateLoadouts, resolveLoadout, validateLoadout } from './loadout'
-import { enumerateRosters, validateRoster } from './roster'
+import { defaultOperativePicks, enumerateRosters, loadoutCapProblems, teamCapProblems, validateOperativePicks, validateRoster } from './roster'
 import { dist, distToPolygon, distToPolygonBoundary, pointInPolygon, polygonArea, polygonDistance, polygonSegmentDistance, segDist } from './geometry'
 
 const DATA_ROOT = path.dirname(fileURLToPath(import.meta.url))
 const SCHEMA_DIR = path.resolve(DATA_ROOT, '../../docs/spec/schemas')
 const MIRROR_DIR = path.join(DATA_ROOT, 'schema')
-const HOOKS_FILE = path.join(DATA_ROOT, 'code-hooks.json')
 
 /** Layout rules (inches). */
 export const LAYOUT_RULES = {
@@ -61,7 +60,10 @@ export interface ValidationResult {
 }
 
 export interface ValidateOptions {
-  /** write: regenerate src/data/code-hooks.json; check: error when it is out of date; skip: ignore it. */
+  /**
+   * Kept for callers: the code-hook list used to be a generated src/data/code-hooks.json; it is now derived
+   * from the data at load time (src/data/index.ts CODE_HOOKS), so every mode is the same and nothing is written.
+   */
   hooksFile?: 'write' | 'check' | 'skip'
 }
 
@@ -75,11 +77,6 @@ function listJson(dir: string, base = dir): string[] {
     else if (entry.name.endsWith('.json')) out.push(path.relative(base, full).split(path.sep).join('/'))
   }
   return out
-}
-
-function formatHooks(hooks: HookUse[]): string {
-  const rows = hooks.map((h) => `    { "name": ${JSON.stringify(h.name)}, "usedBy": ${JSON.stringify(h.usedBy).replace(/","/g, '", "')} }`)
-  return `{\n  "hooks": [\n${rows.join(',\n')}\n  ]\n}\n`
 }
 
 // ------------------------------------------------------------------ weapon rules
@@ -256,11 +253,43 @@ export function validateAll(options: ValidateOptions = {}): ValidationResult {
       for (const id of s.repeatable ?? []) if (!s.from.includes(id)) errors.push(`${where(t.id)}: slot ${s.id} repeatable ${id} is not in from`)
       for (const id of s.halfSelections ?? []) if (!s.from.includes(id)) errors.push(`${where(t.id)}: slot ${s.id} halfSelections ${id} is not in from`)
     }
-    const first = enumerateRosters(t).next()
-    if (first.done) errors.push(`${where(t.id)}: team ${t.id} has no legal roster`)
-    else {
-      const check = validateRoster(t, first.value)
-      if (!check.ok) errors.push(`${where(t.id)}: enumerated roster fails validation: ${check.reasons.join('; ')}`)
+    const byId = Object.fromEntries(cards.map((c) => [c.id, c])) as Record<Id, DatacardData>
+    // M9 batch B: team caps (keyword caps over every slot) can rule out enumerated shapes; find the first legal one
+    let legal = false
+    let tried = 0
+    let firstReasons: string[] = []
+    for (const shape of enumerateRosters(t)) {
+      const check = validateRoster(t, shape, byId)
+      if (check.ok) {
+        legal = true
+        break
+      }
+      if (tried === 0) firstReasons = check.reasons
+      if (++tried > 5000) break
+    }
+    if (!legal) errors.push(`${where(t.id)}: team ${t.id} has no legal roster${firstReasons.length ? ` (${firstReasons.join('; ')})` : ''}`)
+    // M9 batch B: the selection caps and operative choices name real things
+    for (const c of t.selection.caps ?? []) for (const id of c.from ?? []) if (!byId[id]) errors.push(`${where(t.id)}: selection cap lists ${id}, not a datacard of ${t.id}`)
+    for (const c of t.selection.loadoutCaps ?? []) for (const id of c.weapons) if (!index.byId[id] && !index.groups[id]) errors.push(`${where(t.id)}: loadout cap lists unknown weapon ${id}`)
+    for (const oc of t.operativeChoices ?? []) for (const e of oc.exclude ?? []) for (const id of e.datacards) if (!byId[id]) errors.push(`${where(t.id)}: operative choice ${oc.id} excludes unknown datacard ${id}`)
+    // M9 batch B: the default roster honours the team caps, loadout caps and operative choices
+    const d = t.defaults
+    if (d?.roster) {
+      const defCards = d.roster.map((id) => byId[id]).filter((c): c is DatacardData => !!c)
+      for (const r of teamCapProblems(t, d.roster, byId)) errors.push(`${where(t.id)}: default roster: ${r}`)
+      if (d.loadouts && d.loadouts.length > d.roster.length) errors.push(`${where(t.id)}: defaults.loadouts is longer than defaults.roster`)
+      if (d.operativePicks && d.operativePicks.length > d.roster.length) errors.push(`${where(t.id)}: defaults.operativePicks is longer than defaults.roster`)
+      const carried = defCards.map((c, i) => {
+        const answer = d.loadouts?.[i]
+        const choice = answer && Object.keys(answer).length > 0 ? answer : defaultLoadout(c)
+        for (const r of validateLoadout(c, choice)) errors.push(`${where(t.id)}: default loadout ${i} (${c.id}): ${r}`)
+        return resolveLoadout(c, choice, index.groups)
+      })
+      for (const r of loadoutCapProblems(t, carried, index.groups)) errors.push(`${where(t.id)}: default loadouts: ${r}`)
+      defCards.forEach((c, i) => {
+        const picks = { ...defaultOperativePicks(t, c), ...(d.operativePicks?.[i] ?? {}) }
+        for (const r of validateOperativePicks(t, c, picks)) errors.push(`${where(t.id)}: default picks: ${r}`)
+      })
     }
     for (const tc of t.teamChoices ?? []) {
       const offered = abilities.filter((a) => a.choiceGroup === tc.group && a.team === t.id)
@@ -327,13 +356,7 @@ export function validateAll(options: ValidateOptions = {}): ValidationResult {
   const hooks: HookUse[] = [...usage.entries()]
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([name, usedBy]) => ({ name, usedBy: [...new Set(usedBy)].sort() }))
-  const hooksText = formatHooks(hooks)
-  if (hooksMode === 'write') {
-    if (!fs.existsSync(HOOKS_FILE) || fs.readFileSync(HOOKS_FILE, 'utf8').replace(/\r\n/g, '\n') !== hooksText) fs.writeFileSync(HOOKS_FILE, hooksText, 'utf8')
-  } else if (hooksMode === 'check') {
-    const current = fs.existsSync(HOOKS_FILE) ? fs.readFileSync(HOOKS_FILE, 'utf8').replace(/\r\n/g, '\n') : ''
-    if (current !== hooksText) errors.push('src/data/code-hooks.json: out of date (run npm run validate:data)')
-  }
+  void hooksMode
 
   return { errors, files: MANIFEST.length, records: recordCount, hooks, index }
 }

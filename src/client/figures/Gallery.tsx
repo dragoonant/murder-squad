@@ -9,9 +9,10 @@ import { chosenWeaponIds, dataBundle } from '../game/adapter'
 import { teamList } from '../game/defaults'
 import { colors, fontStack } from '../ui/theme'
 import { glbStats } from './glbLoader'
-import { AOD_SLUGS, KOMMANDO_SLUGS } from './attachmentFor'
+import { AOD_SLUGS, HT_SLUGS, KOMMANDO_SLUGS, PF_SLUGS, PM_SLUGS, WB_SLUGS } from './attachmentFor'
 import { HOLDS } from './hold'
 import { Figure, hasGlbBody, seatColor } from './Operative'
+import { baseOfCard } from './OvalBase'
 import { useModelManifest, type SocketName, type V3 } from './manifest'
 
 const COLS = 5
@@ -30,8 +31,12 @@ const VIEWS: Record<View, { az: number; el: number; dist: number }> = {
 const ATT_PAGE = 8
 const ATT_TURN = 1.3
 const ATT_TEAMS = [
-  { id: 'kom', label: 'Kommando attachments', slugs: KOMMANDO_SLUGS, body: 'kom-boy', cols: 5, major: { h: 0.3, s: 0.5, l: 0.4 }, minor: { h: 0.02, s: 0.6, l: 0.4 } },
-  { id: 'aod', label: 'Angels of Death attachments', slugs: AOD_SLUGS, body: 'aod-intercessor-warrior', cols: 4, major: { h: 0.6, s: 0.6, l: 0.4 }, minor: { h: 0.12, s: 0.7, l: 0.5 } },
+  { id: 'kom', label: 'Kommando attachments', short: 'Kom attachments', slugs: KOMMANDO_SLUGS, body: 'kom-boy', cols: 5, major: { h: 0.3, s: 0.5, l: 0.4 }, minor: { h: 0.02, s: 0.6, l: 0.4 } },
+  { id: 'pf', label: 'Pathfinder attachments', short: 'PF attachments', slugs: PF_SLUGS, body: 'pf-shasla', cols: 4, major: { h: 0.1, s: 0.6, l: 0.45 }, minor: { h: 0.08, s: 0.1, l: 0.4 } },
+  { id: 'ht', label: 'Hierotek Circle attachments', short: 'HT attachments', slugs: HT_SLUGS, body: 'ht-immortal-guardian', cols: 5, major: { h: 0.08, s: 0.4, l: 0.35 }, minor: { h: 0.38, s: 0.7, l: 0.45 } },
+  { id: 'pm', label: 'Plague Marine attachments', short: 'PM attachments', slugs: PM_SLUGS, body: 'pm-plague-marine-warrior', cols: 3, major: { h: 0.2, s: 0.35, l: 0.4 }, minor: { h: 0.05, s: 0.5, l: 0.35 } },
+  { id: 'wb', label: 'Wyrmblade attachments', short: 'WB attachments', slugs: WB_SLUGS, body: 'wb-neophyte-warrior', cols: 5, major: { h: 0.75, s: 0.4, l: 0.35 }, minor: { h: 0.13, s: 0.8, l: 0.5 } },
+  { id: 'aod', label: 'Angels of Death attachments', short: 'AoD attachments', slugs: AOD_SLUGS, body: 'aod-intercessor-warrior', cols: 4, major: { h: 0.6, s: 0.6, l: 0.4 }, minor: { h: 0.12, s: 0.7, l: 0.5 } },
 ] as const
 
 const SOCKET_COLOR: Record<SocketName, string> = {
@@ -174,7 +179,7 @@ export function Gallery() {
         </button>
         {ATT_TEAMS.map((t, i) => (
           <button key={t.id} data-testid={`att-${t.id}`} style={btn(attTeam === i)} onClick={() => (setAttTeam(i), setAttPage(null))}>
-            {t.id === 'kom' ? 'Kom attachments' : 'AoD attachments'}
+            {t.short}
           </button>
         ))}
         {attTeam !== null &&
@@ -204,7 +209,7 @@ export function Gallery() {
                 spec={{
                   archetype: card.figure.archetype,
                   height: Math.round(((card.base / 25.4) * 1.15 + 0.1) * 1000) / 1000,
-                  baseRadius: card.base / 25.4 / 2,
+                  ...baseOfCard(card),
                   major: team.paint.major,
                   minor: team.paint.minor,
                   weaponIds,

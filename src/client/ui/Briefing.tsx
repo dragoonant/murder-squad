@@ -6,6 +6,7 @@ import { buildProblems } from '../game/defaults'
 import { humanize } from '../game/labels'
 import { useSession } from '../store/session'
 import { colors, fontStack, panel } from './theme'
+import { Keyword, KeywordText } from './Keyword'
 import { Btn, Dot, Muted } from './widgets'
 
 const page: CSSProperties = {
@@ -38,20 +39,24 @@ export function Briefing() {
           {mission.name}
         </h2>
         <Muted style={{ marginBottom: 10 }}>
-          {layout.name} &middot; {mission.turningPoints} turning points &middot; seed {s.seed}
+          {layout.name} &middot; {mission.turningPoints} <Keyword term="Turning points">turning points</Keyword> &middot; seed {s.seed}
         </Muted>
         <div style={{ ...panel, padding: 14, marginBottom: 10 }}>
           <div style={{ fontWeight: 800, marginBottom: 4 }}>Objectives</div>
-          <div style={{ fontSize: 13, marginBottom: 8 }}>{mission.text}</div>
+          <div style={{ fontSize: 13, marginBottom: 8 }}>
+            <KeywordText text={mission.text} />
+          </div>
           <div style={{ fontSize: 12, color: colors.muted, marginBottom: 4 }}>Scoring</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12 }}>
             {mission.scoring.map((r) => (
               <li key={r.id} style={{ marginBottom: 2 }}>
-                <b>{r.op === 'crit' ? 'Crit op' : 'Kill op'}</b> &middot; {humanize(r.id)}: {r.vp} VP. {r.text}
+                <b><Keyword term={r.op === 'crit' ? 'Crit op' : 'Kill op'} /></b> &middot; <KeywordText text={humanize(r.id)} />: {r.vp} <Keyword term="VP" />. <KeywordText text={r.text} />
               </li>
             ))}
           </ul>
-          <div style={{ fontSize: 12, color: colors.muted, margin: '8px 0 4px' }}>Kill op: enemy operatives to take down for grades 1 to 5</div>
+          <div style={{ fontSize: 12, color: colors.muted, margin: '8px 0 4px' }}>
+            <Keyword term="Kill op" />: enemy operatives to take down for grades 1 to 5
+          </div>
           {(['A', 'B'] as const).map((sd) => {
             const enemy = sd === 'A' ? 'B' : 'A'
             const n = flattenRoster(b.teams[s.builds[enemy].teamId]!, s.builds[enemy].roster).length
@@ -83,7 +88,10 @@ export function Briefing() {
             <li>Move: click the board for each straight step; each step is rounded up to a whole inch. Enter confirms, Esc cancels.</li>
             <li>Touch: tap to choose, drag to look around, pinch to zoom; the drawers along the edge open the feed, log, mission and settings.</li>
             <li>Every prompt says what it decides; hover (or long-press) a button for its rule.</li>
-            <li>Each activation has 2 AP (APL): the action bar lists what you can do and what each action costs (hover or long-press for the rule). End the activation when you are done.</li>
+            <li>
+              <KeywordText text="Each activation has 2 AP (APL): the action bar lists what you can do and what each action costs (hover or long-press for the rule). End the activation when you are done." />
+            </li>
+            <li>Dotted underlines mark game terms: hover one (or tap it on a touch screen) to see what it means and what it does.</li>
           </ul>
         </div>
         {problems.length > 0 && (

@@ -5,6 +5,7 @@ import { bodyOf, targetVerdict, visible } from './los'
 import { distanceBetween, enemiesInControlRange } from './measure'
 import { activeOps, enemiesOf, getOp, otherSeat } from './state'
 import type { Activation, Condition, Effect, GameState, Operative, RuntimeAbility, Seat, TargetSpec } from './types'
+import { providerAny } from './team-rules'
 
 /** Data action ids use kebab case, the engine camel case. */
 export function normAction(id: string): string {
@@ -17,11 +18,19 @@ export function normAction(id: string): string {
 }
 
 export function hasKeyword(state: GameState, op: Operative, kw: string): boolean {
-  return state.data.datacards[op.datacardId]?.keywords.includes(kw) ?? false
+  if (state.data.datacards[op.datacardId]?.keywords.includes(kw)) return true
+  // M9 batch B: keywords picked at selection (Marks of Chaos) are real keywords
+  if (op.picks) for (const k of Object.values(op.picks)) if (k === kw) return true
+  return false
 }
 
 export function isExpendable(state: GameState, op: Operative): boolean {
   return state.data.datacards[op.datacardId]?.expendable === true
+}
+
+/** Ignored for the kill op (M-2.2): Expendable, or a team rule says so (team-rules.ts killOpIgnored). */
+export function killOpIgnored(state: GameState, op: Operative): boolean {
+  return isExpendable(state, op) || providerAny(state, op, 'killOpIgnored')
 }
 
 export function inScope(state: GameState, scope: TargetSpec | undefined, owner: Seat, op: Operative): boolean {

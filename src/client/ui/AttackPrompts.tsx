@@ -10,7 +10,7 @@ import { blockHeadline, blockOption, coverSaveInfo, fightHint, fightOption, figh
 import { opName, weaponName } from '../game/labels'
 import { useGame } from '../store/game'
 import { colors } from './theme'
-import { Tooltip } from './Tooltip'
+import { Keyword, KeywordText, WeaponRules } from './Keyword'
 import { useUi } from './uiStore'
 import { Btn, Muted } from './widgets'
 import { cardStyle, CountDice, DiceRow, Pill, PromptHeader, Section } from './promptParts'
@@ -20,6 +20,21 @@ function hoverProps(id: string | null) {
     onMouseEnter: () => useUi.setState({ hoverOp: id }),
     onMouseLeave: () => useUi.setState({ hoverOp: null }),
   }
+}
+
+/** Atk / Hit / Dmg stat line of a weapon profile, each label a keyword (text stays "Atk 4 · Hit 3+ · Dmg 3/4"). */
+function WeaponStats({ atk, hit, normal, crit, testId }: { atk: number | null; hit: number | null; normal: number | null; crit: number | null; testId?: string }) {
+  return (
+    <span data-testid={testId} style={{ fontVariantNumeric: 'tabular-nums', color: colors.accent, fontWeight: 700 }}>
+      <Keyword term="Atk" /> {atk ?? '?'} · <Keyword term="Hit" /> {hit ?? '?'}+ · <Keyword term="Dmg" /> {normal ?? '?'}/{crit ?? '?'}
+    </span>
+  )
+}
+
+/** Raw rule uses of an option's weapon profile (the engine's own list, so Crits variants and Heavy exceptions show). */
+function ruleUses(o: DecisionOption): { rule: string; x?: number; inches?: number; target?: number | string; crits?: boolean; only?: string }[] {
+  const r = (o.data as { rules?: unknown } | undefined)?.rules
+  return Array.isArray(r) ? (r as ReturnType<typeof ruleUses>) : []
 }
 
 function PassButton({ pending, label }: { pending: PendingDecision; label?: string }) {
@@ -70,24 +85,11 @@ export function ShootWeaponBody({ pending, state }: { pending: PendingDecision; 
             <button key={o.id} type="button" data-testid={`opt-${o.id}`} style={cardStyle()} onClick={() => choose(o.id)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
                 <b style={{ fontSize: 14 }}>{c.name}</b>
-                <span data-testid="weapon-stats" style={{ fontVariantNumeric: 'tabular-nums', color: colors.accent, fontWeight: 700 }}>
-                  Atk {c.atk ?? '?'} · Hit {c.hit ?? '?'}+ · Dmg {c.normal ?? '?'}/{c.crit ?? '?'}
-                </span>
+                <WeaponStats testId="weapon-stats" atk={c.atk} hit={c.hit} normal={c.normal} crit={c.crit} />
               </div>
               {c.rules.length > 0 && (
-                <div style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>
-                  {c.rules.map((r, i) => (
-                    <span key={r.name}>
-                      {i > 0 && ', '}
-                      {r.text ? (
-                        <Tooltip title={r.name} body={r.text}>
-                          <span style={{ borderBottom: `1px dotted ${colors.muted}` }}>{r.name}</span>
-                        </Tooltip>
-                      ) : (
-                        r.name
-                      )}
-                    </span>
-                  ))}
+                <div data-testid="weapon-rules" style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>
+                  <WeaponRules rules={ruleUses(o)} empty={c.rules.map((r) => r.name).join(', ')} />
                 </div>
               )}
               <div style={{ fontSize: 12, marginTop: 4 }} data-testid="weapon-odds">
@@ -157,7 +159,7 @@ export function ShootTargetBody({ pending, state }: { pending: PendingDecision; 
                 <Pill kind={c.badge.kind} label={c.badge.label} meaning={c.badge.meaning} />
               </div>
               <div style={{ fontSize: 12, color: colors.muted, marginTop: 2 }} data-testid="target-line">
-                {c.line}
+                <KeywordText text={c.line} keywords={false} />
               </div>
             </button>
           )
@@ -168,7 +170,9 @@ export function ShootTargetBody({ pending, state }: { pending: PendingDecision; 
               <b>{u.name}</b>
               <Pill kind="unseen" label={u.badge.label} />
             </div>
-            <div style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{u.reason}</div>
+            <div style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
+              <KeywordText text={u.reason} keywords={false} />
+            </div>
           </div>
         ))}
       </div>
@@ -189,7 +193,7 @@ export function CoverSaveBody({ pending, state }: { pending: PendingDecision; st
     <>
       <PromptHeader pending={pending} hint={info.headline} />
       <div data-testid="cover-explain" style={{ fontSize: 13, marginBottom: 8 }}>
-        {info.explain}
+        <KeywordText text={info.explain} />
       </div>
       <div style={{ display: 'flex', gap: 4, marginBottom: 8 }} aria-label={`${collected} defence dice collected`}>
         {Array.from({ length: collected }, (_, i) => (
@@ -203,9 +207,11 @@ export function CoverSaveBody({ pending, state }: { pending: PendingDecision; st
           const retained = Number((o.data as { retained?: number } | undefined)?.retained ?? 0)
           return (
             <button key={o.id} type="button" data-testid={`opt-${o.id}`} style={cardStyle({ primary: i === 0 })} onClick={() => choose(o.id)}>
-              <b>{o.id === 'retain' ? 'Keep one cover save (no roll)' : o.id === 'roll' ? 'Roll all defence dice' : o.id === 'retainCrit' ? 'Keep one cover save as a critical' : 'Keep two cover saves'}</b>
+              <b>
+                <KeywordText text={o.id === 'retain' ? 'Keep one cover save (no roll)' : o.id === 'roll' ? 'Roll all defence dice' : o.id === 'retainCrit' ? 'Keep one cover save as a critical' : 'Keep two cover saves'} />
+              </b>
               <div style={{ fontSize: 12, color: colors.muted }}>
-                {retained > 0 ? `${retained} guaranteed ${o.id === 'retainCrit' ? 'critical ' : ''}success${retained === 1 ? '' : 'es'}; ${Math.max(0, collected - retained)} left to roll.` : `Every die is rolled${info.expectedRolled !== null ? ` (about ${info.expectedRolled.toFixed(1)} successes expected)` : ''}.`}
+                <KeywordText text={retained > 0 ? `${retained} guaranteed ${o.id === 'retainCrit' ? 'critical ' : ''}success${retained === 1 ? '' : 'es'}; ${Math.max(0, collected - retained)} left to roll.` : `Every die is rolled${info.expectedRolled !== null ? ` (about ${info.expectedRolled.toFixed(1)} successes expected)` : ''}.`} />
               </div>
             </button>
           )
@@ -233,14 +239,18 @@ export function BlockBody({ pending, state }: { pending: PendingDecision; state:
         {infos.map((b, i) => (
           <button key={b.id} type="button" data-testid={`opt-${b.id}`} style={cardStyle({ primary: i === 0 })} onClick={() => choose(b.id)}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <b>{b.label}</b>
+              <b>
+                <KeywordText text={b.label} />
+              </b>
               {b.damage !== null && (
                 <span style={{ color: b.damage === 0 ? '#6dff9a' : '#ff8a80', fontWeight: 800 }} data-testid="block-damage">
                   {b.damage} damage
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 12, color: colors.muted }}>{b.detail}</div>
+            <div style={{ fontSize: 12, color: colors.muted }}>
+              <KeywordText text={b.detail} />
+            </div>
           </button>
         ))}
       </div>
@@ -269,7 +279,9 @@ export function FightTargetBody({ pending, state }: { pending: PendingDecision; 
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: 12, color: colors.muted }}>{c.line}</div>
+              <div style={{ fontSize: 12, color: colors.muted }}>
+                <KeywordText text={c.line} keywords={false} />
+              </div>
             </button>
           )
         })}
@@ -297,11 +309,13 @@ export function FightWeaponBody({ pending, state }: { pending: PendingDecision; 
             <button key={o.id} type="button" data-testid={`opt-${o.id}`} style={cardStyle()} onClick={() => choose(o.id)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                 <b>{c.name}</b>
-                <span style={{ color: colors.accent, fontWeight: 700 }}>
-                  Atk {c.atk ?? '?'} · Hit {c.hit ?? '?'}+ · Dmg {c.normal ?? '?'}/{c.crit ?? '?'}
-                </span>
+                <WeaponStats atk={c.atk} hit={c.hit} normal={c.normal} crit={c.crit} />
               </div>
-              {c.rules.length > 0 && <div style={{ fontSize: 11, color: colors.muted }}>{c.rules.map((r) => r.name).join(', ')}</div>}
+              {c.rules.length > 0 && (
+                <div data-testid="weapon-rules" style={{ fontSize: 11, color: colors.muted }}>
+                  <WeaponRules rules={ruleUses(o)} empty={c.rules.map((r) => r.name).join(', ')} />
+                </div>
+              )}
             </button>
           )
         })}
@@ -330,10 +344,14 @@ export function FightResolveBody({ pending, state }: { pending: PendingDecision;
       onClick={() => choose(x.o.id)}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-        <b>{x.info.label}</b>
+        <b>
+          <KeywordText text={x.info.label} />
+        </b>
         {x.info.best && <span style={{ color: colors.accent, fontSize: 11, fontWeight: 800 }}>engine suggests</span>}
       </div>
-      <div style={{ fontSize: 12, color: colors.muted }}>{x.info.effect}</div>
+      <div style={{ fontSize: 12, color: colors.muted }}>
+        <KeywordText text={x.info.effect} />
+      </div>
     </button>
   )
   return (
@@ -351,7 +369,7 @@ export function FightResolveBody({ pending, state }: { pending: PendingDecision;
       )}
       {hint && (
         <div data-testid="fight-hint" style={{ fontSize: 12, color: colors.muted, marginBottom: 8 }}>
-          {hint.text}
+          <KeywordText text={hint.text} />
         </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: strikes.length && blocks.length ? '1fr 1fr' : '1fr', gap: 8 }}>
@@ -391,8 +409,12 @@ export function RerollBody({ pending, state }: { pending: PendingDecision; state
             onMouseEnter={() => useUi.setState({ hoverOption: o.id })}
             onMouseLeave={() => useUi.setState({ hoverOption: null })}
           >
-            <b>{info.label}</b>
-            <div style={{ fontSize: 12, color: colors.muted }}>{info.command ? `Costs ${info.cost} CP. The new result stands.` : 'Free. Each die can be re-rolled only once.'}</div>
+            <b>
+              <KeywordText text={info.label} />
+            </b>
+            <div style={{ fontSize: 12, color: colors.muted }}>
+              <KeywordText text={info.command ? `Costs ${info.cost} CP. The new result stands.` : 'Free. Each die can be re-rolled only once.'} />
+            </div>
           </button>
         ))}
       </div>

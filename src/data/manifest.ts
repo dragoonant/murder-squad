@@ -17,7 +17,7 @@ export interface ManifestEntry {
   array: boolean
 }
 
-export const TEAM_DIRS = ['angels-of-death', 'kommandos'] as const
+export const TEAM_DIRS = ['angels-of-death', 'kommandos', 'pathfinders', 'hierotek-circle', 'plague-marines', 'wyrmblade', 'legionaries', 'hand-of-the-archon', 'hunter-clade', 'hearthkyn-salvagers'] as const
 
 const teamFiles = (dir: string): ManifestEntry[] => [
   { path: `teams/${dir}/team.json`, schema: 'team', array: false },

@@ -33,6 +33,8 @@ export interface SeatBuild {
   equipmentChoices?: Record<string, string[]>
   /** team-level picks (Chapter Tactics and the like): team choice id -> ability id */
   choices?: Record<string, string>
+  /** M9 batch B: per-operative keyword picks (Marks of Chaos) in flattened roster order: operative choice id -> keyword */
+  picks?: Record<string, string>[]
 }
 
 /** The weapon ids a loadout adds on top of the card's fixed weapons (what the engine calls Loadout). */
@@ -44,7 +46,10 @@ export function rosterEntries(b: DataBundle, build: SeatBuild): RosterEntry[] {
   const team = b.teams[build.teamId]!
   return flattenRoster(team, build.roster).map((id, i) => {
     const choice = build.loadouts[i] ?? {}
-    return { datacardId: id, loadout: resolveLoadoutChoice(engineBundle(), id, choice) }
+    const entry: RosterEntry = { datacardId: id, loadout: resolveLoadoutChoice(engineBundle(), id, choice) }
+    const picks = build.picks?.[i]
+    if (picks && Object.keys(picks).length > 0) entry.picks = { ...picks }
+    return entry
   })
 }
 
