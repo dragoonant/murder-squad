@@ -30,10 +30,14 @@ import {
   torrentCandidates,
   valuesOf,
   validTargets,
+  weaponDamage,
   weaponOf,
+  parseRules,
   weaponUnusable,
   type TargetInfo,
 } from './attack-common'
+import { providerAny, providerViewpoints } from './team-rules'
+import { enemiesInControlRange } from './measure'
 import { cancelAction, finishAction } from './firefight'
 import { runHook, type ChoiceRequest } from './hooks'
 import { distanceBetween } from './measure'
@@ -140,7 +144,10 @@ function raiseWeapon(ctx: Ctx): void {
   const act = s.firefight.activation!
   const op = getOp(s, a.operativeId)
   const options: OptionInput[] = []
+  // M9 prep: a shooter that fails the core Shoot conditions itself (Conceal without Silent, in an enemy control
+  // range) may still shoot through a viewpoint a team rule offers (Magnify); then only those options exist
   for (const { weaponId, targets } of shootableWeapons(s, op, act.performed, ctx)) {
+    if (!baseShootConditions(s, op, weaponId)) continue
     // ASTARTES: repeating a bolt sniper rifle / heavy bolter costs 1 more AP, so it is only offered when affordable
     if (!surchargeAffordable(s, op, act, weaponId)) continue
     const w = weaponOf(s, weaponId)
@@ -151,6 +158,23 @@ function raiseWeapon(ctx: Ctx): void {
       payload: { weaponId },
       data: { ...weaponSummary(w), profileGroup: w.profileGroup ?? null, targets: targets.length },
     })
+  }
+  for (const weaponId of usableRangedWeapons(s, op, act.performed)) {
+    if (!surchargeAffordable(s, op, act, weaponId)) continue
+    for (const vpId of providerViewpoints(s, op, weaponId)) {
+      const vp = s.operatives[vpId]
+      if (!vp || vp.status !== 'active') continue
+      const targets = validTargets(s, op, weaponId, ctx, vp)
+      if (targets.length === 0) continue
+      const w = weaponOf(s, weaponId)
+      options.push({
+        id: `${weaponId}@${vpId}`,
+        labelKey: 'shoot.weaponVia',
+        type: 'shoot.weapon',
+        payload: { weaponId, viewpointId: vpId },
+        data: { ...weaponSummary(w), profileGroup: w.profileGroup ?? null, targets: targets.length, viewpointId: vpId },
+      })
+    }
   }
   if (options.length === 0) {
     abort(ctx)
@@ -178,8 +202,24 @@ function surchargeAffordable(state: GameState, op: Operative, act: Activation, w
   return extra === 0 || act.apSpent + (act.declared?.cost ?? 1) + extra <= effectiveApl(op)
 }
 
-function selectWeapon(ctx: Ctx, weaponId: string): void {
+/** Core Shoot conditions on the shooter itself: Conceal needs a Silent weapon, no enemy in control range (R-3.4, R-4.7). */
+function baseShootConditions(state: GameState, op: Operative, weaponId: string): boolean {
+  const inCr = enemiesInControlRange(state, op, op.seat).length > 0
+  const explosive = op.weapons.some((w) => state.data.weapons[w]?.rules.some((r) => r.rule === 'explosive'))
+  if (inCr && !explosive && !state.attack?.pointBlank && !providerAny(state, op, 'shootInControlRange')) return false
+  if (op.order === 'conceal') return parseRules(state.data.weapons[weaponId]?.rules ?? []).silent
+  return true
+}
+
+/** The operative whose position decides valid targets, cover and obscured for this Shoot (Magnify), or undefined. */
+function viewpointOf(state: GameState, a: AttackState): Operative | undefined {
+  return a.viewpointId ? state.operatives[a.viewpointId] : undefined
+}
+
+function selectWeapon(ctx: Ctx, weaponId: string, viewpointId?: string): void {
   const a = attackOf(ctx)
+  if (viewpointId) a.viewpointId = viewpointId
+  else delete a.viewpointId
   const act = ctx.state.firefight.activation!
   const extra = surchargeFor(ctx.state, getOp(ctx.state, a.operativeId), act, weaponId)
   if (extra > 0) act.surcharge = extra
@@ -208,7 +248,7 @@ function raiseTargets(ctx: Ctx): void {
   const a = attackOf(ctx)
   const op = getOp(s, a.operativeId)
   const weaponId = a.weaponId!
-  const targets = validTargets(s, op, weaponId, ctx)
+  const targets = validTargets(s, op, weaponId, ctx, viewpointOf(s, a))
   if (targets.length === 0) {
     abort(ctx)
     return
@@ -240,7 +280,7 @@ function chooseTarget(ctx: Ctx, targetId: string): void {
   a.index = 0
   a.inherit = null
   if (rules.blast !== null) a.targets.push(...blastSecondaries(s, op, target, rules.blast))
-  a.candidates = rules.torrent !== null ? torrentCandidates(s, op, a.weaponId!, targetId, rules.torrent, ctx) : []
+  a.candidates = rules.torrent !== null ? torrentCandidates(s, op, a.weaponId!, targetId, rules.torrent, ctx, viewpointOf(s, a)) : []
   if (a.candidates.length > 0) {
     raiseSecondary(ctx)
     return
@@ -310,7 +350,7 @@ function startTarget(ctx: Ctx): void {
   const op = getOp(s, a.operativeId)
   const target = getOp(s, a.targets[a.index]!)
   const rules = ruleSetFor(s, op, a.weaponId!, 'shoot', target.id, ctx)
-  const info = targetInfo(s, op, target, rules)
+  const info = targetInfo(s, op, target, rules, viewpointOf(s, a))
   if (a.index > 0 && a.inherit) {
     beginRoll(ctx, a.inherit.cover, a.inherit.obscured, a.inherit.improvedCover)
     return
@@ -636,7 +676,8 @@ STEPS.block = (ctx) => {
   const weapon = weaponOf(s, a.weaponId!)
   const at = countKinds(seq.atk.dice)
   const df = seq.def ? countKinds(seq.def.dice) : { normal: 0, crit: 0, fail: 0 }
-  const plans = blockPlans(at.normal, at.crit, df.normal, df.crit, weapon.dmg, rules.brutal)
+  const dmg = weaponDamage(s, a.operativeId, weapon.id, seq.targetId, 'shoot', ctx)
+  const plans = blockPlans(at.normal, at.crit, df.normal, df.crit, dmg, rules.brutal)
   if (plans.length <= 1) {
     applyBlock(ctx, plans[0]!)
     return
@@ -670,7 +711,7 @@ STEPS.block = (ctx) => {
       targetId: seq.targetId,
       attack: { normal: at.normal, crit: at.crit },
       defence: { normal: df.normal, crit: df.crit },
-      dmg: weapon.dmg,
+      dmg,
       brutal: rules.brutal,
     },
     options,
@@ -682,6 +723,7 @@ function applyBlock(ctx: Ctx, plan: { unblockedNormal: number; unblockedCrit: nu
   const a = attackOf(ctx)
   const seq = seqOf(ctx)
   const weapon = weaponOf(s, a.weaponId!)
+  const dmg = weaponDamage(s, a.operativeId, weapon.id, seq.targetId, 'shoot', ctx)
   ctx.emit(
     {
       type: 'DiceBlocked',
@@ -694,10 +736,10 @@ function applyBlock(ctx: Ctx, plan: { unblockedNormal: number; unblockedCrit: nu
     seq.def?.seat ?? null,
   )
   for (let i = 0; i < plan.unblockedCrit; i++) {
-    inflict(ctx, { targetId: seq.targetId, attackerId: a.operativeId, weaponId: weapon.id, amount: weapon.dmg.crit, source: 'crit' })
+    inflict(ctx, { targetId: seq.targetId, attackerId: a.operativeId, weaponId: weapon.id, amount: dmg.crit, source: 'crit' })
   }
   for (let i = 0; i < plan.unblockedNormal; i++) {
-    inflict(ctx, { targetId: seq.targetId, attackerId: a.operativeId, weaponId: weapon.id, amount: weapon.dmg.normal, source: 'normal' })
+    inflict(ctx, { targetId: seq.targetId, attackerId: a.operativeId, weaponId: weapon.id, amount: dmg.normal, source: 'normal' })
   }
   a.seq = null
   a.index++
@@ -754,7 +796,8 @@ function handleWeapon(_state: GameState, action: Action): Handled {
   if (action.type === 'pass') return { run: (ctx) => abort(ctx) }
   if (action.type !== 'shoot.weapon') return reject('E_WRONG_DECISION', 'expected a weapon')
   const weaponId = String(action.payload.weaponId)
-  return { run: (ctx) => selectWeapon(ctx, weaponId) }
+  const vp = (action.payload as { viewpointId?: unknown }).viewpointId
+  return { run: (ctx) => selectWeapon(ctx, weaponId, typeof vp === 'string' ? vp : undefined) }
 }
 
 function handleTarget(_state: GameState, action: Action): Handled {
@@ -795,7 +838,7 @@ function handleBlock(state: GameState, action: Action): Handled {
       const weapon = weaponOf(ctx.state, a.weaponId!)
       const at = countKinds(seq.atk.dice)
       const df = seq.def ? countKinds(seq.def.dice) : { normal: 0, crit: 0, fail: 0 }
-      const plans = blockPlans(at.normal, at.crit, df.normal, df.crit, weapon.dmg, rules.brutal)
+      const plans = blockPlans(at.normal, at.crit, df.normal, df.crit, weaponDamage(ctx.state, a.operativeId, weapon.id, seq.targetId, 'shoot', ctx), rules.brutal)
       let plan = plans[0]!
       if (p.mode !== 'auto' && Array.isArray(p.unblocked)) {
         const [rn, rc] = p.unblocked as number[]

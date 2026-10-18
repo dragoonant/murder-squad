@@ -1,0 +1,45 @@
+{
+  "id": "hierotek-circle",
+  "name": "Hierotek Circle",
+  "factionKeyword": "HIEROTEK CIRCLE",
+  "archetypes": [
+    "recon",
+    "security"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "hie.technomancer"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "hie.technomancer"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.6,
+      "s": 0.05,
+      "l": 0.22
+    },
+    "minor": {
+      "h": 0.33,
+      "s": 0.8,
+      "l": 0.45
+    }
+  },
+  "text": "A Cryptek and its retinue of metal servants that mend, return and outlast whatever is thrown at them.",
+  "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md section 4"
+}

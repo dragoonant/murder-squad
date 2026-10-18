@@ -155,3 +155,20 @@ export function directDamage(ctx: Ctx, targetId: string, amount: number, sourceI
   queueRemoval(ctx, targetId)
   return dealt
 }
+
+/**
+ * M9 prep (generic capability "regainWounds"): the operative regains up to `amount` lost wounds, never
+ * above its starting Wounds (Living Metal, Canoptek Repair, Medikit, Putrescent Vitality, Grandfather's
+ * Blessing). Its injured state is recomputed at once. Only operatives in the killzone heal. Returns the
+ * wounds actually regained (0 emits nothing).
+ */
+export function regainWounds(ctx: Ctx, operativeId: string, amount: number, source: string): number {
+  const op = ctx.state.operatives[operativeId]
+  if (!op || op.status !== 'active' || op.wounds <= 0) return 0
+  const gain = Math.max(0, Math.min(Math.floor(amount), op.maxWounds - op.wounds))
+  if (gain === 0) return 0
+  op.wounds += gain
+  if (op.flags.injured && op.wounds * 2 >= op.maxWounds) op.flags.injured = false
+  ctx.emit({ type: 'WoundsRegained', operativeId: op.id, amount: gain, wounds: op.wounds, source }, op.seat)
+  return gain
+}

@@ -2,6 +2,7 @@
 // Profile groups share one mesh; an empty list is an explicit "draws nothing" (natural weapons, bare fists,
 // abstract explosives); two slugs draw a pair (twin choppas). An id absent from the table is unmapped: the
 // renderer falls back to the hold-class box and tests/client/attachments.test.ts fails on it.
+import { teamTable } from '../teams'
 export type AttachmentSlug = string
 
 export const ATTACHMENT_FOR: Record<string, AttachmentSlug[]> = {
@@ -61,6 +62,8 @@ export const ATTACHMENT_FOR: Record<string, AttachmentSlug[]> = {
   'core.w.frag-grenade': ['e-frag-grenade'],
   'core.w.krak-grenade': ['e-krak-grenade'],
 }
+// M9 prep: teams added later bring their own entries (src/client/teams)
+Object.assign(ATTACHMENT_FOR, teamTable('attachments'))
 
 /** The attachment slugs a weapon draws: [] draws nothing, undefined means the id is unmapped. */
 export function attachmentFor(weaponId: string): AttachmentSlug[] | undefined {

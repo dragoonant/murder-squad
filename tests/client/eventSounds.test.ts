@@ -1,5 +1,6 @@
 // Audio mapping: every weapon of both teams maps to an mp3 that exists, every engine event type has a sound or an
 // explicit silence, a real game only ever asks for ids that exist, deaths and music follow the team and the score.
+import { ALL_WEAPON_IDS, isPresented } from '../fixtures/presentation'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -15,7 +16,7 @@ const ROOT = join(__dirname, '..', '..')
 const AUDIO_DIR = join(ROOT, 'public', 'audio')
 const mp3 = (id: string) => join(AUDIO_DIR, `${id}.mp3`)
 
-const weapons = Object.values(dataBundle().byId).filter((r) => 'atk' in r && 'dmg' in r) as unknown as { id: string; name: string }[]
+const weapons = Object.values(dataBundle().byId).filter((r) => 'atk' in r && 'dmg' in r && isPresented(r)) as unknown as { id: string; name: string }[]
 
 describe('audio assets', () => {
   it('SOUND_IDS is exactly the set of mp3 files in public/audio', () => {
@@ -56,7 +57,7 @@ describe('weapon sounds', () => {
   })
 
   it('has no stale weapon entries', () => {
-    const ids = new Set(weapons.map((w) => w.id))
+    const ids = ALL_WEAPON_IDS
     expect(Object.keys(WEAPON_SOUND).filter((id) => !ids.has(id))).toEqual([])
   })
 

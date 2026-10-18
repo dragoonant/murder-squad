@@ -3,6 +3,7 @@
 // live `data` object of that hook, as documented there. Declarative effects (grantWeaponRule,
 // removeWeaponRule, modifyStat) are interpreted generically; the rest belong to a named rule.
 import { inflict } from './attack-common'
+import { providerStealthy } from './team-rules'
 import { ruleName } from './bundle'
 import { bodyOf, targetVerdict } from './los'
 import { distanceBetween, enemiesInControlRange } from './measure'
@@ -339,7 +340,8 @@ export function stealthyLevel(state: GameState, op: Operative): number {
   const team = [cfg.choices['primary-tactic'], cfg.adaptive ?? cfg.choices['secondary-tactic'], ...(op.extraTactics ?? [])]
   const fromTeam = team.includes(ID.tactic('stealthy')) ? 1 : 0
   const camo = hasAbility(state, op, 'aod.a.camo-cloak') ? 1 : 0
-  return fromTeam + camo
+  // M9 prep: other teams' Stealthy-style rules (Wyrmblade Cult Agent) through team-rules.ts
+  return fromTeam + camo + providerStealthy(state, op)
 }
 
 registerHook(

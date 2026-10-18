@@ -1,0 +1,45 @@
+{
+  "id": "pathfinders",
+  "name": "Pathfinders",
+  "factionKeyword": "PATHFINDER",
+  "archetypes": [
+    "infiltration",
+    "recon"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "pf.shasui"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "pf.shasui"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.11,
+      "s": 0.4,
+      "l": 0.6
+    },
+    "minor": {
+      "h": 0.6,
+      "s": 0.15,
+      "l": 0.25
+    }
+  },
+  "text": "T'au forward scouts: a Shas'ui and eleven selections who mark targets for each other and lean on their drones.",
+  "source": "team-pathfinders.pdf; docs/spec/13-teams.md section 3"
+}

@@ -18,7 +18,8 @@ function arg(name: string, fallback: string): string {
 }
 
 const OUT = 'tools/out/bench-report.json'
-const TEAMS = ['angels-of-death', 'kommandos']
+// `--pair <teamA>,<teamB>` benchmarks another pairing of playable teams (default: the v1 pair)
+const TEAMS = arg('pair', 'angels-of-death,kommandos').split(',')
 
 interface BenchRow {
   game: number

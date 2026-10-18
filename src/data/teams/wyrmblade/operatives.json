@@ -1,0 +1,35 @@
+[
+  {
+    "id": "wyr.neophyte-leader",
+    "name": "Neophyte Leader",
+    "team": "wyrmblade",
+    "stats": {
+      "apl": 2,
+      "move": 6,
+      "save": "5+",
+      "wounds": 8
+    },
+    "base": 25,
+    "keywords": [
+      "WYRMBLADE",
+      "TYRANIDS",
+      "GENESTEALER CULTS",
+      "NEOPHYTE",
+      "LEADER"
+    ],
+    "weapons": {
+      "fixed": [
+        "wyr.w.autogun-leader",
+        "wyr.w.gun-butt"
+      ],
+      "options": []
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "wb-neophyte-leader"
+    },
+    "text": "The cell leader. Scaffold loadout: autogun and gun butt; the other options join with the team data.",
+    "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md section 6"
+  }
+]

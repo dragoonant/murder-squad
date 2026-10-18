@@ -1,5 +1,6 @@
 // Attachments: every weapon id in the data resolves to an attachment GLB that exists on disk, or an explicit
 // "draws nothing"; every finalised mesh is a sane size; the placement plan handles pairs and the box fallback.
+import { ALL_WEAPON_IDS, isPresented } from '../fixtures/presentation'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -12,7 +13,7 @@ import { pointOf, type ModelManifest } from '@/client/figures/manifest'
 const modelsDir = resolve(__dirname, '../../public/assets/models')
 const manifest = JSON.parse(readFileSync(resolve(modelsDir, 'manifest.json'), 'utf8')) as ModelManifest
 const config = JSON.parse(readFileSync(resolve(__dirname, '../../tools/models/attachments.json'), 'utf8')) as Record<string, { lengthIn: number; holdClass: string }>
-const weapons = Object.values(dataBundle().byId).filter((r) => 'atk' in r && 'dmg' in r) as unknown as { id: string }[]
+const weapons = Object.values(dataBundle().byId).filter((r) => 'atk' in r && 'dmg' in r && isPresented(r)) as unknown as { id: string }[]
 const glbPath = (file: string) => resolve(modelsDir, file.includes('/') ? file : `attachments/${file}`)
 
 describe('attachment mapping', () => {
@@ -38,7 +39,7 @@ describe('attachment mapping', () => {
   })
 
   it('has no stale mapping entries and draws nothing only for natural / abstract weapons', () => {
-    const ids = new Set(weapons.map((w) => w.id))
+    const ids = ALL_WEAPON_IDS
     expect(Object.keys(ATTACHMENT_FOR).filter((id) => !ids.has(id))).toEqual([])
     const none = Object.entries(ATTACHMENT_FOR).filter(([, v]) => v.length === 0).map(([id]) => id).sort()
     expect(none).toEqual(['aod.w.fists', 'kom.w.bite', 'kom.w.explosives', 'kom.w.fists'])

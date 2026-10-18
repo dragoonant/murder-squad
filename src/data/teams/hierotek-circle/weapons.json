@@ -1,0 +1,40 @@
+[
+  {
+    "id": "hie.w.staff-of-light-ranged",
+    "name": "Staff of light (ranged)",
+    "team": "hierotek-circle",
+    "type": "ranged",
+    "atk": 6,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.rending"
+      }
+    ],
+    "text": "A staff that throws arcs of searing light. Scaffold: Magnify is added with the team rules.",
+    "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md section 4"
+  },
+  {
+    "id": "hie.w.staff-of-light-melee",
+    "name": "Staff of light (melee)",
+    "team": "hierotek-circle",
+    "type": "melee",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 3,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.rending"
+      }
+    ],
+    "text": "The same staff swung at close quarters.",
+    "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md section 4"
+  }
+]

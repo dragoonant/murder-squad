@@ -1,12 +1,13 @@
 // STR: strategy.* (R-2). Initiative roll-off with the tie rule, CP gain, ready all, gambit alternation.
 import { startFirefight } from './firefight'
 import { reject, type Ctx, type Handled, type ModuleDef } from './registry'
-import { activeOps, otherSeat, SEATS } from './state'
+import { otherSeat, SEATS } from './state'
 import type { Action, GameState, RuntimeGambit, Seat } from './types'
 // M2b-game
 import { refreshFlags } from './abilities'
 import { smokeReady } from './core-hooks'
 import { removeEffects } from './effects'
+import { runHook } from './hooks'
 import { restoreTurningPointWeapons } from './equipment'
 import { onTurningPointStart } from './missions'
 import { findGambit, gambitOffers, usePloy } from './ploys'
@@ -25,6 +26,8 @@ export function beginTurningPoint(ctx: Ctx): void {
       ctx.emit({ type: 'GuardCleared', operativeId: op.id, reason: 'turningPoint' }, op.seat)
     }
     op.flags.counteractedThisTP = false
+    // M9 prep: the per-TP action history starts again
+    if (op.actionsThisTp) op.actionsThisTp = []
   }
   // M2b-game: per-TP ledgers, transmitting, Harpoon and "until the start of the next TP" effects reset
   for (const seat of SEATS) s.ledger[seat].tp = []
@@ -103,6 +106,8 @@ function readyStep(ctx: Ctx): void {
   const s = ctx.state
   s.strategy.step = 'ready'
   const holder = s.initiative!
+  // M9 prep: Ready-step team rules (Living Metal, Reanimation Protocols, Tesseract Cube) before CP and readying
+  runHook('turningPoint.start', { seat: holder, state: s, engine: ctx, data: { turningPoint: s.turningPoint } })
   for (const seat of SEATS) {
     const gain = s.turningPoint === 1 ? 1 : seat === holder ? 1 : 2
     const p = s.players[seat]
@@ -110,7 +115,9 @@ function readyStep(ctx: Ctx): void {
     ctx.emit({ type: 'CpChanged', delta: gain, cp: p.cp, reason: 'strategy' }, seat)
   }
   const ids: string[] = []
-  for (const op of activeOps(s)) {
+  // operatives out of the killzone but still activating (HIDING, reserve.ts) are readied too
+  for (const op of Object.values(s.operatives)) {
+    if (op.status !== 'active' && !(op.status === 'reserve' && op.offboard !== undefined)) continue
     op.ready = true
     ids.push(op.id)
   }

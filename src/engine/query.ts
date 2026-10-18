@@ -1,5 +1,6 @@
 // query.*: every number the UI shows comes from here - visibility, cover/obscured verdicts, control
 // range, marker control by APL, distances, odds. The client never computes a rules number itself.
+import { providerControlApl, providerControlTotal } from './team-rules'
 import { dieOdds, poolDistribution, type DieOdds, type PoolOutcome } from './dice'
 import { bodyOf, enemiesInControlRange, inControlRange, markerInControlRange, distanceBetween } from './measure'
 import { targetVerdict, visible, type TargetVerdict } from './los'
@@ -57,9 +58,12 @@ export function markerControl(state: GameState, marker: Marker): MarkerControl {
   for (const op of activeOps(state)) {
     if (markerInControlRange(state, bodyOf(op), marker)) {
       contesting[op.seat].push(op.id)
-      apl[op.seat] += effectiveApl(op)
+      // M9 prep: team rules change what an operative counts for here only (Icon Bearer, Drone, Steadfast)
+      apl[op.seat] += providerControlApl(state, op, marker, effectiveApl(op))
     }
   }
+  // M9 prep: team rules change a side's total (Despair -1, a Reanimation marker counting as APL 1)
+  for (const seat of ['A', 'B'] as const) apl[seat] = providerControlTotal(state, seat, marker, apl[seat], contesting[seat])
   const controller: Seat | null = apl.A > apl.B ? 'A' : apl.B > apl.A ? 'B' : null
   return { contesting, apl, controller }
 }

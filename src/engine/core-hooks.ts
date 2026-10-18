@@ -336,7 +336,7 @@ registerCodeHook({
       const act = ctx.state.firefight.activation!
       const maxInches = Math.max(0, op.move - 2)
       act.declared = { ...act.declared!, params: { moveKind: 'reposition', maxInches, afterMove: 'moveWithBarricade', featureId: params.featureId, treatedAs: 'reposition' } }
-      const c = moveConstraints(op, 'reposition', act.counteract)
+      const c = moveConstraints(op, 'reposition', act.counteract, ctx.state)
       c.maxInches = Math.min(c.maxInches ?? maxInches, maxInches)
       ctx.raise({
         kind: 'move.path',

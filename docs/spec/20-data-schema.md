@@ -16,7 +16,7 @@ All content is JSON under `src/data/`, validated at build by `tools/validate-dat
 | `src/data/teams/<team>/equipment.json` | `equipment[]` | faction equipment |
 | `src/data/missions/*.json` | `mission` | Preliminary Ops (per crit op), later Approved Ops |
 | `src/data/killzones/*.json` | `killzone-layout` | terrain pieces with traits and positions, drop zones, objective spots per map |
-| `src/data/index.ts` | — | `loadBundle(): DataBundle` (byId maps, `dataVersion`), throws on duplicate id or dangling ref |
+| `src/data/index.ts` | — | `loadBundle(): DataBundle` (byId maps, `dataVersion`), throws on duplicate id or dangling ref; `CODE_HOOKS`, `playableTeamIds` |
 
 Ids: lowercase kebab, dot-namespaced: `aod.intercessor-sergeant`, `aod.w.bolt-rifle`, `aod.a.heroic-leader`, `aod.p.combat-doctrine`, `kom.boss-nob`, `core.wr.piercing`, `core.e.mines`, `mission.prelim-secure`, `kz.volkus-01`.
 
@@ -68,6 +68,8 @@ Ids: lowercase kebab, dot-namespaced: `aod.intercessor-sergeant`, `aod.w.bolt-ri
   "source":"team-angels-of-death.pdf p1" }
 ```
 The exact selection shape is finalised during the dry run from `13-teams.md`; the validator enforces that every datacard/weapon referenced exists and that at least one legal roster exists.
+
+M9 prep (additive): `playable: false` marks a scaffolded team (validated and loaded, left out of the team picker, the real-team sims and the client presentation coverage tests until flipped); `defaults: { roster, equipment, teamChoices }` replaces the engine's per-team default tables; a selection slot may carry `weights` (datacard id to the number of selections it counts as, 2 or more) and `caps` (`[{ label?, from, max }]`, at most `max` of those datacards together). Equipment may carry `grants.to: { keyword?, notKeywords? }` (who receives granted weapons; absent: every non-Expendable operative), `hidden` (markers hidden from the opponent until they trigger) and `excludes` (equipment ids it cannot be taken with); any equipment whose effect is `{ "code": "mines" }` behaves as a mine. The list of code hooks the data names is derived at load time (`CODE_HOOKS` in `src/data/index.ts`); there is no generated `code-hooks.json`.
 
 ## 9. Mission and killzone layout
 Mission: `{ id, pack: "preliminary-ops", critOp: secure|loot|transmission, turningPoints: 4, killOp: { gradeTable: {startingOperatives: thresholds[]} }, actions: [mission action ids], scoring: [ScoringRule], objectiveSetup: {...}, source }`. Killzone layout: `{ id, name, size: {x:30,z:22}, maps: [{ id, dropZones: {A: Polygon, B: Polygon}, territories, centreline, objectiveSpots?, pieces: [{ model: slug, pos, yaw, parts: [{ footprint: Polygon, height, traits: [TerrainTrait], vantageFloors?: number[] }] }] }], source }`.

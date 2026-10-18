@@ -1,0 +1,80 @@
+[
+  {
+    "id": "pm.w.plasma-pistol-standard",
+    "name": "Plasma pistol",
+    "team": "plague-marines",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      }
+    ],
+    "profileGroup": "pm.wg.plasma-pistol",
+    "profile": "standard",
+    "text": "A compact plasma sidearm.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md section 5"
+  },
+  {
+    "id": "pm.w.plasma-pistol-supercharge",
+    "name": "Plasma pistol",
+    "team": "plague-marines",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.hot"
+      },
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      }
+    ],
+    "profileGroup": "pm.wg.plasma-pistol",
+    "profile": "supercharge",
+    "text": "The same pistol overcharged at the risk of the wielder.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md section 5"
+  },
+  {
+    "id": "pm.w.plague-sword",
+    "name": "Plague sword",
+    "team": "plague-marines",
+    "type": "melee",
+    "atk": 5,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.severe"
+      }
+    ],
+    "text": "A corroded blade. Scaffold: Poison and Toxic are added with the team rules.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md section 5"
+  }
+]

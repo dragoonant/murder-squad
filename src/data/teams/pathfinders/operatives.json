@@ -1,0 +1,34 @@
+[
+  {
+    "id": "pf.shasui",
+    "name": "Shas'ui Pathfinder",
+    "team": "pathfinders",
+    "stats": {
+      "apl": 2,
+      "move": 6,
+      "save": "5+",
+      "wounds": 8
+    },
+    "base": 25,
+    "keywords": [
+      "PATHFINDER",
+      "T'AU EMPIRE",
+      "LEADER",
+      "SHAS'UI"
+    ],
+    "weapons": {
+      "fixed": [
+        "pf.w.pulse-carbine-shasui",
+        "pf.w.gun-butt-shasui"
+      ],
+      "options": []
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "pf-shasui"
+    },
+    "text": "The team leader, with a pulse carbine and a gun butt.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md section 3"
+  }
+]

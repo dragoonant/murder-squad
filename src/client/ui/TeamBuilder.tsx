@@ -10,6 +10,7 @@ import {
   defaultLoadout,
   enumerateLoadouts,
   expandWeaponRef,
+  capProblems,
   slotCost,
   type DatacardData,
   type LoadoutChoice,
@@ -50,6 +51,8 @@ export function addProblem(slot: SelectionSlot, current: string[], id: string): 
   const repeatable = new Set(slot.repeatable ?? [])
   if (current.includes(id) && !repeatable.has(id)) return 'Only one of this operative is allowed.'
   if (slotCost(slot, [...current, id]) > slot.count) return `${slot.label ?? slot.id} is full (${slotCost(slot, current)}/${slot.count}).`
+  const cap = capProblems(slot, [...current, id])[0]
+  if (cap) return `${cap}.`
   return null
 }
 

@@ -24,8 +24,11 @@ function isEquipment(r: unknown): r is EquipmentData {
   return !!r && typeof r === 'object' && 'scope' in r && 'count' in r
 }
 
+/** Teams offered in the picker: scaffolded teams (`playable: false` in team.json) stay hidden until complete. */
 export function teamList(b: DataBundle): TeamData[] {
-  return Object.values(b.teams).sort((x, y) => x.name.localeCompare(y.name))
+  return Object.values(b.teams)
+    .filter((t) => t.playable !== false)
+    .sort((x, y) => x.name.localeCompare(y.name))
 }
 
 export function missionList(b: DataBundle): MissionData[] {
@@ -140,7 +143,7 @@ export function defaultEquipmentPicks(e: EquipmentData): string[] {
 export function defaultEquipment(b: DataBundle, team: TeamData): { equipment: string[]; equipmentChoices: Record<string, string[]> } {
   let ids: string[] = []
   try {
-    ids = defaultEquipmentFor(team.id)
+    ids = defaultEquipmentFor(team.id, engineBundle())
   } catch {
     ids = []
   }

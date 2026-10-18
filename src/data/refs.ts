@@ -136,6 +136,7 @@ export function recordRefs(rec: DataRecord, type: RecordType): Ref[] {
       e.grants?.abilities?.forEach((id, i) => out.push({ at: `grants.abilities[${i}]`, id, kind: 'ability' }))
       e.grants?.actions?.forEach((id, i) => out.push({ at: `grants.actions[${i}]`, id, kind: 'uniqueAction' }))
       e.actions?.forEach((id, i) => out.push({ at: `actions[${i}]`, id, kind: 'uniqueAction' }))
+      e.excludes?.forEach((id, i) => out.push({ at: `excludes[${i}]`, id, kind: 'equipment' }))
       conditionRefs(e.when, 'when', out)
       effectRefs(e.effect, 'effect', out)
       break
@@ -146,10 +147,15 @@ export function recordRefs(rec: DataRecord, type: RecordType): Ref[] {
         s.from.forEach((id, j) => out.push({ at: `selection.slots[${i}].from[${j}]`, id, kind: 'datacard' }))
         s.repeatable?.forEach((id, j) => out.push({ at: `selection.slots[${i}].repeatable[${j}]`, id, kind: 'datacard' }))
         s.halfSelections?.forEach((id, j) => out.push({ at: `selection.slots[${i}].halfSelections[${j}]`, id, kind: 'datacard' }))
+        Object.keys(s.weights ?? {}).forEach((id) => out.push({ at: `selection.slots[${i}].weights.${id}`, id, kind: 'datacard' }))
+        s.caps?.forEach((c, k) => c.from.forEach((id, j) => out.push({ at: `selection.slots[${i}].caps[${k}].from[${j}]`, id, kind: 'datacard' })))
       })
       t.factionRules.forEach((id, i) => out.push({ at: `factionRules[${i}]`, id, kind: 'ability' }))
       t.ploys.forEach((id, i) => out.push({ at: `ploys[${i}]`, id, kind: 'ploy' }))
       t.equipment.forEach((id, i) => out.push({ at: `equipment[${i}]`, id, kind: 'equipment' }))
+      t.defaults?.roster?.forEach((id, i) => out.push({ at: `defaults.roster[${i}]`, id, kind: 'datacard' }))
+      t.defaults?.equipment?.forEach((id, i) => out.push({ at: `defaults.equipment[${i}]`, id, kind: 'equipment' }))
+      Object.entries(t.defaults?.teamChoices ?? {}).forEach(([k, id]) => out.push({ at: `defaults.teamChoices.${k}`, id, kind: 'ability' }))
       break
     }
     case 'mission': {

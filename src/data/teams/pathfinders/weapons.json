@@ -1,0 +1,32 @@
+[
+  {
+    "id": "pf.w.pulse-carbine-shasui",
+    "name": "Pulse carbine",
+    "team": "pathfinders",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [],
+    "text": "A rapid-firing plasma-pulse rifle.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md section 3"
+  },
+  {
+    "id": "pf.w.gun-butt-shasui",
+    "name": "Gun butt",
+    "team": "pathfinders",
+    "type": "melee",
+    "atk": 3,
+    "hit": "4+",
+    "dmg": {
+      "normal": 2,
+      "crit": 3
+    },
+    "rules": [],
+    "text": "The stock of the carbine, used as a club.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md section 3"
+  }
+]

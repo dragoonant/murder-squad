@@ -1,5 +1,6 @@
 // State helpers: operatives, seats, markers, immutable updates, canonical hashing.
 import { fnv1a } from './rng'
+import { providerAny, providerMoveDelta } from './team-rules'
 import type { GameState, Marker, Operative, Seat, Vec3 } from './types'
 
 export class EngineInvariantError extends Error {
@@ -34,8 +35,9 @@ export function seatOps(state: GameState, seat: Seat): Operative[] {
   return allOps(state).filter((o) => o.seat === seat && o.status === 'active')
 }
 
+/** Ready operatives of a seat: in the killzone, or out of it but still activating (HIDING, reserve.ts). */
 export function readyOps(state: GameState, seat: Seat): Operative[] {
-  return seatOps(state, seat).filter((o) => o.ready)
+  return allOps(state).filter((o) => o.seat === seat && o.ready && (o.status === 'active' || (o.status === 'reserve' && o.offboard !== undefined)))
 }
 
 export function enemiesOf(state: GameState, op: { seat: Seat }): Operative[] {
@@ -62,9 +64,14 @@ export function hasInjuredPenalty(op: Operative): boolean {
   return isInjured(op) && !op.flags.ignoreInjured
 }
 
-/** Current Move: injured operatives lose 2" with a 4" floor (R-7.3, R-9.6). */
-export function effectiveMove(op: Operative): number {
-  return hasInjuredPenalty(op) ? Math.max(4, op.move - 2) : op.move
+/**
+ * Current Move: injured operatives lose 2" with a 4" floor (R-7.3, R-9.6). With `state`, team rule
+ * providers also apply (team-rules.ts moveDelta and injuredEquivalent: Mont'ka, Nanomine, Contagion).
+ */
+export function effectiveMove(op: Operative, state?: GameState): number {
+  const injured = hasInjuredPenalty(op) || (state !== undefined && providerAny(state, op, 'injuredEquivalent'))
+  const move = op.move + (state ? providerMoveDelta(state, op) : 0) - (injured ? 2 : 0)
+  return move < op.move ? Math.max(4, move) : move
 }
 
 export function markerRadius(marker: Pick<Marker, 'kind'>): number {

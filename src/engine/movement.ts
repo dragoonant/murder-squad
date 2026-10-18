@@ -16,6 +16,7 @@ import {
 } from './geometry'
 import { bodyOf, enemiesInControlRange, inControlRange, type Body } from './measure'
 import { chargeFromControlRange } from './abilities'
+import { providerMoveSurcharge } from './team-rules'
 import { getCodeHook, markFired } from './code-hooks'
 import { reject, type Handled, type ModuleDef } from './registry'
 import { effectiveMove, enemiesOf, friendsOf, getOp } from './state'
@@ -64,20 +65,20 @@ export interface MovePlan {
 export type PlanResult = MovePlan | { ok: false; rejection: Rejection }
 
 /** Total movement allowed for a move action, counting all modifiers (R-4.1 to R-4.4, R-3.12). */
-export function moveLimit(op: Operative, kind: MoveKind, counteract: boolean): number {
-  const move = effectiveMove(op)
+export function moveLimit(op: Operative, kind: MoveKind, counteract: boolean, state?: GameState): number {
+  const move = effectiveMove(op, state)
   let limit = kind === 'dash' ? Math.min(DASH_MAX, move) : kind === 'charge' ? move + CHARGE_BONUS : move
   if (counteract) limit = Math.min(limit, COUNTERACT_CAP)
   return limit
 }
 
-export function moveConstraints(op: Operative, kind: MoveKind, counteract: boolean): MoveConstraints {
+export function moveConstraints(op: Operative, kind: MoveKind, counteract: boolean, state?: GameState): MoveConstraints {
   return {
     kind,
     operativeId: op.id,
     origin: { ...op.pos },
     baseRadius: op.baseRadius,
-    maxInches: moveLimit(op, kind, counteract),
+    maxInches: moveLimit(op, kind, counteract, state),
     allowClimb: kind !== 'dash',
     allowEnterEnemyControlRange: kind === 'fallBack' || kind === 'charge',
     ...(kind === 'charge' ? { mustEndInControlRangeOf: 'enemy' as const } : {}),
@@ -125,6 +126,8 @@ export function planMove(
   counteract = false,
   /** M2b-game: a smaller limit set by the action (Move With Barricade: Move minus 2") */
   limitOverride?: number,
+  /** M9 prep: a Charge that must end in this enemy's control range (Assassinate, Quicksilver Strike) */
+  endWithinCrOf?: string,
 ): PlanResult {
   const wps = parseWaypoints(raw)
   if (!wps) return fail('E_SCHEMA', `a path is 1 to ${MAX_WAYPOINTS} waypoints with numeric x and z`)
@@ -132,7 +135,7 @@ export function planMove(
   const idx = terrainOf(state.map)
   const r = op.baseRadius
   const h = op.height
-  const maxInches = limitOverride === undefined ? moveLimit(op, kind, counteract) : Math.min(limitOverride, moveLimit(op, kind, counteract))
+  const maxInches = limitOverride === undefined ? moveLimit(op, kind, counteract, state) : Math.min(limitOverride, moveLimit(op, kind, counteract, state))
   const enemies = enemiesOf(state, op)
   const friends = friendsOf(state, op)
   const accessibles = idx.solids.filter((s) => s.accessible)
@@ -389,7 +392,9 @@ export function planMove(
   if (inAir) return fail('E_NO_PATH', 'a move cannot end mid-air after a jump')
 
   const dropCost = Math.ceil(Math.max(0, dropTotal - FREE_DROP) - EPS)
-  const total = horizCost + accCost + climbCost + Math.max(0, dropCost)
+  // M9 prep: team rules may add to (or cancel extras of) a move's cost (Grav-inhibitor)
+  const surcharge = providerMoveSurcharge(state, op, kind, segments.map((sg) => sg.to), { horizontal: horizCost, accessible: accCost, climb: climbCost, drop: Math.max(0, dropCost) })
+  const total = horizCost + accCost + climbCost + Math.max(0, dropCost) + surcharge
   if (total > maxInches + EPS) {
     return fail('E_OUT_OF_RANGE', `the move costs ${total}" but only ${maxInches}" is allowed`, {
       cost: total,
@@ -407,8 +412,13 @@ export function planMove(
   const endCr = crOf(cur)
   if (kind === 'charge') {
     if (endCr.size === 0) return fail('E_CONTROL_RANGE', 'a Charge must end in an enemy control range')
+    if (endWithinCrOf && !endCr.has(endWithinCrOf)) return fail('E_CONTROL_RANGE', 'this Charge must end in the chosen enemy control range', { enemy: endWithinCrOf })
   } else if (endCr.size > 0) {
     return fail('E_CONTROL_RANGE', 'a move cannot finish in an enemy control range', { enemies: [...endCr] })
+  } else if (endWithinCrOf) {
+    // M9 prep: a move that must end in a friendly operative's control range (Medic!'s free Dash)
+    const other = state.operatives[endWithinCrOf]
+    if (!other || !inControlRange(state, bodyOf({ ...op, pos: cur }), bodyOf(other))) return fail('E_CONTROL_RANGE', 'this move must end in the named operative control range', { operative: endWithinCrOf })
   }
 
   return {
@@ -430,11 +440,12 @@ function handleMovePath(state: GameState, action: Action): Handled {
   const params = act.declared.params
   const kind = ((params?.moveKind as string | undefined) ?? act.declared.action) as MoveKind
   const limit = params?.maxInches as number | undefined
+  const endWithin = params?.endWithinCrOf as string | undefined
   if (action.type === 'pass') {
     return { run: (ctx) => cancelAction(ctx) }
   }
   if (action.type !== 'move.path') return reject('E_WRONG_DECISION', 'expected a path')
-  const plan = planMove(state, op, kind, action.payload.waypoints, act.counteract, limit)
+  const plan = planMove(state, op, kind, action.payload.waypoints, act.counteract, limit, endWithin)
   if (!plan.ok) return { rejection: plan.rejection }
   return {
     run(ctx) {
@@ -442,6 +453,8 @@ function handleMovePath(state: GameState, action: Action): Handled {
       const from = { ...o.pos }
       o.pos = plan.end
       o.facing = plan.facing
+      // M9 prep: distance spent in this activation (Lumbering Death, Methodical Elimination, Bipod)
+      o.movedThisActivation = (o.movedThisActivation ?? 0) + plan.cost
       ctx.emit({
         type: 'OperativeMoved',
         operativeId: o.id,

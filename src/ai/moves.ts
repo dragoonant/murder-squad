@@ -44,7 +44,7 @@ export function endpointsFor(ctx: AiCtx, view: GameState, op: Operative, kind: M
 }
 
 function buildEndpoints(ctx: AiCtx, view: GameState, op: Operative, kind: MoveKind, counteract: boolean, targets: Operative[], want: number): Endpoint[] {
-  const max = moveLimit(op, kind, counteract)
+  const max = moveLimit(op, kind, counteract, view)
   if (max <= 0) return []
   const r = op.baseRadius
   const here = op.pos
@@ -293,7 +293,7 @@ function expandMoves(ctx: AiCtx, n: Node, apl: number, counteract: boolean, dept
   // charge: aim at the enemies that could be reached; the fight follows when the AP allows
   const cost = actionCost(n.v, n.op, 'charge', hyp)
   if (engaged.length === 0 && n.ap + cost <= apl && !actionAvailability(n.v, n.op, 'charge', hyp)) {
-    const reach = moveLimit(n.op, 'charge', counteract) + 1.5
+    const reach = moveLimit(n.op, 'charge', counteract, n.v) + 1.5
     const foes = enemiesOf(n.v, n.op)
       .filter((e) => distanceBetween(bodyOf(n.op), bodyOf(e)) <= reach)
       .sort((a, b) => distanceBetween(bodyOf(n.op), bodyOf(a)) - distanceBetween(bodyOf(n.op), bodyOf(b)))
@@ -704,7 +704,7 @@ export function movePath(ctx: AiCtx): Action | null {
   const counteract = a?.counteract === true
   let targets: Operative[] = []
   if (kind === 'charge') {
-    const reach = moveLimit(op, 'charge', counteract) + 1.5
+    const reach = moveLimit(op, 'charge', counteract, view) + 1.5
     targets = enemiesOf(view, op).filter((e) => distanceBetween(bodyOf(op), bodyOf(e)) <= reach)
     const hint = plan?.steps.find((s) => s.action === 'charge')?.targetId
     if (hint) targets = targets.sort((x, y) => (x.id === hint ? -1 : y.id === hint ? 1 : 0))

@@ -24,7 +24,7 @@ import {
   type Waypoint,
 } from '@/engine'
 import { polygonBBox, round3 } from '@/engine/geometry'
-import { realSetup } from '@/engine/bundle'
+import { playableTeams, realSetup } from '@/engine/bundle'
 import { flatMap, terrainMap } from '../tests/fixtures/maps'
 import { makeSetup } from '../tests/fixtures/team'
 import { createAiDecider } from '../src/ai/decider'
@@ -415,16 +415,23 @@ export function setupFor(game: number): GameSetup {
 }
 
 /**
- * M2b-game: Angels of Death against Kommandos with the default rosters, built through the data adapter.
- * Seats and killzone layouts rotate; the engine rolls the map and the crit op, and the bots place the
- * objective markers and the equipment themselves.
+ * M2b-game: every pairing of the playable teams (team.json `playable` not false) with their default rosters,
+ * built through the data adapter. With only Angels of Death and Kommandos playable this is exactly the
+ * original AoD-vs-Kommandos rotation. Seats swap every game, the pairing changes every two games, and the
+ * killzone layouts rotate; the engine rolls the map and the crit op, and the bots place the objective
+ * markers and the equipment themselves.
  */
 export function realSetupFor(bundle: EngineBundle): (game: number) => GameSetup {
   const layouts = Object.keys(bundle.layouts ?? {}).sort()
+  const teams = playableTeams(bundle)
+  const pairs: [string, string][] = []
+  for (let i = 0; i < teams.length; i++) for (let j = i + 1; j < teams.length; j++) pairs.push([teams[i]!, teams[j]!])
+  if (pairs.length === 0) pairs.push([teams[0]!, teams[0]!])
   return (game) => {
     const swap = game % 2 === 1
+    const [a, b] = pairs[Math.floor(game / 2) % pairs.length]!
     return realSetup(bundle, {
-      teams: swap ? ['kommandos', 'angels-of-death'] : ['angels-of-death', 'kommandos'],
+      teams: swap ? [b, a] : [a, b],
       layoutId: layouts[game % layouts.length]!,
     })
   }

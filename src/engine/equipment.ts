@@ -13,6 +13,7 @@ import { addUse, usesOf } from './effects'
 import { fnv1a } from './rng'
 import { markFired } from './code-hooks'
 import { hasKeyword, isExpendable } from './conditions'
+import { providerEquipmentEligible } from './team-rules'
 import { newMarkerId } from './markers'
 import { stubModule, type Ctx, type Handled } from './registry'
 import { otherSeat, SEATS } from './state'
@@ -68,6 +69,8 @@ export function selectionProblem(
     if (!e) return `unknown equipment ${id}`
     if (e.enabled === false) return `${e.name} is not offered`
     if (e.scope === 'faction' && e.team !== data.teamId) return `${e.name} belongs to another team`
+    // M9 prep: options that cannot be taken together (Explosive Traps and the universal Mines)
+    for (const other of e.excludes ?? []) if (picks.includes(other)) return `${e.name} cannot be taken with ${data.equipment[other]?.name ?? other}`
     if (e.choice) {
       const chosen = setup.equipmentChoices?.[seat]?.[id] ?? []
       if (chosen.length !== e.choice.pick) return `${e.name}: pick ${e.choice.pick} (${e.choice.from.join(' / ')})`
@@ -110,7 +113,11 @@ function eligibleForGrant(state: GameState, op: Operative, e: RuntimeEquipment):
   const card = state.data.datacards[op.datacardId]
   if (!card) return false
   if (state.data.abilities['kom.a.stoopid'] && card.abilities.includes('kom.a.stoopid')) return false
-  if (e.team === 'kommandos') return hasKeyword(state, op, 'KOMMANDO') && !hasKeyword(state, op, 'BOMB SQUIG') && !hasKeyword(state, op, 'GROT')
+  const team = providerEquipmentEligible(state, op, e.id)
+  if (team !== null) return team
+  // who receives the weapons is data (grants.to); without it every non-Expendable operative does
+  const to = e.grants?.to
+  if (to) return (!to.keyword || hasKeyword(state, op, to.keyword)) && !(to.notKeywords ?? []).some((k) => hasKeyword(state, op, k))
   return !isExpendable(state, op)
 }
 
@@ -400,7 +407,7 @@ export function placeItem(ctx: Ctx, seat: Seat, item: EquipItem, pos: Vec2, yaw:
       carriedBy: null,
       controller: null,
       equipmentId: item.equipmentId,
-      hidden: item.equipmentId === 'core.e.mines',
+      hidden: item.equipmentId === 'core.e.mines' || e.hidden === true,
     }
     s.markers.push(marker)
     s.equipment.placed.push({ ...placed, markerId: marker.id })
@@ -411,7 +418,7 @@ export function placeItem(ctx: Ctx, seat: Seat, item: EquipItem, pos: Vec2, yaw:
     s.equipment.placed.push({ ...placed, featureId: feature.id })
   }
   s.equipment.queue[seat] = s.equipment.queue[seat].filter((i) => i.key !== item.key)
-  ctx.emit({ type: 'EquipmentPlaced', equipmentId: item.equipmentId, key: item.key, pos: p, yaw, hidden: item.equipmentId === 'core.e.mines' }, seat)
+  ctx.emit({ type: 'EquipmentPlaced', equipmentId: item.equipmentId, key: item.key, pos: p, yaw, hidden: item.equipmentId === 'core.e.mines' || e.hidden === true }, seat)
   void e
 }
 

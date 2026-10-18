@@ -1,0 +1,35 @@
+[
+  {
+    "id": "hie.technomancer",
+    "name": "Technomancer",
+    "team": "hierotek-circle",
+    "stats": {
+      "apl": 3,
+      "move": 6,
+      "save": "3+",
+      "wounds": 14
+    },
+    "base": 50,
+    "keywords": [
+      "HIEROTEK CIRCLE",
+      "NECRON",
+      "LEADER",
+      "CRYPTEK",
+      "TECHNOMANCER"
+    ],
+    "weapons": {
+      "fixed": [
+        "hie.w.staff-of-light-ranged",
+        "hie.w.staff-of-light-melee"
+      ],
+      "options": []
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "ht-technomancer"
+    },
+    "text": "A Cryptek of repair and augmentation, armed with a staff of light. Scaffold leader: the other Crypteks join with the team data.",
+    "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md section 4"
+  }
+]

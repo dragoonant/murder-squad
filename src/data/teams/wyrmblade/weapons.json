@@ -1,0 +1,32 @@
+[
+  {
+    "id": "wyr.w.autogun-leader",
+    "name": "Autogun",
+    "team": "wyrmblade",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 2,
+      "crit": 3
+    },
+    "rules": [],
+    "text": "A reliable automatic rifle.",
+    "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md section 6"
+  },
+  {
+    "id": "wyr.w.gun-butt",
+    "name": "Gun butt",
+    "team": "wyrmblade",
+    "type": "melee",
+    "atk": 3,
+    "hit": "4+",
+    "dmg": {
+      "normal": 2,
+      "crit": 3
+    },
+    "rules": [],
+    "text": "The rifle stock, used as a club.",
+    "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md section 6"
+  }
+]

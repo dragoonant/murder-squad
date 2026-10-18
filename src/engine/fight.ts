@@ -22,9 +22,11 @@ import {
   ruleSetFor,
   seqOf,
   valuesOf,
+  weaponDamage,
   weaponOf,
   weaponUnusable,
 } from './attack-common'
+import { providerAfterResolution, providerFightStart, providerFightWeapons } from './team-rules'
 import { normalBlocksCrit } from './teams/angels-of-death'
 import { cancelAction, finishAction } from './firefight'
 import { runHook } from './hooks'
@@ -54,8 +56,15 @@ export function meleeWeapons(state: GameState, op: Operative): string[] {
   return op.weapons.filter((w) => state.data.weapons[w]?.type === 'melee' && weaponUnusable(state, op, w, [], 'fight') === null)
 }
 
+/** Melee weapons plus the weapons team rules let it fight or retaliate with (Point-Blank Fusillade's ranged profile). */
+export function fightWeapons(state: GameState, op: Operative, retaliating: boolean): string[] {
+  const out = meleeWeapons(state, op)
+  for (const w of providerFightWeapons(state, op, retaliating)) if (op.weapons.includes(w) && !out.includes(w)) out.push(w)
+  return out
+}
+
 export function fightAvailability(state: GameState, op: Operative, _activation: Activation | null): Rejection | null {
-  if (meleeWeapons(state, op).length === 0) return { code: 'E_ACTION_RESTRICTED', reason: 'the operative has no melee weapon' }
+  if (fightWeapons(state, op, false).length === 0) return { code: 'E_ACTION_RESTRICTED', reason: 'the operative has no melee weapon' }
   const foes = enemiesInControlRange(state, op, op.seat).filter((e) => e.wounds > 0)
   if (foes.length === 0) return { code: 'E_ACTION_RESTRICTED', reason: 'Fight needs an enemy in control range' }
   return null
@@ -160,7 +169,7 @@ function pickWeapon(ctx: Ctx, who: 'A' | 'D'): void {
     proceed(ctx, 'roll', 'fight.weaponsSelected')
     return
   }
-  const weapons = meleeWeapons(s, fighter)
+  const weapons = fightWeapons(s, fighter, who === 'D')
   if (weapons.length === 0) {
     if (who === 'A') f.weaponA = null
     else f.weaponD = null
@@ -394,7 +403,9 @@ function fighterGone(ctx: Ctx): boolean {
 }
 
 function weaponDmg(ctx: Ctx, side: DiceSide): { normal: number; crit: number } {
-  return weaponOf(ctx.state, side.weaponId!).dmg
+  const a = attackOf(ctx)
+  const foeId = side.operativeId === a.operativeId ? a.fight!.targetId : a.operativeId
+  return weaponDamage(ctx.state, side.operativeId, side.weaponId!, foeId, 'fight', ctx)
 }
 
 function strike(ctx: Ctx, mine: DiceSide, theirs: DiceSide | null, i: number): void {
@@ -454,11 +465,30 @@ STEPS.resolve = (ctx) => {
   const seq = seqOf(ctx)
   const attackerSide = seq.atk.weaponId ? seq.atk : null
   const defenderSide = seq.def
+  // M9 prep: team rules may change who resolves first, owe out-of-turn resolutions or bar blocking (team-rules.ts)
+  if (!f.started) {
+    f.started = true
+    const start = providerFightStart(s, a)
+    if (start.first) f.turn = start.first
+    if (start.queue.length > 0) f.queue = start.queue.map((q) => ({ ...q }))
+    if (start.noBlock.length > 0) f.noBlock = start.noBlock
+  }
   for (let guard = 0; guard < 40; guard++) {
     if (fighterGone(ctx)) break
     const ua = unresolved(attackerSide)
     const ud = unresolved(defenderSide)
     if (ua.length === 0 && ud.length === 0) break
+    // an owed resolution goes first; it is dropped when its side has nothing it could do
+    const owed = f.queue?.[0]
+    if (owed && ua.length > 0 && ud.length > 0) {
+      const side = attackerSide && attackerSide.seat === owed.seat ? attackerSide : defenderSide
+      if (!side || unresolved(side).length === 0) {
+        f.queue!.shift()
+        continue
+      }
+      if (owed.resume === undefined) owed.resume = f.turn
+      f.turn = owed.seat
+    }
     // one side out of dice: the other resolves everything left (R-6.6); blocking nothing is pointless, so strike
     if (ua.length === 0 || ud.length === 0) {
       const mine = ua.length > 0 ? attackerSide! : defenderSide!
@@ -482,10 +512,12 @@ STEPS.resolve = (ctx) => {
     const dmg = weaponDmg(ctx, mine)
     const theirBrutal = isBrutal(ctx, theirs, mine.operativeId)
     const duelist = normalBlocksCrit(s, mine.operativeId, theirBrutal)
+    const blockOnly = owed?.resume !== undefined && owed.seat === mine.seat && owed.blockOnly === true
+    const noBlock = (f.noBlock ?? []).includes(mine.seat)
     for (const kind of ['crit', 'normal'] as const) {
       const i = firstOfKind(mine, myIdx, kind)
       if (i === null) continue
-      options.push({
+      if (!blockOnly) options.push({
         id: `strike:${i}`,
         labelKey: 'fight.strike',
         type: 'fight.resolve',
@@ -494,7 +526,7 @@ STEPS.resolve = (ctx) => {
       })
       for (const tk of ['crit', 'normal'] as const) {
         const j = firstOfKind(theirs, theirIdx, tk)
-        if (j === null || !canBlock(kind, tk, theirBrutal, duelist)) continue
+        if (noBlock || j === null || !canBlock(kind, tk, theirBrutal, duelist)) continue
         options.push({
           id: `block:${i}->${j}`,
           labelKey: 'fight.block',
@@ -502,6 +534,14 @@ STEPS.resolve = (ctx) => {
           payload: { op: 'block', die: i, against: j },
           data: { die: kind, against: tk },
         })
+      }
+    }
+    if (options.length === 0) {
+      // an owed block-only resolution with nothing it could block is skipped
+      if (owed?.resume !== undefined) {
+        f.turn = owed.resume
+        f.queue!.shift()
+        continue
       }
     }
     a.stage = 'resolve'
@@ -549,7 +589,15 @@ function handleResolve(state: GameState, action: Action): Handled {
         strike(ctx, mine, theirs, i)
       }
       void s
-      f.turn = otherSeat(f.turn)
+      const owed = f.queue?.[0]
+      const resolvedBy = f.turn
+      if (owed && owed.resume !== undefined && owed.seat === f.turn) {
+        // an owed resolution does not move the alternation on
+        f.turn = owed.resume
+        f.queue!.shift()
+      } else f.turn = otherSeat(f.turn)
+      const more = providerAfterResolution(s, a, resolvedBy, isBlock && against !== null ? 'block' : 'strike')
+      if (more.length > 0) f.queue = [...more.map((q) => ({ ...q })), ...(f.queue ?? [])]
       STEPS.resolve!(ctx)
     },
   }

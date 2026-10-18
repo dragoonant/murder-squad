@@ -34,7 +34,6 @@ import { dist, distToPolygon, distToPolygonBoundary, pointInPolygon, polygonArea
 const DATA_ROOT = path.dirname(fileURLToPath(import.meta.url))
 const SCHEMA_DIR = path.resolve(DATA_ROOT, '../../docs/spec/schemas')
 const MIRROR_DIR = path.join(DATA_ROOT, 'schema')
-const HOOKS_FILE = path.join(DATA_ROOT, 'code-hooks.json')
 
 /** Layout rules (inches). */
 export const LAYOUT_RULES = {
@@ -61,7 +60,10 @@ export interface ValidationResult {
 }
 
 export interface ValidateOptions {
-  /** write: regenerate src/data/code-hooks.json; check: error when it is out of date; skip: ignore it. */
+  /**
+   * Kept for callers: the code-hook list used to be a generated src/data/code-hooks.json; it is now derived
+   * from the data at load time (src/data/index.ts CODE_HOOKS), so every mode is the same and nothing is written.
+   */
   hooksFile?: 'write' | 'check' | 'skip'
 }
 
@@ -75,11 +77,6 @@ function listJson(dir: string, base = dir): string[] {
     else if (entry.name.endsWith('.json')) out.push(path.relative(base, full).split(path.sep).join('/'))
   }
   return out
-}
-
-function formatHooks(hooks: HookUse[]): string {
-  const rows = hooks.map((h) => `    { "name": ${JSON.stringify(h.name)}, "usedBy": ${JSON.stringify(h.usedBy).replace(/","/g, '", "')} }`)
-  return `{\n  "hooks": [\n${rows.join(',\n')}\n  ]\n}\n`
 }
 
 // ------------------------------------------------------------------ weapon rules
@@ -327,13 +324,7 @@ export function validateAll(options: ValidateOptions = {}): ValidationResult {
   const hooks: HookUse[] = [...usage.entries()]
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([name, usedBy]) => ({ name, usedBy: [...new Set(usedBy)].sort() }))
-  const hooksText = formatHooks(hooks)
-  if (hooksMode === 'write') {
-    if (!fs.existsSync(HOOKS_FILE) || fs.readFileSync(HOOKS_FILE, 'utf8').replace(/\r\n/g, '\n') !== hooksText) fs.writeFileSync(HOOKS_FILE, hooksText, 'utf8')
-  } else if (hooksMode === 'check') {
-    const current = fs.existsSync(HOOKS_FILE) ? fs.readFileSync(HOOKS_FILE, 'utf8').replace(/\r\n/g, '\n') : ''
-    if (current !== hooksText) errors.push('src/data/code-hooks.json: out of date (run npm run validate:data)')
-  }
+  void hooksMode
 
   return { errors, files: MANIFEST.length, records: recordCount, hooks, index }
 }

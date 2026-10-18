@@ -1,0 +1,45 @@
+{
+  "id": "plague-marines",
+  "name": "Plague Marines",
+  "factionKeyword": "PLAGUE MARINE",
+  "archetypes": [
+    "seek-and-destroy",
+    "security"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "pm.champion"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "pm.champion"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.2,
+      "s": 0.35,
+      "l": 0.4
+    },
+    "minor": {
+      "h": 0.08,
+      "s": 0.5,
+      "l": 0.35
+    }
+  },
+  "text": "Six bloated, near-unkillable warriors who spread poison and shrug off wounds.",
+  "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md section 5"
+}

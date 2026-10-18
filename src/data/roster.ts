@@ -5,11 +5,22 @@ export interface RosterCheck {
   reasons: string[]
 }
 
-/** Selections a slot's entries cost: whole entries count one each, halves together cost ceil(n / 2). */
+/** Selections a slot's entries cost: whole entries count one each (or their weight), halves together cost ceil(n / 2). */
 export function slotCost(slot: SelectionSlot, ids: readonly Id[]): number {
   const half = new Set(slot.halfSelections ?? [])
   const halves = ids.filter((id) => half.has(id)).length
-  return ids.length - halves + Math.ceil(halves / 2)
+  const whole = ids.filter((id) => !half.has(id)).reduce((n, id) => n + (slot.weights?.[id] ?? 1), 0)
+  return whole + Math.ceil(halves / 2)
+}
+
+/** Caps a slot's entries break (M9 prep: at most two GUNNER operatives, at most two cult agents). */
+export function capProblems(slot: SelectionSlot, ids: readonly Id[], name: (id: Id) => string = (id) => id): string[] {
+  const out: string[] = []
+  for (const c of slot.caps ?? []) {
+    const n = ids.filter((id) => c.from.includes(id)).length
+    if (n > c.max) out.push(`${slot.label ?? slot.id}: at most ${c.max} of ${c.label ?? c.from.map(name).join(', ')} (taken ${n})`)
+  }
+  return out
 }
 
 /** Check a roster against a team's selection slots. `datacards` is only used for names in reasons. */
@@ -33,6 +44,7 @@ export function validateRoster(
     for (const [id, n] of counts) {
       if (n > 1 && !repeatable.has(id)) reasons.push(`${slot.label ?? slot.id}: ${name(id)} can be taken only once (taken ${n} times)`)
     }
+    reasons.push(...capProblems(slot, ids, name))
     const cost = slotCost(slot, ids)
     if (cost !== slot.count) {
       reasons.push(`${slot.label ?? slot.id}: ${cost} selections chosen, ${slot.count} required`)
@@ -53,15 +65,17 @@ function* slotRosters(slot: SelectionSlot): Generator<Id[]> {
   function* go(i: number, whole: number, halves: number, acc: Id[]): Generator<Id[]> {
     const cost = whole + Math.ceil(halves / 2)
     if (cost > slot.count) return
+    if (capProblems(slot, acc).length > 0) return
     if (i === entries.length) {
       if (cost === slot.count) yield [...acc]
       return
     }
     const id = entries[i]
     const isHalf = half.has(id)
+    const weight = slot.weights?.[id] ?? 1
     const max = repeatable.has(id) ? slot.count : 1
     for (let c = 0; c <= max; c++) {
-      const nextWhole = isHalf ? whole : whole + c
+      const nextWhole = isHalf ? whole : whole + c * weight
       const nextHalves = isHalf ? halves + c : halves
       if (nextWhole + Math.ceil(nextHalves / 2) > slot.count) break
       yield* go(i + 1, nextWhole, nextHalves, [...acc, ...Array<Id>(c).fill(id)])

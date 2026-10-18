@@ -1,0 +1,35 @@
+[
+  {
+    "id": "pm.champion",
+    "name": "Plague Marine Champion",
+    "team": "plague-marines",
+    "stats": {
+      "apl": 3,
+      "move": 5,
+      "save": "3+",
+      "wounds": 15
+    },
+    "base": 32,
+    "keywords": [
+      "PLAGUE MARINE",
+      "CHAOS",
+      "HERETIC ASTARTES",
+      "LEADER",
+      "CHAMPION"
+    ],
+    "weapons": {
+      "fixed": [
+        "pm.wg.plasma-pistol",
+        "pm.w.plague-sword"
+      ],
+      "options": []
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "pm-plague-marine-champion"
+    },
+    "text": "The team leader, with a plasma pistol and a plague sword.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md section 5"
+  }
+]

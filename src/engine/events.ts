@@ -120,6 +120,13 @@ export type GameEventBody =
   | { type: 'ConfigChanged'; key: string; value: string | null }
   | { type: 'EffectStarted'; effectId: string; source: string; kind: string }
   | { type: 'EffectEnded'; effectId: string; source: string }
+  // M9 prep: generic team capabilities (tokens.ts, reserve.ts, effects.regainWounds, team-rules chains and gates)
+  | { type: 'TokenChanged'; operativeId: string; kind: string; owner: Seat; count: number; delta: number; reason: string }
+  | { type: 'WoundsRegained'; operativeId: string; amount: number; wounds: number; source: string }
+  | { type: 'OperativeSetAside'; operativeId: string; kind: string }
+  | { type: 'OperativeReturned'; operativeId: string; pos: { x: number; y: number; z: number }; wounds: number; ready: boolean; kind: string }
+  | { type: 'ActivationChained'; fromId: string; operativeIds: string[] }
+  | { type: 'ActivationGated'; operativeId: string; by: string }
   // dice
   | { type: 'DiceRolled'; purpose: string; dice: number[]; final: boolean }
   // meta
