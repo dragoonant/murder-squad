@@ -1,1 +1,38 @@
-[]
+[
+  {
+    "id": "hie.e.magnification-conduits",
+    "name": "MAGNIFICATION CONDUITS",
+    "scope": "faction",
+    "team": "hierotek-circle",
+    "count": 1,
+    "text": "Once per turning point, when a friendly Apprentek or Cryptek performs a Shoot action, another friendly Hierotek Circle operative that is not a Plasmacyte, has an Engage order, is outside enemy control ranges and is visible to the shooter may serve as the Magnify viewpoint even though it is not an Apprentek or Cryptek.",
+    "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.38"
+  },
+  {
+    "id": "hie.e.phase-shifter",
+    "name": "PHASE SHIFTER",
+    "scope": "faction",
+    "team": "hierotek-circle",
+    "count": 1,
+    "text": "Once per turning point, when an operative shoots a friendly Cryptek, at the start of the Roll Defence Dice step worsen the attacker's Piercing x by 1 for the rest of that sequence. Not usable for the Apprentek.",
+    "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.39"
+  },
+  {
+    "id": "hie.e.tesseract-cube",
+    "name": "TESSERACT CUBE",
+    "scope": "faction",
+    "team": "hierotek-circle",
+    "count": 1,
+    "text": "In the Ready step, when you gain CP, if your Cryptek is in the killzone, outside enemy control ranges and was not reanimated this turning point, roll a D6: on a 1 the Cube is disabled for the battle, on 4+ gain 1 CP. After it has given 2 CP it is disabled for the battle.",
+    "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.40"
+  },
+  {
+    "id": "hie.e.tesla-weave",
+    "name": "TESLA WEAVE",
+    "scope": "faction",
+    "team": "hierotek-circle",
+    "count": 1,
+    "text": "Once per turning point, when an enemy operative ends a Charge action with one or more friendly Hierotek Circle operatives in its control range, it takes D3+1 damage.",
+    "source": "team-hierotek-circle.pdf; docs/spec/13-teams.md T-HIE.41"
+  }
+]

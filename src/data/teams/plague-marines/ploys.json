@@ -1,1 +1,122 @@
-[]
+[
+  {
+    "id": "pm.p.contagion",
+    "name": "CONTAGION",
+    "team": "plague-marines",
+    "type": "strategy",
+    "cost": 1,
+    "window": "strategy.gambit",
+    "effect": {
+      "code": "contagion",
+      "params": { "moveDelta": -2, "hitWorse": 1, "tokenRange": 3, "iconRange": 3, "notCumulativeWithInjury": true },
+      "scope": { "side": "friendly", "keyword": "PLAGUE MARINE" }
+    },
+    "text": "For the turning point, an enemy suffers Move -2 inches and worse Hit (like an injured operative, never doubled) while it is within 3 inches of a friendly Plague Marine and visible either way and carries one of your Poison tokens, or is within 3 inches of a friendly Icon Bearer and visible either way.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.20"
+  },
+  {
+    "id": "pm.p.lumbering-death",
+    "name": "LUMBERING DEATH",
+    "team": "plague-marines",
+    "type": "strategy",
+    "cost": 1,
+    "window": "strategy.gambit",
+    "effect": {
+      "code": "lumberingDeath",
+      "params": { "maxMove": 3, "rule": "core.wr.ceaseless" },
+      "scope": { "side": "friendly", "keyword": "PLAGUE MARINE" }
+    },
+    "text": "For the turning point, a friendly Plague Marine's weapons have Ceaseless while it shoots or fights in an activation where it has moved 3 inches or less in total (climbing and Accessible terrain included), and whenever it retaliates.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.21"
+  },
+  {
+    "id": "pm.p.cloud-of-flies",
+    "name": "CLOUD OF FLIES",
+    "team": "plague-marines",
+    "type": "strategy",
+    "cost": 1,
+    "window": "strategy.gambit",
+    "effect": {
+      "code": "cloudOfFlies",
+      "params": { "radius": 1, "shooterMoreThan": 3 },
+      "scope": { "side": "friendly", "keyword": "PLAGUE MARINE" }
+    },
+    "text": "Place a Cloud of Flies marker in the killzone. A friendly Plague Marine wholly within 1 inch of it is obscured against shooters more than 3 inches away. The marker is removed in the Ready step of the next Strategy phase.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.22"
+  },
+  {
+    "id": "pm.p.nurglings",
+    "name": "NURGLINGS",
+    "team": "plague-marines",
+    "type": "strategy",
+    "cost": 1,
+    "window": "strategy.gambit",
+    "effect": {
+      "code": "nurglings",
+      "params": { "near": 3, "poisonedNear": 7, "aplDelta": -1 },
+      "scope": { "side": "friendly", "keyword": "PLAGUE MARINE" }
+    },
+    "text": "Pick an enemy within 3 inches of a friendly Plague Marine, or an enemy with one of your Poison tokens within 7 inches of one (no visibility needed). It has 1 less APL until the end of its next activation.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.23"
+  },
+  {
+    "id": "pm.p.virulent-poison",
+    "name": "VIRULENT POISON",
+    "team": "plague-marines",
+    "type": "firefight",
+    "cost": 1,
+    "window": ["firefight.activationStart", "firefight.actionEnded"],
+    "effect": {
+      "code": "virulentPoison",
+      "params": { "near": 3, "visibleNear": 7 },
+      "scope": { "side": "friendly", "keyword": "PLAGUE MARINE" }
+    },
+    "text": "During a friendly Plague Marine's activation or counteraction, before or after one of its actions: an enemy within 3 inches of it (no visibility needed), or visible to it and within 7 inches, gains one of your Poison tokens if it has none.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.24"
+  },
+  {
+    "id": "pm.p.sickening-resilience",
+    "name": "SICKENING RESILIENCE",
+    "team": "plague-marines",
+    "type": "firefight",
+    "cost": 1,
+    "window": ["shoot.defenceRolled", "fight.rolled"],
+    "effect": {
+      "code": "sickeningResilience",
+      "params": { "floor": 2, "reduceBy": 1 },
+      "scope": { "side": "friendly", "keyword": "PLAGUE MARINE" }
+    },
+    "text": "When attack dice are about to damage a friendly Plague Marine: until the end of the activation or counteraction, Disgustingly Resilient on that operative needs no roll and always takes 1 off the damage of a die (3 or more), never below 2.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.25"
+  },
+  {
+    "id": "pm.p.poisonous-demise",
+    "name": "POISONOUS DEMISE",
+    "team": "plague-marines",
+    "type": "firefight",
+    "cost": 1,
+    "window": "operative.incapacitated",
+    "effect": {
+      "code": "poisonousDemise",
+      "params": { "inches": 3, "damage": 1 },
+      "scope": { "side": "friendly", "keyword": "PLAGUE MARINE" }
+    },
+    "text": "When a friendly Plague Marine is incapacitated, before it is removed: each enemy visible to it within 3 inches gains one of your Poison tokens, or takes 1 damage instead if it already has one (including one gained earlier in the same action). The engine plays this for you when you can pay.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.26"
+  },
+  {
+    "id": "pm.p.curse-of-rot",
+    "name": "CURSE OF ROT",
+    "team": "plague-marines",
+    "type": "firefight",
+    "cost": 1,
+    "window": ["shoot.attackRolled", "fight.rolled"],
+    "effect": {
+      "code": "curseOfRot",
+      "params": { "near": 3, "poisonedNear": 7, "result": 3, "damage": 1 },
+      "scope": { "side": "friendly", "keyword": "PLAGUE MARINE" }
+    },
+    "text": "A friendly Plague Marine shoots or fights (not retaliating) an enemy within 3 inches, or within 7 inches if that enemy carries one of your Poison tokens: every die of 3 the opponent rolls deals 1 damage to that enemy, cannot be kept as a success and cannot be re-rolled. When shooting you name it with your attack dice and it takes effect on the defence roll.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.27"
+  }
+]

@@ -1,1 +1,46 @@
-[]
+[
+  {
+    "id": "pm.e.plague-bells",
+    "name": "PLAGUE BELLS",
+    "scope": "faction",
+    "team": "plague-marines",
+    "count": 1,
+    "effect": { "code": "plagueBells", "params": { "ignoreInjured": true } },
+    "text": "Friendly Plague Marines ignore the injured stat changes: they keep their Move and the printed Hit of their weapons.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.28"
+  },
+  {
+    "id": "pm.e.plague-rounds",
+    "name": "PLAGUE ROUNDS",
+    "scope": "faction",
+    "team": "plague-marines",
+    "count": 1,
+    "effect": [
+      { "grantWeaponRule": { "rule": "pm.a.wr-poison", "filter": { "weaponIds": ["pm.w.boltgun-bombardier", "pm.w.boltgun-warrior", "pm.w.bolt-pistol"] } } },
+      { "grantWeaponRule": { "rule": "core.wr.severe", "filter": { "weaponIds": ["pm.w.boltgun-bombardier", "pm.w.boltgun-warrior", "pm.w.bolt-pistol"] } } }
+    ],
+    "text": "Every boltgun and bolt pistol carried by a friendly Plague Marine gains Poison and Severe.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.29"
+  },
+  {
+    "id": "pm.e.blight-grenades",
+    "name": "BLIGHT GRENADES",
+    "scope": "faction",
+    "team": "plague-marines",
+    "count": 1,
+    "grants": { "weapons": ["pm.w.blight-grenade"], "to": { "keyword": "PLAGUE MARINE" } },
+    "limits": { "uses": 2, "per": "battle", "scope": "team" },
+    "text": "Every friendly Plague Marine can throw a blight grenade, but the whole team may do so only twice in the battle.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.30"
+  },
+  {
+    "id": "pm.e.poison-vents",
+    "name": "POISON VENTS",
+    "scope": "faction",
+    "team": "plague-marines",
+    "count": 1,
+    "effect": { "code": "poisonVents", "params": { "inches": 3, "tokenOn": 3 } },
+    "text": "When an enemy is activated within 3 inches of a friendly Plague Marine (no visibility needed): if it has none of your Poison tokens, roll a D3 and on a 3 it gains one; if it already has one, its Poison damage this activation is D3 instead of 1.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.31"
+  }
+]

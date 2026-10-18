@@ -1,1 +1,169 @@
-[]
+[
+  {
+    "id": "wyr.p.the-day-is-at-hand",
+    "name": "THE DAY IS AT HAND",
+    "team": "wyrmblade",
+    "type": "strategy",
+    "cost": 1,
+    "window": "strategy.gambit",
+    "effect": {
+      "code": "tpFlagPloy",
+      "params": {
+        "flag": "dayIsAtHand"
+      },
+      "scope": {
+        "side": "friendly",
+        "keyword": "WYRMBLADE"
+      }
+    },
+    "text": "For the turning point, whenever a friendly Wyrmblade operative is activated and its order is switched from Conceal to Engage, until the end of that activation its ranged weapons have Rending and its melee weapons get +1 Atk (never above 5).",
+    "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
+  },
+  {
+    "id": "wyr.p.crossfire",
+    "name": "CROSSFIRE",
+    "team": "wyrmblade",
+    "type": "strategy",
+    "cost": 1,
+    "window": "strategy.gambit",
+    "effect": {
+      "code": "tpFlagPloy",
+      "params": {
+        "flag": "crossfire"
+      },
+      "scope": {
+        "side": "friendly",
+        "keyword": "WYRMBLADE"
+      }
+    },
+    "text": "For the turning point, when a friendly Wyrmblade operative shoots an enemy that a different friendly Wyrmblade operative has already shot this turning point, the shooter's ranged weapons have Accurate 1.",
+    "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
+  },
+  {
+    "id": "wyr.p.one-with-the-shadows",
+    "name": "ONE WITH THE SHADOWS",
+    "team": "wyrmblade",
+    "type": "strategy",
+    "cost": 1,
+    "window": "strategy.gambit",
+    "effect": {
+      "code": "tpFlagPloy",
+      "params": {
+        "flag": "oneWithTheShadows"
+      },
+      "scope": {
+        "side": "friendly",
+        "keyword": "WYRMBLADE"
+      }
+    },
+    "text": "For the turning point, when an operative shoots a friendly Wyrmblade operative with a Conceal order, intervening Light terrain makes the target obscured, unless that Light terrain is within 1 inch of either operative.",
+    "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
+  },
+  {
+    "id": "wyr.p.divert-and-disappear",
+    "name": "DIVERT AND DISAPPEAR",
+    "team": "wyrmblade",
+    "type": "strategy",
+    "cost": 1,
+    "window": "strategy.gambit",
+    "effect": {
+      "code": "divertAndDisappear",
+      "params": {
+        "slots": 3,
+        "maxMove": 3
+      },
+      "scope": {
+        "side": "friendly",
+        "keyword": "WYRMBLADE"
+      }
+    },
+    "text": "Up to three friendly Wyrmblade operatives, one at a time, make a free Dash or a free Charge (the Charge up to 3 inches). A Cult Agent counts as two of the three and may instead make a free Fall Back of up to 3 inches, in which case it has -1 APL until the end of its next activation.",
+    "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
+  },
+  {
+    "id": "wyr.p.slink-into-darkness",
+    "name": "SLINK INTO DARKNESS",
+    "team": "wyrmblade",
+    "type": "firefight",
+    "cost": 1,
+    "window": "firefight.actionEnded",
+    "effect": {
+      "code": "slinkIntoDarkness",
+      "params": {
+        "oncePerBattleEach": true
+      },
+      "scope": {
+        "side": "friendly",
+        "keyword": "WYRMBLADE"
+      }
+    },
+    "text": "At the end of a friendly Wyrmblade operative's activation, if it has an Engage order, change it to Conceal. You can choose each friendly operative for this only once per battle.",
+    "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
+  },
+  {
+    "id": "wyr.p.coiled-serpent",
+    "name": "COILED SERPENT",
+    "team": "wyrmblade",
+    "type": "firefight",
+    "cost": 1,
+    "window": [
+      "shoot.attackRolled",
+      "fight.rolled"
+    ],
+    "effect": {
+      "code": "coiledSerpent",
+      "params": {
+        "oncePerActivation": true
+      },
+      "scope": {
+        "side": "friendly",
+        "keyword": "WYRMBLADE"
+      }
+    },
+    "text": "When a friendly Wyrmblade operative shoots or fights, after you roll your attack dice: if its order was switched from Conceal to Engage at the start of this activation and this is its first Shoot or Fight of the activation, keep one normal success as a critical success. Once per activation.",
+    "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
+  },
+  {
+    "id": "wyr.p.unquestioning-loyalty",
+    "name": "UNQUESTIONING LOYALTY",
+    "team": "wyrmblade",
+    "type": "firefight",
+    "cost": 1,
+    "window": [
+      "shoot.targetSelected",
+      "fight.weaponsSelected"
+    ],
+    "effect": {
+      "code": "unquestioningLoyalty",
+      "params": {
+        "range": 3
+      },
+      "scope": {
+        "side": "friendly",
+        "keyword": "WYRMBLADE"
+      }
+    },
+    "text": "When a friendly Cult Agent or Leader is chosen as the target of a Shoot or as the opponent in a Fight, pick another friendly Neophyte (not the Leader) that can see and is within 3 inches of it; that Neophyte becomes the target or opponent instead, even if it would not normally qualify. In a Fight it counts as in the fighter's control range; in a Shoot it is in cover or obscured only if the original target was. No effect against Blast or Torrent weapons.",
+    "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
+  },
+  {
+    "id": "wyr.p.a-plan-generations-in-the-making",
+    "name": "A PLAN GENERATIONS IN THE MAKING",
+    "team": "wyrmblade",
+    "type": "firefight",
+    "cost": 1,
+    "window": "operative.incapacitated",
+    "effect": {
+      "code": "planGenerations",
+      "params": {
+        "allow": "mission"
+      },
+      "scope": {
+        "side": "friendly",
+        "keyword": "WYRMBLADE"
+      }
+    },
+    "text": "When a friendly Wyrmblade Neophyte is incapacitated, before it is removed it can make one free mission action.",
+    "source": "wahapedia kill-teams wyrmblade; docs/spec/13-teams.md 6.6"
+  }
+]

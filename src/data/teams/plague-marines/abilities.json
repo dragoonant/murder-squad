@@ -1,1 +1,130 @@
-[]
+[
+  {
+    "id": "pm.a.astartes",
+    "kind": "factionRule",
+    "name": "ASTARTES",
+    "team": "plague-marines",
+    "scope": { "side": "friendly", "keyword": "PLAGUE MARINE" },
+    "effect": { "code": "pmAstartes", "params": { "doubleActions": ["shoot", "fight"], "counteractAnyOrder": true } },
+    "text": "In each activation a friendly Plague Marine may take two Shoot actions or two Fight actions. Two Shoots need a boltgun, a bolt pistol or a PSYCHIC weapon among them, and the same PSYCHIC ranged weapon cannot be picked twice. Every Plague Marine can counteract whatever its order.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.16"
+  },
+  {
+    "id": "pm.a.disgustingly-resilient",
+    "kind": "factionRule",
+    "name": "Disgustingly Resilient",
+    "team": "plague-marines",
+    "scope": { "side": "friendly", "keyword": "PLAGUE MARINE" },
+    "effect": { "code": "disgustinglyResilient", "params": { "threshold": 3, "rollOn": 4, "reduceBy": 1 } },
+    "text": "Whenever one attack die would deal 3 or more damage to a friendly Plague Marine, roll a D6: on a 4 or more that die deals 1 less. Poison, Flail, Hot, Curse of Rot and other damage that does not come from an attack die is never reduced.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.19"
+  },
+  {
+    "id": "pm.a.wr-poison",
+    "kind": "weaponRule",
+    "name": "Poison",
+    "team": "plague-marines",
+    "weaponRule": { "param": "none" },
+    "effect": { "code": "poisonRule" },
+    "text": "If any of your successes deal damage with this weapon, the target (unless it is a friendly Plague Marine) gains one of your Poison tokens, if it has none. Whenever an operative with one of your Poison tokens is activated, it takes 1 damage.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.17, T-PM.18"
+  },
+  {
+    "id": "pm.a.wr-toxic",
+    "kind": "weaponRule",
+    "name": "Toxic",
+    "team": "plague-marines",
+    "weaponRule": { "param": "none" },
+    "effect": { "code": "toxicRule" },
+    "text": "Against an enemy that already had one of your Poison tokens when the action began, add 1 to both Dmg values of this weapon. This is checked for each target on its own.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.8"
+  },
+  {
+    "id": "pm.a.wr-psychic",
+    "kind": "weaponRule",
+    "name": "PSYCHIC",
+    "team": "plague-marines",
+    "weaponRule": { "param": "none" },
+    "text": "A tag with no effect of its own. Rules such as Astartes read it to know which weapons are psychic.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.6"
+  },
+  {
+    "id": "pm.a.grandfathers-blessing",
+    "kind": "ability",
+    "name": "Grandfather's Blessing",
+    "team": "plague-marines",
+    "effect": { "code": "grandfathersBlessing", "params": { "range": 7, "perTurningPoint": 3 } },
+    "text": "When an enemy carrying one of your Poison tokens loses wounds within 7 inches of the Champion, the Champion regains that many wounds, up to 3 wounds per turning point and never above its starting wounds. It does nothing once the Champion is incapacitated.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.7"
+  },
+  {
+    "id": "pm.a.grenadier",
+    "kind": "ability",
+    "name": "Grenadier",
+    "team": "plague-marines",
+    "text": "The Bombardier carries its own blight and krak grenades at Hit 3+, and its blight grenades have Toxic. They do not use any grenade uses the team picked from equipment.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.9"
+  },
+  {
+    "id": "pm.a.flail",
+    "kind": "uniqueAction",
+    "name": "FLAIL",
+    "team": "plague-marines",
+    "ap": 1,
+    "conditions": { "order": "engage" },
+    "effect": { "code": "flail", "params": { "inches": 2, "base": 2, "dice": "D3", "poisonOn": 3, "treatedAs": "fight" } },
+    "text": "Every other operative, friend or foe, that the Fighter can see within 2 inches takes D3+2 damage, rolled separately. An enemy whose D3 was a 3 also gains one of your Poison tokens if it has none. It counts as a Fight action for action limits and for Astartes, and needs no enemy in control range. Not with a Conceal order.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.10"
+  },
+  {
+    "id": "pm.a.icon-bearer",
+    "kind": "ability",
+    "name": "Icon Bearer",
+    "team": "plague-marines",
+    "effect": { "code": "iconBearer", "params": { "controlAplBonus": 1 } },
+    "text": "When control of a marker is worked out, this operative counts as having 1 more APL. This is not an APL change, so it adds to real APL changes.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.11"
+  },
+  {
+    "id": "pm.a.icon-of-contagion",
+    "kind": "ability",
+    "name": "Icon of Contagion",
+    "team": "plague-marines",
+    "effect": { "code": "iconOfContagion", "params": { "ploy": "pm.p.contagion", "cost": 0 } },
+    "text": "While this operative is in your opponent's territory, the Contagion strategy ploy costs you 0 CP.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.12"
+  },
+  {
+    "id": "pm.a.poisonous-miasma",
+    "kind": "uniqueAction",
+    "name": "POISONOUS MIASMA",
+    "team": "plague-marines",
+    "ap": 1,
+    "keywords": ["PSYCHIC"],
+    "conditions": { "notInEnemyControlRange": true },
+    "effect": { "code": "poisonousMiasma", "params": { "inches": 7, "damage": 3, "validTargetWeapon": "pm.w.plague-wind" } },
+    "text": "Pick an enemy that is visible and within 7 inches, or one that is a valid target for the Plaguecaster at any range. It gains one of your Poison tokens if it has none; if it already has one it takes 3 damage instead. Not while in an enemy control range.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.13"
+  },
+  {
+    "id": "pm.a.putrescent-vitality",
+    "kind": "uniqueAction",
+    "name": "PUTRESCENT VITALITY",
+    "team": "plague-marines",
+    "ap": 1,
+    "keywords": ["PSYCHIC"],
+    "conditions": { "notInEnemyControlRange": true },
+    "effect": { "code": "putrescentVitality", "params": { "inches": 3, "dice": 2, "jackpot": 7, "oncePer": "turningPoint" } },
+    "text": "Pick a friendly operative that is visible and within 3 inches (the Plaguecaster itself counts) and roll 2D6. On a total of 7 it regains 7 wounds; otherwise it regains wounds equal to the higher die. Not while in an enemy control range, and only once per turning point.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.14"
+  },
+  {
+    "id": "pm.a.repulsive-fortitude",
+    "kind": "ability",
+    "name": "Repulsive Fortitude",
+    "team": "plague-marines",
+    "effect": { "code": "repulsiveFortitude", "params": { "critOn": 5 } },
+    "text": "When this operative is shot, its defence dice that roll 5 or more are critical successes.",
+    "source": "wahapedia kill-teams plague-marines; docs/spec/13-teams.md T-PM.15"
+  }
+]

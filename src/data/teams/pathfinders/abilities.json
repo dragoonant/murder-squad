@@ -1,1 +1,294 @@
-[]
+[
+  {
+    "id": "pf.a.markerlights",
+    "kind": "factionRule",
+    "name": "MARKERLIGHTS",
+    "team": "pathfinders",
+    "scope": { "side": "friendly", "keyword": "PATHFINDER" },
+    "effect": { "code": "markerlightRules", "params": { "cap": 4 } },
+    "text": "Markerlight tokens belong to the Pathfinder player and sit on enemy operatives (up to 4 each). Whenever one of your Pathfinders shoots with a weapon from its own datacard (not the fusion grenade), its target's tokens give it extra rules, cumulatively: 1 token, Saturate and Balanced; 2, Hit of its ranged weapons improved by 1 but never better than 3+; 3, the target cannot be obscured; 4, Seek Light; 5, Seek. Once during each of its own activations, an enemy with your tokens that Dashes, Charges, Falls Back or Repositions loses one.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.27 to T-PF.30"
+  },
+  {
+    "id": "pf.a.markerlight",
+    "kind": "uniqueAction",
+    "name": "MARKERLIGHT",
+    "team": "pathfinders",
+    "ap": 1,
+    "conditions": { "notInEnemyControlRange": true },
+    "effect": { "code": "markerlight", "params": { "cap": 4, "tokens": 1 } },
+    "text": "Pick an enemy operative this operative can see; it gains one of your Markerlight tokens, to a maximum of 4. Not in an enemy control range. If this operative also Shoots (not Guard) in the same activation, both actions must pick the same target. The MB3 Recon Drone is exempt from that link.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.27, T-PF.28"
+  },
+  {
+    "id": "pf.a.markerlight-shasla",
+    "kind": "uniqueAction",
+    "name": "MARKERLIGHT",
+    "team": "pathfinders",
+    "ap": 1,
+    "effect": { "code": "markerlight", "params": { "cap": 4, "tokens": 1, "inControlRange": true } },
+    "text": "Pick an enemy operative this operative can see; it gains one of your Markerlight tokens, to a maximum of 4. A Shas'la can do this even in an enemy control range (Fearless on the Frontline). If it also Shoots (not Guard) in the same activation, both actions must pick the same target.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.17, T-PF.27"
+  },
+  {
+    "id": "pf.a.art-of-war",
+    "kind": "ability",
+    "name": "Art of War",
+    "team": "pathfinders",
+    "effect": { "code": "pfTeamRules", "params": { "options": ["montka", "kauyon"] } },
+    "text": "The Shas'ui, while in the killzone, can use the ART OF WAR strategic gambit once per turning point for no CP. Pick Mont'ka (friendly Pathfinders get +1 inch of Move) or Kauyon (friendly Pathfinders with a Conceal order may perform one free Markerlight in their activation) until the end of the turning point. Each option can be picked only once per battle.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.7"
+  },
+  {
+    "id": "pf.a.veteran",
+    "kind": "ability",
+    "name": "Veteran",
+    "team": "pathfinders",
+    "text": "In a turning point where you used Art of War, when the Blooded activates you may swap the option for this operative alone, for that activation only: Kauyon instead of Mont'ka, or the Mont'ka Move bonus instead of Kauyon. This is not a pick of that option.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.8"
+  },
+  {
+    "id": "pf.a.grenadier-specialist",
+    "kind": "ability",
+    "name": "Grenadier Specialist",
+    "team": "pathfinders",
+    "effect": [
+      {
+        "modifyStat": { "stat": "hit", "value": -1, "filter": { "weaponIds": ["core.w.frag-grenade", "core.w.krak-grenade"] } }
+      },
+      { "code": "pfGrenadier", "params": { "weapons": ["core.w.frag-grenade", "core.w.krak-grenade"], "separateLimits": true } }
+    ],
+    "text": "Can use frag and krak grenades, once each, with their Hit improved by 1 (to 3+). These uses are separate from any grenades the team picked as equipment.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.9"
+  },
+  {
+    "id": "pf.a.signal",
+    "kind": "uniqueAction",
+    "name": "SIGNAL",
+    "team": "pathfinders",
+    "ap": 1,
+    "keywords": ["SUPPORT"],
+    "conditions": { "notInEnemyControlRange": true, "notCounteracting": true },
+    "target": { "side": "friendly", "keyword": "PATHFINDER", "visible": true, "withinInches": 6, "notSelf": true },
+    "effect": { "code": "pfSignal", "params": { "range": 6, "aplDelta": 1, "comms": true } },
+    "text": "Pick another friendly Pathfinder (a drone counts) that is visible and within 6 inches; add 1 to its APL until the end of its next activation. Not in an enemy control range and not while counteracting.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.10"
+  },
+  {
+    "id": "pf.a.drone-controller",
+    "kind": "ability",
+    "name": "Drone Controller",
+    "team": "pathfinders",
+    "effect": { "code": "droneController", "params": { "moveBonus": 2, "ploy": "pf.p.saviour-protocols" } },
+    "text": "While this operative is in the killzone, friendly Pathfinder drones get +2 inches of Move and the Saviour Protocols ploy costs you no CP.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.11"
+  },
+  {
+    "id": "pf.a.remote-pilot",
+    "kind": "uniqueAction",
+    "name": "REMOTE PILOT",
+    "team": "pathfinders",
+    "ap": 1,
+    "conditions": { "notInEnemyControlRange": true },
+    "effect": { "code": "remotePilot", "params": { "maxMove": 2 } },
+    "text": "One friendly Pathfinder drone immediately takes one free action of any kind, even one its Drone rule forbids, but cannot move more than 2 inches during it. Not in an enemy control range. This can be done several times in an activation, but the same drone cannot take the same free action twice in one activation.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.12"
+  },
+  {
+    "id": "pf.a.inertial-dampener",
+    "kind": "ability",
+    "name": "Inertial Dampener",
+    "team": "pathfinders",
+    "effect": { "code": "inertialDampener", "params": { "weaponGroup": "pf.wg.marksman-rail-rifle" } },
+    "text": "Penalties to the Hit stat of this operative's marksman rail rifle are ignored, whatever profile it uses.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.13"
+  },
+  {
+    "id": "pf.a.medic",
+    "kind": "ability",
+    "name": "Medic!",
+    "team": "pathfinders",
+    "window": "operative.incapacitated",
+    "effect": { "code": "medic", "params": { "range": 3, "wounds": 1, "aplDelta": -1 } },
+    "text": "The first time each turning point that another friendly Pathfinder (not a drone) that is visible and within 3 inches would be incapacitated, and neither it nor this operative is in an enemy control range, it is left on 1 wound and cannot be incapacitated for the rest of that action. Afterwards it may take a free Dash that must end in this operative's control range. Both operatives get -1 APL until the end of their next activations, and if it happened in that operative's own activation, the activation ends. Not if this operative is down, or is a target of that Shoot.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.14"
+  },
+  {
+    "id": "pf.a.medikit",
+    "kind": "uniqueAction",
+    "name": "MEDIKIT",
+    "team": "pathfinders",
+    "ap": 1,
+    "conditions": { "notInEnemyControlRange": true },
+    "effect": { "code": "medikit", "params": { "dice": "2D3" } },
+    "text": "One friendly Pathfinder (not a drone) in this operative's control range regains up to 2D3 lost wounds, never above its starting wounds. It cannot be an operative that Medic! saved this turning point. Not in an enemy control range.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.15"
+  },
+  {
+    "id": "pf.a.group-activation",
+    "kind": "ability",
+    "name": "Group Activation",
+    "team": "pathfinders",
+    "effect": { "code": "groupActivation", "params": { "keyword": "SHAS'LA" } },
+    "text": "When this operative becomes expended, you must next activate another ready friendly Shas'la, if you have one, before your opponent activates. That Shas'la does not chain again, so never more than two in a row.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.16"
+  },
+  {
+    "id": "pf.a.fearless-on-the-frontline",
+    "kind": "ability",
+    "name": "Fearless on the Frontline",
+    "team": "pathfinders",
+    "effect": { "costDelta": { "actions": ["fall-back"], "delta": -1 } },
+    "text": "This operative can use Markerlight even in an enemy control range, and its Fall Back action costs 1 less AP.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.17"
+  },
+  {
+    "id": "pf.a.system-jam",
+    "kind": "uniqueAction",
+    "name": "SYSTEM JAM",
+    "team": "pathfinders",
+    "ap": 1,
+    "conditions": { "notInEnemyControlRange": true, "order": "engage" },
+    "effect": { "code": "systemJam", "params": { "aplDelta": -1 } },
+    "text": "Pick an enemy operative this operative can see; it gets -1 APL until the end of its next activation. Not while this operative has a Conceal order or is in an enemy control range.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.18"
+  },
+  {
+    "id": "pf.a.multi-dimensional-vision",
+    "kind": "ability",
+    "name": "Multi-Dimensional Vision",
+    "team": "pathfinders",
+    "effect": { "code": "multiDimensionalVision", "params": { "noObscured": true } },
+    "text": "Whenever this operative is shooting, enemy operatives cannot be obscured.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.19"
+  },
+  {
+    "id": "pf.a.drone-mb3",
+    "kind": "ability",
+    "name": "Drone",
+    "team": "pathfinders",
+    "effect": {
+      "code": "pfDrone",
+      "params": { "allowedActions": ["charge", "dash", "fall-back", "fight", "pf.a.markerlight", "reposition", "shoot"], "datacardWeaponsOnly": true, "controlAplOffset": -1 }
+    },
+    "text": "Drone: can only Charge, Dash, Fall Back, Fight, Markerlight, Reposition and Shoot, and only uses weapons on its own datacard. For objective control its APL counts as 1 lower (not an APL change). The round disc on top of the model is its head for visibility.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.20"
+  },
+  {
+    "id": "pf.a.drone-mv1",
+    "kind": "ability",
+    "name": "Drone",
+    "team": "pathfinders",
+    "effect": {
+      "code": "pfDrone",
+      "params": { "allowedActions": ["charge", "dash", "fall-back", "fight", "reposition", "shoot"], "datacardWeaponsOnly": true, "controlAplOffset": -1 }
+    },
+    "text": "Drone: can only Charge, Dash, Fall Back, Fight, Reposition and Shoot, and only uses weapons on its own datacard. For objective control its APL counts as 1 lower (not an APL change). The round disc on top of the model is its head for visibility.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.20"
+  },
+  {
+    "id": "pf.a.drone-mv4",
+    "kind": "ability",
+    "name": "Drone",
+    "team": "pathfinders",
+    "effect": {
+      "code": "pfDrone",
+      "params": { "allowedActions": ["charge", "dash", "fall-back", "fight", "reposition"], "datacardWeaponsOnly": true, "controlAplOffset": -1 }
+    },
+    "text": "Drone: can only Charge, Dash, Fall Back, Fight and Reposition, and only uses weapons on its own datacard. For objective control its APL counts as 1 lower (not an APL change). The round disc on top of the model is its head for visibility.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.20"
+  },
+  {
+    "id": "pf.a.drone-mv7",
+    "kind": "ability",
+    "name": "Drone",
+    "team": "pathfinders",
+    "effect": {
+      "code": "pfDrone",
+      "params": { "allowedActions": ["charge", "dash", "fall-back", "fight", "pf.a.markerlight", "reposition"], "datacardWeaponsOnly": true, "controlAplOffset": -1 }
+    },
+    "text": "Drone: can only Charge, Dash, Fall Back, Fight, Markerlight and Reposition, and only uses weapons on its own datacard. For objective control its APL counts as 1 lower (not an APL change). The round disc on top of the model is its head for visibility.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.20"
+  },
+  {
+    "id": "pf.a.drone-mv31",
+    "kind": "ability",
+    "name": "Drone",
+    "team": "pathfinders",
+    "effect": {
+      "code": "pfDrone",
+      "params": { "allowedActions": ["charge", "dash", "fall-back", "fight", "pf.a.pulse-accelerator", "reposition"], "datacardWeaponsOnly": true, "controlAplOffset": -1 }
+    },
+    "text": "Drone: can only Charge, Dash, Fall Back, Fight, Pulse Accelerator and Reposition, and only uses weapons on its own datacard. For objective control its APL counts as 1 lower (not an APL change). The round disc on top of the model is its head for visibility.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.20"
+  },
+  {
+    "id": "pf.a.drone-mv33",
+    "kind": "ability",
+    "name": "Drone",
+    "team": "pathfinders",
+    "effect": {
+      "code": "pfDrone",
+      "params": { "allowedActions": ["charge", "dash", "fall-back", "fight", "reposition"], "datacardWeaponsOnly": true, "controlAplOffset": -1 }
+    },
+    "text": "Drone: can only Charge, Dash, Fall Back, Fight and Reposition, and only uses weapons on its own datacard. For objective control its APL counts as 1 lower (not an APL change). The round disc on top of the model is its head for visibility.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.20"
+  },
+  {
+    "id": "pf.a.analyse",
+    "kind": "ability",
+    "name": "Analyse",
+    "team": "pathfinders",
+    "effect": { "code": "analyse", "params": { "radius": 3, "exemptFromLink": true } },
+    "text": "When this drone uses Markerlight, every other enemy operative that it can see within 3 inches of the chosen enemy also gains one Markerlight token (up to 4). It is not bound by the Shoot and Markerlight target link.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.21"
+  },
+  {
+    "id": "pf.a.shield-generator",
+    "kind": "ability",
+    "name": "Shield Generator",
+    "team": "pathfinders",
+    "effect": { "code": "shieldGenerator", "params": { "ignorePiercing": true, "ignoreNormalDmgPerTurningPoint": 1, "ploy": "pf.p.saviour-protocols" } },
+    "text": "Weapons used against this drone lose Piercing, including Piercing Crits. Once per turning point, when an attack die would inflict Normal Dmg on it, ignore that damage. It can be the drone chosen for Saviour Protocols at no CP.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.22"
+  },
+  {
+    "id": "pf.a.mv7-markerlight",
+    "kind": "ability",
+    "name": "High-intensity Markerlight",
+    "team": "pathfinders",
+    "effect": { "code": "mv7Markerlight", "params": { "tokens": 2 } },
+    "text": "When this drone uses Markerlight, the chosen enemy gains two tokens instead of one (up to 4).",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.23"
+  },
+  {
+    "id": "pf.a.pulse-accelerator",
+    "kind": "uniqueAction",
+    "name": "PULSE ACCELERATOR",
+    "team": "pathfinders",
+    "ap": 1,
+    "effect": { "code": "pulseAccelerator", "params": { "radius": 3, "lethal": "5+", "rule": "severe" } },
+    "text": "Until the start of this drone's next activation or until it is incapacitated, whenever another friendly Pathfinder shoots with a pulse weapon (burst cannon, pulse carbine, suppressed or twin pulse carbine) within 3 inches of this drone, that weapon has Lethal 5+ and Severe.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.24"
+  },
+  {
+    "id": "pf.a.grav-inhibitor",
+    "kind": "ability",
+    "name": "Grav-inhibitor",
+    "team": "pathfinders",
+    "effect": { "code": "gravInhibitor", "params": { "radius": 6, "surcharge": 2, "meleeHitWorse": 1 } },
+    "text": "When an enemy takes an action that moves it (not Dash) and the move would take it somewhere this drone can see within 6 inches, the move costs an extra 2 inches and it ignores the extra cost of Obstructing and Accessible terrain for that action. Enemies fighting or retaliating while this drone can see them within 6 inches worsen the Hit of their melee weapons by 1, on top of any injury penalty.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.25, T-PF.26"
+  },
+  {
+    "id": "pf.a.photon-grenade",
+    "kind": "uniqueAction",
+    "name": "PHOTON GRENADE",
+    "team": "pathfinders",
+    "ap": 1,
+    "conditions": { "notInEnemyControlRange": true },
+    "effect": { "code": "photonGrenade", "params": { "roll": "3+", "moveDelta": -2, "bansAction": "dash" } },
+    "text": "Once per turning point for the team, a Pathfinder with Markerlight on its datacard (not a drone) picks an enemy it can see and rolls a D6: on 3+, until the end of that enemy's next activation its Move is reduced by 2 inches (never below 4) and it cannot Dash. Not in an enemy control range, even for a Shas'la.",
+    "source": "team-pathfinders.pdf (August '26 errata); docs/spec/13-teams.md T-PF.41"
+  }
+]

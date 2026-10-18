@@ -222,7 +222,7 @@ GEN-029 | markers.isMine, ignoresMine, equipment excludes | Equipment with the m
 GEN-030 | team-rules stealthyCover | Stealthy-style cover sources from team rules add to the defender's level.
 ## TEAM-PF - Pathfinders
 
-TEAM-PF-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-PF-000 | registration | The team is registered with the engine and the data, is `playable`, and every code hook its data names is registered and fires in a real game (the scenarios in `tests/engine/teams/pathfinders.hooks.ts`).
 TEAM-PF-001 | T-PF.1 to T-PF.3 | Roster validation: 1 Shas'ui plus 11 selections; MB3 counts as two; Shas'la unlimited; Weapons Expert at most two with its loadout option; every other entry at most once.
 TEAM-PF-002 | T-PF.27, T-PF.29 | Markerlight adds one token to a visible enemy, caps at 4, persists across TPs; one token is removed once per enemy activation on Dash, Charge, Fall Back or Reposition, never in a counteraction.
 TEAM-PF-003 | T-PF.28, T-PF.21 | Shoot and Markerlight in one activation must share the target (both orders); the MB3 is exempt; Guard shots are not linked.
@@ -238,6 +238,7 @@ TEAM-PF-012 | T-PF.32, T-PF.36 | Suppressing Fire bans enemy attack re-rolls whe
 TEAM-PF-013 | T-PF.39 to T-PF.42 | Equipment limits (TAO 1/TP, HIML 2/TP, Photon 1/TP, OSU 1/TP); Photon Grenade on 3+ gives Move -2" (floor 4") and no Dash; OSU picks any enemy, never combined with HIML or Analyse.
 TEAM-PF-014 | T-PF.22, T-PF.24 | MV4 ignores Piercing and Piercing Crits and one Normal Dmg per TP; Pulse Accelerator gives pulse weapons within 3" Lethal 5+ and Severe until the drone's next activation or death.
 TEAM-PF-015 | stat tables | Every operative stat, base size and weapon profile matches 3.2 and 3.3 (dart round 3/4, fusion grenade 4/3).
+TEAM-PF-016 | T-PF.31, T-PF.35 | Recon Sweep (not in TP1, never the own edge, order chosen by the player, Dash refused unless it ends wholly within 6" of a non-own edge) and A Worthy Cause (a free mission action only).
 
 ## TEAM-HIE - Hierotek Circle
 
@@ -293,7 +294,7 @@ TEAM-PM-027 | T-PM.31 | Poison Vents: a poisoned enemy activated within 3" takes
 
 ## TEAM-WYR - Wyrmblade
 
-TEAM-WYR-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-WYR-000 | scaffold | Superseded: the team is complete and flagged `playable: true`; TEAM-WYR-001 to TEAM-WYR-021 below cover it.
 TEAM-WYR-001 | T-WYR.1, T-WYR.5 | Roster validator accepts 1 Leader + 13 Warriors (14 ops) and Leader + 2 cult agents + 9 (12 ops); rejects 3 cult agents and 12 weighted selections.
 TEAM-WYR-002 | T-WYR.4 | Two flamer Gunners rejected; flamer + webber Gunner accepted; three Heavy Gunners rejected.
 TEAM-WYR-003 | T-WYR.24 | Set-up allows at most 4 NEOPHYTE in HIDING; a cult agent cannot be marked hiding.
@@ -308,9 +309,13 @@ TEAM-WYR-011 | T-WYR.13 | Retaliating Locus blocks an enemy success before the a
 TEAM-WYR-012 | T-WYR.22 | Assassinate is legal only vs an enemy that cannot see the Talon and is reachable within 6"; the double strike resolves before the defender acts.
 TEAM-WYR-013 | T-WYR.36 | Unquestioning Loyalty swaps a Shoot target onto a Neophyte out of the shooter's sight; refused vs a Blast weapon.
 TEAM-WYR-014 | T-WYR.15 | Stationary Heavy Gunner gets Ceaseless; with Cult Ambush active it gets Relentless instead.
-TEAM-WYR-015 | T-WYR.17, T-WYR.37 | Neophyte shot dead near the Icon Bearer makes a free Shoot before removal; a melee-killed one cannot Shoot (enemy in CR) but can take Plan Generations at 0 CP.
+TEAM-WYR-015 | T-WYR.17, T-WYR.37 | Neophyte shot dead near the Icon Bearer makes a free Shoot before removal; one killed in melee has an enemy in its CR, so it can neither Shoot nor take a mission action (both keep their conditions) and is simply removed; one shot dead on an objective can take Plan Generations at 0 CP through Overthrow.
 TEAM-WYR-016 | T-WYR.33 | Divert and Disappear: a cult agent uses two of the three slots; its Fall Back applies −1 APL to its next activation.
 TEAM-WYR-017 | T-WYR.40 | A Wyrmblade operative passes over its own mine without triggering it; an enemy triggers it.
+TEAM-WYR-018 | T-WYR.10, 18, 19, 21, 28, 30, 31 | Rule grants: Soulsight (Saturate on the Sniper's rifle, Brutal and Balanced on the Talon's dagger), Target Vulnerability (Lethal 5+ on the stationary profile), Heroic Inspiration (Severe after a Kelermorph kill, within 3" and in sight), Crossfire (Accurate 1 after another operative shot the target), The Day Is At Hand (Rending, +1 Atk capped at 5), Cult Agent (Piercing and Saturate ignored).
+TEAM-WYR-019 | T-WYR.11, 19, 32, 41 | Obscured: Hypersense, a Soulsight token and Spotlights remove it; One With The Shadows adds it from Light terrain more than 1" from both operatives.
+TEAM-WYR-020 | T-WYR.8, 12, 34, 35 | After a Fight that leaves no enemy in CR the Locus is offered a free 3" Charge (not counted as its Charge action); Slink Into Darkness after the last AP costs 0 CP for a Neophyte the Leader sees (not for the Leader) and sets Conceal when the activation ends; Coiled Serpent makes a normal success a critical success, only after a Conceal to Engage switch.
+TEAM-WYR-021 | T-WYR.9, 12, 16, 19, 20, 21 | Kelermorph shoots twice and the Locus fights twice; the Talon can Charge under Conceal; the Icon Bearer counts one more at an objective without changing its APL; one Soulsight token per team moves when the other cult agent takes the action.
 
 ## SIM - simulation invariants
 

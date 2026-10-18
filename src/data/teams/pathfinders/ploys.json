@@ -1,1 +1,161 @@
-[]
+[
+  {
+    "id": "pf.p.art-of-war",
+    "name": "ART OF WAR",
+    "team": "pathfinders",
+    "type": "strategy",
+    "cost": 0,
+    "window": "strategy.gambit",
+    "effect": {
+      "code": "artOfWar",
+      "params": { "options": ["montka", "kauyon"], "oncePerBattleEach": true },
+      "duration": "turningPoint",
+      "scope": { "side": "friendly", "keyword": "SHAS'UI" }
+    },
+    "text": "The Shas'ui's own strategic gambit, free of CP while it is in the killzone. Pick Mont'ka (friendly Pathfinders get +1 inch of Move) or Kauyon (a friendly Pathfinder with a Conceal order may use one free Markerlight in its activation) until the end of the turning point. Each option only once per battle.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.7"
+  },
+  {
+    "id": "pf.p.recon-sweep",
+    "name": "RECON SWEEP",
+    "team": "pathfinders",
+    "type": "strategy",
+    "cost": 1,
+    "window": "strategy.gambit",
+    "when": { "turningPoint": { "min": 2 } },
+    "effect": {
+      "code": "reconSweep",
+      "params": { "edgeWithin": 6, "endWithin": 6, "dash": true },
+      "scope": { "side": "friendly", "keyword": "PATHFINDER" }
+    },
+    "text": "Pick a killzone edge that is not your own. Each friendly Pathfinder wholly within 6 inches of it can take a free Dash, in the order you choose, but must end that move wholly within 6 inches of an edge that is not your own. Not in the first turning point.",
+    "source": "team-pathfinders.pdf (August '26 errata); docs/spec/13-teams.md T-PF.31"
+  },
+  {
+    "id": "pf.p.suppressing-fire",
+    "name": "SUPPRESSING FIRE",
+    "team": "pathfinders",
+    "type": "strategy",
+    "cost": 1,
+    "window": "strategy.gambit",
+    "effect": {
+      "code": "suppressingFire",
+      "params": { "bansAttackRerolls": true },
+      "duration": "turningPoint",
+      "scope": { "side": "friendly", "keyword": "PATHFINDER" }
+    },
+    "text": "For the turning point, when an enemy Shoots and its target (the primary target for Blast or Torrent) is not the closest valid target, your opponent cannot re-roll attack dice. Ignore friendly Pathfinders that have a Conceal order or are obscured when finding the closest.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.32"
+  },
+  {
+    "id": "pf.p.bonded",
+    "name": "BONDED",
+    "team": "pathfinders",
+    "type": "strategy",
+    "cost": 1,
+    "window": "strategy.gambit",
+    "effect": {
+      "code": "bonded",
+      "params": { "accurate": 1, "within": 3 },
+      "duration": "turningPoint",
+      "scope": { "side": "friendly", "keyword": "PATHFINDER" }
+    },
+    "text": "For the turning point, a friendly Pathfinder (not a drone) that shoots, or retaliates with a ranged weapon through Point-Blank Fusillade, while within 3 inches of another friendly non-drone Pathfinder has Accurate 1 on its ranged weapons.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.33"
+  },
+  {
+    "id": "pf.p.take-cover",
+    "name": "TAKE COVER",
+    "team": "pathfinders",
+    "type": "strategy",
+    "cost": 1,
+    "window": "strategy.gambit",
+    "effect": {
+      "code": "takeCover",
+      "params": { "saveDelta": -1 },
+      "duration": "turningPoint",
+      "scope": { "side": "friendly", "keyword": "PATHFINDER" }
+    },
+    "text": "For the turning point, when a friendly Pathfinder is shot and its player can retain a cover save, improve its Save by 1.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.34"
+  },
+  {
+    "id": "pf.p.a-worthy-cause",
+    "name": "A WORTHY CAUSE",
+    "team": "pathfinders",
+    "type": "strategy",
+    "cost": 1,
+    "window": "strategy.gambit",
+    "effect": {
+      "code": "worthyCause",
+      "params": { "freeMissionAction": true },
+      "scope": { "side": "friendly", "keyword": "PATHFINDER", "notKeywords": ["DRONE"] }
+    },
+    "text": "Used just before the Firefight phase begins (it is offered in the gambit step so that nothing can happen in between). One friendly Pathfinder (not a drone) immediately performs a free mission action, if it can.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.35"
+  },
+  {
+    "id": "pf.p.veteran",
+    "name": "VETERAN",
+    "team": "pathfinders",
+    "type": "firefight",
+    "cost": 0,
+    "window": "firefight.activationStart",
+    "effect": {
+      "code": "veteran",
+      "params": { "swap": true },
+      "duration": "activation",
+      "scope": { "side": "friendly", "keyword": "BLOODED" }
+    },
+    "text": "The Blooded's Veteran rule, for no CP: in a turning point where Art of War was used, when the Blooded activates, swap the option for it alone for that activation.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.8"
+  },
+  {
+    "id": "pf.p.supporting-fire",
+    "name": "SUPPORTING FIRE",
+    "team": "pathfinders",
+    "type": "firefight",
+    "cost": 1,
+    "window": "firefight.actionDeclared",
+    "when": { "action": "shoot" },
+    "effect": {
+      "code": "supportingFire",
+      "params": { "within": 6 },
+      "duration": "action",
+      "scope": { "side": "friendly", "keyword": "PATHFINDER" }
+    },
+    "text": "When a friendly Pathfinder Shoots, an enemy within 6 inches can be chosen as a target even though other friendly Pathfinders stand in its control range. Torrent secondary targets still cannot.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.36"
+  },
+  {
+    "id": "pf.p.saviour-protocols",
+    "name": "SAVIOUR PROTOCOLS",
+    "team": "pathfinders",
+    "type": "firefight",
+    "cost": 1,
+    "window": "shoot.targetSelected",
+    "effect": {
+      "code": "saviourProtocols",
+      "params": { "within": 3, "noBlastOrTorrent": true },
+      "scope": { "side": "friendly", "keyword": "PATHFINDER", "notKeywords": ["DRONE"] }
+    },
+    "text": "When a friendly Pathfinder (not a drone) is the chosen target of a Shoot, pick a friendly Pathfinder drone that it can see within 3 inches; the drone becomes the target instead, even if it would not normally be valid. It counts as in cover or obscured only if the original target was. No effect against Blast or Torrent. Costs 0 CP with a Drone Controller in the killzone, or when the drone is the MV4 Shield Drone.",
+    "source": "team-pathfinders.pdf (August '26 errata); docs/spec/13-teams.md T-PF.37"
+  },
+  {
+    "id": "pf.p.point-blank-fusillade",
+    "name": "POINT-BLANK FUSILLADE",
+    "team": "pathfinders",
+    "type": "firefight",
+    "cost": 1,
+    "window": "fight.weaponsSelected",
+    "effect": {
+      "code": "pointBlankFusillade",
+      "params": { "noBlock": true, "ignoredRules": ["devastating", "piercing", "torrent"] },
+      "duration": "action",
+      "scope": { "side": "friendly", "keyword": "PATHFINDER", "notKeywords": ["DRONE"] }
+    },
+    "text": "When a friendly Pathfinder (not a drone) retaliates and was not in an enemy control range at the start of that activation or counteraction, it may use one of its ranged weapons (not a grenade) as its melee weapon for that fight. It cannot block, and Devastating, Piercing and Torrent do nothing on its weapons. If it is also ready, on Engage and uses a pulse weapon, its player resolves the first die instead of the attacker.",
+    "source": "team-pathfinders.pdf (August '26 errata); docs/spec/13-teams.md T-PF.38"
+  }
+]

@@ -1279,3 +1279,24 @@ Rows in `12-rules-test-checklist.md` section TEAM-WYR: TEAM-WYR-000 to TEAM-WYR-
 - Gotchas: section 6.9. HIDING is open information (no blips, no decoys): `view` hides nothing. Hiding
   operatives are ready, so they block counteracting. Model each Gunner and Heavy Gunner weapon variant as
   its own datacard id so "each entry once" and the GUNNER caps work.
+
+### 6.12 As built (M9)
+
+Files: `src/data/teams/wyrmblade/*.json`, `src/engine/teams/wyrmblade.ts`, `src/client/teams/wyrmblade.ts`,
+`tests/engine/teams/wyrmblade.{test,hooks}.ts`. Datacard ids `wyr.<name>` (each Gunner and Heavy Gunner weapon is
+its own card, figure archetype `wb-neophyte-gunner` / `wb-neophyte-heavy-gunner` with a `variant`).
+
+- Code hooks named by the data (12): `shadowVector` (registers the ploy rule at game creation, because ploys.ts is
+  still loading when the team modules are imported), `emerge`, `targetVulnerability`, `soulsight`, `assassinate`,
+  `quicksilverStrike`, `overthrowOppressors`, `planGenerations`, `tpFlagPloy` (The Day Is At Hand, Crossfire, One With
+  The Shadows), `divertAndDisappear`, `slinkIntoDarkness`, `coiledSerpent`, `unquestioningLoyalty`. Every other rule is a
+  provider answer or a hook handler keyed on the datacard ability ids, so it needs no code name.
+- Per-activation state is one effect (`wyr.activation`, set by `activation.start`): `switched`, `unseen`, `ambush`,
+  `coiledUsed`. Cult Ambush counts only while the operative is the attacker of the sequence being worked out.
+- Before-removal free actions are one `ability.choice` raised from the `operative.incapacitated` hook while the removal
+  queue is running; the removal queue is saved in the frame data and put back when the free action ends.
+- Expert Swordsman and Creeping Shadow are choices in the `firefight.actionEnded` ploy window (cost 0, started with
+  `startFreeAction`); Assassinate, Quicksilver Strike and Divert and Disappear use `startFreeAction` frames with their
+  own frame resumes; Bladed Stance and Assassinate's second strike use `fightResolveStart` / `afterFightResolution`.
+- Not modelled: the AI never sets operatives aside (its deploy policy answers placement only) and the client has no
+  "set aside" control yet, so HIDING is reachable by rule-level tests and by hand-built answers only.

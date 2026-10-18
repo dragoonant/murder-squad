@@ -1,1 +1,46 @@
-[]
+[
+  {
+    "id": "pf.e.target-analysis-optic",
+    "name": "Target Analysis Optic",
+    "scope": "faction",
+    "team": "pathfinders",
+    "count": 1,
+    "limits": { "uses": 1, "per": "turningPoint", "scope": "team" },
+    "effect": { "code": "targetAnalysisOptic", "params": { "extraTokens": 1, "primaryOnly": true } },
+    "text": "Once per turning point, when a friendly Pathfinder (not a drone) Shoots and you are selecting a target, a target with at least one of your Markerlight tokens counts as having one more for that action (so 4 tokens gives the Seek rule). For Blast or Torrent only the primary target is affected.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.39"
+  },
+  {
+    "id": "pf.e.high-intensity-markerlight",
+    "name": "High-intensity Markerlight",
+    "scope": "faction",
+    "team": "pathfinders",
+    "count": 1,
+    "limits": { "uses": 2, "per": "turningPoint", "scope": "team" },
+    "effect": { "code": "highIntensityMarkerlight", "params": { "tokens": 2, "perTurningPoint": 2 } },
+    "text": "Up to twice per turning point, when a friendly Pathfinder other than the MV7 Marker Drone uses Markerlight, the chosen enemy gains two tokens instead of one (up to 4).",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.40"
+  },
+  {
+    "id": "pf.e.photon-grenade",
+    "name": "Photon Grenade",
+    "scope": "faction",
+    "team": "pathfinders",
+    "count": 1,
+    "limits": { "uses": 1, "per": "turningPoint", "scope": "team" },
+    "actions": ["pf.a.photon-grenade"],
+    "text": "Once per turning point, a Pathfinder with Markerlight on its datacard (not a drone) can use the PHOTON GRENADE action: pick an enemy it can see and roll a D6; on 3+ that enemy loses 2 inches of Move (never below 4) and cannot Dash until the end of its next activation.",
+    "source": "team-pathfinders.pdf (August '26 errata); docs/spec/13-teams.md T-PF.41"
+  },
+  {
+    "id": "pf.e.orbital-survey-uplink",
+    "name": "Orbital Survey Uplink",
+    "scope": "faction",
+    "team": "pathfinders",
+    "count": 1,
+    "limits": { "uses": 1, "per": "turningPoint", "scope": "team" },
+    "effect": { "code": "orbitalSurveyUplink", "params": { "tokens": 1, "anyEnemyInKillzone": true } },
+    "text": "Once per turning point, when a friendly Pathfinder uses Markerlight, it can instead give one token to any enemy operative in the killzone, seen or not. This does not combine with High-intensity Markerlight or Analyse.",
+    "source": "team-pathfinders.pdf; docs/spec/13-teams.md T-PF.42"
+  }
+]
