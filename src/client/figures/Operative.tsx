@@ -2,14 +2,15 @@
 // procedural stand-in) plus loadout attachments at manifest sockets (HOLDS table in hold.ts); weapons without an
 // attachment GLB yet get a team-coloured box of the hold class's length at the socket. `BattleOperative` adds the
 // engine position, move tween, rigid cues, order token, APL pips, wound bar and pointer handlers.
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Billboard, Html } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { Color, Euler, type Group } from 'three'
-import type { Operative as EngineOperative } from '@/engine'
+import type { Operative as EngineOperative, Order } from '@/engine'
 import { effectiveApl } from '@/engine/state'
 import { dataBundle, engineBundle } from '../game/adapter'
 import { animPosition } from '../presentation/animStore'
+import { AP_DARK, AP_LIT, ORDER_COLOR, apTip, orderTip, useBoardTip, woundTip, type MarkerTip } from '../ui/markerInfo'
 import { colors } from '../ui/theme'
 import { cuePose, deathAge, deathMs, installCueFeed, isDying, cueActive } from './cues'
 import { useGlbInstance } from './glbLoader'
@@ -192,35 +193,61 @@ export function hasGlbBody(archetype: string, manifest = modelManifest()): boole
 
 // ---------------------------------------------------------------- battle layer
 
-function OrderToken({ order, y }: { order: 'engage' | 'conceal'; y: number }) {
+/** Hover area for one overhead marker: an invisible plane (the pips are too small to hit) that feeds the
+ *  board tooltip. Mouse/pen only; on touch the tap selects the operative and the card shows the legend. */
+function TipArea({ tip, w, h, y, children }: { tip: MarkerTip; w: number; h: number; y: number; children: ReactNode }) {
+  const over = useRef(false)
+  const show = (e: ThreeEvent<PointerEvent>) => {
+    if (e.pointerType === 'touch') return
+    over.current = true
+    useBoardTip.setState({ tip: { ...tip, x: e.nativeEvent.clientX, y: e.nativeEvent.clientY } })
+  }
+  const hide = () => {
+    if (!over.current) return
+    over.current = false
+    useBoardTip.setState({ tip: null })
+  }
+  useEffect(() => hide, [])
   return (
-    <mesh position={[0, y, 0]}>
-      {order === 'engage' ? <octahedronGeometry args={[0.2, 0]} /> : <boxGeometry args={[0.28, 0.28, 0.28]} />}
-      <meshBasicMaterial color={order === 'engage' ? '#ff8a2a' : '#6fb7ff'} />
-    </mesh>
-  )
-}
-
-function Pips({ count, lit, y }: { count: number; lit: number; y: number }) {
-  const gap = 0.24
-  return (
-    <group position={[0, y, 0]}>
-      {Array.from({ length: count }, (_, i) => (
-        <mesh key={i} position={[(i - (count - 1) / 2) * gap, 0, 0]}>
-          <circleGeometry args={[0.085, 12]} />
-          <meshBasicMaterial color={i < lit ? '#ffe066' : '#33343c'} />
-        </mesh>
-      ))}
+    <group position={[0, y, 0]} onPointerOver={show} onPointerMove={show} onPointerOut={hide}>
+      <mesh position={[0, 0, -0.01]}>
+        <planeGeometry args={[w, h]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+      {children}
     </group>
   )
 }
 
-function WoundBar({ ratio, y }: { ratio: number; y: number }) {
+function OrderToken({ order }: { order: Order }) {
+  return (
+    <mesh>
+      {order === 'engage' ? <octahedronGeometry args={[0.2, 0]} /> : <boxGeometry args={[0.28, 0.28, 0.28]} />}
+      <meshBasicMaterial color={ORDER_COLOR[order]} />
+    </mesh>
+  )
+}
+
+function Pips({ count, lit }: { count: number; lit: number }) {
+  const gap = 0.24
+  return (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <mesh key={i} position={[(i - (count - 1) / 2) * gap, 0, 0]}>
+          <circleGeometry args={[0.085, 12]} />
+          <meshBasicMaterial color={i < lit ? AP_LIT : AP_DARK} />
+        </mesh>
+      ))}
+    </>
+  )
+}
+
+function WoundBar({ ratio }: { ratio: number }) {
   const w = 1.1
   const r = Math.max(0, Math.min(1, ratio))
   const color = r > 0.6 ? '#5fd35f' : r > 0.3 ? '#e6c84a' : '#e0463c'
   return (
-    <group position={[0, y, 0]}>
+    <group>
       <mesh>
         <planeGeometry args={[w + 0.06, 0.16]} />
         <meshBasicMaterial color="#05050a" />
@@ -377,9 +404,15 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
         </mesh>
       )}
       <Billboard position={[0, top + 0.3, 0]} follow>
-        <OrderToken order={op.order} y={0.62} />
-        <Pips count={apl} lit={lit} y={0.28} />
-        <WoundBar ratio={op.wounds / op.maxWounds} y={0} />
+        <TipArea tip={orderTip(op.order)} w={0.5} h={0.4} y={0.62}>
+          <OrderToken order={op.order} />
+        </TipArea>
+        <TipArea tip={apTip(apl, lit, apSpent !== null, op.ready)} w={Math.max(0.5, apl * 0.24 + 0.1)} h={0.26} y={0.28}>
+          <Pips count={apl} lit={lit} />
+        </TipArea>
+        <TipArea tip={woundTip(op.wounds, op.maxWounds, op.flags.injured)} w={1.2} h={0.24} y={0}>
+          <WoundBar ratio={op.wounds / op.maxWounds} />
+        </TipArea>
       </Billboard>
       {(selected || hovered) && (
         <Html position={[0, top + 1.25, 0]} center zIndexRange={[10, 0]} distanceFactor={14} style={{ pointerEvents: 'none' }}>

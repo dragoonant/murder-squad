@@ -8,12 +8,21 @@ import { useFeedStore } from '../presentation/feedStore'
 import { useDisplayState, useSettled } from '../presentation/presentedStore'
 import { DecisionPrompt } from './DecisionPrompt'
 import { EndScreen } from './EndScreen'
+import { useBoardTip } from './markerInfo'
+import { PointTooltip } from './Tooltip'
 import { Hud } from './Hud'
 import { DiceLog, EventFeed, MissionPanel, OperativeCard, SettingsPanel } from './Panels'
 import { RotatePrompt } from './RotatePrompt'
 import { useFormFactor } from './formFactor'
 import { colors, fontStack, panel } from './theme'
 import { Die, seatColor } from './widgets'
+
+/** Tooltip for the marker the pointer is over on the board (order token, AP pips, wound bar). */
+function BoardTooltip() {
+  const tip = useBoardTip((s) => s.tip)
+  if (!tip) return null
+  return <PointTooltip x={tip.x} y={tip.y} title={tip.title} body={tip.body} />
+}
 
 function Banner() {
   const a = useAnnouncementStore((s) => s.current)
@@ -137,6 +146,7 @@ export function BattleScreen() {
         <DecisionPrompt />
         <Banner />
         <Toasts />
+        <BoardTooltip />
       </div>
       <RotatePrompt />
       {over && <EndScreen />}
