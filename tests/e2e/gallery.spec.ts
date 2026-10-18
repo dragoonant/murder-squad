@@ -131,6 +131,16 @@ test('gallery attachment pages show every real attachment GLB in hand', async ({
     }
   }
 
+  // every other team's attachment page (the new teams' pages mount the rest of the attachment GLBs)
+  const teamButtons = await page.locator('[data-testid^="att-"]:not([data-testid^="att-page-"]):not([data-testid="att-off"])').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')!))
+  for (const id of teamButtons) {
+    if (id === 'att-kom' || id === 'att-aod') continue
+    await page.getByTestId(id).click()
+    await page.getByTestId('att-page-all').click()
+    await screenshotRendered(page, `e2e-out/gallery-attach-${id.slice(4)}.png`)
+  }
+  await settle(attachmentCount)
+
   const stats = await page.evaluate(() => (window.__ms as unknown as { glbStats(p?: string): { loaded: number; failed: number; maxMs: number } }).glbStats('attachments/'))
   console.log(`gallery attachments: ${JSON.stringify(stats)} of ${attachmentCount} listed`)
   expect(await loaded()).toBe(attachmentCount)
