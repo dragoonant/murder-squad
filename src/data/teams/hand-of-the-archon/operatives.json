@@ -1,0 +1,79 @@
+[
+  {
+    "id": "ha.archsybarite",
+    "name": "Kabalite Archsybarite",
+    "team": "hand-of-the-archon",
+    "stats": {
+      "apl": 2,
+      "move": 7,
+      "save": "4+",
+      "wounds": 9
+    },
+    "base": 25,
+    "keywords": [
+      "HAND OF THE ARCHON",
+      "AELDARI",
+      "DRUKHARI",
+      "LEADER",
+      "ARCHSYBARITE"
+    ],
+    "weapons": {
+      "fixed": [],
+      "options": [
+        {
+          "id": "loadout",
+          "label": "Loadout",
+          "sets": [
+            {
+              "id": "blast-pistol-venom-blade",
+              "name": "Blast pistol and venom blade",
+              "fixed": [
+                "ha.w.blast-pistol",
+                "ha.w.venom-blade"
+              ]
+            },
+            {
+              "id": "splinter-pistol-venom-blade",
+              "name": "Splinter pistol and venom blade",
+              "fixed": [
+                "ha.w.splinter-pistol",
+                "ha.w.venom-blade"
+              ]
+            },
+            {
+              "id": "splinter-pistol-agoniser",
+              "name": "Splinter pistol and agoniser",
+              "fixed": [
+                "ha.w.splinter-pistol",
+                "ha.w.agoniser"
+              ]
+            },
+            {
+              "id": "splinter-pistol-power-weapon",
+              "name": "Splinter pistol and power weapon",
+              "fixed": [
+                "ha.w.splinter-pistol",
+                "ha.w.power-weapon"
+              ]
+            },
+            {
+              "id": "splinter-rifle-array-of-blades",
+              "name": "Splinter rifle and array of blades",
+              "fixed": [
+                "ha.w.splinter-rifle",
+                "ha.w.array-of-blades"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "ha-archsybarite"
+    },
+    "text": "The kill team's leader: a cunning schemer who banks command points by holding back and feeds on the pain it is about to deal.",
+    "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md section 8"
+  }
+]

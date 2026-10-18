@@ -1,0 +1,45 @@
+{
+  "id": "hand-of-the-archon",
+  "name": "Hand of the Archon",
+  "factionKeyword": "HAND OF THE ARCHON",
+  "archetypes": [
+    "recon",
+    "seek-and-destroy"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "ha.archsybarite"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "ha.archsybarite"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.78,
+      "s": 0.3,
+      "l": 0.14
+    },
+    "minor": {
+      "h": 0.47,
+      "s": 0.6,
+      "l": 0.4
+    }
+  },
+  "text": "Nine lithe raiders who grow stronger on the suffering they inflict, trading blows for Pain and poison.",
+  "source": "team-hand-of-the-archon.pdf (January '26); docs/spec/13-teams.md section 8"
+}

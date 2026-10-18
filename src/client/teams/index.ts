@@ -5,12 +5,20 @@ import { PRESENTATION as pathfinders } from './pathfinders'
 import { PRESENTATION as hierotekCircle } from './hierotek-circle'
 import { PRESENTATION as plagueMarines } from './plague-marines'
 import { PRESENTATION as wyrmblade } from './wyrmblade'
+import { PRESENTATION as legionaries } from './legionaries'
+import { PRESENTATION as handOfTheArchon } from './hand-of-the-archon'
+import { PRESENTATION as hunterClade } from './hunter-clade'
+import { PRESENTATION as hearthkynSalvagers } from './hearthkyn-salvagers'
 
 export const TEAM_PRESENTATION: Record<string, TeamPresentation> = {
   pathfinders,
   'hierotek-circle': hierotekCircle,
   'plague-marines': plagueMarines,
   wyrmblade,
+  legionaries,
+  'hand-of-the-archon': handOfTheArchon,
+  'hunter-clade': hunterClade,
+  'hearthkyn-salvagers': hearthkynSalvagers,
 }
 
 type TableKey = 'flavour' | 'vfx' | 'sound' | 'attachments'

@@ -15,6 +15,7 @@
 import { onOperativeReturned } from './missions'
 import type { Ctx } from './registry'
 import { getOp } from './state'
+import { axisOf } from './footprint'
 import { placementProblem } from './terrain'
 import type { GameState, Operative, Order, Vec3 } from './types'
 
@@ -50,7 +51,7 @@ export function returnToKillzone(ctx: Ctx, opId: string, o: ReturnOpts): boolean
   const s = ctx.state
   const op = getOp(s, opId)
   if (op.status === 'active') return false
-  if (placementProblem(s, { id: op.id, pos: o.pos, radius: op.baseRadius, height: op.height })) return false
+  if (placementProblem(s, { id: op.id, pos: o.pos, radius: op.baseRadius, height: op.height, ...axisOf(op) })) return false
   const wasRemoved = op.status === 'removed'
   op.status = 'active'
   delete op.offboard
@@ -110,7 +111,7 @@ export function placementSpots(state: GameState, op: Operative, o: SpotOpts = {}
       const pos = { x: Math.round(x * 1000) / 1000, y: 0, z: Math.round(z * 1000) / 1000 }
       if (o.around && Math.hypot(pos.x - o.around.x, pos.z - o.around.z) > (o.radius ?? Infinity) + 1e-9) continue
       if (o.test && !o.test(pos)) continue
-      if (placementProblem(state, { id: op.id, pos, radius: op.baseRadius, height: op.height })) continue
+      if (placementProblem(state, { id: op.id, pos, radius: op.baseRadius, height: op.height, ...axisOf(op) })) continue
       cands.push(pos)
     }
   }

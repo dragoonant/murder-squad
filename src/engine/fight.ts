@@ -12,6 +12,7 @@ import {
   kindsOf,
   newSide,
   openWindow,
+  runDiceRolled,
   parseReroll,
   pushRetained,
   pushRolled,
@@ -26,7 +27,7 @@ import {
   weaponOf,
   weaponUnusable,
 } from './attack-common'
-import { providerAfterResolution, providerFightStart, providerFightWeapons } from './team-rules'
+import { providerAfterResolution, providerBlockCapacity, providerFightStart, providerFightWeapons } from './team-rules'
 import { normalBlocksCrit } from './teams/angels-of-death'
 import { cancelAction, finishAction } from './firefight'
 import { runHook } from './hooks'
@@ -262,6 +263,9 @@ STEPS.roll = (ctx) => {
   a.seq = seq
   f.passes = 0
   f.turn = s.initiative ?? attacker.seat
+  // M9 batch B: rules acting on the fresh rolls (Omen)
+  if (atk) runDiceRolled(ctx, 'fight', 'attack', atk, defender.id)
+  if (def) runDiceRolled(ctx, 'fight', 'defence', def, attacker.id)
   // M9 shared: both fighters' window on the fresh rolls, before any re-roll (Curse of Rot)
   proceed(ctx, 'rerolls', 'fight.beforeRerolls')
 }
@@ -448,6 +452,24 @@ function strike(ctx: Ctx, mine: DiceSide, theirs: DiceSide | null, i: number): v
   }
 }
 
+/**
+ * M9 batch B: one strike out of the normal alternation (Unending Bloodshed, Brawler): the fighter of `seat` strikes
+ * with its unresolved success `die` through the normal strike path (beforeStrike, modifyDamage, the victim's
+ * per-die reductions, Shock). Usable while the fight sequence is live, e.g. from a ploy in the fight.resolved window or
+ * a beforeIncapacitated hook; works even when that fighter is at 0 wounds. False when there is no such die.
+ */
+export function extraStrike(ctx: Ctx, seat: Seat, die: number): boolean {
+  const a = ctx.state.attack
+  if (!a || a.kind !== 'fight' || !a.seq) return false
+  const seq = a.seq
+  const mine = seq.atk.seat === seat && seq.atk.weaponId ? seq.atk : seq.def && seq.def.seat === seat ? seq.def : null
+  if (!mine || !mine.weaponId) return false
+  const d = mine.dice[die]
+  if (!d || d.used || d.kind === 'fail') return false
+  strike(ctx, mine, mine === seq.atk ? seq.def : seq.atk, die)
+  return true
+}
+
 /** Can a die of `mine` block a die of `kind` when the enemy weapon is `brutal`? */
 function canBlock(mine: AttackDie['kind'], theirs: AttackDie['kind'], brutal: boolean, normalCrit = false): boolean {
   if (brutal && mine !== 'crit') return false
@@ -538,6 +560,25 @@ STEPS.resolve = (ctx) => {
           data: { die: kind, against: tk },
         })
       }
+      // M9 batch B: a block that cancels two successes (Tangle): every pair of blockable kinds
+      if (!noBlock && providerBlockCapacity(s, a, mine.seat, i) >= 2) {
+        const pairs: [AttackDie['kind'], AttackDie['kind']][] = [['crit', 'crit'], ['crit', 'normal'], ['normal', 'normal']]
+        for (const [k1, k2] of pairs) {
+          if (!canBlock(kind, k1, theirBrutal, duelist) || !canBlock(kind, k2, theirBrutal, duelist)) continue
+          const of1 = theirIdx.filter((x) => theirs.dice[x]!.kind === k1)
+          const of2 = theirIdx.filter((x) => theirs.dice[x]!.kind === k2)
+          const j = of1[0]
+          const k = k1 === k2 ? of1[1] : of2[0]
+          if (j === undefined || k === undefined) continue
+          options.push({
+            id: `block2:${i}->${j},${k}`,
+            labelKey: 'fight.blockTwo',
+            type: 'fight.resolve',
+            payload: { op: 'block', die: i, against: j, against2: k },
+            data: { die: kind, against: k1, against2: k2 },
+          })
+        }
+      }
     }
     if (options.length === 0) {
       // an owed block-only resolution with nothing it could block is skipped
@@ -572,6 +613,7 @@ function handleResolve(state: GameState, action: Action): Handled {
   const p = action.payload
   const i = Number(p.die)
   const against = p.against === undefined ? null : Number(p.against)
+  const against2 = (p as { against2?: unknown }).against2 === undefined ? null : Number((p as { against2?: unknown }).against2)
   const isBlock = p.op === 'block'
   void state
   return {
@@ -588,6 +630,12 @@ function handleResolve(state: GameState, action: Action): Handled {
         mine.dice[i]!.used = true
         theirs.dice[against]!.used = true
         ctx.emit({ type: 'Blocked', operativeId: mine.operativeId, die: kind === 'crit' ? 'crit' : 'normal', against: tk === 'crit' ? 'crit' : 'normal' }, mine.seat)
+        // M9 batch B: the same die cancels a second success (Tangle)
+        if (against2 !== null && theirs.dice[against2] && !theirs.dice[against2]!.used) {
+          const tk2 = theirs.dice[against2]!.kind
+          theirs.dice[against2]!.used = true
+          ctx.emit({ type: 'Blocked', operativeId: mine.operativeId, die: kind === 'crit' ? 'crit' : 'normal', against: tk2 === 'crit' ? 'crit' : 'normal' }, mine.seat)
+        }
       } else {
         strike(ctx, mine, theirs, i)
       }
@@ -641,7 +689,9 @@ STEPS.finish = (ctx) => {
   ctx.emit({ type: 'FightEnded', operativeId: attacker.id, targetId: defender.id }, attacker.seat)
   const gone = a.incapacitated.slice()
   s.attack = null
-  if (!beginRemovals(ctx, gone)) return
+  // M9 batch B: who incapacitated whom, for the killer's operative.killed window
+  const killers = Object.fromEntries(gone.map((id) => [id, id === attacker.id ? defender.id : attacker.id]))
+  if (!beginRemovals(ctx, gone, killers)) return
   finishAction(ctx)
 }
 

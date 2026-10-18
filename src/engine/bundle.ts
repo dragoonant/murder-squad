@@ -282,6 +282,8 @@ function adaptDatacard(c: DatacardData, groups: Record<string, string[]>): Runti
   }
   if (c.expendable) out.expendable = true
   if (c.nonOperativeForSelection) out.nonOperativeForSelection = true
+  if (c.extraEquipment) out.extraEquipment = c.extraEquipment
+  if (c.ovalBase) out.ovalBase = { long: c.ovalBase.long, short: c.ovalBase.short, ...(c.ovalBase.weapons ? { weapons: [...c.ovalBase.weapons] } : {}) }
   return out
 }
 
@@ -298,6 +300,7 @@ function adaptTeam(t: TeamData): RuntimeTeam {
   }
   if (t.playable === false) out.playable = false
   if (t.teamChoices) out.teamChoices = t.teamChoices.map((c) => ({ ...c, ...(c.distinctFrom ? { distinctFrom: [...c.distinctFrom] } : {}) }))
+  if (t.operativeChoices) out.operativeChoices = t.operativeChoices.map((c) => ({ ...c, keywords: [...c.keywords], ...(c.exclude ? { exclude: c.exclude.map((e) => ({ datacards: [...e.datacards], keywords: [...e.keywords] })) } : {}) }))
   return out
 }
 
@@ -442,7 +445,15 @@ const DEFAULT_PICKS: Record<string, string[]> = {
 export function defaultRosterFor(bundle: EngineBundle, teamId: string): RosterEntry[] {
   const ids = defaultsOf(teamId, bundle)?.roster
   if (!ids) throw new Error(`no default roster for team ${teamId}`)
-  return ids.map((id): RosterEntry => ({ datacardId: id, loadout: defaultLoadoutFor(bundle, id) }))
+  const d = defaultsOf(teamId, bundle)
+  return ids.map((id, i): RosterEntry => {
+    // M9 batch B: team.json defaults may give a loadout answer (loadout caps) and operative picks per entry
+    const answer = d?.loadouts?.[i]
+    const entry: RosterEntry = { datacardId: id, loadout: answer && Object.keys(answer).length > 0 ? resolveLoadoutChoice(bundle, id, answer) : defaultLoadoutFor(bundle, id) }
+    const picks = d?.operativePicks?.[i]
+    if (picks && Object.keys(picks).length > 0) entry.picks = { ...picks }
+    return entry
+  })
 }
 
 export function defaultTeamChoicesFor(teamId: string, bundle?: EngineBundle): Record<string, string> {

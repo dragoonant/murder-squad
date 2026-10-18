@@ -1,0 +1,79 @@
+[
+  {
+    "id": "hc.skitarii-ranger-alpha",
+    "name": "Skitarii Ranger Alpha",
+    "team": "hunter-clade",
+    "stats": {
+      "apl": 2,
+      "move": 6,
+      "save": "4+",
+      "wounds": 8
+    },
+    "base": 25,
+    "keywords": [
+      "HUNTER CLADE",
+      "IMPERIUM",
+      "ADEPTUS MECHANICUS",
+      "LEADER",
+      "SKITARII",
+      "RANGER",
+      "ALPHA"
+    ],
+    "weapons": {
+      "fixed": [],
+      "options": [
+        {
+          "id": "loadout",
+          "label": "Loadout",
+          "sets": [
+            {
+              "id": "rifle",
+              "name": "Galvanic rifle and gun butt",
+              "fixed": [
+                "hc.w.galvanic-rifle",
+                "hc.w.gun-butt"
+              ]
+            },
+            {
+              "id": "master-crafted",
+              "name": "Master-crafted radium pistol and power weapon",
+              "fixed": [
+                "hc.w.master-crafted-radium-pistol",
+                "hc.w.power-weapon-skitarii"
+              ]
+            },
+            {
+              "id": "pistol-and-melee",
+              "name": "Pistol and melee weapon",
+              "options": [
+                {
+                  "id": "pistol",
+                  "label": "Pistol",
+                  "from": [
+                    "hc.w.arc-pistol",
+                    "hc.w.phosphor-blast-pistol"
+                  ]
+                },
+                {
+                  "id": "melee",
+                  "label": "Melee weapon",
+                  "from": [
+                    "hc.w.arc-maul",
+                    "hc.w.taser-goad-skitarii"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "hc-skitarii-ranger-alpha"
+    },
+    "text": "The scout-hunter who leads the clade: a long-barrelled rifle or a sidearm and blade, sharpening the aim of the Rangers around it.",
+    "source": "team-hunter-clade.pdf (January '26); docs/spec/13-teams.md section 9"
+  }
+]

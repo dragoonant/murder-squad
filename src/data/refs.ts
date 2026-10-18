@@ -109,6 +109,7 @@ export function recordRefs(rec: DataRecord, type: RecordType): Ref[] {
       slotRefs(d.weapons.options, 'weapons.options', out)
       d.abilities.forEach((id, i) => out.push({ at: `abilities[${i}]`, id, kind: 'ability' }))
       d.uniqueActions.forEach((id, i) => out.push({ at: `uniqueActions[${i}]`, id, kind: 'uniqueAction' }))
+      d.ovalBase?.weapons?.forEach((id, i) => out.push({ at: `ovalBase.weapons[${i}]`, id, kind: 'weapon' }))
       break
     }
     case 'weapon': {

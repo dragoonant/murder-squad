@@ -16,6 +16,7 @@ import {
   kindsOf,
   newSide,
   openWindow,
+  runDiceRolled,
   parseReroll,
   pushRetained,
   pushRolled,
@@ -458,8 +459,12 @@ function rollAttack(ctx: Ctx, cover: boolean, obscured: boolean, improvedCover: 
     },
     op.seat,
   )
-  advanceWindow(ctx, 'atk')
+  // M9 batch B: rules acting on the fresh roll (Omen), then the attacker's window before any re-roll (Engage to Acquire)
+  runDiceRolled(ctx, 'shoot', 'attack', side, target.id)
+  proceed(ctx, 'attackRerolls', 'shoot.beforeAttackRerolls')
 }
+
+STEPS.attackRerolls = (ctx) => advanceWindow(ctx, 'atk')
 
 // --- re-roll windows --------------------------------------------------------
 
@@ -596,7 +601,10 @@ STEPS.retain = (ctx) => {
       }
     }
   }
-  STEPS.defence!(ctx)
+  // M9 batch B: the defender's window once the attack dice are final, before defence dice are collected (Refractor Field)
+  const t = s.operatives[seq.targetId]
+  if (t && t.status === 'active' && t.wounds > 0) proceed(ctx, 'defence', 'shoot.beforeDefenceRoll')
+  else STEPS.defence!(ctx)
 }
 
 function visibleEither(s: GameState, a: ReturnType<typeof bodyOf>, b: ReturnType<typeof bodyOf>): boolean {
@@ -663,10 +671,14 @@ function rollDefence(ctx: Ctx, mode: string): void {
     side.seat,
   )
   void s
-  void a
+  // M9 batch B: rules acting on the fresh defence roll (Omen)
+  runDiceRolled(ctx, 'shoot', 'defence', side, a.operativeId)
   // M9 shared: the attacker's window on the fresh defence roll, before any re-roll (Curse of Rot)
-  proceed(ctx, 'defenceRerolls', 'shoot.beforeDefenceRerolls')
+  proceed(ctx, 'defenceOwnWindow', 'shoot.beforeDefenceRerolls')
 }
+
+// M9 batch B: the defender's own window on its fresh defence roll, before any re-roll (Stimulated Senses)
+STEPS.defenceOwnWindow = (ctx) => proceed(ctx, 'defenceRerolls', 'shoot.defenderBeforeRerolls')
 
 STEPS.defenceRerolls = (ctx) => advanceWindow(ctx, 'def')
 
@@ -794,7 +806,9 @@ STEPS.finish = (ctx) => {
   ctx.emit({ type: 'ShootEnded', operativeId: op.id, weaponId }, op.seat)
   const gone = a.incapacitated.slice()
   s.attack = null
-  if (!beginRemovals(ctx, gone)) return
+  // M9 batch B: who incapacitated whom, for the killer's operative.killed window
+  const killers = Object.fromEntries(gone.filter((id) => id !== op.id).map((id) => [id, op.id]))
+  if (!beginRemovals(ctx, gone, killers)) return
   finishAction(ctx)
 }
 

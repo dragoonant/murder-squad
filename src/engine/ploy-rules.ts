@@ -26,6 +26,8 @@ export interface PloyRule {
   costAdjust?(state: GameState, seat: Seat, ploy: RuntimePloy, seed: PloyOfferSeed, info: PloyWindowInfo): { cost: number; via: string } | null
   /** an offer that carried `via` was used */
   onUsed?(ctx: Ctx, seat: Seat, offer: PloyOffer, info: PloyWindowInfo): void
+  /** M9 batch B: CP added to the ploy's cost after every reduction (Devious Scheme: +1 on the opponent's next use); summed */
+  costSurcharge?(state: GameState, seat: Seat, ploy: RuntimePloy, seed: PloyOfferSeed, info: PloyWindowInfo): number
 }
 
 /** The registered rules, in registration order (hoisted, never in the temporal dead zone). */

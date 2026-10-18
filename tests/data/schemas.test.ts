@@ -28,7 +28,7 @@ describe('data schemas', () => {
     const result = validateAll({ hooksFile: 'check' })
     expect(result.errors).toEqual([])
     expect(result.files).toBe(MANIFEST.length)
-    expect(result.files).toBe(23 + 6 * 4)
+    expect(result.files).toBe(23 + 6 * 8)
     expect(result.records).toBeGreaterThan(150)
   })
 

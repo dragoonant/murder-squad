@@ -13,7 +13,7 @@ import { addUse, usesOf } from './effects'
 import { fnv1a } from './rng'
 import { markFired } from './code-hooks'
 import { hasKeyword, isExpendable } from './conditions'
-import { providerEquipmentEligible } from './team-rules'
+import { providerEquipmentEligible, providerOwnGrenades } from './team-rules'
 import { newMarkerId } from './markers'
 import { stubModule, type Ctx, type Handled } from './registry'
 import { otherSeat, SEATS } from './state'
@@ -35,6 +35,14 @@ import type {
 } from './types'
 
 export const DEFAULT_EQUIPMENT_LIMIT = 4
+
+/**
+ * M9 batch B: the equipment option limit for a roster: the base limit plus every rostered datacard's
+ * `extraEquipment` (Hearthkyn Lugger, Well Supplied: one more option).
+ */
+export function equipmentLimitFor(datacards: Record<string, { extraEquipment?: number } | undefined>, datacardIds: readonly string[], base = DEFAULT_EQUIPMENT_LIMIT): number {
+  return base + datacardIds.reduce((n, id) => n + (datacards[id]?.extraEquipment ?? 0), 0)
+}
 const MARKER_RADIUS = 20 / 25.4 / 2
 
 /** Footprint (long side along the facing, short side across) of each terrain item, in inches. Own sizes: the sources print none. */
@@ -151,8 +159,10 @@ export function initEquipment(state: GameState, setup: GameSetup): void {
   }
   // The Grenadier carries its own frag and krak grenades, separate from the team's totals (T-AOD.9).
   for (const op of Object.values(state.operatives)) {
-    if (!state.data.datacards[op.datacardId]?.abilities.includes('aod.a.grenadier')) continue
-    for (const w of ['core.w.frag-grenade', 'core.w.krak-grenade']) {
+    // M9 batch B: and so does any operative a team rule gives its own grenades (team-rules ownGrenades)
+    const own = Object.keys(providerOwnGrenades(state, op).weapons)
+    if (!state.data.datacards[op.datacardId]?.abilities.includes('aod.a.grenadier') && own.length === 0) continue
+    for (const w of own.length > 0 ? own : ['core.w.frag-grenade', 'core.w.krak-grenade']) {
       if (state.data.weapons[w] && !op.weapons.includes(w)) op.weapons.push(w)
     }
   }
@@ -192,15 +202,23 @@ export function noteWeaponUses(ctx: Ctx): void {
 /** Grenadiers carry frag and krak grenades of their own: those throws are limited per operative, not by the team picks. */
 const OWN_GRENADIERS = ['aod.a.grenadier', 'pf.a.grenadier-specialist']
 function ownGrenade(s: GameState, op: Operative, w: string): boolean {
+  return ownAllowance(s, op, w) > 0
+}
+
+/** Uses per battle of an own grenade weapon (0 when the operative has none of its own). M9 batch B: team rules too. */
+function ownAllowance(s: GameState, op: Operative, w: string): number {
+  const fromRules = providerOwnGrenades(s, op).weapons[w]
+  if (fromRules) return fromRules
   const abilities = s.data.datacards[op.datacardId]?.abilities ?? []
-  return OWN_GRENADIERS.some((a) => abilities.includes(a)) && (w === 'core.w.frag-grenade' || w === 'core.w.krak-grenade')
+  return OWN_GRENADIERS.some((a) => abilities.includes(a)) && (w === 'core.w.frag-grenade' || w === 'core.w.krak-grenade') ? 1 : 0
 }
 
 /** Take away every limited weapon whose uses are spent (idempotent; runs between actions). */
 function stripSpentWeapons(s: GameState): void {
   for (const op of Object.values(s.operatives)) {
-    for (const w of ['core.w.frag-grenade', 'core.w.krak-grenade']) {
-      if ((op.usedLimited[w] ?? 0) >= 1 && ownGrenade(s, op, w) && op.weapons.includes(w)) op.weapons = op.weapons.filter((x) => x !== w)
+    for (const w of ['core.w.frag-grenade', 'core.w.krak-grenade', ...Object.keys(providerOwnGrenades(s, op).weapons)]) {
+      const allowance = ownAllowance(s, op, w)
+      if (allowance > 0 && (op.usedLimited[w] ?? 0) >= allowance && op.weapons.includes(w)) op.weapons = op.weapons.filter((x) => x !== w)
     }
   }
   for (const seat of SEATS) {

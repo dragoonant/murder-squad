@@ -293,6 +293,7 @@ export const EVENT_POLICY: Record<GameEvent['type'], 'sound' | 'conditional' | '
   TokenChanged: 'conditional',
   WoundsRegained: 'silent',
   OperativeSetAside: 'silent',
+  OperativePickChanged: 'silent',
   OperativeReturned: 'conditional',
   ActivationChained: 'silent',
   ActivationGated: 'silent',

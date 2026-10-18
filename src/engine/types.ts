@@ -111,6 +111,10 @@ export interface RuntimeDatacard {
   /** M2b-game: every legal chosen-weapon set (profile ids, fixed weapons excluded) when the card has a loadout choice tree */
   legalLoadouts?: string[][]
   figureArchetype?: string
+  /** M9 batch B: extra equipment options the team may take while this operative is on the roster (Hearthkyn Lugger) */
+  extraEquipment?: number
+  /** M9 batch B: an oval base (mm), for every loadout or only loadouts with one of `weapons` (Hunter Clade arquebus GUNNER) */
+  ovalBase?: { long: number; short: number; weapons?: string[] }
 }
 
 export interface RuntimeTeam {
@@ -127,6 +131,8 @@ export interface RuntimeTeam {
   equipment?: string[]
   /** M9 prep: false while the team is scaffolded (left out of the picker, sims and bench) */
   playable?: boolean
+  /** M9 batch B: per-operative keyword picks made at selection (Legionaries Marks of Chaos); data OperativeChoice */
+  operativeChoices?: { id: string; label: string; keywords: string[]; forKeyword?: string; exclude?: { datacards: string[]; keywords: string[] }[] }[]
 }
 
 /** M2b-game: strategy and firefight ploys, equipment and missions are the data records themselves. */
@@ -245,6 +251,8 @@ export interface RosterEntry {
   name?: string
   /** M2b-game: Chapter Veteran pick (a Chapter Tactic ability id) for this operative */
   chapterVeteran?: string
+  /** M9 batch B: operative choice id -> keyword (Marks of Chaos); missing picks take the first allowed keyword */
+  picks?: Record<string, string>
 }
 
 export interface GameSetup {
@@ -304,6 +312,11 @@ export interface Operative {
   /** radians; bearing of the last move, +Z is 0 */
   facing: number
   baseRadius: number
+  /**
+   * M9 batch B: oval bases only (footprint.ts). The base is three discs of `baseRadius` on its long axis, which
+   * lies along `facing`; this is the centre-to-end-disc distance in inches (half the long axis minus baseRadius).
+   */
+  ovalHalfAxis?: number
   height: number
   wounds: number
   maxWounds: number
@@ -335,6 +348,11 @@ export interface Operative {
   offboard?: string
   /** M9 prep: an incapacitated operative that may still return (Reanimation Protocols); removed operatives keep it */
   returnable?: boolean
+  /**
+   * M9 batch B: keywords picked at selection, operative choice id -> keyword (Legionaries Marks of Chaos). Real
+   * keywords for every rule (conditions.hasKeyword), public in view; changed only through operative-picks.setOperativePick
+   */
+  picks?: Record<string, string>
 }
 
 /** M9 prep: one stack of tokens of one kind, owned by one player, on an operative (tokens.ts). */
@@ -403,7 +421,10 @@ export interface SetupState {
 export interface StrategyState {
   step: 'initiative' | 'decide' | 'ready' | 'gambit' | 'done'
   rolls: { A?: number; B?: number }
-  gambit: { turn: Seat; passes: number; used: Record<Seat, string[]> }
+  /** M9 batch B: seats already asked whether to re-roll their initiative die this TP (Writ of Claim) */
+  rerollAsked?: Seat[]
+  /** `order` (M9 batch B): the gambits used in this step so far, in order (gambit.passed hook) */
+  gambit: { turn: Seat; passes: number; used: Record<Seat, string[]>; order?: { seat: Seat; gambitId: string }[] }
 }
 
 export interface Activation {
@@ -436,6 +457,17 @@ export interface Activation {
   reactedAt?: number
   /** M9 shared: a rule ended the activation early (Medic!): it ends once the current action is done, AP untouched */
   endsAfterAction?: boolean
+  /**
+   * M9 batch B: actions (universal ids or `ability:<id>`) the operative cannot take for the rest of this activation
+   * or counteraction, set by an `action.declared` hook that cancelled one (Daemonic Aura)
+   */
+  barred?: string[]
+  /**
+   * M9 batch B: a joint activation (Extremis Mind-Link): the other operative activated together with this one, with
+   * its own AP, actions and restrictions. The player switches between them (`firefight.action` 'switch'); ending one
+   * hands over to the other, and the activation is over when both have ended (firefight.joinActivation)
+   */
+  partner?: Activation
 }
 
 export interface ActivationFrame {
@@ -458,6 +490,12 @@ export interface FirefightState {
    * firefight.reactionDone finishes closing the mover's frame with these (resume name, outcome, frame data)
    */
   reactionAfter?: { resume: string; outcome: 'finished' | 'cancelled'; data: Record<string, unknown> } | null
+  /** M9 batch B: a reaction offered at the end of an activation or counteraction is in progress; reactionDone advances */
+  reactionAtEnd?: boolean
+  /** M9 batch B: a ploy in firefight.beforeActivation made this seat pass its activation this time (Heinous Arrogance) */
+  skipping?: Seat | null
+  /** M9 batch B: the firefight.beforeActivation window raised a decision for this seat's current turn (cleared when it activates or passes) */
+  beforeActivationFor?: Seat | null
 }
 
 export interface GameResult {
@@ -499,7 +537,16 @@ export interface GameState {
   /** the Shoot or Fight sequence in progress (M2b-attack); absent or null between actions */
   attack?: AttackState | null
   /** incapacitated operatives waiting for their "before removal" hooks and removal (R-5.18); M2b-attack */
-  removal?: { ids: string[]; hooked: string[]; /** M9 shared: ids whose operative.incapacitated ploy window was offered */ windowed?: string[] } | null
+  removal?: {
+    ids: string[]
+    hooked: string[]
+    /** M9 shared: ids whose operative.incapacitated ploy window was offered */
+    windowed?: string[]
+    /** M9 batch B: ids whose operative.killed window (the killer's seat, after removal) was offered */
+    killWindowed?: string[]
+    /** M9 batch B: removed operative id -> the operative whose attack incapacitated it */
+    killers?: Record<string, string>
+  } | null
   // M2b-game
   /** team configuration per seat: Chapter Tactics, Adaptive Tactics, Combat Doctrine */
   config: Record<Seat, TeamConfig>
@@ -513,6 +560,8 @@ export interface GameState {
   equipment: EquipmentState
   /** the ploy window currently being offered, if any */
   window: PloyWindowState | null
+  /** M9 batch B: windows suspended under a nested one (ploy.opponentUsed opened inside another window), innermost last */
+  windowStack?: PloyWindowState[]
   /** counter for ActiveEffect ids */
   nextEffect: number
 }
@@ -635,6 +684,8 @@ export interface RerollGrant {
   /** one: re-roll one die; result: re-roll every die showing one chosen result; any: re-roll any dice */
   mode: 'one' | 'result' | 'any'
   used: boolean
+  /** M9 batch B: only dice showing one of these values may be re-rolled with this grant (Omen: re-roll any 1s) */
+  values?: number[]
 }
 
 export interface DiceSide {
@@ -744,6 +795,15 @@ export type TimingWindowId =
   | 'firefight.start'
   | 'firefight.activationStart'
   | 'firefight.actionDeclared'
+  // M9 batch B: any action was declared, offered to the other seat only, before it resolves (Scrapcode Overload)
+  | 'firefight.opponentActionDeclared'
+  // M9 batch B: the seat on turn is about to pick an operative to activate (offered to that seat only; Heinous Arrogance)
+  | 'firefight.beforeActivation'
+  // M9 batch B: the other seat has just used a ploy or gambit (info ployId, usedBy; Devious Scheme)
+  | 'ploy.opponentUsed'
+  // M9 batch B: an operative was removed after an attack; offered to the seat whose operative incapacitated it
+  // (subjectId = that operative, removedId, removedPos; Vitalised Surge, Brutal Display)
+  | 'operative.killed'
   | 'firefight.actionEnded'
   | 'shoot.targetSelected'
   | 'shoot.attackRolled'
@@ -756,6 +816,12 @@ export type TimingWindowId =
   // roll of a Shoot; both fighters after the fight roll
   | 'shoot.beforeDefenceRerolls'
   | 'fight.beforeRerolls'
+  // M9 batch B: the attacker on the fresh attack roll of a Shoot before any re-roll (Engage to Acquire); the
+  // defender once the attack dice are final, before defence dice are collected (Refractor Field)
+  | 'shoot.beforeAttackRerolls'
+  | 'shoot.beforeDefenceRoll'
+  // M9 batch B: the defender on its own fresh defence roll, after the attacker's shoot.beforeDefenceRerolls
+  | 'shoot.defenderBeforeRerolls'
   | 'operative.incapacitated'
   | 'firefight.activationEnded'
   | 'turningPoint.end'
@@ -807,17 +873,28 @@ export interface ActionPayloadMap {
   'setup.decideInitiative': { seat: Seat }
   'setup.dropZone': { zoneId: string }
   /** M9 prep: `setAside: true` keeps the operative out of the killzone instead (reserve.ts; x and z are ignored) */
-  'setup.deploy': { operativeId: string; x: number; z: number; y?: number; setAside?: boolean }
+  /** M9 batch B: `facing` (radians, +Z = 0) orients an oval base; ignored for round bases (they face the killzone centre) */
+  'setup.deploy': { operativeId: string; x: number; z: number; y?: number; setAside?: boolean; facing?: number }
   'setup.equipMarker': { x: number; z: number; yaw?: number }
   'setup.objective': { x: number; z: number }
-  'strategy.initiative': Record<string, never>
+  /** M9 batch B: `reroll` answers an initiative re-roll offer (true re-rolls the seat's die, false keeps it) */
+  'strategy.initiative': { reroll?: boolean }
   'strategy.decideInitiative': { seat: Seat }
   'strategy.gambit': { gambitId: string; param?: string }
   'firefight.activate': { operativeId: string; counteract?: boolean }
   'firefight.order': { order: Order }
   /** `action` is a universal action id, or `ability:<id>` / `marker:pickUp` / `marker:place` for the rest; the other fields pick targets */
   'firefight.action': { action: string; markerId?: string; targetId?: string; param?: string; x?: number; z?: number; y?: number }
-  'move.path': { waypoints: Waypoint[] }
+  /**
+   * M9 batch B: `facing` turns an oval base in place at the end of the move (radians, +Z = 0), paying the arc its
+   * long-axis end sweeps (footprint.rotationCost); round bases ignore it and face along their last increment
+   */
+  'move.path': {
+    waypoints: Waypoint[]
+    facing?: number
+    /** M9 batch B: FLY (Jump Pack): one waypoint, the operative is set up there instead of moving along a path */
+    fly?: boolean
+  }
   'shoot.weapon': Record<string, unknown>
   'shoot.target': Record<string, unknown>
   'shoot.coverSave': Record<string, unknown>

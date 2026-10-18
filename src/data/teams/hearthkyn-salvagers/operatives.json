@@ -1,0 +1,52 @@
+[
+  {
+    "id": "hk.theyn",
+    "name": "Hearthkyn Theyn",
+    "team": "hearthkyn-salvagers",
+    "stats": {
+      "apl": 2,
+      "move": 5,
+      "save": "3+",
+      "wounds": 9
+    },
+    "base": 28,
+    "keywords": [
+      "HEARTHKYN SALVAGER",
+      "LEAGUES OF VOTANN",
+      "LEADER",
+      "THEYN"
+    ],
+    "weapons": {
+      "fixed": [],
+      "options": [
+        {
+          "id": "ranged",
+          "label": "Ranged weapon",
+          "from": [
+            "hk.w.autoch-bolt-pistol-theyn",
+            "hk.w.autoch-bolter",
+            "hk.w.bolt-revolver-theyn",
+            "hk.w.etacarn-plasma-pistol",
+            "hk.w.ion-blaster",
+            "hk.w.ion-pistol"
+          ]
+        },
+        {
+          "id": "melee",
+          "label": "Melee weapon",
+          "from": [
+            "hk.w.concussion-gauntlet",
+            "hk.w.plasma-weapon"
+          ]
+        }
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "hk-theyn"
+    },
+    "text": "The squad's veteran leader: one sidearm or rifle and one heavy close-combat tool, a once-per-battle field crest, and a knack for marking enemies as grudge targets.",
+    "source": "Hearthkyn Salvagers team PDF (April '26); docs/spec/13-teams.md section 10"
+  }
+]

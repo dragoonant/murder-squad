@@ -417,6 +417,8 @@ export function describeEvent(ev: GameEvent, state: GameState | null): string | 
       return `${who(ev.operativeId)} regains ${ev.amount} wound${ev.amount === 1 ? '' : 's'} (${ev.wounds} now).`
     case 'OperativeSetAside':
       return `${who(ev.operativeId)} is set aside, out of the killzone.`
+    case 'OperativePickChanged':
+      return `${who(ev.operativeId)} is now ${humanize(ev.to.toLowerCase())}${ev.from ? ` (was ${humanize(ev.from.toLowerCase())})` : ''}.`
     case 'OperativeReturned':
       return `${who(ev.operativeId)} ${ev.kind === 'emerge' ? 'emerges from hiding' : ev.kind === 'reanimated' ? 'is reanimated' : 'returns to the killzone'}.`
     case 'ActivationChained':

@@ -1,0 +1,51 @@
+[
+  {
+    "id": "lg.aspiring-champion",
+    "name": "Legionary Aspiring Champion",
+    "team": "legionaries",
+    "stats": {
+      "apl": 3,
+      "move": 6,
+      "save": "3+",
+      "wounds": 15
+    },
+    "base": 32,
+    "keywords": [
+      "LEGIONARY",
+      "CHAOS",
+      "HERETIC ASTARTES",
+      "LEADER",
+      "ASPIRING CHAMPION"
+    ],
+    "weapons": {
+      "fixed": [],
+      "options": [
+        {
+          "id": "pistol",
+          "label": "Pistol",
+          "from": [
+            "lg.wg.plasma-pistol",
+            "lg.w.tainted-bolt-pistol"
+          ]
+        },
+        {
+          "id": "melee",
+          "label": "Melee weapon",
+          "from": [
+            "lg.w.power-fist",
+            "lg.w.power-maul",
+            "lg.w.power-weapon",
+            "lg.w.tainted-chainsword"
+          ]
+        }
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "lg-aspiring-champion"
+    },
+    "text": "The warband's would-be champion: a pistol and a close-combat weapon of its choosing, and each kill it makes in its own activation spurs it to act once more.",
+    "source": "team-legionaries.pdf (Oct '25); docs/spec/13-teams.md section 7"
+  }
+]
