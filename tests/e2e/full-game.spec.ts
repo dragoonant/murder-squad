@@ -2,9 +2,11 @@
 // (the random bot's choice, dispatched through the store like a click), the other seat by the store's own bot loop.
 // Asserts the game ends without stalling (the watchdog), that rejections never pile up as toasts, and that the End
 // screen shows VP by source and the kill grades from the engine's mission view.
+import { writeFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 
-const QUERY = '?test=1&seats=human,bot&seed=full-1&mission=secure&layout=01&teams=aod,kom&speed=instant'
+// the bot seat plays with the normal AI tier (the default), in its Web Worker
+const QUERY = '?test=1&bot=normal&seats=human,bot&seed=full-1&mission=secure&layout=01&teams=aod,kom&speed=instant'
 
 interface RunResult {
   phase: string
@@ -37,6 +39,7 @@ test('plays a whole game to the End screen without stalling', async ({ page }) =
   await page.getByTestId('battle').waitFor()
   await page.waitForFunction(() => !!window.__ms?.getState())
 
+  const t0 = Date.now()
   const run = await page.evaluate(
     async (budgetMs): Promise<RunResult> => {
       const ms = window.__ms!
@@ -64,6 +67,14 @@ test('plays a whole game to the End screen without stalling', async ({ page }) =
     },
     240_000,
   )
+  const wallMs = Date.now() - t0
+  console.log(`full-game wall time at speed=instant (bot=normal): ${(wallMs / 1000).toFixed(1)} s, ${run.seq} steps, worst stall ${run.stalledMs} ms`)
+  writeFileSync('e2e-out/full-game-time.json', JSON.stringify({ bot: 'normal', speed: 'instant', wallMs, seq: run.seq, answered: run.answered, worstStallMs: run.stalledMs }, null, 2))
+  if (run.phase !== 'ended' || run.stalledMs >= 12_000) {
+    // a stalled game: keep the engine state, the open decision and the last events for the report
+    const dump = await page.evaluate(() => ({ state: window.__ms!.getState(), pending: window.__ms!.getPending(), legal: window.__ms!.legal(), events: window.__ms!.events().slice(-60) }))
+    writeFileSync('e2e-out/stall.json', JSON.stringify(dump))
+  }
   expect(run.phase).toBe('ended')
   expect(run.answered).toBeGreaterThan(40)
   // a stuck decision is answered by the watchdog within seconds; nothing may sit unchanged for long

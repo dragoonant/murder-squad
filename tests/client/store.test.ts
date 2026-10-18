@@ -9,6 +9,8 @@ import { useSettings } from '@/client/presentation/settings'
 import { usePresentedStore } from '@/client/presentation/presentedStore'
 import { useFeedStore } from '@/client/presentation/feedStore'
 import { createGame } from '@/engine'
+import { groupFeed } from '@/client/presentation/feedStore'
+import { useSession } from '@/client/store/session'
 
 function opts(seats: { A: 'human' | 'bot'; B: 'human' | 'bot' }, seed = 'store-1') {
   const b = dataBundle()
@@ -98,4 +100,30 @@ describe('game store', () => {
     expect(s.seq).toBeGreaterThan(80)
     expect(Object.values(s.operatives).every((o) => o.status !== 'reserve')).toBe(true)
   }, 20000)
+})
+
+describe('end screen helpers', () => {
+  it('groups consecutive dice lines in the event feed and leaves the rest alone', () => {
+    const e = (id: number, dice = false) => ({ id, seq: id, seat: null, text: `t${id}`, ...(dice ? { dice: true } : {}) })
+    const g = groupFeed([e(1), e(2, true), e(3, true), e(4, true), e(5), e(6, true)])
+    expect(g.map((x) => x.map((y) => y.id))).toEqual([[1], [2, 3, 4], [5], [6]])
+  })
+
+  it('Swap seats exchanges teams and human/bot and starts a new seed on the other side', () => {
+    const s = useSession.getState()
+    s.setSeat('A', 'human')
+    s.setSeat('B', 'bot')
+    s.setTeam('A', 'angels-of-death')
+    s.setTeam('B', 'kommandos')
+    s.setSeed('swap-1')
+    useSession.getState().swapSeats()
+    const after = useSession.getState()
+    expect(after.builds.A.teamId).toBe('kommandos')
+    expect(after.builds.B.teamId).toBe('angels-of-death')
+    expect(after.seats).toEqual({ A: 'bot', B: 'human' })
+    expect(after.seed).not.toBe('swap-1')
+    expect(useGame.getState().state?.players.A.teamId).toBe('kommandos')
+    expect(useGame.getState().seats).toEqual({ A: 'bot', B: 'human' })
+    useGame.getState().reset()
+  })
 })

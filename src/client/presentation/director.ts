@@ -137,6 +137,11 @@ function soundContext(state: GameState): SoundContext {
 
 // ---------------------------------------------------------------- one event
 
+/** Events whose feed line is a dice batch (attack, defence, plain rolls, re-rolls, blocks): the feed groups consecutive ones. */
+function isDiceLine(ev: GameEvent): boolean {
+  return ev.type === 'DiceRolled' || ev.type === 'AttackDiceRolled' || ev.type === 'DefenceDiceRolled' || ev.type === 'DiceRerolled' || ev.type === 'DiceBlocked'
+}
+
 async function playEvent(ev: GameEvent, state: GameState, gen: number): Promise<void> {
   const f = speedFactor(useSettings.getState().animSpeed)
   let text = describeEvent(ev, state)
@@ -324,7 +329,7 @@ async function playEvent(ev: GameEvent, state: GameState, gen: number): Promise<
       await wait(beatMs(ev))
   }
   if (gen !== generation) return
-  if (text) pushFeed(ev.seq, ev.seat, text)
+  if (text) pushFeed(ev.seq, ev.seat, text, isDiceLine(ev))
   requestRepaint()
 }
 

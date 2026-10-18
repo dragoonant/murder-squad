@@ -83,7 +83,7 @@ export function BattleScreen() {
     width: 270,
     bottom: 10,
     maxHeight: '58vh',
-    display: ff.compact ? 'none' : 'flex',
+    display: 'flex',
     flexDirection: 'column',
     justifyContent: 'flex-end',
     gap: 6,
@@ -97,7 +97,7 @@ export function BattleScreen() {
     right: 8,
     bottom: 10,
     width: 290,
-    display: ff.compact ? 'none' : 'flex',
+    display: 'flex',
     flexDirection: 'column',
     gap: 6,
     pointerEvents: 'none',
@@ -110,16 +110,20 @@ export function BattleScreen() {
       <BoardCanvas />
       <div style={{ position: 'absolute', inset: 0, padding: 'var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left)', pointerEvents: 'none' }}>
         <Hud />
-        <div style={column}>
-          <MissionPanel />
-          <EventFeed />
-        </div>
-        <div style={rail} data-testid="right-rail">
-          <OperativeCard docked />
-          <div style={{ flex: 1 }} />
-          <DiceLog />
-          <DiceTray />
-        </div>
+        {!ff.compact && (
+          <>
+            <div style={column}>
+              <MissionPanel />
+              <EventFeed />
+            </div>
+            <div style={rail} data-testid="right-rail">
+              <OperativeCard docked />
+              <div style={{ flex: 1 }} />
+              <DiceLog />
+              <DiceTray />
+            </div>
+          </>
+        )}
         {ff.compact && (
           <>
             <MissionPanel />

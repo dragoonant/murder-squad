@@ -87,7 +87,7 @@ export function Hud() {
         key={id}
         data-testid={testId}
         variant={on ? 'active' : 'base'}
-        style={{ padding: ff.compact ? '4px 6px' : '4px 8px', fontSize: ff.compact ? 11 : 12, minHeight: ff.compact ? 36 : undefined }}
+        style={{ padding: ff.compact ? '4px 6px' : '4px 8px', fontSize: ff.compact ? 11 : 12 }}
         onClick={() => (ff.compact || id === 'settings' ? useUi.getState().toggleDrawer(id) : useUi.getState().togglePanel(id as 'feed' | 'log' | 'mission'))}
       >
         {label}
@@ -95,13 +95,13 @@ export function Hud() {
     )
   }
   return (
-    <div data-testid="hud" style={barStyle}>
+    <div data-testid="hud" className="ms-touch" style={barStyle}>
       <SeatBlock seat="A" />
       <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
-        <div data-testid="hud-tp" style={{ fontWeight: 800, fontSize: 14 }}>
-          {state.turningPoint > 0 ? `Turning point ${state.turningPoint}/4` : 'Set-up'}
+        <div data-testid="hud-tp" style={{ fontWeight: 800, fontSize: 14, whiteSpace: 'nowrap' }}>
+          {state.turningPoint > 0 ? `${ff.compact ? 'TP' : 'Turning point'} ${state.turningPoint}/4` : 'Set-up'}
         </div>
-        <div data-testid="hud-phase" style={{ fontSize: 12, color: colors.muted }}>
+        <div data-testid="hud-phase" style={{ fontSize: 12, color: colors.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {phase}
           {state.initiative ? ` · initiative ${state.initiative}` : ''}
         </div>

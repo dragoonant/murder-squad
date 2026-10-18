@@ -3,38 +3,13 @@
 // with the random policy so a stuck worker can never freeze the game. Where there is no Worker (node tests, very old
 // browsers) the same core runs inline. `spawn` and `timeoutMs` are injectable so tests can simulate a dead worker.
 import type { Action, PendingDecision, PlayerView } from '@/engine'
-import { createAiDecider } from '@/ai/decider'
-import { handleRequest, type WorkerRequest, type WorkerResponse } from '@/ai/worker'
-import { TIER_IDS, type Tier } from '@/ai/tiers'
+import type { WorkerRequest, WorkerResponse } from '@/ai/worker'
+// The AI itself (decider, planner, weights) runs in the Worker. The main bundle only imports it on demand, for the
+// random fallback and for the inline path where there is no Worker, so the start screen never downloads it.
+import type { BotTier } from './botTier'
 
-export type BotTier = Tier
+export { getBotTier, setBotTier, type BotTier } from './botTier'
 export const BOT_TIMEOUT_MS = 3000
-const STORAGE_KEY = 'ms.botTier'
-
-function isTier(v: unknown): v is BotTier {
-  return typeof v === 'string' && (TIER_IDS as readonly string[]).includes(v)
-}
-
-/** The tier chosen on the Start screen (`setBotTier`), else `?bot=` in the URL, else normal. */
-export function getBotTier(): BotTier {
-  try {
-    const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('bot') : null
-    if (isTier(q)) return q
-    const s = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null
-    if (isTier(s)) return s
-  } catch {
-    // storage may be blocked
-  }
-  return 'normal'
-}
-
-export function setBotTier(tier: BotTier): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, tier)
-  } catch {
-    // ignore
-  }
-}
 
 /** The slice of the Worker API the client uses (a test double implements it). */
 export interface WorkerLike {
@@ -77,6 +52,8 @@ interface Waiting {
 
 export class AiWorkerClient {
   private worker: WorkerLike | null = null
+  /** the inline core has been used (so `reset` has memory to clear) */
+  private inlineUsed = false
   private spawned = false
   private nextId = 1
   private readonly waiting = new Map<number, Waiting>()
@@ -110,7 +87,7 @@ export class AiWorkerClient {
     this.waiting.delete(res.id)
     clearTimeout(w.timer)
     if (res.type === 'action') w.resolve({ action: res.action, source: 'worker', ms: res.ms })
-    else w.resolve(this.fallback(w.req, w.t0))
+    else void this.fallback(w.req, w.t0).then(w.resolve)
   }
 
   /** The worker died or erred: answer everything waiting with the random policy and start fresh next time. */
@@ -119,7 +96,7 @@ export class AiWorkerClient {
     for (const [id, w] of [...this.waiting]) {
       this.waiting.delete(id)
       clearTimeout(w.timer)
-      w.resolve(this.fallback(w.req, w.t0))
+      void this.fallback(w.req, w.t0).then(w.resolve)
     }
   }
 
@@ -133,8 +110,9 @@ export class AiWorkerClient {
     this.spawned = false
   }
 
-  private fallback(req: Extract<WorkerRequest, { type: 'decide' }>, t0: number): AiAnswer {
+  private async fallback(req: Extract<WorkerRequest, { type: 'decide' }>, t0: number): Promise<AiAnswer> {
     this.fallbacks++
+    const { createAiDecider } = await import('@/ai/decider')
     const d = createAiDecider('random', { seed: `${req.seed}|fallback` })
     const action = d.decideSync(req.view, req.pending, req.legal).action
     return { action, source: 'fallback', ms: Date.now() - t0 }
@@ -156,15 +134,18 @@ export class AiWorkerClient {
     const t0 = Date.now()
     const w = this.ensureWorker()
     if (!w) {
-      const res = handleRequest(req)
-      if (res && res.type === 'action') return Promise.resolve({ action: res.action, source: 'inline', ms: res.ms })
-      return Promise.resolve(this.fallback(req, t0))
+      this.inlineUsed = true
+      return import('@/ai/worker').then(({ handleRequest }) => {
+        const res = handleRequest(req)
+        if (res && res.type === 'action') return { action: res.action, source: 'inline' as const, ms: res.ms }
+        return this.fallback(req, t0)
+      })
     }
     return new Promise<AiAnswer>((resolve) => {
       const timer = setTimeout(() => {
         // a worker that missed the deadline is probably still busy: replace it so the next decision starts clean
         this.waiting.delete(req.id)
-        resolve(this.fallback(req, t0))
+        void this.fallback(req, t0).then(resolve)
         this.dropWorker()
       }, this.timeoutMs)
       this.waiting.set(req.id, { resolve, timer, req, t0 })
@@ -173,7 +154,7 @@ export class AiWorkerClient {
       } catch {
         this.waiting.delete(req.id)
         clearTimeout(timer)
-        resolve(this.fallback(req, t0))
+        void this.fallback(req, t0).then(resolve)
       }
     })
   }
@@ -187,7 +168,7 @@ export class AiWorkerClient {
       } catch {
         // ignore
       }
-    } else handleRequest(msg)
+    } else if (this.inlineUsed) void import('@/ai/worker').then(({ handleRequest }) => handleRequest(msg))
   }
 
   dispose(): void {

@@ -8,18 +8,22 @@ export default defineConfig(({ mode }) => ({
   base: mode === 'production' ? '/murder-squad/' : '/',
   plugins: [react()],
   build: {
+    // the lazily loaded 3D chunk (three.js + react-three-fiber + drei) is large by nature; the first load stays small
     chunkSizeWarningLimit: 900,
-    rollupOptions: {
+    rolldownOptions: {
       input: {
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
       },
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules/three')) return 'three'
-          if (id.includes('node_modules/@react-three')) return 'r3f'
-          if (id.includes('node_modules/react')) return 'react'
-          if (id.includes('/src/engine/') || id.includes('/src/data/')) return 'engine'
-          return undefined
+        // The menus need only react, the engine and the data; three.js and react-three-fiber/drei belong to the lazily
+        // loaded battle, team-builder preview and gallery chunks (App.tsx), so they stay out of the first load.
+        codeSplitting: {
+          groups: [
+            { name: 'react', test: /node_modules[\/](react|react-dom|scheduler|zustand)[\/]/, priority: 40 },
+            { name: 'three', test: /node_modules[\/]three[\/]/, priority: 30 },
+            { name: 'r3f', test: /node_modules[\/](@react-three|three-stdlib|three-mesh-bvh|troika-[^\/]+|suspend-react|react-use-measure|its-fine|maath|meshline|camera-controls|stats-gl|bidi-js|webgl-sdf-generator|@monogrid)[\/]/, priority: 20 },
+            { name: 'engine', test: /[\/]src[\/](engine|data)[\/]/, priority: 10 },
+          ],
         },
       },
     },

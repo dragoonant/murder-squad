@@ -22,6 +22,11 @@
       }
       html, body, #root { background: #0a0a10; margin: 0; height: 100%; height: 100dvh; }
       html, body { overflow: hidden; overscroll-behavior: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+      /* phones: anything inside an .ms-touch container is a 44 px target (buttons, selects, labels, sliders) */
+      [data-ff="compact"] .ms-touch button, [data-ff="compact"] .ms-touch select, [data-ff="compact"] .ms-touch a[href], [data-ff="compact"] .ms-touch [role="button"] { min-height: 44px; min-width: 44px; touch-action: manipulation; }
+      [data-ff="compact"] .ms-touch label { min-height: 44px; }
+      [data-ff="compact"] .ms-touch input[type="range"] { height: 44px; }
+      [data-ff="compact"] .ms-touch input[type="checkbox"], [data-ff="compact"] .ms-touch input[type="radio"] { width: 24px; height: 24px; flex: 0 0 auto; }
       canvas { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
     </style>
   </head>

@@ -49,6 +49,7 @@ const KIND_TITLE: Record<string, { title: string; hint: string }> = {
   'setup.dropZone': { title: 'Choose a drop zone', hint: 'Pick the edge of the killzone you deploy from.' },
   'setup.deploy': { title: 'Deploy operatives', hint: 'Select an operative, then click inside the highlighted drop zone to set it down.' },
   'setup.equipMarker': { title: 'Place equipment', hint: 'Place this equipment marker.' },
+  'setup.objective': { title: 'Place an objective', hint: 'Pick one of the highlighted spots for this objective marker.' },
   'strategy.initiative': { title: 'Roll for initiative', hint: 'Both sides roll a die at the start of each turning point.' },
   'strategy.decideInitiative': { title: 'Tied: choose initiative', hint: 'The roll tied; you decide who takes initiative this turning point.' },
   'strategy.gambit': { title: 'Strategic gambit', hint: 'Spend CP on a gambit, or pass. The step ends after two passes in a row.' },
@@ -75,8 +76,26 @@ const KIND_TITLE: Record<string, { title: string; hint: string }> = {
   confirm: { title: 'Confirm', hint: 'Acknowledge to continue.' },
 }
 
-export function decisionInfo(kind: DecisionKind | string): { title: string; hint: string } {
-  return KIND_TITLE[kind] ?? { title: humanize(kind), hint: 'Choose one of the options below.' }
+/** One line on why the decision matters (shown under the hint). Dice and defence decisions always have one. */
+export const KIND_WHY: Record<string, string> = {
+  'shoot.coverSave': 'A kept cover save is a guaranteed success, so it protects you even on cold dice; rolling every die can do better or worse.',
+  'shoot.block': 'Every hit you leave unblocked becomes damage, and a critical hit hurts more, so how you pair saves with hits sets the wounds you take.',
+  'fight.resolve': 'Each success is spent once, either to wound them or to cancel one of their hits, so the order you spend them in decides who is hurt.',
+  'dice.reroll': 'A re-roll replaces the die and the new result stands, even if it is worse, so keep the dice that already count.',
+  'dice.commandReroll': 'Command points are few and also pay for ploys, so spend one only on a roll that decides something.',
+  'shoot.target': "Cover and obscured shots lose hits, and the odds shown are the engine's own numbers for this exact shot.",
+  'shoot.weapon': 'Profiles differ in attacks, hit and damage, and their special rules change how the shot plays out.',
+  'firefight.action': 'Each activation has limited AP, so what you spend them on decides what this operative achieves before it is expended.',
+  'firefight.order': 'Engage keeps every action open; Conceal hides the operative better but cannot Charge or Shoot.',
+  'guard.interrupt': 'Answering now uses up the Guard, but it lets you act before the enemy finishes.',
+  'strategy.gambit': 'Command points are limited, so each gambit or ploy is a trade-off against the next one.',
+  'ploy.firefight': 'Command points are limited, so each ploy is a trade-off against the next one.',
+}
+
+export function decisionInfo(kind: DecisionKind | string): { title: string; hint: string; why?: string } {
+  const base = KIND_TITLE[kind] ?? { title: humanize(kind), hint: 'Choose one of the options below.' }
+  const why = KIND_WHY[kind]
+  return why ? { ...base, why } : base
 }
 
 const OPTION_KEY: Record<string, string> = {

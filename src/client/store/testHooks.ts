@@ -65,7 +65,7 @@ function autoStep(): boolean {
 export function installTestHooks(): void {
   if (typeof window === 'undefined') return
   const p = currentParams()
-  if (!p.test && !p.gallery && !new URLSearchParams(location.search).has('debug')) return
+  if (!p.test && !p.scenario && !p.gallery && !new URLSearchParams(location.search).has('debug')) return
   window.__ms = {
     getState: () => useGame.getState().state,
     getPending: () => useGame.getState().pending,

@@ -1,7 +1,7 @@
 import { existsSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { chooseMat, matOverride, MATS, pickMat } from '@/client/board/mats'
+import { chooseMat, getMatPref, matOverride, matThumbUrl, MATS, pickMat } from '@/client/board/mats'
 
 const dir = resolve(process.cwd(), 'public/assets/mats')
 
@@ -40,5 +40,13 @@ describe('killzone mats', () => {
     expect(chooseMat('1', '?mat=blood-foundry').id).toBe('blood-foundry')
     expect(chooseMat('1', '?mat=nope')).toBe(pickMat('1'))
     expect(chooseMat('1', '')).toBe(pickMat('1'))
+  })
+
+  it('the Start screen pick beats the seed, random falls through, the URL beats both', () => {
+    expect(chooseMat('1', '', 'ash-waste').id).toBe('ash-waste')
+    expect(chooseMat('1', '', 'random')).toBe(pickMat('1'))
+    expect(chooseMat('1', '?mat=blood-foundry', 'ash-waste').id).toBe('blood-foundry')
+    expect(getMatPref()).toBe('random')
+    expect(matThumbUrl('ash-waste', '/x/')).toBe('/x/assets/mats/ash-waste-thumb.jpg')
   })
 })

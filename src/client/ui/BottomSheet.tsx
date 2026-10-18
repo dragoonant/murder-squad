@@ -29,6 +29,7 @@ export const STAGED_ROW_PX = 52
 // RerollTray, ...). Inline styles never set min-height, so this wins without touching those files.
 const SHEET_CSS = `
 .ms-sheet { max-height: 45vh; max-height: 45dvh; bottom: 6px; }
+@media (max-height: 420px) { .ms-sheet { max-height: 68vh; max-height: 68dvh; } }
 .ms-sheet[data-staged="true"] { right: ${CAMERA_COL_PX + STAGED_BAR_PX + 6}px; min-height: ${STAGED_ROW_PX}px; justify-content: center; }
 .ms-sheet[data-staged="true"][data-collapsed="false"] { z-index: 46; justify-content: flex-start; }
 .ms-sheet button { min-height: ${TOUCH_MIN}px; min-width: ${TOUCH_MIN}px; touch-action: manipulation; }
@@ -81,7 +82,7 @@ const chevron: CSSProperties = {
 const bodyStyle: CSSProperties = { flex: '1 1 auto', minHeight: 0, overflowY: 'auto', padding: '2px 12px 8px', display: 'flex', flexDirection: 'column', gap: 6 }
 const footerStyle: CSSProperties = {
   flex: '0 0 auto',
-  padding: '6px 12px',
+  padding: '4px 12px',
   borderTop: `1px solid ${colors.border}`,
   background: colors.bg,
 }

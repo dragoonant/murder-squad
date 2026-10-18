@@ -2,10 +2,14 @@
 // builder, or straight to the briefing with default rosters (Quick start).
 import type { CSSProperties, ReactNode } from 'react'
 import type { Seat } from '@/engine'
+import { MATS, matThumbUrl } from '../board/mats'
+import { BOT_TIERS, type BotTier } from '../bot/botTier'
 import { dataBundle } from '../game/adapter'
 import { layoutList, missionList, teamList } from '../game/defaults'
+import { useSettings, type AnimSpeed } from '../presentation/settings'
 import { randomSeed, useSession } from '../store/session'
 import { colors, fontStack, panel } from './theme'
+import { Tooltip } from './Tooltip'
 import { Btn, Dot, Muted } from './widgets'
 
 const page: CSSProperties = {
@@ -41,6 +45,74 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
+const TIER_INFO: Record<BotTier, { label: string; help: string }> = {
+  random: { label: 'Random', help: 'Picks any legal action. A gentle first game.' },
+  easy: { label: 'Easy', help: 'Plays the best single action and ignores longer plans.' },
+  normal: { label: 'Normal', help: 'Plans a whole activation, weighs cover and exposure, and goes for the objectives.' },
+}
+const SPEED_INFO: { id: AnimSpeed; label: string }[] = [
+  { id: 'normal', label: 'Normal' },
+  { id: 'fast', label: 'Fast' },
+  { id: 'instant', label: 'Instant' },
+]
+
+/** A row of toggle buttons (one selected); every target is at least 44 px tall for touch. */
+function Segmented<T extends string>({ id, value, options, onChange }: { id: string; value: T; options: { id: T; label: string }[]; onChange(v: T): void }) {
+  return (
+    <span role="radiogroup" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {options.map((o) => (
+        <Btn key={o.id} role="radio" aria-checked={o.id === value} data-testid={`${id}-${o.id}`} variant={o.id === value ? 'active' : 'base'} style={{ minHeight: 44, minWidth: 64 }} onClick={() => onChange(o.id)}>
+          {o.label}
+        </Btn>
+      ))}
+    </span>
+  )
+}
+
+function MatPicker() {
+  const matId = useSession((s) => s.matId)
+  const setMat = useSession((s) => s.setMat)
+  const base = import.meta.env.BASE_URL
+  const tile = (id: string, name: string, thumb: string | null) => {
+    const on = id === matId
+    return (
+      <Tooltip key={id} title={name} body={id === 'random' ? 'A different floor each game, picked from the seed.' : 'Use this floor every game.'}>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={on}
+          aria-label={name}
+          data-testid={`mat-${id}`}
+          onClick={() => setMat(id)}
+          style={{
+            width: 58,
+            height: 58,
+            padding: 0,
+            borderRadius: 8,
+            cursor: 'pointer',
+            overflow: 'hidden',
+            color: colors.text,
+            fontFamily: fontStack,
+            fontSize: 24,
+            fontWeight: 800,
+            background: thumb ? `center / cover url(${thumb})` : '#171a26',
+            border: `2px solid ${on ? colors.accent : colors.border}`,
+            boxShadow: on ? `0 0 0 2px ${colors.accent}55` : 'none',
+          }}
+        >
+          {thumb ? null : '?'}
+        </button>
+      </Tooltip>
+    )
+  }
+  return (
+    <span role="radiogroup" aria-label="Floor mat" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {tile('random', 'Random', null)}
+      {MATS.map((m) => tile(m.id, m.name, matThumbUrl(m.id, base)))}
+    </span>
+  )
+}
+
 function SeatRow({ seat }: { seat: Seat }) {
   const s = useSession()
   const teams = teamList(dataBundle())
@@ -64,12 +136,14 @@ function SeatRow({ seat }: { seat: Seat }) {
 
 export function StartScreen() {
   const s = useSession()
+  const speed = useSettings((x) => x.animSpeed)
+  const setSpeed = useSettings((x) => x.setAnimSpeed)
   const b = dataBundle()
   const layout = b.layouts[s.layoutId]
   const mission = b.missions[s.missionId]
   const maps = mission && layout ? mission.maps.filter((m) => layout.maps.some((lm) => lm.id === m.id)) : []
   return (
-    <div style={page} data-testid="start-screen">
+    <div className="ms-touch" style={page} data-testid="start-screen">
       <div style={{ width: 'min(620px, 100%)' }}>
         <h1 data-testid="title" style={{ fontSize: 'clamp(30px, 6vw, 46px)', margin: '14px 0 2px', letterSpacing: 1 }}>
           Murder Squad
@@ -116,7 +190,20 @@ export function StartScreen() {
               </Btn>
             </span>
           </Row>
-          <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginTop: 6 }}>
+          <div style={{ fontWeight: 700, margin: '14px 0 8px' }}>Options</div>
+          <Row label="Bot level">
+            <span>
+              <Segmented id="bot-tier" value={s.botTier} options={BOT_TIERS.map((t) => ({ id: t, label: TIER_INFO[t].label }))} onChange={s.setBotTier} />
+              <Muted style={{ marginTop: 4 }}>{TIER_INFO[s.botTier].help}</Muted>
+            </span>
+          </Row>
+          <Row label="Animation speed">
+            <Segmented id="anim" value={speed} options={SPEED_INFO} onChange={setSpeed} />
+          </Row>
+          <Row label="Floor mat">
+            <MatPicker />
+          </Row>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginTop: 6, minHeight: 44 }}>
             <input data-testid="manual-placement" type="checkbox" checked={s.manualPlacement} onChange={(e) => s.setManualPlacement(e.target.checked)} />
             Place objective and equipment markers myself
           </label>
@@ -130,8 +217,11 @@ export function StartScreen() {
             </Btn>
           </div>
         </div>
-        <Muted style={{ marginTop: 12 }}>
-          <a style={{ color: colors.muted }} href="?gallery">
+        <Muted style={{ marginTop: 12, display: 'flex', gap: 18 }}>
+          <a data-testid="how-to-play" style={{ color: colors.accent, padding: '10px 0' }} href="#how-to-play" onClick={(e) => { e.preventDefault(); s.openHowTo() }}>
+            How to play
+          </a>
+          <a style={{ color: colors.muted, padding: '10px 0' }} href="?gallery">
             Figure gallery
           </a>
         </Muted>

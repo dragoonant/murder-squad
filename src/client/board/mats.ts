@@ -55,7 +55,33 @@ export function matOverride(search: string): MatDef | null {
   return matById(new URLSearchParams(search).get('mat'))
 }
 
-/** URL override first, then the seed pick. */
-export function chooseMat(seed: string | number, search = ''): MatDef {
-  return matOverride(search) ?? pickMat(seed)
+const PREF_KEY = 'ms.mat'
+
+/** The floor mat chosen on the Start screen: a mat id, or 'random' (the seed picks, a new look each game). */
+export function getMatPref(): string {
+  try {
+    const v = typeof localStorage !== 'undefined' ? localStorage.getItem(PREF_KEY) : null
+    if (v && matById(v)) return v
+  } catch {
+    // storage may be blocked
+  }
+  return 'random'
+}
+
+export function setMatPref(id: string): void {
+  try {
+    localStorage.setItem(PREF_KEY, id)
+  } catch {
+    // ignore
+  }
+}
+
+/** URL override first, then the Start screen's pick (`pref`, a mat id; 'random' or null falls through), then the seed pick. */
+export function chooseMat(seed: string | number, search = '', pref: string | null = null): MatDef {
+  return matOverride(search) ?? matById(pref) ?? pickMat(seed)
+}
+
+/** Thumbnail URL for the Start screen picker (192x192 JPEG). */
+export function matThumbUrl(id: string, base = ''): string {
+  return `${base}assets/mats/${id}-thumb.jpg`
 }

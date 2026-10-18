@@ -13,6 +13,20 @@ function opt(partial: Partial<DecisionOption> & { type: string; payload?: unknow
   }
 }
 
+const ALL_KINDS = ['setup.initiative', 'setup.decideInitiative', 'setup.dropZone', 'setup.deploy', 'setup.equipMarker', 'setup.objective', 'strategy.initiative', 'strategy.decideInitiative', 'strategy.gambit', 'firefight.activate', 'firefight.order', 'firefight.action', 'move.path', 'shoot.weapon', 'shoot.target', 'shoot.coverSave', 'shoot.block', 'fight.target', 'fight.weapon', 'fight.resolve', 'dice.reroll', 'dice.commandReroll', 'weapon.choice', 'ploy.firefight', 'guard.interrupt', 'marker.pickUp', 'marker.place', 'mission.action', 'ability.choice', 'confirm'] as const
+
+describe('every prompt names what it decides', () => {
+  it('has a title and a hint for every decision kind, and a why-it-matters line for cover save, block and re-roll', () => {
+    for (const k of ALL_KINDS) {
+      const i = decisionInfo(k)
+      expect(i.title.length, k).toBeGreaterThan(3)
+      expect(i.hint.length, k).toBeGreaterThan(10)
+      expect(`${i.title} ${i.hint}`, k).not.toMatch(/undefined|NaN|object Object/)
+    }
+    for (const k of ['shoot.coverSave', 'shoot.block', 'dice.reroll', 'dice.commandReroll']) expect(decisionInfo(k).why?.length ?? 0, k).toBeGreaterThan(30)
+  })
+})
+
 describe('labels', () => {
   it('humanizes ids and keys', () => {
     expect(humanize('action.fallBack')).toBe('Fall back')

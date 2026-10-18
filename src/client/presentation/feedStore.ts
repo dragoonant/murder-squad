@@ -8,6 +8,8 @@ export interface FeedEntry {
   seq: number
   seat: Seat | null
   text: string
+  /** a dice line (roll, re-roll, block): consecutive ones are shown as one group */
+  dice?: boolean
 }
 export interface DiceEntry {
   id: number
@@ -32,8 +34,19 @@ interface FeedState {
 let nextId = 1
 export const useFeedStore = create<FeedState>(() => ({ feed: [], dice: [], toasts: [] }))
 
-export function pushFeed(seq: number, seat: Seat | null, text: string): void {
-  useFeedStore.setState((s) => ({ feed: [...s.feed, { id: nextId++, seq, seat, text }].slice(-300) }))
+/** Consecutive dice lines become one group; every other entry stands alone. */
+export function groupFeed(feed: FeedEntry[]): FeedEntry[][] {
+  const out: FeedEntry[][] = []
+  for (const f of feed) {
+    const last = out[out.length - 1]
+    if (f.dice && last && last[0]!.dice) last.push(f)
+    else out.push([f])
+  }
+  return out
+}
+
+export function pushFeed(seq: number, seat: Seat | null, text: string, dice = false): void {
+  useFeedStore.setState((s) => ({ feed: [...s.feed, { id: nextId++, seq, seat, text, ...(dice ? { dice: true } : {}) }].slice(-300) }))
 }
 
 export function pushDice(seq: number, seat: Seat | null, purpose: string, dice: (number | null)[], kinds?: string[]): void {

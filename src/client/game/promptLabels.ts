@@ -8,7 +8,7 @@ import { findOffer } from '@/engine/abilities'
 import { windowsOf } from '@/engine/ploys'
 import { fightOutcome, hitOdds, type FightMove, type FightPosition, type FightSideState } from '@/engine/query'
 import { dataBundle } from './adapter'
-import { humanize, opName, rulesLine, SEAT_NAME, weaponName } from './labels'
+import { decisionInfo, humanize, opName, rulesLine, SEAT_NAME, weaponName } from './labels'
 
 export const pct = (v: number): string => `${Math.round(v * 100)}%`
 
@@ -111,7 +111,7 @@ export function targetCard(opt: DecisionOption, state: GameState | null): Target
   if (distance !== null) bits.push(`${distance.toFixed(1)}″`)
   if (expectedDamage !== null) bits.push(`expected damage ${expectedDamage.toFixed(1)}`)
   if (killProbability !== null) bits.push(`kill ${pct(killProbability)}`)
-  if (d.vantageAccurate) bits.push('vantage bonus')
+  if (d.vantageAccurate) bits.push(`Vantage: Accurate ${d.vantageAccurate}`)
   return { id, name: opName(state, id), badge: targetBadge(d), distance, expectedDamage, killProbability, line: bits.join(' · '), vantage: !!d.vantageAccurate }
 }
 
@@ -648,6 +648,8 @@ export interface PromptSummary {
   hint: string
   /** extra lines (options with their numbers) in reading order */
   lines: string[]
+  /** one line on why the decision matters (cover save, block, re-roll and others) */
+  why?: string
 }
 
 const ATTACK_KINDS = new Set([
@@ -696,6 +698,12 @@ export function hasDedicatedPrompt(kind: string): boolean {
 
 /** One sentence plus the option lines for a decision, built from the same functions the prompt components use. */
 export function promptSummary(state: GameState, pending: PendingDecision): PromptSummary {
+  const s = promptSummaryBase(state, pending)
+  const why = decisionInfo(pending.kind).why
+  return why ? { ...s, why } : s
+}
+
+function promptSummaryBase(state: GameState, pending: PendingDecision): PromptSummary {
   const opts = pending.options ?? []
   const ctx = pending.context
   switch (pending.kind) {

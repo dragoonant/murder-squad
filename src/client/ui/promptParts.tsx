@@ -5,10 +5,31 @@ import { decisionInfo } from '../game/labels'
 import type { BadgeKind, DieView } from '../game/promptLabels'
 import { colors, fontStack } from './theme'
 import { Tooltip } from './Tooltip'
+import { useFormFactor } from './formFactor'
 import { Dot, Die, Muted } from './widgets'
+
+/** The one-line "why this matters" under a prompt's hint. */
+export function Why({ text }: { text?: string }) {
+  if (!text) return null
+  return (
+    <div data-testid="prompt-why" style={{ fontSize: 12, color: colors.accent, marginTop: 3 }}>
+      Why it matters: <span style={{ color: colors.text }}>{text}</span>
+    </div>
+  )
+}
 
 export function PromptHeader({ pending, hint, title }: { pending: PendingDecision; hint?: string; title?: string }) {
   const info = decisionInfo(pending.kind)
+  const compact = useFormFactor().compact
+  // on a phone the sheet header already names the decision: keep the hint and the reason
+  if (compact) {
+    return (
+      <div style={{ marginBottom: 6 }}>
+        <Muted>{hint ?? info.hint}</Muted>
+        <Why text={info.why} />
+      </div>
+    )
+  }
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{ fontWeight: 800, fontSize: 15 }} data-testid="prompt-title">
@@ -16,6 +37,7 @@ export function PromptHeader({ pending, hint, title }: { pending: PendingDecisio
         {title ?? info.title}
       </div>
       <Muted>{hint ?? info.hint}</Muted>
+      <Why text={info.why} />
     </div>
   )
 }

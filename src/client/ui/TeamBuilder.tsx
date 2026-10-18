@@ -8,6 +8,7 @@ import { OrbitControls } from '@react-three/drei'
 import type { Group } from 'three'
 import {
   defaultLoadout,
+  enumerateLoadouts,
   expandWeaponRef,
   slotCost,
   type DatacardData,
@@ -79,6 +80,20 @@ function nestedDefaults(card: DatacardData, slots: LoadoutSlot[]): LoadoutChoice
 
 function nestedKeys(slots: LoadoutSlot[]): string[] {
   return slots.flatMap((s) => [s.id, ...(s.sets ?? []).flatMap((set) => nestedKeys(set.options ?? []))])
+}
+
+/** A random legal loadout for a datacard (uniform over every legal combination); the default when it has none. */
+export function randomLoadout(card: DatacardData, rnd: () => number = Math.random): LoadoutChoice {
+  const all = enumerateLoadouts(card)
+  return all.length ? all[Math.floor(rnd() * all.length)]! : defaultLoadout(card)
+}
+
+/** The weapon names an operative carries for a loadout (fixed kit plus the chosen options). */
+function carriedNames(card: DatacardData, choice: LoadoutChoice): string[] {
+  const b = dataBundle()
+  const ids = [...new Set([...card.weapons.fixed.flatMap((r) => expandWeaponRef(r, b.weaponGroups)), ...chosenWeaponIds(card, choice)])]
+  const names = ids.map((id) => (b.byId[id] as WeaponData | undefined)?.name ?? humanize(id))
+  return [...new Set(names)]
 }
 
 // ---------------------------------------------------------------- loadout editor
@@ -263,7 +278,7 @@ export function TeamBuilder() {
   const weaponIds = selectedCard ? [...new Set([...selectedCard.weapons.fixed.flatMap((r) => expandWeaponRef(r, b.weaponGroups)), ...chosenWeaponIds(selectedCard, choice)])] : []
 
   return (
-    <div style={page} data-testid="team-builder">
+    <div className="ms-touch" style={page} data-testid="team-builder">
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
         <h2 style={{ margin: 0, fontSize: 20 }}>Team builder</h2>
         {(['A', 'B'] as const).map((sd) => (
@@ -291,6 +306,11 @@ export function TeamBuilder() {
         <Btn onClick={() => set(defaultBuild(b, team))} data-testid="builder-reset">
           Reset to default
         </Btn>
+        <Tooltip title="Randomise loadouts" body="Rolls a legal weapon loadout for every operative on this roster. The roster itself does not change.">
+          <Btn data-testid="builder-randomise" onClick={() => set({ ...build, loadouts: ids.map((id) => randomLoadout(b.byId[id] as DatacardData)) })}>
+            Randomise loadouts
+          </Btn>
+        </Tooltip>
       </div>
       <Muted style={{ marginBottom: 10 }}>{team.text}</Muted>
 
@@ -318,7 +338,12 @@ export function TeamBuilder() {
                       style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px', marginTop: 3, borderRadius: 6, background: at === idx ? 'rgba(245,217,90,0.16)' : 'rgba(255,255,255,0.04)', cursor: 'pointer' }}
                       onClick={() => setSelectedIdx(at)}
                     >
-                      <span style={{ flex: 1, fontSize: 13 }}>{c.name}</span>
+                      <span style={{ flex: 1, fontSize: 13 }}>
+                        {c.name}
+                        <span data-testid={`pick-kit-${slot.id}-${i}`} style={{ display: 'block', fontSize: 11, color: colors.muted }}>
+                          {carriedNames(c, build.loadouts[at] ?? {}).join(', ')}
+                        </span>
+                      </span>
                       <Btn data-testid={`remove-${slot.id}-${i}`} style={{ padding: '2px 8px' }} onClick={(e) => { e.stopPropagation(); remove(slot, i) }}>
                         Remove
                       </Btn>
@@ -382,6 +407,10 @@ export function TeamBuilder() {
                 />
               ))}
               <Preview card={selectedCard} seat={seat} weaponIds={weaponIds} teamId={build.teamId} />
+              <div data-testid="builder-carrying" style={{ fontSize: 12, marginTop: 4 }}>
+                <span style={{ color: colors.muted }}>Carrying: </span>
+                {carriedNames(selectedCard, choice).join(', ')}
+              </div>
               <Muted style={{ marginTop: 4 }}>{selectedCard.text}</Muted>
             </>
           ) : (

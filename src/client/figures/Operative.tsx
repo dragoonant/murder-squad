@@ -382,7 +382,7 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
         <WoundBar ratio={op.wounds / op.maxWounds} y={0} />
       </Billboard>
       {(selected || hovered) && (
-        <Html position={[0, top + 1.25, 0]} center distanceFactor={14} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, top + 1.25, 0]} center zIndexRange={[10, 0]} distanceFactor={14} style={{ pointerEvents: 'none' }}>
           <div style={{ background: 'rgba(8,8,14,0.85)', color: '#fff', font: '600 11px system-ui', padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap' }}>
             {op.id} {op.name} {op.wounds}/{op.maxWounds}
           </div>

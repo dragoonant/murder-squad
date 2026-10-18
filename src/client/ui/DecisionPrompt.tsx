@@ -13,6 +13,7 @@ import { cancelPath, confirmPath, deployAction, deployChoice, optionOperative, p
 import { useSettled } from '../presentation/presentedStore'
 import { useGame } from '../store/game'
 import { BottomSheet } from './BottomSheet'
+import { Why } from './promptParts'
 import { useFormFactor } from './formFactor'
 import { colors, fontStack, panel } from './theme'
 import { Tooltip } from './Tooltip'
@@ -55,6 +56,9 @@ function Shell({ pending, children, title, footer }: { pending: PendingDecision;
 
 function Header({ pending, seat }: { pending: PendingDecision; seat?: boolean }) {
   const info = decisionInfo(pending.kind)
+  const compact = useFormFactor().compact
+  // on a phone the sheet header already names the decision (seat and title): keep only the one-line hint
+  if (compact) return <div style={{ marginBottom: 6 }}><Muted>{info.hint}</Muted><Why text={info.why} /></div>
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{ fontWeight: 800, fontSize: 15 }} data-testid="prompt-title">
@@ -62,6 +66,7 @@ function Header({ pending, seat }: { pending: PendingDecision; seat?: boolean })
         {info.title}
       </div>
       <Muted>{info.hint}</Muted>
+      <Why text={info.why} />
     </div>
   )
 }
@@ -343,6 +348,7 @@ const FALLBACK_ORDER = ACTION_ORDER_FALLBACK
 
 function ActionBody({ pending, state }: { pending: PendingDecision; state: GameState }) {
   const choose = useGame((g) => g.choose)
+  const compact = useFormFactor().compact
   const ctx = pending.context as { operativeId?: string; apl?: number; apSpent?: number; apRemaining?: number; counteract?: boolean; performed?: string[] }
   const op = ctx.operativeId ? state.operatives[ctx.operativeId] : undefined
   const activation = state.firefight.activation
@@ -379,6 +385,7 @@ function ActionBody({ pending, state }: { pending: PendingDecision; state: GameS
     const cost = typeof o?.data?.cost === 'number' ? (o.data.cost as number) : (firefight.ACTIONS as Record<string, { cost?: number } | undefined>)[id]?.cost
     const label = ACTION_LABEL[id] ?? humanize(id)
     const help = ACTION_HELP[id] ?? 'A special action.'
+    const costNote = cost !== undefined ? ` Costs ${cost} AP${left < cost ? `; you have ${left} left` : ''}.` : ''
     const btn = (
       <Btn
         key={id}
@@ -392,7 +399,7 @@ function ActionBody({ pending, state }: { pending: PendingDecision; state: GameS
       </Btn>
     )
     return (
-      <Tooltip key={id} title={label} body={o ? help : `${help} — ${reasonFor(id)}`} wrap={!o}>
+      <Tooltip key={id} title={`${label}${cost !== undefined ? ` · ${cost} AP` : ''}`} body={o ? `${help}${costNote}` : `${help}${costNote} Unavailable: ${reasonFor(id)}`} wrap={!o}>
         {btn}
       </Tooltip>
     )
@@ -400,8 +407,8 @@ function ActionBody({ pending, state }: { pending: PendingDecision; state: GameS
   const end = byAction.get('end')
   return (
     <>
-      <Header pending={pending} seat />
-      <div style={{ fontSize: 13, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+      {!compact && <Header pending={pending} seat />}
+      <div style={{ fontSize: 13, marginBottom: compact ? 4 : 8, display: 'flex', alignItems: 'center', gap: 8 }}>
         <b>{op ? opName(state, op.id) : ''}</b>
         {ctx.counteract ? (
           <span style={{ color: colors.accent }}>Counteract: one 1 AP action</span>
@@ -415,10 +422,10 @@ function ActionBody({ pending, state }: { pending: PendingDecision; state: GameS
         )}
         {op && <span style={{ color: colors.muted }}>{humanize(op.order)}</span>}
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} data-testid="action-bar">
+      <div style={compact ? { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 } : { display: 'flex', flexWrap: 'wrap', gap: 6 }} data-testid="action-bar">
         {known.filter((id) => id !== 'end').map(renderAction)}
         {extras.map(renderAction)}
-        {end && (
+        {end && !compact && (
           <Btn data-testid="act-end" variant="active" onClick={() => choose(end.id)}>
             {optionLabel(end, state, pending)}
           </Btn>
@@ -490,6 +497,7 @@ export function DecisionPrompt() {
   const state = useGame((g) => g.state)
   const seats = useGame((g) => g.seats)
   const settled = useSettled()
+  const ff = useFormFactor()
   // Reset path / pick when the decision changes.
   const id = pending?.id
   useEffect(() => {
@@ -563,8 +571,16 @@ export function DecisionPrompt() {
     default:
       body = <GenericBody pending={pending} state={state} />
   }
+  // phones: End activation is pinned in the sheet footer so it is never scrolled out of reach
+  const endOpt = pending.kind === 'firefight.action' ? (pending.options ?? []).find((o) => (o.action.payload as { action?: string }).action === 'end') : undefined
+  const footer =
+    endOpt && ff.compact ? (
+      <Btn data-testid="act-end" variant="active" style={{ width: '100%' }} onClick={() => useGame.getState().choose(endOpt.id)}>
+        {optionLabel(endOpt, state, pending)}
+      </Btn>
+    ) : undefined
   return (
-    <Shell pending={pending} title={`${SEAT_NAME[pending.seat]}: ${info.title}`}>
+    <Shell pending={pending} title={`${SEAT_NAME[pending.seat]}: ${info.title}`} footer={footer}>
       {body}
     </Shell>
   )

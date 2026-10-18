@@ -38,7 +38,7 @@ export function DeployGhost({ state, pending }: { state: GameState; pending: Pen
 
 function Label({ at, text, color }: { at: [number, number, number]; text: string; color: string }) {
   return (
-    <Html position={at} center distanceFactor={16} style={{ pointerEvents: 'none' }}>
+    <Html position={at} center zIndexRange={[10, 0]} distanceFactor={16} style={{ pointerEvents: 'none' }}>
       <div style={{ background: 'rgba(8,8,14,0.82)', color, font: '700 11px system-ui', padding: '1px 5px', borderRadius: 4, whiteSpace: 'nowrap', border: `1px solid ${color}55` }}>{text}</div>
     </Html>
   )
@@ -147,7 +147,7 @@ export function TargetBadges({ state, pending }: { state: GameState; pending: Pe
               <ringGeometry args={[op.baseRadius + 0.1, op.baseRadius + (hot ? 0.42 : 0.28), 36]} />
               <meshBasicMaterial color={l.color} transparent opacity={hot ? 1 : 0.8} />
             </mesh>
-            <Html position={[op.pos.x, op.pos.y + op.height + 1.7, op.pos.z]} center distanceFactor={16} style={{ pointerEvents: 'none' }}>
+            <Html position={[op.pos.x, op.pos.y + op.height + 1.7, op.pos.z]} center zIndexRange={[10, 0]} distanceFactor={16} style={{ pointerEvents: 'none' }}>
               <div
                 data-testid={`board-badge-${l.id}`}
                 style={{ background: 'rgba(8,8,14,0.88)', color: l.color, font: '700 11px system-ui', padding: '2px 7px', borderRadius: 5, whiteSpace: 'nowrap', border: `1px solid ${l.color}88` }}

@@ -12,7 +12,8 @@ test('team builder enforces the selection rules and starts a battle', async ({ p
   await page.getByTestId('team-A').selectOption('angels-of-death')
   await page.getByTestId('team-B').selectOption('kommandos')
   await page.getByTestId('go-builder').click()
-  await expect(page.getByTestId('team-builder')).toBeVisible()
+  // the builder (and its three.js preview) is a lazy chunk: allow for a cold, busy machine
+  await expect(page.getByTestId('team-builder')).toBeVisible({ timeout: 30_000 })
 
   // default roster is legal: leader 1/1, operatives 5/5
   await expect(page.getByTestId('slot-count-leader')).toHaveText('1/1')

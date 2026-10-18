@@ -9,7 +9,7 @@ import { killStatus, mission } from '../game/kill'
 import { dataBundle } from '../game/adapter'
 import { humanize, SEAT_NAME } from '../game/labels'
 import { useAudioSettings } from '../audio'
-import { useFeedStore } from '../presentation/feedStore'
+import { groupFeed, useFeedStore } from '../presentation/feedStore'
 import { useDisplayState } from '../presentation/presentedStore'
 import { useSettings, type AnimSpeed } from '../presentation/settings'
 import { useGame } from '../store/game'
@@ -46,10 +46,10 @@ export function PanelBox({ id, title, testId, open, children, style }: { id: Dra
   if (compact) {
     if (drawer !== id) return null
     return (
-      <div data-testid={testId} style={drawerStyle}>
+      <div data-testid={testId} className="ms-touch" style={drawerStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
           <b>{title}</b>
-          <Btn onClick={() => useUi.setState({ drawer: null })} style={{ minHeight: 36 }}>
+          <Btn onClick={() => useUi.setState({ drawer: null })}>
             Close
           </Btn>
         </div>
@@ -113,6 +113,7 @@ export function OperativeCard({ docked }: { docked?: boolean }) {
         {op.flags.guard && <b style={{ color: colors.accent }}>On Guard</b>}
         {op.flags.injured && <b style={{ color: colors.danger }}>Injured</b>}
       </div>
+      {!compactDrawer && (
       <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ color: colors.muted, textAlign: 'left' }}>
@@ -142,14 +143,21 @@ export function OperativeCard({ docked }: { docked?: boolean }) {
           ))}
         </tbody>
       </table>
-      {card && <Muted style={{ marginTop: 6 }}>{card.keywords.slice(0, 5).join(' · ')}</Muted>}
+      )}
+      {card && !compactDrawer && <Muted style={{ marginTop: 6 }}>{card.keywords.slice(0, 5).join(' · ')}</Muted>}
     </div>
   )
   if (compactDrawer) {
     if (docked) return null
+    // one line between the HUD and the prompt sheet: it never covers a control
     return (
-      <div style={{ ...floatStyle, position: 'absolute', top: 60, right: 8, width: 230, zIndex: 30 }}>
-        {body}
+      <div
+        data-testid="operative-card"
+        data-op={op.id}
+        style={{ ...floatStyle, position: 'absolute', top: 62, right: 8, padding: '3px 10px', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: 'calc(100% - 16px)', zIndex: 20, pointerEvents: 'none' }}
+      >
+        <Dot seat={op.seat} />
+        <b>{op.name}</b> <span style={{ color: colors.muted }}>{op.id}</span> &middot; W <b>{op.wounds}/{op.maxWounds}</b> &middot; Save <b>{op.save}+</b> &middot; {humanize(op.order)} {op.ready ? '' : '(expended)'}
       </div>
     )
   }
@@ -174,11 +182,22 @@ export function EventFeed() {
     <PanelBox id="feed" title="Event feed" testId="event-feed-panel" open={panels.feed} style={{ maxHeight: '28vh' }}>
       <div ref={ref} data-testid="event-feed" style={{ maxHeight: 'calc(28vh - 40px)', overflowY: 'auto', fontSize: 12, display: 'flex', flexDirection: 'column', gap: 2 }}>
         {feed.length === 0 && <Muted>Nothing yet.</Muted>}
-        {feed.slice(-80).map((f) => (
-          <div key={f.id} style={{ borderLeft: `3px solid ${f.seat ? seatColor(f.seat) : colors.border}`, paddingLeft: 6 }}>
-            {f.text}
-          </div>
-        ))}
+        {groupFeed(feed.slice(-80)).map((g) =>
+          g.length > 1 && g[0]!.dice ? (
+            <div key={g[0]!.id} data-testid="feed-dice-group" style={{ border: `1px solid ${colors.border}`, borderRadius: 6, padding: '2px 6px', background: 'rgba(255,255,255,0.04)' }}>
+              <div style={{ fontSize: 10, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6 }}>Dice ({g.length})</div>
+              {g.map((f) => (
+                <div key={f.id} style={{ borderLeft: `3px solid ${f.seat ? seatColor(f.seat) : colors.border}`, paddingLeft: 6 }}>
+                  {f.text}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div key={g[0]!.id} style={{ borderLeft: `3px solid ${g[0]!.seat ? seatColor(g[0]!.seat!) : colors.border}`, paddingLeft: 6 }}>
+              {g[0]!.text}
+            </div>
+          ),
+        )}
       </div>
     </PanelBox>
   )
@@ -296,7 +315,7 @@ export function SettingsPanel() {
   const state = useGame((g) => g.state)
   if (drawer !== 'settings') return null
   return (
-    <div data-testid="settings-panel" style={{ ...drawerStyle, top: 60, zIndex: 60 }}>
+    <div data-testid="settings-panel" className="ms-touch" style={{ ...drawerStyle, top: 60, zIndex: 60 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <b>Settings</b>
         <Btn onClick={() => useUi.setState({ drawer: null })}>Close</Btn>

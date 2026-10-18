@@ -5,7 +5,9 @@ import type { Seat } from '@/engine'
 import { dataBundle, type SeatBuild } from '../game/adapter'
 import { defaultBuild, layoutList, missionList, resolveLayout, resolveMission, resolveTeam, teamList } from '../game/defaults'
 import type { SeatMode, UrlParams } from '../params'
-import { useGame } from './game'
+import { getBotTier, setBotTier, type BotTier } from '../bot/botTier'
+import { getMatPref, setMatPref } from '../board/mats'
+import { useGame, type NewGameOptions } from './game'
 
 export type Screen = 'start' | 'builder' | 'briefing' | 'battle'
 
@@ -22,6 +24,15 @@ export interface Session {
   /** place objective and equipment markers by hand instead of taking the engine's suggestions */
   manualPlacement: boolean
   setManualPlacement(v: boolean): void
+  /** AI tier for bot seats; persisted */
+  botTier: BotTier
+  setBotTier(t: BotTier): void
+  /** floor mat: a mat id or 'random'; persisted */
+  matId: string
+  setMat(id: string): void
+  /** the briefing was opened from the Start screen's How to play link (scroll to Controls, Back returns to Start) */
+  howTo: boolean
+  openHowTo(): void
   setScreen(s: Screen): void
   setSeat(seat: Seat, mode: SeatMode): void
   setSeed(seed: string): void
@@ -31,7 +42,9 @@ export interface Session {
   setTeam(seat: Seat, teamId: string): void
   setBuild(seat: Seat, build: SeatBuild): void
   setBuilderSeat(seat: Seat): void
-  launch(): void
+  launch(prepare?: NewGameOptions['prepare']): void
+  /** exchange the two sides (teams, rosters, human/bot) and start again with a fresh seed */
+  swapSeats(): void
   backToMenu(): void
 }
 
@@ -60,7 +73,19 @@ export const useSession = create<Session>((set, get) => ({
   screen: 'start',
   ...initial(),
   setManualPlacement: (manualPlacement) => set({ manualPlacement }),
-  setScreen: (screen) => set({ screen }),
+  botTier: getBotTier(),
+  setBotTier: (botTier) => {
+    setBotTier(botTier)
+    set({ botTier })
+  },
+  matId: getMatPref(),
+  setMat: (matId) => {
+    setMatPref(matId)
+    set({ matId })
+  },
+  howTo: false,
+  openHowTo: () => set({ howTo: true, screen: 'briefing' }),
+  setScreen: (screen) => set(screen === 'start' || screen === 'builder' ? { screen, howTo: false } : { screen }),
   setSeat: (seat, mode) => set((s) => ({ seats: { ...s.seats, [seat]: mode } })),
   setSeed: (seed) => set({ seed }),
   setMission: (missionId) => set({ missionId }),
@@ -73,7 +98,7 @@ export const useSession = create<Session>((set, get) => ({
     }),
   setBuild: (seat, build) => set((s) => ({ builds: { ...s.builds, [seat]: build } })),
   setBuilderSeat: (builderSeat) => set({ builderSeat }),
-  launch() {
+  launch(prepare) {
     const s = get()
     useGame.getState().newGame({
       builds: s.builds,
@@ -83,8 +108,15 @@ export const useSession = create<Session>((set, get) => ({
       layoutId: s.layoutId,
       mapId: s.mapId === 'auto' ? null : s.mapId,
       manualPlacement: s.manualPlacement,
+      botTier: s.botTier,
+      ...(prepare ? { prepare } : {}),
     })
     set({ screen: 'battle' })
+  },
+  swapSeats() {
+    const s = get()
+    set({ builds: { A: s.builds.B, B: s.builds.A }, seats: { A: s.seats.B, B: s.seats.A }, seed: randomSeed() })
+    get().launch()
   },
   backToMenu() {
     useGame.getState().reset()
@@ -109,5 +141,14 @@ export function startFromParams(p: UrlParams): void {
     builds: { A: defaultBuild(b, tA), B: defaultBuild(b, tB) },
     manualPlacement: p.place === 'manual',
   })
+  if (p.scenario) {
+    // dev fixtures load on demand so they never weigh on the menus
+    const name = p.scenario
+    void import('../dev/scenarios').then(({ buildScenario }) => {
+      useSession.setState({ seats: { A: 'human', B: 'human' }, builds: { A: defaultBuild(b, resolveTeam(b, 'aod')), B: defaultBuild(b, resolveTeam(b, 'kom')) }, layoutId: resolveLayout(b, '01').id, mapId: 'prelim-1', missionId: resolveMission(b, 'secure').id, seed: p.seed ?? `scenario-${name}` })
+      useSession.getState().launch((state) => buildScenario(name, state))
+    })
+    return
+  }
   useSession.getState().launch()
 }

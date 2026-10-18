@@ -22,7 +22,8 @@ import type { MissionData } from '@/data'
 import { buildGameSetup, dataBundle, engineBundle, type SeatBuild } from '../game/adapter'
 import { rejectionText } from '../game/labels'
 import { RandomBot } from '../bot/randomBot'
-import { AiWorkerClient, getBotTier, type BotTier } from '../bot/aiWorkerClient'
+import { AiWorkerClient } from '../bot/aiWorkerClient'
+import { getBotTier, type BotTier } from '../bot/botTier'
 import { clearAnims } from '../presentation/animStore'
 import { enqueueBatch, resetDirector, setDirectorPerspective } from '../presentation/director'
 import { clearFeed, clearToasts, pushToast } from '../presentation/feedStore'
@@ -52,6 +53,8 @@ export interface NewGameOptions {
   manualPlacement?: boolean
   /** AI tier for bot seats (random | easy | normal); defaults to the Start screen's choice (`getBotTier`) */
   botTier?: BotTier
+  /** rewrite the freshly created game before it is shown (scenario fixtures, dev/scenarios.ts); events of the skipped steps are not replayed */
+  prepare?: (state: GameState) => GameState
 }
 
 interface GameStore {
@@ -211,7 +214,11 @@ export const useGame = create<GameStore>((set, get) => {
       const layout = b.layouts[opts.layoutId]
       if (!mission || !layout) throw new Error(`unknown mission/layout: ${opts.missionId} / ${opts.layoutId}`)
       const setup = buildGameSetup(b, opts.builds.A, opts.builds.B, { layoutId: layout.id, missionId: mission.id, mapId: opts.mapId, auto: opts.manualPlacement !== true })
-      const r = createGame(setup, opts.seed, engineBundle())
+      let r = createGame(setup, opts.seed, engineBundle())
+      if (opts.prepare) {
+        const prepared = opts.prepare(r.state)
+        r = { state: prepared, pending: prepared.pending, events: [] }
+      }
       bots = { A: new RandomBot(`${opts.seed}:A`), B: new RandomBot(`${opts.seed}:B`) }
       botTier = opts.botTier ?? getBotTier()
       botSeed = opts.seed

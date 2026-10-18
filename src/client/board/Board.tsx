@@ -7,6 +7,7 @@ import type { GameState } from '@/engine'
 import { BattleOperative, Corpses } from '../figures/Operative'
 import { clickOperative, clickPoint, hoverPoint, optionOperative } from '../interaction/controller'
 import { DeployGhost, MovePreviewLayer, PlaceOverlay, SpotRings, TargetBadges } from '../interaction/Overlays'
+import { currentParams } from '../params'
 import { setRepaint } from '../presentation/animStore'
 import { useFx } from '../presentation/fxStore'
 import { useDisplayState, useSettled } from '../presentation/presentedStore'
@@ -14,6 +15,7 @@ import { useSettings } from '../presentation/settings'
 import { humanToAct, useGame } from '../store/game'
 import { useUi, type Pt } from '../ui/uiStore'
 import { CameraRig } from './CameraRig'
+import { FpsProbe } from './FpsProbe'
 import { makeMatTexture } from './matTexture'
 import { Terrain } from './Terrain'
 import { Vfx } from './Vfx'
@@ -125,6 +127,7 @@ function Scene({ state }: { state: GameState }) {
       <Vfx />
       <CameraRig halfX={w / 2} halfZ={h / 2} />
       <Repaint />
+      {currentParams().fps && <FpsProbe />}
     </>
   )
 }

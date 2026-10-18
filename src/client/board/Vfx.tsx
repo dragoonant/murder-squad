@@ -147,7 +147,7 @@ function Ring({ fx }: { fx: Fx }) {
 function FloatText({ fx }: { fx: Fx }) {
   ensureStyle()
   return (
-    <Html position={fx.to} center style={{ pointerEvents: 'none' }}>
+    <Html position={fx.to} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
       <div
         data-testid="fx-text"
         style={{ animation: `ms-fx-rise ${fx.dur}ms ease-out forwards`, color: fx.color, font: '900 22px system-ui', textShadow: '0 1px 3px #000, 0 0 8px #000', whiteSpace: 'nowrap' }}

@@ -4,7 +4,7 @@
 import { CanvasTexture, SRGBColorSpace } from 'three'
 import { useGame } from '../store/game'
 import { repaintBoard } from './cameraApi'
-import { chooseMat, type MatDef } from './mats'
+import { chooseMat, getMatPref, type MatDef } from './mats'
 
 function rng(seed: number): () => number {
   let s = seed >>> 0
@@ -188,7 +188,7 @@ export function makeMatTexture(widthIn: number, heightIn: number, low: boolean):
   tex.colorSpace = SRGBColorSpace
   tex.anisotropy = low ? 1 : 8
   tex.needsUpdate = true
-  const def = chooseMat(useGame.getState().state?.seed ?? '', typeof location === 'undefined' ? '' : location.search)
+  const def = chooseMat(useGame.getState().state?.seed ?? '', typeof location === 'undefined' ? '' : location.search, getMatPref())
   let loaded = false
   const ms = (typeof window !== 'undefined' ? window.__ms : undefined) as unknown as Record<string, unknown> | undefined
   if (ms) {

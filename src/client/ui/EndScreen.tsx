@@ -7,6 +7,7 @@ import { humanize, SEAT_NAME } from '../game/labels'
 import { useGame } from '../store/game'
 import { randomSeed, useSession } from '../store/session'
 import { colors, fontStack, panel } from './theme'
+import { Tooltip } from './Tooltip'
 import { Btn, Dot, Muted } from './widgets'
 
 export interface VpLine {
@@ -126,8 +127,13 @@ export function EndScreen() {
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
           <Btn data-testid="end-again" variant="primary" onClick={playAgain}>
-            Play again (new seed)
+            Play again (same settings)
           </Btn>
+          <Tooltip title="Swap seats" body="Exchange the two sides: you take the other team and the bot takes yours. Same mission and layout, new seed.">
+            <Btn data-testid="end-swap" onClick={() => useSession.getState().swapSeats()}>
+              Swap seats
+            </Btn>
+          </Tooltip>
           <Btn data-testid="end-view" onClick={() => setHidden(true)}>
             View board
           </Btn>
