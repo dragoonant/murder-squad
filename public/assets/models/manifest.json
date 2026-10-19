@@ -2166,16 +2166,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.431,
-          0.402,
-          0.084
-        ],
-        "handL": [
-          0.43,
-          0.396,
-          0.055
-        ],
         "back": [
           0.0,
           0.752,
@@ -2206,7 +2196,8 @@
           1.27,
           -0.029
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "ht-chronomancer": {
       "file": "bodies/ht-chronomancer.glb",
@@ -2217,16 +2208,6 @@
       "baseMm": 40,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.486,
-          0.442,
-          -0.046
-        ],
-        "handL": [
-          0.492,
-          0.472,
-          -0.134
-        ],
         "back": [
           0.0,
           0.89,
@@ -2257,7 +2238,8 @@
           1.52,
           0.012
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "ht-deathmark": {
       "file": "bodies/ht-deathmark.glb",
@@ -2268,16 +2250,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.465,
-          0.438,
-          0.154
-        ],
-        "handL": [
-          0.469,
-          0.41,
-          0.06
-        ],
         "back": [
           0.0,
           0.807,
@@ -2308,7 +2280,8 @@
           1.37,
           0.107
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "ht-immortal-despotek": {
       "file": "bodies/ht-immortal-despotek.glb",
@@ -2319,16 +2292,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.463,
-          0.449,
-          0.126
-        ],
-        "handL": [
-          0.466,
-          0.434,
-          0.005
-        ],
         "back": [
           0.0,
           0.835,
@@ -2359,7 +2322,8 @@
           1.42,
           0.061
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "ht-immortal-guardian": {
       "file": "bodies/ht-immortal-guardian.glb",
@@ -2370,16 +2334,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.474,
-          0.436,
-          0.127
-        ],
-        "handL": [
-          0.474,
-          0.409,
-          0.027
-        ],
         "back": [
           0.0,
           0.808,
@@ -2410,7 +2364,9 @@
           1.37,
           0.071
         ]
-      }
+      },
+      "weaponsBaked": true,
+      "variants": []
     },
     "ht-plasmacyte-accelerator": {
       "file": "bodies/ht-plasmacyte-accelerator.glb",
@@ -2421,16 +2377,6 @@
       "baseMm": 25,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.296,
-          0.295,
-          0.022
-        ],
-        "handL": [
-          0.294,
-          0.293,
-          0.041
-        ],
         "back": [
           0.0,
           0.533,
@@ -2461,7 +2407,8 @@
           0.87,
           -0.049
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "ht-plasmacyte-reanimator": {
       "file": "bodies/ht-plasmacyte-reanimator.glb",
@@ -2472,16 +2419,6 @@
       "baseMm": 25,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.322,
-          0.304,
-          -0.036
-        ],
-        "handL": [
-          0.322,
-          0.304,
-          -0.075
-        ],
         "back": [
           0.0,
           0.533,
@@ -2512,7 +2449,8 @@
           0.87,
           -0.436
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "ht-psychomancer": {
       "file": "bodies/ht-psychomancer.glb",
@@ -2523,16 +2461,6 @@
       "baseMm": 40,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.514,
-          0.446,
-          0.013
-        ],
-        "handL": [
-          0.505,
-          0.427,
-          0.003
-        ],
         "back": [
           0.0,
           0.835,
@@ -2563,7 +2491,8 @@
           1.42,
           0.137
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "ht-technomancer": {
       "file": "bodies/ht-technomancer.glb",
@@ -2574,16 +2503,6 @@
       "baseMm": 50,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.565,
-          0.494,
-          0.173
-        ],
-        "handL": [
-          0.565,
-          0.48,
-          0.062
-        ],
         "back": [
           0.0,
           0.945,
@@ -2614,7 +2533,8 @@
           1.62,
           0.041
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "kom-bomb-squig": {
       "file": "bodies/kom-bomb-squig.glb",
@@ -2628,32 +2548,32 @@
         "back": [
           0.0,
           0.533,
-          -0.237
+          -0.222
         ],
         "beltR": [
-          -0.278,
+          -0.418,
           0.42,
-          0.116
+          -0.003
         ],
         "beltL": [
-          0.277,
+          0.305,
           0.42,
-          0.155
+          -0.017
         ],
         "shoulderR": [
-          -0.28,
+          -0.431,
           0.683,
-          0.269
+          -0.0
         ],
         "shoulderL": [
-          0.272,
+          0.153,
           0.683,
-          0.26
+          0.001
         ],
         "head": [
-          -0.002,
+          0.032,
           0.87,
-          0.164
+          -0.035
         ]
       },
       "weaponsBaked": true
@@ -2670,32 +2590,116 @@
         "back": [
           0.0,
           0.863,
-          -0.36
+          -0.732
         ],
         "beltR": [
-          -0.603,
+          -0.322,
           0.66,
-          -0.135
+          -0.629
         ],
         "beltL": [
-          0.607,
+          0.812,
           0.66,
-          -0.115
+          0.463
         ],
         "shoulderR": [
-          -0.436,
+          -0.808,
           1.133,
-          -0.179
+          -0.343
         ],
         "shoulderL": [
-          0.441,
+          0.806,
           1.133,
-          -0.172
+          0.793
         ],
         "head": [
-          0.0,
+          -0.405,
           1.47,
-          0.116
+          -0.244
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "kom-boy-b": {
+      "file": "bodies/kom-boy-b.glb",
+      "archetype": "kom-boy-b",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.752,
+          -0.713
+        ],
+        "beltR": [
+          -0.732,
+          0.58,
+          0.415
+        ],
+        "beltL": [
+          0.665,
+          0.58,
+          -0.262
+        ],
+        "shoulderR": [
+          -0.768,
+          0.982,
+          0.638
+        ],
+        "shoulderL": [
+          0.78,
+          0.982,
+          -0.712
+        ],
+        "head": [
+          -0.081,
+          1.27,
+          -0.08
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "kom-boy-c": {
+      "file": "bodies/kom-boy-c.glb",
+      "archetype": "kom-boy-c",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.752,
+          -0.583
+        ],
+        "beltR": [
+          -0.514,
+          0.58,
+          0.464
+        ],
+        "beltL": [
+          0.524,
+          0.58,
+          -0.362
+        ],
+        "shoulderR": [
+          -0.555,
+          0.982,
+          0.514
+        ],
+        "shoulderL": [
+          0.559,
+          0.982,
+          -0.669
+        ],
+        "head": [
+          -0.036,
+          1.27,
+          -0.248
         ]
       },
       "weaponsBaked": true
@@ -2712,36 +2716,39 @@
         "back": [
           0.0,
           0.752,
-          -0.495
+          -0.464
         ],
         "beltR": [
-          -0.491,
+          0.059,
           0.58,
-          0.042
+          -0.409
         ],
         "beltL": [
-          0.507,
+          0.775,
           0.58,
-          -0.017
+          -0.23
         ],
         "shoulderR": [
-          -0.433,
+          -0.754,
           0.982,
-          0.05
+          -0.039
         ],
         "shoulderL": [
-          0.411,
+          0.648,
           0.982,
-          -0.001
+          -0.098
         ],
         "head": [
-          0.007,
+          0.35,
           1.27,
-          -0.141
+          0.263
         ]
       },
       "weaponsBaked": true,
-      "variants": []
+      "variants": [
+        "kom-boy-b",
+        "kom-boy-c"
+      ]
     },
     "kom-breacha-boy": {
       "file": "bodies/kom-breacha-boy.glb",
@@ -2755,32 +2762,32 @@
         "back": [
           0.0,
           0.752,
-          -0.49
+          -0.485
         ],
         "beltR": [
-          -0.545,
+          -0.701,
           0.58,
-          -0.194
+          0.084
         ],
         "beltL": [
-          0.591,
+          0.701,
           0.58,
-          0.162
+          -0.015
         ],
         "shoulderR": [
-          -0.429,
+          -0.665,
           0.982,
-          -0.123
+          -0.122
         ],
         "shoulderL": [
-          0.416,
+          0.579,
           0.982,
-          0.091
+          -0.076
         ],
         "head": [
-          0.003,
+          0.042,
           1.27,
-          -0.062
+          0.034
         ]
       },
       "weaponsBaked": true
@@ -2797,32 +2804,32 @@
         "back": [
           0.0,
           0.752,
-          -0.496
+          -0.832
         ],
         "beltR": [
-          -0.479,
+          -0.471,
           0.58,
-          0.078
+          -0.181
         ],
         "beltL": [
-          0.529,
+          0.323,
           0.58,
-          -0.231
+          -0.374
         ],
         "shoulderR": [
-          -0.407,
+          -0.487,
           0.982,
-          0.035
+          -0.272
         ],
         "shoulderL": [
-          0.432,
+          0.43,
           0.982,
-          -0.257
+          -0.256
         ],
         "head": [
-          0.095,
+          -0.003,
           1.27,
-          -0.239
+          -0.268
         ]
       },
       "weaponsBaked": true
@@ -2839,32 +2846,32 @@
         "back": [
           0.0,
           0.752,
-          -0.328
+          -0.382
         ],
         "beltR": [
-          -0.322,
+          -0.346,
           0.58,
-          0.003
+          -0.126
         ],
         "beltL": [
-          0.313,
+          0.535,
           0.58,
-          -0.098
+          0.212
         ],
         "shoulderR": [
-          -0.114,
+          -0.06,
           0.982,
-          0.096
+          0.143
         ],
         "shoulderL": [
-          0.198,
+          0.317,
           0.982,
-          -0.208
+          0.15
         ],
         "head": [
-          0.158,
+          0.081,
           1.27,
-          -0.066
+          -0.296
         ]
       },
       "weaponsBaked": true
@@ -2881,32 +2888,32 @@
         "back": [
           0.0,
           0.752,
-          -0.475
+          -0.752
         ],
         "beltR": [
-          -0.478,
+          -0.498,
           0.58,
-          0.046
+          0.606
         ],
         "beltL": [
-          0.492,
+          0.561,
           0.58,
-          -0.06
+          -0.149
         ],
         "shoulderR": [
-          -0.32,
+          -0.417,
           0.982,
-          0.05
+          -0.294
         ],
         "shoulderL": [
-          0.394,
+          0.551,
           0.982,
-          -0.195
+          -0.273
         ],
         "head": [
-          0.006,
+          0.125,
           1.27,
-          0.326
+          -0.473
         ]
       },
       "weaponsBaked": true
@@ -2923,32 +2930,32 @@
         "back": [
           0.0,
           0.56,
-          -0.222
+          -0.164
         ],
         "beltR": [
-          -0.227,
+          -0.253,
           0.44,
-          -0.124
+          0.239
         ],
         "beltL": [
-          0.236,
+          0.325,
           0.44,
-          -0.112
+          -0.173
         ],
         "shoulderR": [
-          -0.279,
+          0.03,
           0.72,
-          -0.065
+          -0.05
         ],
         "shoulderL": [
-          0.253,
+          0.365,
           0.72,
-          -0.061
+          -0.004
         ],
         "head": [
-          0.003,
+          0.155,
           0.92,
-          0.065
+          -0.01
         ]
       },
       "weaponsBaked": true
@@ -2965,32 +2972,32 @@
         "back": [
           0.0,
           0.752,
-          -0.453
+          -0.661
         ],
         "beltR": [
-          -0.487,
+          -0.377,
           0.58,
-          0.052
+          -0.504
         ],
         "beltL": [
-          0.488,
+          0.565,
           0.58,
-          0.032
+          -0.255
         ],
         "shoulderR": [
-          -0.332,
+          -0.555,
           0.982,
-          0.053
+          0.559
         ],
         "shoulderL": [
-          0.507,
+          0.369,
           0.982,
-          -0.126
+          -0.276
         ],
         "head": [
-          -0.0,
+          -0.108,
           1.27,
-          0.248
+          -0.288
         ]
       },
       "weaponsBaked": true
@@ -3007,32 +3014,32 @@
         "back": [
           0.0,
           0.752,
-          -0.31
+          -0.444
         ],
         "beltR": [
-          -0.486,
+          -0.438,
           0.58,
-          -0.092
+          -0.08
         ],
         "beltL": [
-          0.499,
+          0.531,
           0.58,
-          -0.158
+          0.045
         ],
         "shoulderR": [
-          -0.347,
+          -0.555,
           0.982,
-          -0.085
+          0.222
         ],
         "shoulderL": [
-          0.372,
+          0.512,
           0.982,
-          -0.084
+          0.143
         ],
         "head": [
-          0.279,
+          -0.003,
           1.27,
-          -0.027
+          0.428
         ]
       },
       "weaponsBaked": true
@@ -3049,32 +3056,32 @@
         "back": [
           0.0,
           0.752,
-          -0.332
+          -0.497
         ],
         "beltR": [
-          -0.497,
+          -1.002,
           0.58,
-          -0.189
+          0.207
         ],
         "beltL": [
-          0.527,
+          1.039,
           0.58,
-          -0.083
+          -0.144
         ],
         "shoulderR": [
-          -0.402,
+          -0.866,
           0.982,
-          0.063
+          0.248
         ],
         "shoulderL": [
-          0.427,
+          -0.041,
           0.982,
-          0.061
+          -0.203
         ],
         "head": [
-          -0.005,
+          -0.399,
           1.27,
-          0.13
+          -0.004
         ]
       },
       "weaponsBaked": true
@@ -4271,16 +4278,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.485,
-          0.529,
-          0.021
-        ],
-        "handL": [
-          0.486,
-          0.518,
-          0.026
-        ],
         "back": [
           0.0,
           0.835,
@@ -4311,7 +4308,8 @@
           1.42,
           0.061
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "pm-plague-marine-bombardier": {
       "file": "bodies/pm-plague-marine-bombardier.glb",
@@ -4322,16 +4320,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.481,
-          0.493,
-          0.188
-        ],
-        "handL": [
-          0.481,
-          0.502,
-          0.026
-        ],
         "back": [
           0.0,
           0.835,
@@ -4362,7 +4350,8 @@
           1.42,
           -0.137
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "pm-plague-marine-champion": {
       "file": "bodies/pm-plague-marine-champion.glb",
@@ -4373,16 +4362,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.479,
-          0.51,
-          -0.028
-        ],
-        "handL": [
-          0.482,
-          0.508,
-          -0.045
-        ],
         "back": [
           0.0,
           0.89,
@@ -4413,7 +4392,8 @@
           1.52,
           0.452
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "pm-plague-marine-fighter": {
       "file": "bodies/pm-plague-marine-fighter.glb",
@@ -4424,16 +4404,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.481,
-          0.408,
-          0.154
-        ],
-        "handL": [
-          0.469,
-          0.522,
-          0.002
-        ],
         "back": [
           0.0,
           0.808,
@@ -4464,7 +4434,8 @@
           1.37,
           -0.019
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "pm-plague-marine-heavy-gunner": {
       "file": "bodies/pm-plague-marine-heavy-gunner.glb",
@@ -4475,16 +4446,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.529,
-          0.497,
-          0.1
-        ],
-        "handL": [
-          0.584,
-          0.51,
-          0.1
-        ],
         "back": [
           0.0,
           0.863,
@@ -4515,7 +4476,8 @@
           1.47,
           -0.096
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "pm-plague-marine-icon-bearer": {
       "file": "bodies/pm-plague-marine-icon-bearer.glb",
@@ -4526,16 +4488,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.598,
-          0.414,
-          0.198
-        ],
-        "handL": [
-          0.405,
-          0.513,
-          -0.093
-        ],
         "back": [
           0.0,
           1.055,
@@ -4566,7 +4518,8 @@
           1.82,
           -0.109
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "pm-plague-marine-warrior": {
       "file": "bodies/pm-plague-marine-warrior.glb",
@@ -4577,16 +4530,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.471,
-          0.487,
-          -0.034
-        ],
-        "handL": [
-          0.471,
-          0.495,
-          -0.031
-        ],
         "back": [
           0.0,
           0.808,
@@ -4617,7 +4560,8 @@
           1.37,
           0.138
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "wb-kelermorph": {
       "file": "bodies/wb-kelermorph.glb",
@@ -4628,16 +4572,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.395,
-          0.448,
-          0.025
-        ],
-        "handL": [
-          0.398,
-          0.427,
-          0.017
-        ],
         "back": [
           0.0,
           0.752,
@@ -4668,7 +4602,8 @@
           1.27,
           0.005
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "wb-locus": {
       "file": "bodies/wb-locus.glb",
@@ -4679,16 +4614,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.539,
-          0.564,
-          0.05
-        ],
-        "handL": [
-          0.537,
-          0.567,
-          0.047
-        ],
         "back": [
           0.0,
           0.78,
@@ -4719,7 +4644,8 @@
           1.32,
           -0.029
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "wb-neophyte-gunner": {
       "file": "bodies/wb-neophyte-gunner.glb",
@@ -4730,16 +4656,6 @@
       "baseMm": 25,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.363,
-          0.42,
-          0.066
-        ],
-        "handL": [
-          0.362,
-          0.422,
-          0.014
-        ],
         "back": [
           0.0,
           0.698,
@@ -4770,7 +4686,8 @@
           1.17,
           0.134
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "wb-neophyte-heavy-gunner": {
       "file": "bodies/wb-neophyte-heavy-gunner.glb",
@@ -4781,16 +4698,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.392,
-          0.47,
-          0.041
-        ],
-        "handL": [
-          0.392,
-          0.422,
-          -0.054
-        ],
         "back": [
           0.0,
           0.752,
@@ -4821,7 +4728,8 @@
           1.27,
           0.14
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "wb-neophyte-icon-bearer": {
       "file": "bodies/wb-neophyte-icon-bearer.glb",
@@ -4832,16 +4740,6 @@
       "baseMm": 25,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.549,
-          0.485,
-          0.014
-        ],
-        "handL": [
-          0.351,
-          0.51,
-          0.02
-        ],
         "back": [
           0.0,
           0.917,
@@ -4872,7 +4770,8 @@
           1.57,
           -0.237
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "wb-neophyte-leader": {
       "file": "bodies/wb-neophyte-leader.glb",
@@ -4883,16 +4782,6 @@
       "baseMm": 25,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.381,
-          0.444,
-          0.043
-        ],
-        "handL": [
-          0.381,
-          0.434,
-          0.035
-        ],
         "back": [
           0.0,
           0.725,
@@ -4923,7 +4812,8 @@
           1.22,
           0.034
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "wb-neophyte-warrior": {
       "file": "bodies/wb-neophyte-warrior.glb",
@@ -4934,16 +4824,6 @@
       "baseMm": 25,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.364,
-          0.407,
-          0.026
-        ],
-        "handL": [
-          0.363,
-          0.404,
-          0.019
-        ],
         "back": [
           0.0,
           0.698,
@@ -4974,7 +4854,8 @@
           1.17,
           0.029
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "wb-sanctus-sniper": {
       "file": "bodies/wb-sanctus-sniper.glb",
@@ -4985,16 +4866,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.384,
-          0.416,
-          0.006
-        ],
-        "handL": [
-          0.38,
-          0.42,
-          0.008
-        ],
         "back": [
           0.0,
           0.752,
@@ -5025,7 +4896,8 @@
           1.27,
           0.002
         ]
-      }
+      },
+      "weaponsBaked": true
     },
     "wb-sanctus-talon": {
       "file": "bodies/wb-sanctus-talon.glb",
@@ -5036,16 +4908,6 @@
       "baseMm": 32,
       "measured": true,
       "sockets": {
-        "handR": [
-          -0.366,
-          0.409,
-          -0.006
-        ],
-        "handL": [
-          0.366,
-          0.412,
-          -0.008
-        ],
         "back": [
           0.0,
           0.752,
@@ -5076,7 +4938,8 @@
           1.27,
           0.021
         ]
-      }
+      },
+      "weaponsBaked": true
     }
   },
   "attachments": {
