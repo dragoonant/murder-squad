@@ -21,7 +21,7 @@ import { attachmentFor } from './attachmentFor'
 import { HOLDS, SHEATHED, handRight, heaviestHold, holdClassOf, type HoldSpec } from './hold'
 import { modelManifest, pointOf, slugOf, useModelManifest, type BodyEntry, type HoldClass, type ModelManifest, type V3 } from './manifest'
 import { Procedural, type HslLike } from './Procedural'
-import { BaseRing } from './OvalBase'
+import { BaseRing, OvalPlinth, isOvalBase, setBakedBaseVisible } from './OvalBase'
 
 export interface FigureSpec {
   archetype: string
@@ -174,7 +174,11 @@ export function GlbBody({ body, spec, ranged, melee }: { body: BodyEntry; spec: 
   // natural weapons (no hand sockets, e.g. the bomb squig) draw nothing
   const armed = !!(sockets.handR || sockets.handL)
   const flip = body.facing === '-Z'
+  // an oval footprint (engine ovalHalfAxis): hide the GLB's round disc and stand the figure on the oval plinth instead
+  const oval = isOvalBase(spec.ovalHalfAxis)
+  const plinth = oval ? <OvalPlinth baseRadius={spec.baseRadius} ovalHalfAxis={spec.ovalHalfAxis} height={body.baseTopIn ?? 0.12} seatColor={spec.attachSlugs ? undefined : spec.seatColor} /> : null
   if (rigged && rigged.clips.length) {
+    setBakedBaseVisible(rigged.obj, !oval)
     // skinned body: attachments ride the bones nearest their sockets (mounted at the socket's own origin)
     const mounts: SkinnedMount[] = armed
       ? placed.flatMap((p) =>
@@ -184,14 +188,21 @@ export function GlbBody({ body, spec, ranged, melee }: { body: BodyEntry; spec: 
         )
       : []
     const holds = { ranged: placed.find((p) => p.spec.socket === 'handR')?.hold ?? null, melee: placed.find((p) => p.spec.socket === 'handL')?.hold ?? null }
-    return <SkinnedBody id={spec.animId!} obj={rigged.obj} clips={rigged.clips} sockets={sockets} flip={flip} mounts={mounts} bones={spec.bones} holds={holds} />
+    return (
+      <group>
+        <SkinnedBody id={spec.animId!} obj={rigged.obj} clips={rigged.clips} sockets={sockets} flip={flip} mounts={mounts} bones={spec.bones} holds={holds} />
+        {plinth}
+      </group>
+    )
   }
   if (!obj) return <Procedural height={spec.height} baseRadius={spec.baseRadius} ovalHalfAxis={spec.ovalHalfAxis} major={spec.major} minor={spec.minor} ranged={ranged} melee={melee} seatColor={spec.seatColor} dim={spec.dim} />
+  setBakedBaseVisible(obj, !oval)
   return (
     <group>
       <group rotation={[0, flip ? Math.PI : 0, 0]}>
         <primitive object={obj} />
       </group>
+      {plinth}
       {armed &&
         placed.map((p) => {
           const sock = sockets[p.spec.socket]
