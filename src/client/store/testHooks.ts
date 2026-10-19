@@ -4,7 +4,7 @@ import { legalActions, step, suggestPlacement, type Action } from '@/engine'
 import { audio } from '../audio/instance'
 import { RandomBot } from '../bot/randomBot'
 import { useFeedStore } from '../presentation/feedStore'
-import { cameraApi } from '../board/cameraApi'
+import { cameraApi, sceneRef } from '../board/cameraApi'
 import { currentParams } from '../params'
 import { useAnnouncementStore } from '../presentation/announceStore'
 import { usePresentedStore } from '../presentation/presentedStore'
@@ -26,6 +26,8 @@ export interface MsHooks {
   suggestSpot(skip?: number): { operativeId: string; x: number; y: number; z: number; px: number; py: number } | null
   project(x: number, y: number, z: number): { x: number; y: number } | null
   camera: typeof cameraApi
+  /** the live scene graph (battle board or gallery), for QC probes */
+  scene?: () => import('three').Scene | null
   session(): unknown
   ui(): unknown
   /** sight-line tools: overlay on/off, threat preference, measure tool state (client only) */
@@ -93,6 +95,7 @@ export function installTestHooks(): void {
     },
     project: (x, y, z) => cameraApi.current?.project(x, y, z) ?? null,
     camera: cameraApi,
+    scene: () => sceneRef.current,
     session: () => useSession.getState(),
     ui: () => useUi.getState(),
     sight: () => useSight.getState(),

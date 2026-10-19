@@ -15,6 +15,7 @@ import { useSettings } from '../presentation/settings'
 import { humanToAct, useGame } from '../store/game'
 import { useUi, type Pt } from '../ui/uiStore'
 import { CameraRig } from './CameraRig'
+import { sceneRef } from './cameraApi'
 import { FpsProbe } from './FpsProbe'
 import { makeMatTexture } from './matTexture'
 import { MeasureLayer } from './MeasureLayer'
@@ -129,6 +130,7 @@ function Scene({ state }: { state: GameState }) {
       <MeasureLayer />
       <Corpses />
       <Vfx />
+      <SceneHook />
       <CameraRig halfX={w / 2} halfZ={h / 2} />
       <Repaint />
       {currentParams().fps && <FpsProbe />}
@@ -156,4 +158,16 @@ export function BoardCanvas() {
       <Scene state={state} />
     </Canvas>
   )
+}
+
+/** Publishes the scene graph for probes (`window.__ms.scene()`). */
+function SceneHook() {
+  const scene = useThree((s) => s.scene)
+  useEffect(() => {
+    sceneRef.current = scene
+    return () => {
+      if (sceneRef.current === scene) sceneRef.current = null
+    }
+  }, [scene])
+  return null
 }

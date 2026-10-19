@@ -73,6 +73,24 @@ def arm_cut(pos: np.ndarray, y_lo: float, y_hi: float, x_hand: float) -> tuple[f
     return float(centres[i]), "valley"
 
 
+def fist_centre(pos: np.ndarray, socket: np.ndarray, H: float) -> np.ndarray:
+    """Centre of the fist nearest `socket`: one mean-shift step into the hand blob, then the lowest 0.16 H slab of
+    that blob (the fist hangs below the wrist), so the result is the middle of the closed hand."""
+    r = 0.13 * H
+    near = pos[np.linalg.norm(pos - socket, axis=1) < r]
+    if near.shape[0] < 20:
+        return socket.copy()
+    c = near.mean(axis=0)
+    blob = pos[np.linalg.norm(pos - c, axis=1) < r]
+    if blob.shape[0] < 20:
+        return c
+    y0 = blob[:, 1].min()
+    fist = blob[blob[:, 1] < y0 + 0.16 * H]
+    out = fist.mean(axis=0)
+    out[1] = y0 + 0.08 * H
+    return out
+
+
 def trunk_weights(W: np.ndarray, idx: dict[str, int], torso: np.ndarray, y: np.ndarray, y_hip: float, y_neck: float) -> None:
     """Hips -> spine -> chest -> neck by height within the torso region."""
     t = np.clip((y - y_hip) / max(1e-6, (y_neck - y_hip)), 0, 1)
@@ -120,8 +138,12 @@ def build(archetype: str, manifest: dict, models_dir: Path, layout: str = "auto"
     cuts: dict[str, float | str] = {}
 
     if layout == "humanoid":
-        hand_l, hand_r = np.array(s["handL"]), np.array(s["handR"])
-        x_hand = float((abs(hand_l[0]) + abs(hand_r[0])) / 2)
+        # the measured hand sockets sit on the fist's top-outer-front corner (measure-sockets.py picks an extreme
+        # point of the hand blob); the hand joint and the weapon mount want the fist's centre, so find it on the mesh
+        meas = body.get("measuredHandSockets") or {"handL": s["handL"], "handR": s["handR"]}
+        # the arm cut is anchored on the measured (outer-face) socket x; the fist centre is then searched on the arm
+        # side of that cut only, so hip armour next to the fist cannot pull it inboard
+        x_hand = float((abs(meas["handL"][0]) + abs(meas["handR"][0])) / 2)
         # heights: hips a little under the belt, knees at 45% of the leg, the neck at the shoulder line, the head
         # joint just above it (the chin of a two-heads-tall figure sits on the shoulders)
         y_hip = y_belt - 0.06 * H
@@ -131,6 +153,8 @@ def build(archetype: str, manifest: dict, models_dir: Path, layout: str = "auto"
         y_spine = y_hip + 0.4 * (y_shoulder - y_hip)
         y_chest = y_hip + 0.75 * (y_shoulder - y_hip)
         x_cut, how = arm_cut(pos, y_hip + 0.1 * (y_shoulder - y_hip), y_shoulder - 0.05 * H, x_hand)
+        arm_side = pos[np.abs(pos[:, 0]) > x_cut]
+        hand_l, hand_r = fist_centre(arm_side, np.array(meas["handL"]), H), fist_centre(arm_side, np.array(meas["handR"]), H)
         x_hipjoint = 0.45 * x_cut
         z_mid = float(np.median(z))
 
@@ -174,6 +198,8 @@ def build(archetype: str, manifest: dict, models_dir: Path, layout: str = "auto"
         trunk_weights(W, idx, trunk * (1 - headness) * (1 - legness), y, y_hip, y_neck)
         leg_weights(W, idx, trunk * legness, left, y, y_knee, base_top, band)
         cuts = {"x_arm": round(x_cut, 3), "x_arm_how": how, "x_hand": round(x_hand, 3), "y_hip": round(y_hip, 3), "y_knee": round(y_knee, 3), "y_neck": round(y_neck, 3), "band": round(band, 3)}
+        cuts["fist_handL"] = [round(float(v), 3) for v in hand_l]
+        cuts["fist_handR"] = [round(float(v), 3) for v in hand_r]
     else:
         # biped without arms: the legs stand on the base inside a z window; the body (with its tail and jaw) sits on
         # the hips well under the belt sockets; the head is the top of the body
@@ -232,6 +258,7 @@ def main() -> int:
     ap.add_argument("--manifest", default="public/assets/models/manifest.json")
     ap.add_argument("--out")
     ap.add_argument("--report")
+    ap.add_argument("--write-sockets", action="store_true", help="store the fist centres as the manifest's handL / handR sockets")
     args = ap.parse_args()
     manifest_path = Path(args.manifest)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -240,6 +267,12 @@ def main() -> int:
     out = Path(args.out) if args.out else models_dir / "bodies" / "rigged" / f"{args.archetype}.glb"
     out.parent.mkdir(parents=True, exist_ok=True)
     write_glb(out, gltf, bin_chunk)
+    if args.write_sockets and "fist_handL" in report.get("cuts", {}):
+        b = manifest["bodies"][args.archetype]
+        b.setdefault("measuredHandSockets", {"handL": b["sockets"]["handL"], "handR": b["sockets"]["handR"]})
+        b["sockets"]["handL"], b["sockets"]["handR"] = report["cuts"]["fist_handL"], report["cuts"]["fist_handR"]
+        b["handSockets"] = "fist-centre (split-body.py)"
+        manifest_path.write_text(json.dumps(manifest, indent=2) + chr(10), encoding="utf-8")
     report["out"] = str(out)
     report["bytes"] = out.stat().st_size
     if args.report:

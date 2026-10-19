@@ -13,3 +13,6 @@ export const cameraApi: { current: CameraApi | null } = { current: null }
 export function repaintBoard(): void {
   cameraApi.current?.repaint()
 }
+
+/** The battle scene graph, for e2e / QC probes (`window.__ms.scene()`); set by the board canvas. */
+export const sceneRef: { current: import('three').Scene | null } = { current: null }

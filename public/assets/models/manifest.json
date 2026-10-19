@@ -10,14 +10,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.43,
-          0.516,
-          0.106
+          -0.344,
+          0.489,
+          0.105
         ],
         "handL": [
-          0.428,
-          0.532,
-          0.109
+          0.339,
+          0.507,
+          0.083
         ],
         "back": [
           0,
@@ -62,7 +62,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.428,
+          0.532,
+          0.109
+        ],
+        "handR": [
+          -0.43,
+          0.516,
+          0.106
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "aod-assault-intercessor-sergeant": {
       "file": "bodies/aod-assault-intercessor-sergeant.glb",
@@ -74,14 +87,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.382,
-          0.483,
-          0.097
+          -0.315,
+          0.458,
+          0.098
         ],
         "handL": [
-          0.383,
-          0.467,
-          0.131
+          0.333,
+          0.489,
+          0.125
         ],
         "back": [
           0,
@@ -126,7 +139,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.383,
+          0.467,
+          0.131
+        ],
+        "handR": [
+          -0.382,
+          0.483,
+          0.097
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "aod-assault-intercessor-warrior": {
       "file": "bodies/aod-assault-intercessor-warrior.glb",
@@ -138,13 +164,13 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.429,
-          0.54,
-          0.25
+          -0.335,
+          0.515,
+          0.246
         ],
         "handL": [
-          0.431,
-          0.503,
+          0.378,
+          0.519,
           0.333
         ],
         "back": [
@@ -190,7 +216,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.431,
+          0.503,
+          0.333
+        ],
+        "handR": [
+          -0.429,
+          0.54,
+          0.25
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "aod-eliminator-sniper": {
       "file": "bodies/aod-eliminator-sniper.glb",
@@ -202,14 +241,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.402,
-          0.473,
-          0.085
+          -0.336,
+          0.522,
+          0.098
         ],
         "handL": [
-          0.385,
-          0.436,
-          -0.005
+          0.331,
+          0.483,
+          0.081
         ],
         "back": [
           0,
@@ -254,7 +293,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.385,
+          0.436,
+          -0.005
+        ],
+        "handR": [
+          -0.402,
+          0.473,
+          0.085
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "aod-heavy-intercessor-gunner": {
       "file": "bodies/aod-heavy-intercessor-gunner.glb",
@@ -266,14 +318,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.462,
-          0.604,
-          0.169
+          -0.381,
+          0.561,
+          0.187
         ],
         "handL": [
-          0.462,
-          0.596,
-          0.164
+          0.385,
+          0.56,
+          0.189
         ],
         "back": [
           0,
@@ -318,7 +370,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.462,
+          0.596,
+          0.164
+        ],
+        "handR": [
+          -0.462,
+          0.604,
+          0.169
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "aod-intercessor-gunner": {
       "file": "bodies/aod-intercessor-gunner.glb",
@@ -330,14 +395,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.393,
-          0.492,
-          0.14
+          -0.325,
+          0.511,
+          0.126
         ],
         "handL": [
-          0.395,
-          0.471,
-          0.142
+          0.341,
+          0.485,
+          0.137
         ],
         "back": [
           0,
@@ -382,7 +447,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.395,
+          0.471,
+          0.142
+        ],
+        "handR": [
+          -0.393,
+          0.492,
+          0.14
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "aod-intercessor-sergeant": {
       "file": "bodies/aod-intercessor-sergeant.glb",
@@ -394,14 +472,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.381,
-          0.498,
-          0.329
+          -0.323,
+          0.507,
+          0.324
         ],
         "handL": [
-          0.38,
-          0.489,
-          0.327
+          0.329,
+          0.503,
+          0.33
         ],
         "back": [
           0,
@@ -446,7 +524,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.38,
+          0.489,
+          0.327
+        ],
+        "handR": [
+          -0.381,
+          0.498,
+          0.329
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "aod-intercessor-warrior": {
       "file": "bodies/aod-intercessor-warrior.glb",
@@ -458,14 +549,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.429,
-          0.536,
-          0.129
+          -0.356,
+          0.545,
+          0.125
         ],
         "handL": [
-          0.429,
-          0.533,
-          0.13
+          0.359,
+          0.546,
+          0.117
         ],
         "back": [
           0,
@@ -510,7 +601,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.429,
+          0.533,
+          0.13
+        ],
+        "handR": [
+          -0.429,
+          0.536,
+          0.129
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "aod-space-marine-captain": {
       "file": "bodies/aod-space-marine-captain.glb",
@@ -522,14 +626,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.478,
-          0.573,
-          0.07
+          -0.406,
+          0.549,
+          0.089
         ],
         "handL": [
-          0.476,
-          0.578,
-          0.075
+          0.401,
+          0.547,
+          0.091
         ],
         "back": [
           0,
@@ -574,7 +678,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.476,
+          0.578,
+          0.075
+        ],
+        "handR": [
+          -0.478,
+          0.573,
+          0.07
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "ha-agent": {
       "file": "bodies/ha-agent.glb",
@@ -2833,14 +2950,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.644,
-          0.461,
-          -0.035
+          -0.563,
+          0.438,
+          -0.037
         ],
         "handL": [
-          0.644,
-          0.454,
-          -0.051
+          0.56,
+          0.438,
+          -0.036
         ],
         "back": [
           0,
@@ -2885,7 +3002,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.644,
+          0.454,
+          -0.051
+        ],
+        "handR": [
+          -0.644,
+          0.461,
+          -0.035
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "kom-boy": {
       "file": "bodies/kom-boy.glb",
@@ -2897,14 +3027,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.51,
-          0.412,
-          0.147
+          -0.422,
+          0.408,
+          0.158
         ],
         "handL": [
-          0.514,
-          0.404,
-          0.057
+          0.463,
+          0.358,
+          0.072
         ],
         "back": [
           0,
@@ -2949,7 +3079,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.514,
+          0.404,
+          0.057
+        ],
+        "handR": [
+          -0.51,
+          0.412,
+          0.147
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "kom-breacha-boy": {
       "file": "bodies/kom-breacha-boy.glb",
@@ -2961,14 +3104,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.578,
-          0.433,
-          -0.159
+          -0.487,
+          0.422,
+          -0.138
         ],
         "handL": [
-          0.561,
+          0.512,
           0.486,
-          0.246
+          0.252
         ],
         "back": [
           0,
@@ -3013,7 +3156,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.561,
+          0.486,
+          0.246
+        ],
+        "handR": [
+          -0.578,
+          0.433,
+          -0.159
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "kom-burna-boy": {
       "file": "bodies/kom-burna-boy.glb",
@@ -3025,14 +3181,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.506,
-          0.399,
-          0.16
+          -0.426,
+          0.392,
+          0.166
         ],
         "handL": [
-          0.504,
-          0.419,
-          0.025
+          0.449,
+          0.39,
+          0.106
         ],
         "back": [
           0,
@@ -3077,7 +3233,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.504,
+          0.419,
+          0.025
+        ],
+        "handR": [
+          -0.506,
+          0.399,
+          0.16
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "kom-comms-boy": {
       "file": "bodies/kom-comms-boy.glb",
@@ -3089,14 +3258,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.371,
-          0.397,
-          0.048
+          -0.308,
+          0.346,
+          0.065
         ],
         "handL": [
-          0.379,
-          0.405,
-          0.035
+          0.325,
+          0.336,
+          0.06
         ],
         "back": [
           0,
@@ -3141,7 +3310,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.379,
+          0.405,
+          0.035
+        ],
+        "handR": [
+          -0.371,
+          0.397,
+          0.048
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "kom-dakka-boy": {
       "file": "bodies/kom-dakka-boy.glb",
@@ -3153,14 +3335,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.508,
-          0.404,
-          0.157
+          -0.423,
+          0.395,
+          0.167
         ],
         "handL": [
-          0.508,
-          0.401,
-          0.114
+          0.466,
+          0.352,
+          0.109
         ],
         "back": [
           0,
@@ -3205,7 +3387,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.508,
+          0.401,
+          0.114
+        ],
+        "handR": [
+          -0.508,
+          0.404,
+          0.157
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "kom-grot": {
       "file": "bodies/kom-grot.glb",
@@ -3217,14 +3412,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.297,
+          -0.244,
           0.31,
-          -0.04
+          -0.037
         ],
         "handL": [
-          0.296,
-          0.304,
-          -0.045
+          0.272,
+          0.257,
+          -0.038
         ],
         "back": [
           0,
@@ -3269,7 +3464,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.296,
+          0.304,
+          -0.045
+        ],
+        "handR": [
+          -0.297,
+          0.31,
+          -0.04
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "kom-rokkit-boy": {
       "file": "bodies/kom-rokkit-boy.glb",
@@ -3281,14 +3489,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.504,
-          0.411,
-          0.176
+          -0.422,
+          0.4,
+          0.162
         ],
         "handL": [
-          0.509,
-          0.399,
-          0.07
+          0.468,
+          0.357,
+          0.072
         ],
         "back": [
           0,
@@ -3333,7 +3541,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.509,
+          0.399,
+          0.07
+        ],
+        "handR": [
+          -0.504,
+          0.411,
+          0.176
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "kom-slasha-boy": {
       "file": "bodies/kom-slasha-boy.glb",
@@ -3345,14 +3566,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.51,
-          0.409,
+          -0.419,
+          0.402,
           0.004
         ],
         "handL": [
-          0.508,
-          0.41,
-          -0.044
+          0.463,
+          0.356,
+          -0.045
         ],
         "back": [
           0,
@@ -3397,7 +3618,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.508,
+          0.41,
+          -0.044
+        ],
+        "handR": [
+          -0.51,
+          0.409,
+          0.004
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "kom-snipa-boy": {
       "file": "bodies/kom-snipa-boy.glb",
@@ -3409,14 +3643,14 @@
       "measured": true,
       "sockets": {
         "handR": [
-          -0.505,
-          0.38,
-          -0.269
+          -0.411,
+          0.407,
+          -0.243
         ],
         "handL": [
-          0.499,
-          0.401,
-          -0.027
+          0.45,
+          0.349,
+          0.037
         ],
         "back": [
           0,
@@ -3461,7 +3695,20 @@
           "hit",
           "death"
         ]
-      }
+      },
+      "measuredHandSockets": {
+        "handL": [
+          0.499,
+          0.401,
+          -0.027
+        ],
+        "handR": [
+          -0.505,
+          0.38,
+          -0.269
+        ]
+      },
+      "handSockets": "fist-centre (split-body.py)"
     },
     "lg-anointed": {
       "file": "bodies/lg-anointed.glb",
