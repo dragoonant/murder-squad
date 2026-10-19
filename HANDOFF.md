@@ -1,6 +1,6 @@
 # HANDOFF
 
-Updated 2026-10-18 after the M9 batch B cleanup pass. Read `CLAUDE.md` first, then this file, then `STATUS.md`, then `PLAN.md`.
+Updated 2026-10-18 during the v2 figure regeneration (dynamic poses). Read `CLAUDE.md` first, then this file, then `STATUS.md`, then `PLAN.md`.
 
 ## Where things stand
 - Live playtest build: https://dragoonant.github.io/murder-squad/ (deploys from `main` on every green push).
@@ -9,18 +9,19 @@ Updated 2026-10-18 after the M9 batch B cleanup pass. Read `CLAUDE.md` first, th
 - Cleanup pass (2026-10-18): Scrapcode Overload now uses the shared `firefight.actionDeclared` window for the Infiltrator's own Pick Up and mission actions, counteractions included (RULINGs Corrected); Grudge reads the hook's own `obscured` flag, so odds computed mid-Shoot agree; the AI turns an oval base (arquebus Gunner) toward the nearest enemy at the end of a move when the arc fits; a phone tap on a keyword inside a button (order cards) now presses the button; the gallery spec visits every team's attachment page (73 of 73 load); `.gitattributes` normalises line endings.
 - Gates at the end of the pass: typecheck clean, 1005 Vitest tests, `validate:data` 71 files / 718 records, sim 40/40 clean, bench 40-0 (all ten teams), Playwright 39 of 39 (three long specs time out only under full parallel load; they pass with `--workers=2`).
 - Not verified by ear: all audio. Not play-verified by the owner: the eight M9 teams.
+- v2 figures (2026-10-18, `docs/spec/30-figures.md` section 7): M8 rigging was dropped; every body is being regenerated in a dynamic pose with its weapons in the mesh. Angels of Death v2 bodies are on `main` (10, with a kneeling Intercessor variant; `weaponsBaked` bodies mount no weapon attachments). Kommandos (13) and Pathfinders (18) are rendering on Alteisen (`E:\AI\work\murder-squad\v2\bodies`, scheduled tasks `ms_v2_kom`, `ms_v2_pf`, log `chain.log`); their concepts are in `art/unit-concepts/v2/`. Hierotek Circle has 4 of 10 concepts (Gemini image limit, resets daily). Prompt lists for every remaining team are ready in `%USERPROFILE%\hf-tools\<team>-prompts-gemini.json`.
 
 ## Next steps
 1. Owner review of the batch A figures (wired GLBs in `?gallery`, attachment pages per team) and of the batch B art direction; collect fixes.
-2. Batch B figures: Gemini concepts (one chat per team, `art/*/PROMPTS.md`), then Hunyuan3D bodies and attachments, measured sockets, mapped in `src/client/teams/<team>.ts` (replace the `standIns`). The Hunter Clade arquebus Gunner needs its oval base in the body GLB.
+2. v2 figures, team by team (spec 30 section 7): Hierotek (6 concepts left), Plague Marines, Wyrmblade, Legionaries, Hand of the Archon, Hunter Clade (the arquebus Gunners need the oval base in the body GLB), Hearthkyn; when Alteisen finishes a team, scp the GLBs into `public/assets/models/bodies/`, run `measure-sockets.py` (add new variants to its `VARIANTS` table), check `?gallery`, commit, push. Batch B teams drop their `standIns` once their v2 bodies land.
 3. Remaining not-exact rules in `docs/needs-rules-check.md` and `13-teams.md`: direct damage removes at once (before-removal ploys auto-played or not offered); lifecycle-hook choices made by the team code (Reanimation order, Medic! acceptance, Weavefield Crest, Secure Salvage); no `weapon.choice` for Rending/Punishing/Severe; Utility Grenade marker on Smoke Grenade spots; Beam counts trial-retention crits; Climbing Rigs shorten every climb of one move. About 306 RULINGs are still Unsourced.
-4. M8 skeletal animation: UniRig pilot on two bodies (owner decision); the procedural soft-cut rig (split body plus rig clips) is the fallback route.
+4. (M8 skeletal animation was dropped by the owner on 2026-10-18; do not reopen it for these fused meshes.)
 5. Owner playtest round on the ten teams: collect feedback, fix, push.
 6. Later: Approved Ops tac ops (card text still unsourced), Gallowdark, multiplayer; next project Boarding Actions (owner, week of 2026-10-19), reusing the engine and a shared Gallowdark set.
 
 ## Pipelines (how to regenerate things)
-- Concepts: Gemini via Claude in Chrome on this PC (`art/*/PROMPTS.md` record every prompt). Bodies are bare-handed MGSD; attachments are side-view props.
-- 3D: Hunyuan3D on this PC (`%USERPROFILE%\Hunyuan3D-2`, work dir `outputs/ms-work`, batch scripts `run_*_local.bat`) and Alteisen (`E:\AI\work\murder-squad`, `tools/local-gen/run_*_alteisen.bat`, launched detached via `schtasks`). Finalisers: `tools/models/{measure-sockets.py,finalize-attachments.py,finalize-terrain.py}` (run with the 2.1 venv python), manifest `public/assets/models/manifest.json`.
+- Concepts: Gemini via Claude in Chrome on this PC (`art/*/PROMPTS.md` record every prompt). v2 bodies hold their weapons in a dynamic pose (one standalone prompt per body, exported as one JSON bundle per chat); v1 attachments are side-view props.
+- 3D: Hunyuan3D on this PC (`%USERPROFILE%\Hunyuan3D-2`, work dir `outputs/ms-work`, batch scripts `run_*_local.bat`) and Alteisen (`E:\AI\work\murder-squad`, `tools/local-gen/run_*_alteisen.bat`, launched detached via `schtasks`; v2 bodies: `run_v2_alteisen.bat`, work dir `E:\AI\work\murder-squad\v2`). Finalisers: `tools/models/{measure-sockets.py,finalize-attachments.py,finalize-terrain.py}` (run with the 2.1 venv python), manifest `public/assets/models/manifest.json`.
 - Mats: `tools/textures/gen-mats.mjs` against Flux Studio (port 7880).
 - Audio: `tools/gen-audio.ts` against the Audio Studio (port 7890), manifest `tools/audio-manifest.json`, trims `public/audio/trims.json`, audition `public/sounds.html`.
 - Gates: `npm run typecheck`, `npm test`, `npm run validate:data`, `npm run sim -- --games 40 --teams real --decider normal`, `npm run bench:ai -- --games 40`, `PW_PORT=41xx npm run e2e`.
