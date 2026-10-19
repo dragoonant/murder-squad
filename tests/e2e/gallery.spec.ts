@@ -93,7 +93,7 @@ test('gallery attachment pages show every real attachment GLB in hand', async ({
 
   // the M9 teams' pages: the bodies gallery only draws the attachments of each body's default loadout, so the
   // manifest's full set loads once every team page has been shown
-  for (const team of ['pf', 'ht', 'pm', 'wb']) {
+  for (const team of ['pf', 'ht', 'pm', 'wb', 'lg', 'ha', 'hc', 'hk']) {
     await page.getByTestId(`att-${team}`).click()
     await page.getByTestId('att-page-all').click()
   }

@@ -15,6 +15,12 @@ import { Figure, hasGlbBody, seatColor } from './Operative'
 import { baseOfCard } from './OvalBase'
 import { useModelManifest, type SocketName, type V3 } from './manifest'
 
+// Batch B attachment pages (every GLB of the team prefix in the manifest at the time of writing).
+const LG_SLUGS: readonly string[] = ['lg-w-daemon-blade', 'lg-w-daemonic-claw', 'lg-w-double-handed-chainaxe', 'lg-w-fell-dagger', 'lg-w-flensing-blades', 'lg-w-malefic-blade', 'lg-w-meltagun', 'lg-w-plasma-gun', 'lg-w-power-maul', 'lg-w-reaper-chaincannon']
+const HA_SLUGS: readonly string[] = ['ha-w-agoniser', 'ha-w-array-of-blades', 'ha-w-blast-pistol', 'ha-w-blaster', 'ha-w-dark-lance', 'ha-w-pain-sculptors', 'ha-w-power-weapon', 'ha-w-razorflail', 'ha-w-shardcarbine', 'ha-w-shredder', 'ha-w-splinter-cannon', 'ha-w-splinter-pistol', 'ha-w-splinter-rifle', 'ha-w-stim-needler', 'ha-w-stinger-pistol', 'ha-w-venom-blade']
+const HC_SLUGS: readonly string[] = ['hc-w-arc-maul', 'hc-w-arc-pistol', 'hc-w-arc-rifle', 'hc-w-chordclaw', 'hc-w-flechette-blaster', 'hc-w-galvanic-rifle', 'hc-w-plasma-caliver', 'hc-w-radium-carbine', 'hc-w-radium-pistol', 'hc-w-stubcarbine', 'hc-w-taser-goad', 'hc-w-transonic-blade', 'hc-w-transuranic-arquebus']
+const HK_SLUGS: readonly string[] = ['hk-e-c8-hx-charge', 'hk-w-autoch-bolt-pistol', 'hk-w-autoch-bolter', 'hk-w-bolt-revolver', 'hk-w-concussion-gauntlet', 'hk-w-concussion-knux', 'hk-w-etacarn-plasma-beamer', 'hk-w-etacarn-plasma-pistol', 'hk-w-hylas-auto-rifle', 'hk-w-hylas-rotary-cannon', 'hk-w-ion-blaster', 'hk-w-ion-pistol', 'hk-w-l7-missile-launcher', 'hk-w-magna-rail-rifle', 'hk-w-plasma-knife', 'hk-w-plasma-weapon']
+
 const COLS = 5
 const GAP_X = 2.4
 const GAP_Z = 3.0
@@ -37,6 +43,10 @@ const ATT_TEAMS = [
   { id: 'pm', label: 'Plague Marine attachments', short: 'PM attachments', slugs: PM_SLUGS, body: 'pm-plague-marine-warrior', cols: 3, major: { h: 0.2, s: 0.35, l: 0.4 }, minor: { h: 0.05, s: 0.5, l: 0.35 } },
   { id: 'wb', label: 'Wyrmblade attachments', short: 'WB attachments', slugs: WB_SLUGS, body: 'wb-neophyte-warrior', cols: 5, major: { h: 0.75, s: 0.4, l: 0.35 }, minor: { h: 0.13, s: 0.8, l: 0.5 } },
   { id: 'aod', label: 'Angels of Death attachments', short: 'AoD attachments', slugs: AOD_SLUGS, body: 'aod-intercessor-warrior', cols: 4, major: { h: 0.6, s: 0.6, l: 0.4 }, minor: { h: 0.12, s: 0.7, l: 0.5 } },
+  { id: 'lg', label: 'Legionary attachments', short: 'LG attachments', slugs: LG_SLUGS, body: 'lg-warrior', cols: 5, major: { h: 0.62, s: 0.3, l: 0.2 }, minor: { h: 0.12, s: 0.6, l: 0.45 } },
+  { id: 'ha', label: 'Hand of the Archon attachments', short: 'HA attachments', slugs: HA_SLUGS, body: 'ha-agent', cols: 5, major: { h: 0.5, s: 0.2, l: 0.25 }, minor: { h: 0.9, s: 0.5, l: 0.4 } },
+  { id: 'hc', label: 'Hunter Clade attachments', short: 'HC attachments', slugs: HC_SLUGS, body: 'hc-skitarii-ranger-warrior', cols: 5, major: { h: 0.03, s: 0.55, l: 0.35 }, minor: { h: 0.1, s: 0.5, l: 0.5 } },
+  { id: 'hk', label: 'Hearthkyn attachments', short: 'HK attachments', slugs: HK_SLUGS, body: 'hk-warrior', cols: 5, major: { h: 0.08, s: 0.9, l: 0.5 }, minor: { h: 0.55, s: 0.2, l: 0.6 } },
 ] as const
 
 const SOCKET_COLOR: Record<SocketName, string> = {
@@ -154,7 +164,7 @@ export function Gallery() {
 
   return (
     <div data-testid="gallery" style={{ position: 'fixed', inset: 0, background: '#0a0a10', color: colors.text, fontFamily: fontStack }}>
-      <div style={{ position: 'absolute', top: 8, left: 12, zIndex: 5, fontSize: 13, display: 'flex', alignItems: 'center' }}>
+      <div style={{ position: 'absolute', top: 8, left: 12, zIndex: 5, fontSize: 13, display: 'flex', alignItems: 'center', flexWrap: 'wrap', right: 12 }}>
         <b>Figure gallery</b>&nbsp;&middot; {allCards.length} datacards &middot; {Object.keys(manifest.bodies).length} GLB bodies listed &middot;&nbsp;
         <a style={{ color: colors.accent }} href="./">back</a>
         <button data-testid="view-front" style={btn(view === 'front')} onClick={() => setView('front')}>

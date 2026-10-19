@@ -2,8 +2,8 @@
 // this team's weapons and datacards (teams/types.ts). Owned by the team implementer. Las and ion weapons read as plasma
 // bolts, the Autoch-pattern bolters as bolt tracers, the missile launcher and the C8 charge as explosives; the
 // concussion weapons are crush effects. Every sound id already exists in the audio manifest. Attachment slugs follow the
-// concept art names (`hk-w-*`, `hk-e-*`); an attachment with no GLB yet draws the hold-class placeholder, and fists draw
-// nothing. Bodies are `hk-*` archetypes drawn as procedural stand-ins until their GLBs exist.
+// concept art names (`hk-w-*`, `hk-e-*`); every weapon has a GLB, and fists draw
+// nothing. Every datacard has a `hk-*` body GLB.
 import type { TeamPresentation } from './types'
 
 const PISTOL = 'hk-w-autoch-bolt-pistol'
@@ -113,19 +113,6 @@ export const PRESENTATION: TeamPresentation = {
     // bare, armoured knuckles draw nothing in the hand
     'hk.w.fists': [],
   },
-  standIns: [
-    'hk-theyn',
-    'hk-dozr',
-    'hk-field-medic',
-    'hk-grenadier',
-    'hk-gunner',
-    'hk-jump-pack-warrior',
-    'hk-kinlynk',
-    'hk-kognitaar',
-    'hk-lokatr',
-    'hk-lugger',
-    'hk-warrior',
-  ],
   // Keywords and rule terms in our own wording (game/glossary.ts merges them over the generic fallbacks).
   glossary: [
     { term: 'HEARTHKYN SALVAGER', kind: 'keyword', body: 'The faction keyword of every Hearthkyn Salvagers operative. Grudge, Medic!, Signal and nearly every ploy of the team look for it.' },
