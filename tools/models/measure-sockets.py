@@ -29,6 +29,15 @@ VARIANTS: dict[str, list[str]] = {
     "kom-boy": ["kom-boy-b", "kom-boy-c"],
     "pf-shasla": ["pf-shasla-b", "pf-shasla-c"],
     "ht-immortal-guardian": ["ht-immortal-guardian-b"],
+    "pm-plague-marine-warrior": ["pm-plague-marine-warrior-b"],
+    "wb-neophyte-warrior": ["wb-neophyte-warrior-b", "wb-neophyte-warrior-c"],
+    "lg-warrior": ["lg-warrior-b"],
+    "ha-agent": ["ha-agent-b"],
+    "hc-skitarii-ranger-warrior": ["hc-skitarii-ranger-warrior-b"],
+    "hc-skitarii-vanguard-warrior": ["hc-skitarii-vanguard-warrior-b"],
+    "hc-sicarian-infiltrator-warrior": ["hc-sicarian-infiltrator-warrior-b"],
+    "hc-sicarian-ruststalker-warrior": ["hc-sicarian-ruststalker-warrior-b"],
+    "hk-warrior": ["hk-warrior-b", "hk-warrior-c"],
 }
 
 DEFAULT_BAND = (0.20, 0.60)  # spec says 35-60%; these hands hang lower, so the band reaches down to the fists
