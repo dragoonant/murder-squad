@@ -405,8 +405,10 @@ export function SettingsPanel() {
       <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
         <Btn onClick={() => useUi.getState().requestCamera('home')}>Overview</Btn>
         <Btn onClick={() => useUi.getState().requestCamera('top')}>Top-down</Btn>
+        <Btn data-testid="cam-turn-left" aria-label="Turn view left" onClick={() => useUi.getState().requestCamera('left')}>⟲ Turn</Btn>
+        <Btn data-testid="cam-turn-right" aria-label="Turn view right" onClick={() => useUi.getState().requestCamera('right')}>Turn ⟳</Btn>
       </div>
-      <Muted style={{ marginBottom: 10 }}>Right-drag orbit, middle-drag or WASD pan, wheel zoom. Two fingers on touch.</Muted>
+      <Muted style={{ marginBottom: 10 }}>Right-drag orbit, middle-drag or WASD pan, wheel zoom. Touch: two fingers pinch to zoom, drag to pan, twist to turn.</Muted>
       <div style={{ display: 'flex', gap: 6 }}>
         <Btn
           data-testid="btn-resign"
