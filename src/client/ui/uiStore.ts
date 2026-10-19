@@ -30,13 +30,16 @@ interface UiState {
   hoverNote: { ok: boolean; text: string } | null
   drawer: DrawerId | null
   panels: { feed: boolean; log: boolean; mission: boolean }
-  cameraPreset: { id: 'home' | 'top'; nonce: number } | null
+  cameraPreset: { id: CameraRequest; nonce: number } | null
   set(p: Partial<UiState>): void
   togglePanel(k: 'feed' | 'log' | 'mission'): void
   toggleDrawer(id: DrawerId): void
   resetPath(): void
-  requestCamera(id: 'home' | 'top'): void
+  /** home / top-down presets, or turn the view 45 degrees around the board (left / right) */
+  requestCamera(id: CameraRequest): void
 }
+
+export type CameraRequest = 'home' | 'top' | 'left' | 'right'
 
 export const useUi = create<UiState>((set) => ({
   selectedOp: null,
