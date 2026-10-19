@@ -453,5 +453,160 @@
   "prompt": "super-deformed heroic body for ha-agent-b, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/ha-agent-b.png)",
   "height": 1.05,
   "base": 25
+ },
+ "hc-skitarii-ranger-warrior": {
+  "prompt": "super-deformed heroic body for hc-skitarii-ranger-warrior, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-skitarii-ranger-warrior.png)",
+  "height": 1.1,
+  "base": 25
+ },
+ "hc-skitarii-ranger-alpha": {
+  "prompt": "super-deformed heroic body for hc-skitarii-ranger-alpha, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-skitarii-ranger-alpha.png)",
+  "height": 1.15,
+  "base": 25
+ },
+ "hc-skitarii-ranger-diktat": {
+  "prompt": "super-deformed heroic body for hc-skitarii-ranger-diktat, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-skitarii-ranger-diktat.png)",
+  "height": 1.1,
+  "base": 25
+ },
+ "hc-skitarii-ranger-surveyor": {
+  "prompt": "super-deformed heroic body for hc-skitarii-ranger-surveyor, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-skitarii-ranger-surveyor.png)",
+  "height": 1.1,
+  "base": 25
+ },
+ "hc-skitarii-ranger-gunner": {
+  "prompt": "super-deformed heroic body for hc-skitarii-ranger-gunner, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-skitarii-ranger-gunner.png)",
+  "height": 1.1,
+  "base": 25
+ },
+ "hc-skitarii-vanguard-warrior": {
+  "prompt": "super-deformed heroic body for hc-skitarii-vanguard-warrior, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-skitarii-vanguard-warrior.png)",
+  "height": 1.1,
+  "base": 25
+ },
+ "hc-skitarii-vanguard-alpha": {
+  "prompt": "super-deformed heroic body for hc-skitarii-vanguard-alpha, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-skitarii-vanguard-alpha.png)",
+  "height": 1.15,
+  "base": 25
+ },
+ "hc-skitarii-vanguard-diktat": {
+  "prompt": "super-deformed heroic body for hc-skitarii-vanguard-diktat, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-skitarii-vanguard-diktat.png)",
+  "height": 1.1,
+  "base": 25
+ },
+ "hc-skitarii-vanguard-surveyor": {
+  "prompt": "super-deformed heroic body for hc-skitarii-vanguard-surveyor, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-skitarii-vanguard-surveyor.png)",
+  "height": 1.1,
+  "base": 25
+ },
+ "hc-skitarii-vanguard-gunner": {
+  "prompt": "super-deformed heroic body for hc-skitarii-vanguard-gunner, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-skitarii-vanguard-gunner.png)",
+  "height": 1.1,
+  "base": 25
+ },
+ "hc-sicarian-infiltrator-warrior": {
+  "prompt": "super-deformed heroic body for hc-sicarian-infiltrator-warrior, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-sicarian-infiltrator-warrior.png)",
+  "height": 1.2,
+  "base": 40
+ },
+ "hc-sicarian-ruststalker-warrior": {
+  "prompt": "super-deformed heroic body for hc-sicarian-ruststalker-warrior, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-sicarian-ruststalker-warrior.png)",
+  "height": 1.2,
+  "base": 40
+ },
+ "hc-sicarian-infiltrator-princeps": {
+  "prompt": "super-deformed heroic body for hc-sicarian-infiltrator-princeps, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-sicarian-infiltrator-princeps.png)",
+  "height": 1.25,
+  "base": 40
+ },
+ "hc-sicarian-ruststalker-princeps": {
+  "prompt": "super-deformed heroic body for hc-sicarian-ruststalker-princeps, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-sicarian-ruststalker-princeps.png)",
+  "height": 1.25,
+  "base": 40
+ },
+ "hc-skitarii-ranger-warrior-b": {
+  "prompt": "super-deformed heroic body for hc-skitarii-ranger-warrior-b, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-skitarii-ranger-warrior-b.png)",
+  "height": 1.1,
+  "base": 25
+ },
+ "hc-skitarii-vanguard-warrior-b": {
+  "prompt": "super-deformed heroic body for hc-skitarii-vanguard-warrior-b, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-skitarii-vanguard-warrior-b.png)",
+  "height": 1.1,
+  "base": 25
+ },
+ "hc-sicarian-infiltrator-warrior-b": {
+  "prompt": "super-deformed heroic body for hc-sicarian-infiltrator-warrior-b, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-sicarian-infiltrator-warrior-b.png)",
+  "height": 1.2,
+  "base": 40
+ },
+ "hc-sicarian-ruststalker-warrior-b": {
+  "prompt": "super-deformed heroic body for hc-sicarian-ruststalker-warrior-b, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hc-sicarian-ruststalker-warrior-b.png)",
+  "height": 1.2,
+  "base": 40
+ },
+ "hk-warrior": {
+  "prompt": "super-deformed heroic body for hk-warrior, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hk-warrior.png)",
+  "height": 1,
+  "base": 28
+ },
+ "hk-theyn": {
+  "prompt": "super-deformed heroic body for hk-theyn, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hk-theyn.png)",
+  "height": 1.05,
+  "base": 28
+ },
+ "hk-dozr": {
+  "prompt": "super-deformed heroic body for hk-dozr, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hk-dozr.png)",
+  "height": 1.05,
+  "base": 28
+ },
+ "hk-field-medic": {
+  "prompt": "super-deformed heroic body for hk-field-medic, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hk-field-medic.png)",
+  "height": 1,
+  "base": 28
+ },
+ "hk-grenadier": {
+  "prompt": "super-deformed heroic body for hk-grenadier, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hk-grenadier.png)",
+  "height": 1,
+  "base": 28
+ },
+ "hk-gunner": {
+  "prompt": "super-deformed heroic body for hk-gunner, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hk-gunner.png)",
+  "height": 1,
+  "base": 28
+ },
+ "hk-jump-pack-warrior": {
+  "prompt": "super-deformed heroic body for hk-jump-pack-warrior, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hk-jump-pack-warrior.png)",
+  "height": 1.15,
+  "base": 28
+ },
+ "hk-kinlynk": {
+  "prompt": "super-deformed heroic body for hk-kinlynk, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hk-kinlynk.png)",
+  "height": 1,
+  "base": 28
+ },
+ "hk-kognitaar": {
+  "prompt": "super-deformed heroic body for hk-kognitaar, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hk-kognitaar.png)",
+  "height": 1.05,
+  "base": 28
+ },
+ "hk-lokatr": {
+  "prompt": "super-deformed heroic body for hk-lokatr, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hk-lokatr.png)",
+  "height": 1,
+  "base": 28
+ },
+ "hk-lugger": {
+  "prompt": "super-deformed heroic body for hk-lugger, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hk-lugger.png)",
+  "height": 1,
+  "base": 28
+ },
+ "hk-warrior-b": {
+  "prompt": "super-deformed heroic body for hk-warrior-b, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hk-warrior-b.png)",
+  "height": 1,
+  "base": 28
+ },
+ "hk-warrior-c": {
+  "prompt": "super-deformed heroic body for hk-warrior-c, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/hk-warrior-c.png)",
+  "height": 1,
+  "base": 28
  }
 }
