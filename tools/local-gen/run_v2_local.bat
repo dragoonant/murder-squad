@@ -13,6 +13,10 @@ if exist %W%\%ID%.done del %W%\%ID%.done
 echo start %date% %time% > %W%\%ID%.log
 cd /d %USERPROFILE%\Hunyuan3D-2
 set PICKS=v2_%ID%_picks.json
+rem stale meshes from an earlier run would be re-painted if the shape stage fails: clear them first
+for %%s in (%BSLUGS%) do (if exist outputs\%%s\shape.glb del outputs\%%s\shape.glb
+  if exist outputs\%%s\textured.glb del outputs\%%s\textured.glb
+  if exist outputs\%%s\final.glb del outputs\%%s\final.glb)
 .venv\Scripts\python.exe merge_units.py "%REPO%\tools\local-gen\v2_units.json" >> %W%\%ID%.log 2>&1
 .venv\Scripts\python.exe stage_cutout.py %BSLUGS% > %W%\%ID%.cutout.log 2>&1
 echo cutout %date% %time% >> %W%\%ID%.log
