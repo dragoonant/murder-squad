@@ -21,6 +21,15 @@ ROOT = Path(__file__).resolve().parents[2]
 BODIES = ROOT / "public" / "assets" / "models" / "bodies"
 MANIFEST = ROOT / "public" / "assets" / "models" / "manifest.json"
 UNITS = ROOT / "tools" / "local-gen" / "ms_units.json"
+# v2 bodies (docs/spec/30-figures.md section 7): dynamic pose, default weapons fused into the mesh. No hand sockets are
+# measured for them and the manifest entry gets `weaponsBaked`; VARIANTS lists the other poses of the same archetype.
+V2_UNITS = ROOT / "tools" / "local-gen" / "v2_units.json"
+VARIANTS: dict[str, list[str]] = {
+    "aod-intercessor-warrior": ["aod-intercessor-warrior-kneeling"],
+    "kom-boy": ["kom-boy-b", "kom-boy-c"],
+    "pf-shasla": ["pf-shasla-b", "pf-shasla-c"],
+    "ht-immortal-guardian": ["ht-immortal-guardian-b"],
+}
 
 DEFAULT_BAND = (0.20, 0.60)  # spec says 35-60%; these hands hang lower, so the band reaches down to the fists
 HAND_BAND: dict[str, tuple[float, float]] = {
@@ -89,7 +98,7 @@ def measure(slug: str):
     if facing == "-Z":
         v = v * np.array([-1.0, 1.0, -1.0])  # turn the mesh to face +Z so right is -x below
     band = HAND_BAND.get(slug, DEFAULT_BAND)
-    if slug not in NO_HANDS:
+    if slug not in NO_HANDS and slug not in V2:
         vh = v[np.abs(v[:, 0]) <= HAND_XMAX[slug]] if slug in HAND_XMAX else v
         hr = hand(vh, -1, at(band[0]), at(band[1]), hf)
         hl = hand(vh, +1, at(band[0]), at(band[1]), hf)
@@ -107,6 +116,8 @@ def measure(slug: str):
         sl = slice_(v, at(f), hf)
         for suf, side in (("R", -1), ("L", 1)):
             side_v = sl[sl[:, 0] * side > 0]
+            if len(side_v) == 0:
+                side_v = sl  # a leaning pose can put the whole slice on one side of x = 0: use that edge of the body
             if len(side_v):
                 x = side_v[:, 0].min() if side < 0 else side_v[:, 0].max()
                 near = side_v[np.abs(side_v[:, 0] - x) < 0.04 * hf + 0.02]
@@ -123,8 +134,12 @@ def measure(slug: str):
     }
 
 
+V2: set[str] = set(json.loads(V2_UNITS.read_text(encoding="utf-8")).keys()) if V2_UNITS.exists() else set()
+
+
 def main():
     units = json.loads(UNITS.read_text(encoding="utf-8"))
+    v2_units = json.loads(V2_UNITS.read_text(encoding="utf-8")) if V2_UNITS.exists() else {}
     man = json.loads(MANIFEST.read_text(encoding="utf-8")) if MANIFEST.exists() else {}
     man.setdefault("attachments", {})
     bodies = {}
@@ -138,10 +153,14 @@ def main():
             "heightIn": m["heightIn"],
             "figureHeightIn": m["figureHeightIn"],
             "baseTopIn": m["baseTopIn"],
-            "baseMm": units.get(slug, {}).get("base"),
+            "baseMm": (v2_units.get(slug) or units.get(slug, {})).get("base"),
             "measured": True,
             "sockets": m["sockets"],
         }
+        if slug in V2:
+            entry["weaponsBaked"] = True
+            if slug in VARIANTS:
+                entry["variants"] = [x for x in VARIANTS[slug] if (BODIES / f"{x}.glb").exists()]
         if m["facing"] != "+Z":
             entry["facing"] = m["facing"]
         bodies[slug] = entry
