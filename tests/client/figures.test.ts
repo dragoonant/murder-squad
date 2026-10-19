@@ -19,6 +19,15 @@ describe('figure manifest', () => {
     expect(cards.length).toBeGreaterThanOrEqual(20)
   })
 
+  it('pose variants point at listed bodies with weapons baked', () => {
+    for (const [slug, b] of Object.entries(manifest.bodies)) {
+      for (const v of b.variants ?? []) {
+        expect(manifest.bodies[v], `${slug} variant ${v}`).toBeTruthy()
+        expect(manifest.bodies[v]!.weaponsBaked, `${slug} variant ${v} baked`).toBe(true)
+      }
+    }
+  })
+
   it('every datacard archetype has a manifest entry', () => {
     // archetypes a team draws as procedural stand-ins on purpose (src/client/teams standIns) need no body yet
     const missing = cards.filter((c) => !manifest.bodies[c.figure.archetype] && !STAND_INS.has(c.figure.archetype)).map((c) => `${c.id} -> ${c.figure.archetype}`)
@@ -46,9 +55,8 @@ describe('figure manifest', () => {
       expect(b.baseMm, slug).toBeGreaterThan(20)
       const s = b.sockets!
       for (const k of ['back', 'beltR', 'beltL', 'shoulderR', 'shoulderL', 'head'] as const) expect(s[k], `${slug}.${k}`).toBeTruthy()
-      if (slug === 'kom-bomb-squig') {
-        expect(s.handR).toBeUndefined()
-        expect(s.handL).toBeUndefined()
+      if (slug === 'kom-bomb-squig' || b.weaponsBaked) {
+        // no hand sockets on the squig; v2 bodies carry their weapons in the mesh, hands are not used
       } else {
         expect(s.handR![0], `${slug} handR is on the figure's right (-x)`).toBeLessThan(0)
         expect(s.handL![0], `${slug} handL is on the figure's left (+x)`).toBeGreaterThan(0)

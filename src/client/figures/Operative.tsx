@@ -33,6 +33,8 @@ export interface FigureSpec {
   weaponIds: string[]
   /** QC only: mount exactly these attachment slugs (by their hold class) instead of the loadout's weapons */
   attachSlugs?: string[]
+  /** picks among the archetype's pose variants (manifest `variants`); the operative id in battle */
+  variantKey?: string
   seatColor: string
   dim?: boolean
 }
@@ -154,7 +156,8 @@ export function GlbBody({ body, spec, ranged, melee }: { body: BodyEntry; spec: 
   const obj = useGlbInstance(slugOf(body.file, 'bodies'))
   const shown = useMemo(() => shownWeapons(spec.weaponIds), [spec.weaponIds])
   const cols = useMemo(() => ({ ranged: hslColor(spec.minor, 0.1), melee: hslColor(spec.major, 0.12) }), [spec.major, spec.minor])
-  const placed = useMemo(() => (spec.attachSlugs ? planSlugs(spec.attachSlugs, manifest) : planAttachments(shown, manifest)), [spec.attachSlugs, shown, manifest])
+  // v2 bodies carry their weapons in the mesh: nothing is mounted (QC slugs still are)
+  const placed = useMemo(() => (spec.attachSlugs ? planSlugs(spec.attachSlugs, manifest) : body.weaponsBaked ? [] : planAttachments(shown, manifest)), [spec.attachSlugs, shown, manifest, body.weaponsBaked])
   if (!obj) return <Procedural height={spec.height} baseRadius={spec.baseRadius} ovalHalfAxis={spec.ovalHalfAxis} major={spec.major} minor={spec.minor} ranged={ranged} melee={melee} seatColor={spec.seatColor} dim={spec.dim} />
   const sockets = body.sockets ?? {}
   // natural weapons (no hand sockets, e.g. the bomb squig) draw nothing
@@ -180,11 +183,21 @@ export function GlbBody({ body, spec, ranged, melee }: { body: BodyEntry; spec: 
   )
 }
 
+/** The body for an archetype, or one of its pose variants chosen by a stable hash of `key` (the operative id). */
+export function pickBody(manifest: ModelManifest, archetype: string, key?: string): BodyEntry | undefined {
+  const base = manifest.bodies[archetype]
+  if (!base?.variants?.length || !key) return base
+  const pool = [archetype, ...base.variants]
+  let h = 0
+  for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return manifest.bodies[pool[h % pool.length]!] ?? base
+}
+
 /** Body + attachments. Falls back to the stand-in for any archetype the manifest does not list. */
 export function Figure({ spec }: { spec: FigureSpec }) {
   const manifest = useModelManifest()
   const holds = useMemo(() => weaponHolds(spec.weaponIds), [spec.weaponIds])
-  const body = manifest.bodies[spec.archetype]
+  const body = pickBody(manifest, spec.archetype, spec.variantKey)
   if (body) return <GlbBody body={body} spec={spec} ranged={holds.ranged} melee={holds.melee} />
   return (
     <Procedural
@@ -372,7 +385,7 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
   const paint = team?.paint ?? { major: { h: 0.6, s: 0.5, l: 0.4 }, minor: { h: 0.1, s: 0.6, l: 0.4 } }
   const archetype = (dataBundle().byId[op.datacardId] as { figure?: { archetype: string } } | undefined)?.figure?.archetype ?? op.datacardId
   const spec: FigureSpec = useMemo(
-    () => ({ archetype, height: op.height, baseRadius: op.baseRadius, ...(op.ovalHalfAxis ? { ovalHalfAxis: op.ovalHalfAxis } : {}), major: paint.major, minor: paint.minor, weaponIds: op.weapons, seatColor: seatColor(op.seat), dim: !op.ready }),
+    () => ({ archetype, height: op.height, baseRadius: op.baseRadius, ...(op.ovalHalfAxis ? { ovalHalfAxis: op.ovalHalfAxis } : {}), major: paint.major, minor: paint.minor, weaponIds: op.weapons, seatColor: seatColor(op.seat), dim: !op.ready, variantKey: op.id }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [archetype, op.height, op.baseRadius, op.ovalHalfAxis, op.weapons, op.seat, op.ready, team],
   )
