@@ -49,6 +49,7 @@ Fan game: 3D Warhammer 40,000: Kill Team (2024 edition, mechanics 1:1, our own p
 | Figure poses (v2) | Every body regenerated in a dynamic role pose with its default weapons fused into the mesh (`docs/spec/30-figures.md` section 7); accessories may still mount on back / belt sockets; archetypes fielded several times get pose variants chosen per operative id; all ten teams, rendered on Alteisen, Gemini quota paces the concept work. v1 GLBs are replaced in place (same slugs) so the game, team files and gallery need no remapping | owner 2026-10-18 |
 | Figure style wording | No model-kit brand, "mecha" or "Gundam" words in prompts or docs (they describe robot kits); the style sentence is derived from the owner's reference pictures and lives in spec 30 section 1 | owner 2026-10-18 |
 | Concept source | Gemini (Imagen) over Hugging Face providers: FLUX.1-dev ignores the head ratio, Qwen-Image paints chapter badges and grey backdrops; test script `tools/art/hf-concepts.py` kept | owner 2026-10-18 ("Gemini wins again") |
+| Local GPU batches | This PC may run Hunyuan batches only after the local studio services are stopped and the commit charge checked (the shape stage needs about 40 GB of commit); the owner's rule is to stop the studios when a session is done with them. Alteisen stays the default queue | owner 2026-10-18 ("Stop the services. We're not using them.") |
 
 ## Architecture
 ```
