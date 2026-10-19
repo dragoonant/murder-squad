@@ -8,6 +8,7 @@ import { effectiveApl } from '@/engine/state'
 import { killStatus, mission } from '../game/kill'
 import { dataBundle } from '../game/adapter'
 import { humanize, SEAT_NAME } from '../game/labels'
+import { teamPicks } from '../game/promptLabels'
 import { useAudioSettings } from '../audio'
 import { groupFeed, useFeedStore } from '../presentation/feedStore'
 import { useDisplayState } from '../presentation/presentedStore'
@@ -319,6 +320,25 @@ export function MissionPanel() {
               <Dot seat={seat} />
               <b>{SEAT_NAME[seat]}</b>: <Keyword term="Kill grade">kill grade</Keyword> <b>{k.grade}</b>/5 ({k.kills} down; grades at {k.thresholds.join(', ') || 'n/a'}
               {k.next !== null ? `; next at ${k.next}` : ''})
+            </div>
+          )
+        })}
+        {(['A', 'B'] as const).map((seat) => {
+          const picks = teamPicks(state, seat)
+          if (picks.length === 0) return null
+          return (
+            <div key={`picks-${seat}`} data-testid={`mission-picks-${seat}`}>
+              <Dot seat={seat} />
+              <b>{SEAT_NAME[seat]}</b> team picks:
+              {picks.map((p) => (
+                <div key={p.label} style={{ marginLeft: 12 }}>
+                  {p.label}: <b><Keyword term={p.name} kind="ability" /></b>
+                  {p.swappedFrom ? <span style={{ color: colors.accent }}> (Adaptive Tactics: replaces {p.swappedFrom} this turning point)</span> : null}
+                  <span style={{ color: colors.muted }}>
+                    {' '}&middot; <KeywordText text={p.text} />
+                  </span>
+                </div>
+              ))}
             </div>
           )
         })}

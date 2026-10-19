@@ -154,7 +154,7 @@ function actionEntries(): GlossaryEntry[] {
 
 // ---------------------------------------------------------------- data-built entries
 
-interface RecordLike { id: string; name?: string; text?: string; kind?: string; param?: string; ap?: number; cost?: number; type?: string; scope?: string; count?: number; critsVariant?: boolean; team?: string; stats?: unknown; keywords?: string[] }
+interface RecordLike { id: string; name?: string; text?: string; kind?: string; param?: string; ap?: number; cost?: number; type?: string; scope?: string; count?: number; critsVariant?: boolean; team?: string; stats?: unknown; keywords?: string[]; choiceGroup?: string }
 
 const ROLE_KEYWORD: Record<string, string> = {
   LEADER: 'Role keyword: the one commander each kill team must include. Angels of Death take a Captain or a Sergeant, Kommandos the Boss Nob, Pathfinders the Shas\'ui, Plague Marines the Champion, Wyrmblade the Neophyte Leader. Leader abilities such as Heroic Leader build on it.',
@@ -250,6 +250,19 @@ function recordEntries(): GlossaryEntry[] {
     }
     seen.set(key, e)
     out.push(e)
+  }
+  // pick-one option groups (Chapter Tactics): the faction rule that offers them lists every option, and the
+  // singular group name ("Chapter Tactic") links to the same list
+  const groups = new Map<string, RecordLike[]>()
+  for (const rec of Object.values(dataBundle().byId) as RecordLike[]) {
+    if (rec.choiceGroup && rec.name && rec.text) groups.set(rec.choiceGroup, [...(groups.get(rec.choiceGroup) ?? []), rec])
+  }
+  for (const [group, opts] of groups) {
+    const rule = (Object.values(dataBundle().byId) as RecordLike[]).find((r) => r.kind === 'factionRule' && (r.id.endsWith(`.${group}s`) || r.id.endsWith(`.${group}`)))
+    const list = opts.map((o) => `${o.name}: ${o.text}`).join(' ')
+    const term = group.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    add({ term, kind: 'ability', body: `${rule?.text ? `${rule.text} ` : ''}Options: ${list}` })
+    if (rule?.name && rule.text) add({ term: rule.name, kind: 'ability', body: `${rule.text} Options: ${list}` })
   }
   for (const rec of Object.values(dataBundle().byId) as RecordLike[]) {
     if (!rec.name || !rec.text) continue

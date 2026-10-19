@@ -407,7 +407,38 @@ export interface PloyCardInfo {
   cost: number | null
   text: string
   param: string | null
+  /** rules text of the picked option when the param is an ability (a Chapter Tactic) */
+  paramText: string | null
+  /** the pick this option swaps out (Adaptive Tactics: the current secondary Chapter Tactic) */
+  replaces: { name: string; text: string } | null
   affordable: boolean
+}
+
+type NamedRecord = { name?: string; text?: string } | undefined
+
+function recordOf(id: string | null | undefined): NamedRecord {
+  return id ? (dataBundle().byId[id] as NamedRecord) : undefined
+}
+
+export interface TeamPickLine {
+  label: string
+  name: string
+  text: string
+  /** set while a ploy has swapped this pick out (Adaptive Tactics) */
+  swappedFrom: string | null
+}
+
+/** A seat's team-level picks (Chapter Tactics) with their rules; Adaptive Tactics' swap applied. */
+export function teamPicks(state: GameState, seat: Seat): TeamPickLine[] {
+  const team = dataBundle().teams[state.players[seat].teamId]
+  const cfg = state.config[seat]
+  return (team?.teamChoices ?? []).flatMap((tc) => {
+    const picked = cfg.choices[tc.id]
+    if (!picked) return []
+    const live = tc.id === 'secondary-tactic' && cfg.adaptive ? cfg.adaptive : picked
+    const rec = recordOf(live)
+    return [{ label: tc.label, name: rec?.name ?? humanize(live), text: rec?.text ?? '', swappedFrom: live !== picked ? (recordOf(picked)?.name ?? humanize(picked)) : null }]
+  })
 }
 
 function ployText(state: GameState, id: string): string {
@@ -422,13 +453,25 @@ export function ployCard(opt: DecisionOption, state: GameState, seat: Seat): Plo
   const cost = num(d.cost)
   const name = str(d.name) ?? state.data.gambits.find((g) => g.id === ployId)?.name ?? state.data.ploys?.[ployId]?.name ?? humanize(ployId)
   const param = str(p.param)
+  const paramRec = param && !state.operatives[param] ? recordOf(param) : undefined
+  // a ploy that swaps one team pick for another names the pick it replaces (Adaptive Tactics)
+  const replaceKey = ((state.data.ploys?.[ployId]?.effect as { params?: { replace?: string } } | undefined)?.params?.replace)
+  let replaces: PloyCardInfo['replaces'] = null
+  if (replaceKey && paramRec) {
+    const cfg = state.config[seat]
+    const cur = (replaceKey === 'secondary' ? cfg.adaptive : null) ?? cfg.choices[`${replaceKey}-tactic`]
+    const r = recordOf(cur)
+    if (cur) replaces = { name: r?.name ?? humanize(cur), text: r?.text ?? '' }
+  }
   return {
     id: opt.id,
     ployId,
     name,
     cost,
     text: ployText(state, ployId),
-    param: param ? (state.operatives[param] ? opName(state, param) : humanize(param)) : null,
+    param: param ? (state.operatives[param] ? opName(state, param) : (paramRec?.name ?? humanize(param))) : null,
+    paramText: paramRec?.text ?? null,
+    replaces,
     affordable: cost === null || cost <= state.players[seat].cp,
   }
 }
@@ -754,7 +797,8 @@ function promptSummaryBase(state: GameState, pending: PendingDecision): PromptSu
       const lines = [
         ...opts.map((o) => {
           const c = ployCard(o, state, pending.seat)
-          return `${c.name}${c.cost !== null ? ` (${c.cost} CP)` : ''}${c.param ? ` on ${c.param}` : ''}: ${c.text}`
+          const swap = c.replaces ? ` (swap ${c.replaces.name} for ${c.param})` : c.param ? ` on ${c.param}` : ''
+          return `${c.name}${c.cost !== null ? ` (${c.cost} CP)` : ''}${swap}: ${c.text}${c.paramText ? ` ${c.param}: ${c.paramText}` : ''}`
         }),
         ...unavailablePloys(state, pending).map((u) => `${u.name} (${u.cost} CP): unavailable, ${u.reason}`),
       ]
