@@ -30,6 +30,8 @@ HAND_BAND: dict[str, tuple[float, float]] = {
     "pf-blooded": (0.15, 0.42),
     "pm-plague-marine-heavy-gunner": (0.2, 0.32),
 }
+# wings or cloaks stick out sideways past the arms; ignore vertices wider than this (|x|, inches) when measuring the hands
+HAND_XMAX = {"ha-skysplinter-assassin": 0.5}
 NO_HANDS = {"kom-bomb-squig"}
 # hose loops and pouches pull the measured hand behind the body; force the z of both hands (inches, +Z front)
 HAND_Z = {"pm-plague-marine-heavy-gunner": 0.1}
@@ -88,8 +90,9 @@ def measure(slug: str):
         v = v * np.array([-1.0, 1.0, -1.0])  # turn the mesh to face +Z so right is -x below
     band = HAND_BAND.get(slug, DEFAULT_BAND)
     if slug not in NO_HANDS:
-        hr = hand(v, -1, at(band[0]), at(band[1]), hf)
-        hl = hand(v, +1, at(band[0]), at(band[1]), hf)
+        vh = v[np.abs(v[:, 0]) <= HAND_XMAX[slug]] if slug in HAND_XMAX else v
+        hr = hand(vh, -1, at(band[0]), at(band[1]), hf)
+        hl = hand(vh, +1, at(band[0]), at(band[1]), hf)
         if slug in HAND_Z:
             for h_ in (hr, hl):
                 if h_ is not None:

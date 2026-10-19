@@ -1,7 +1,7 @@
 // Legionaries client presentation: weapon flavours, VFX families, sounds, attachments, glossary and figure stand-ins
 // for this team's weapons and datacards (teams/types.ts). Owned by the team implementer. Concept slugs use the lg- prefix:
-// bodies lg-<operative> and attachments lg-w-<weapon> are built from the concept art; until a body GLB exists the
-// datacard draws the procedural stand-in, and a team-prefixed attachment without a mesh draws the hold-class placeholder.
+// bodies lg-<operative> and attachments lg-w-<weapon> are built from the concept art; every datacard has a body GLB and
+// every drawn weapon an attachment GLB.
 // Shared meshes (bolt pistol, plasma pistol, power fist, power sword, chainsword, bolt rifle, heavy bolter, hand flamer,
 // rokkit launcha) are reused where the weapon is the standard issue one; psychic powers and fists draw nothing.
 // Sounds reuse existing audio ids.
@@ -133,18 +133,6 @@ export const PRESENTATION: TeamPresentation = {
     'lg.w.flensing-blades': ['lg-w-flensing-blades'],
     'lg.w.malefic-blade': ['lg-w-malefic-blade'],
   },
-  standIns: [
-    'lg-aspiring-champion',
-    'lg-chosen',
-    'lg-anointed',
-    'lg-balefire-acolyte',
-    'lg-butcher',
-    'lg-gunner',
-    'lg-heavy-gunner',
-    'lg-icon-bearer',
-    'lg-shrivetalon',
-    'lg-warrior',
-  ],
   // Keywords and rule terms in our own wording (game/glossary.ts merges them over the generic fallbacks). The shared
   // keywords Plague Marines also carry are worded for both teams, because a team entry replaces the generic one.
   glossary: [

@@ -12,6 +12,8 @@ import { lookupTerm } from '@/client/game/glossary'
 import { describeEvent } from '@/client/game/labels'
 import { bearingTo, canFlyNow, facingTowardEnemy, previewMove, turnedBy } from '@/client/interaction/controller'
 import { baseOfCard } from '@/client/figures/OvalBase'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { STAND_INS } from '@/client/teams'
 import { tokenDef } from '@/client/ui/tokenDefs'
 import { tokenTip } from '@/client/ui/tokenInfo'
@@ -74,12 +76,13 @@ describe('batch B: tokens and wording', () => {
     expect(lookupTerm('DOZR')!.body).toMatch(/Normal Dmg of 4 or more/)
   })
 
-  it('BB-C-004 the batch B datacards without a body GLB are listed as stand-ins', () => {
+  it('BB-C-004 every batch B datacard has a body GLB, or is listed as a stand-in until it does', () => {
     const b = dataBundle()
+    const manifestBodies = (JSON.parse(readFileSync(resolve(process.cwd(), 'public/assets/models/manifest.json'), 'utf8')) as { bodies: Record<string, unknown> }).bodies
     for (const t of BATCH_B) {
       const cards = Object.values(b.byId).filter((r) => (r as { team?: string }).team === t && 'figure' in (r as object)) as unknown as { figure: { archetype: string } }[]
       expect(cards.length, t).toBeGreaterThan(5)
-      for (const c of cards) expect(STAND_INS.has(c.figure.archetype), `${t} ${c.figure.archetype}`).toBe(true)
+      for (const c of cards) expect(!!manifestBodies[c.figure.archetype] || STAND_INS.has(c.figure.archetype), `${t} ${c.figure.archetype}`).toBe(true)
     }
   })
 })

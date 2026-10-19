@@ -1,8 +1,7 @@
 // Hunter Clade client presentation: weapon flavours, VFX families, sounds, attachments and figure stand-ins for
-// this team's weapons and datacards (teams/types.ts). Owned by the team implementer. Bodies (hc-*) and attachments
-// (hc-w-*) come from the concept art; until a GLB exists the renderer draws the hold-class placeholder, and the
-// fourteen archetypes below are procedural stand-ins. The arquebus Gunner stands on a 60x35mm oval base: the engine
-// models and moves it as an oval (footprint.ts); drawing the oval and the turn control are client work that follows.
+// this team's weapons and datacards (teams/types.ts). Owned by the team implementer. Every datacard has a body GLB (hc-*)
+// and every weapon an attachment GLB (hc-w-*) from the concept art. The arquebus Gunner stands on a 60x35mm oval base: the engine
+// models and moves it as an oval (footprint.ts); the body GLB keeps its round 25mm disc inside that footprint (the oval shows as the selection ring).
 // Sounds reuse existing audio ids; the shared power sword, plasma pistol and hand flamer meshes are reused.
 import type { TeamPresentation } from './types'
 
@@ -102,23 +101,6 @@ export const PRESENTATION: TeamPresentation = {
     // the rifle already carries its butt
     [id('gun-butt')]: [],
   },
-  // Procedural stand-ins until the body GLBs from the concept art exist (art/unit-concepts, hc- prefix).
-  standIns: [
-    'hc-sicarian-ruststalker-princeps',
-    'hc-sicarian-infiltrator-princeps',
-    'hc-skitarii-ranger-alpha',
-    'hc-skitarii-vanguard-alpha',
-    'hc-sicarian-infiltrator-warrior',
-    'hc-sicarian-ruststalker-warrior',
-    'hc-skitarii-ranger-diktat',
-    'hc-skitarii-ranger-gunner',
-    'hc-skitarii-ranger-surveyor',
-    'hc-skitarii-ranger-warrior',
-    'hc-skitarii-vanguard-diktat',
-    'hc-skitarii-vanguard-gunner',
-    'hc-skitarii-vanguard-surveyor',
-    'hc-skitarii-vanguard-warrior',
-  ],
   // Keywords and rule terms in our own wording (game/glossary.ts merges them over the generic fallbacks).
   glossary: [
     { term: 'HUNTER CLADE', kind: 'keyword', body: 'Faction keyword of every Hunter Clade operative. Doctrina Imperatives, Rad-Saturation, Control Edict and most of its ploys name it.' },
