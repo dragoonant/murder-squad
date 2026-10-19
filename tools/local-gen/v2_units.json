@@ -348,5 +348,60 @@
   "prompt": "super-deformed heroic body for wb-neophyte-warrior-c, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/wb-neophyte-warrior-c.png)",
   "height": 1.05,
   "base": 25
+ },
+ "lg-warrior": {
+  "prompt": "super-deformed heroic body for lg-warrior, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/lg-warrior.png)",
+  "height": 1.25,
+  "base": 32
+ },
+ "lg-aspiring-champion": {
+  "prompt": "super-deformed heroic body for lg-aspiring-champion, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/lg-aspiring-champion.png)",
+  "height": 1.4,
+  "base": 32
+ },
+ "lg-chosen": {
+  "prompt": "super-deformed heroic body for lg-chosen, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/lg-chosen.png)",
+  "height": 1.3,
+  "base": 32
+ },
+ "lg-anointed": {
+  "prompt": "super-deformed heroic body for lg-anointed, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/lg-anointed.png)",
+  "height": 1.4,
+  "base": 32
+ },
+ "lg-balefire-acolyte": {
+  "prompt": "super-deformed heroic body for lg-balefire-acolyte, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/lg-balefire-acolyte.png)",
+  "height": 1.3,
+  "base": 32
+ },
+ "lg-butcher": {
+  "prompt": "super-deformed heroic body for lg-butcher, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/lg-butcher.png)",
+  "height": 1.35,
+  "base": 32
+ },
+ "lg-gunner": {
+  "prompt": "super-deformed heroic body for lg-gunner, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/lg-gunner.png)",
+  "height": 1.25,
+  "base": 32
+ },
+ "lg-heavy-gunner": {
+  "prompt": "super-deformed heroic body for lg-heavy-gunner, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/lg-heavy-gunner.png)",
+  "height": 1.35,
+  "base": 32
+ },
+ "lg-icon-bearer": {
+  "prompt": "super-deformed heroic body for lg-icon-bearer, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/lg-icon-bearer.png)",
+  "height": 1.7,
+  "base": 32
+ },
+ "lg-shrivetalon": {
+  "prompt": "super-deformed heroic body for lg-shrivetalon, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/lg-shrivetalon.png)",
+  "height": 1.3,
+  "base": 32
+ },
+ "lg-warrior-b": {
+  "prompt": "super-deformed heroic body for lg-warrior-b, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/lg-warrior-b.png)",
+  "height": 1.25,
+  "base": 32
  }
 }
