@@ -293,5 +293,60 @@
   "prompt": "super-deformed heroic body for pm-plague-marine-warrior-b, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/pm-plague-marine-warrior-b.png)",
   "height": 1.25,
   "base": 32
+ },
+ "wb-neophyte-warrior": {
+  "prompt": "super-deformed heroic body for wb-neophyte-warrior, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/wb-neophyte-warrior.png)",
+  "height": 1.05,
+  "base": 25
+ },
+ "wb-neophyte-leader": {
+  "prompt": "super-deformed heroic body for wb-neophyte-leader, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/wb-neophyte-leader.png)",
+  "height": 1.1,
+  "base": 25
+ },
+ "wb-neophyte-gunner": {
+  "prompt": "super-deformed heroic body for wb-neophyte-gunner, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/wb-neophyte-gunner.png)",
+  "height": 1.05,
+  "base": 25
+ },
+ "wb-neophyte-heavy-gunner": {
+  "prompt": "super-deformed heroic body for wb-neophyte-heavy-gunner, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/wb-neophyte-heavy-gunner.png)",
+  "height": 1.15,
+  "base": 32
+ },
+ "wb-neophyte-icon-bearer": {
+  "prompt": "super-deformed heroic body for wb-neophyte-icon-bearer, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/wb-neophyte-icon-bearer.png)",
+  "height": 1.45,
+  "base": 25
+ },
+ "wb-kelermorph": {
+  "prompt": "super-deformed heroic body for wb-kelermorph, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/wb-kelermorph.png)",
+  "height": 1.15,
+  "base": 32
+ },
+ "wb-locus": {
+  "prompt": "super-deformed heroic body for wb-locus, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/wb-locus.png)",
+  "height": 1.2,
+  "base": 32
+ },
+ "wb-sanctus-sniper": {
+  "prompt": "super-deformed heroic body for wb-sanctus-sniper, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/wb-sanctus-sniper.png)",
+  "height": 1.15,
+  "base": 32
+ },
+ "wb-sanctus-talon": {
+  "prompt": "super-deformed heroic body for wb-sanctus-talon, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/wb-sanctus-talon.png)",
+  "height": 1.15,
+  "base": 32
+ },
+ "wb-neophyte-warrior-b": {
+  "prompt": "super-deformed heroic body for wb-neophyte-warrior-b, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/wb-neophyte-warrior-b.png)",
+  "height": 1.05,
+  "base": 25
+ },
+ "wb-neophyte-warrior-c": {
+  "prompt": "super-deformed heroic body for wb-neophyte-warrior-c, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/wb-neophyte-warrior-c.png)",
+  "height": 1.05,
+  "base": 25
  }
 }
