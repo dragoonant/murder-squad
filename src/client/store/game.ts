@@ -20,6 +20,7 @@ import {
 } from '@/engine'
 import type { MissionData } from '@/data'
 import { buildGameSetup, dataBundle, engineBundle, type SeatBuild } from '../game/adapter'
+import { effectiveLayout } from '../game/defaults'
 import { rejectionText } from '../game/labels'
 import { RandomBot } from '../bot/randomBot'
 import { AiWorkerClient } from '../bot/aiWorkerClient'
@@ -47,7 +48,9 @@ export interface NewGameOptions {
   seats: Record<Seat, SeatMode>
   seed: string
   missionId: string
+  /** a layout id, or 'auto' to roll one of the official cards from the seed */
   layoutId: string
+  /** only honoured when the layout lists it; an official card names its own map */
   mapId?: string | null
   /** the human places objective and equipment markers on the board instead of the engine's suggestions */
   manualPlacement?: boolean
@@ -211,8 +214,10 @@ export const useGame = create<GameStore>((set, get) => {
       setDirectorPerspective(opts.seats.A === 'human' ? 'A' : opts.seats.B === 'human' ? 'B' : null)
       const b = dataBundle()
       const mission = b.missions[opts.missionId]
-      const layout = b.layouts[opts.layoutId]
-      if (!mission || !layout) throw new Error(`unknown mission/layout: ${opts.missionId} / ${opts.layoutId}`)
+      if (!mission) throw new Error(`unknown mission: ${opts.missionId}`)
+      // 'auto' is rolled from the seed here, so the game meta, the briefing and the panels all show the real layout
+      const layout = effectiveLayout(b, opts.layoutId, opts.seed)
+      // an official card is terrain plus map: buildGameSetup plays the layout's own map
       const setup = buildGameSetup(b, opts.builds.A, opts.builds.B, { layoutId: layout.id, missionId: mission.id, mapId: opts.mapId, auto: opts.manualPlacement !== true })
       let r = createGame(setup, opts.seed, engineBundle())
       if (opts.prepare) {
@@ -234,7 +239,7 @@ export const useGame = create<GameStore>((set, get) => {
         meta: {
           seed: opts.seed,
           missionId: opts.missionId,
-          layoutId: opts.layoutId,
+          layoutId: layout.id,
           mission,
           builds: opts.builds,
         },

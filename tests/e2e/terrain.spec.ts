@@ -5,7 +5,7 @@ import { resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { screenshotRendered } from './helpers'
 
-const layout = JSON.parse(readFileSync(resolve(process.cwd(), 'src/data/killzones/volkus-01.json'), 'utf8')) as { pieces: { model: string }[] }
+const layout = JSON.parse(readFileSync(resolve(process.cwd(), 'src/data/killzones/volkus-ao25-1.json'), 'utf8')) as { pieces: { model: string }[] }
 const manifest = JSON.parse(readFileSync(resolve(process.cwd(), 'public/assets/models/manifest.json'), 'utf8')) as { terrain: Record<string, unknown> }
 const slugs = [...new Set(layout.pieces.map((p) => p.model))].filter((s) => s in manifest.terrain)
 
@@ -19,7 +19,7 @@ test('terrain GLBs load, fit and draw on the mat', async ({ page }) => {
   })
   page.on('pageerror', (e) => errors.push(String(e)))
 
-  await page.goto('./?test=1&seats=human,bot&seed=7&layout=volkus-01&speed=instant')
+  await page.goto('./?test=1&seats=human,bot&seed=7&layout=volkus-ao25-1&speed=instant')
   await page.getByTestId('battle').waitFor()
   await page.waitForFunction(() => !!window.__ms?.getState())
   await page.waitForFunction(
@@ -35,8 +35,8 @@ test('terrain GLBs load, fit and draw on the mat', async ({ page }) => {
 
   await screenshotRendered(page, 'e2e-out/terrain-01.png')
 
-  // close three-quarter view of the first large ruin (p01 at -4.75, -4.75)
-  await page.evaluate(() => window.__ms?.camera.current?.lookAt(-4.75, -4.75, 13))
+  // close three-quarter view of Map 1's large ruin C (p06 at 6.8, -4.77)
+  await page.evaluate(() => window.__ms?.camera.current?.lookAt(6.8, -4.77, 13))
   await screenshotRendered(page, 'e2e-out/terrain-02.png')
 
   expect(errors).toEqual([])
@@ -44,7 +44,7 @@ test('terrain GLBs load, fit and draw on the mat', async ({ page }) => {
 
 test('a piece between the camera and a selected operative fades to 35%', async ({ page }) => {
   test.setTimeout(90_000)
-  await page.goto('./?test=1&seats=bot,bot&seed=7&layout=volkus-01&speed=instant')
+  await page.goto('./?test=1&seats=bot,bot&seed=7&layout=volkus-ao25-1&speed=instant')
   await page.getByTestId('battle').waitFor()
   await page.waitForFunction(() => !!window.__ms?.getState())
   // let the bots deploy, then select every operative in turn at the default camera

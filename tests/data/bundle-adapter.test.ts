@@ -14,7 +14,7 @@ import {
   validateLoadoutChoice,
 } from '@/engine/bundle'
 import { loadBundle, validateRoster } from '../../src/data'
-import { realBundle, realGame } from '../fixtures/real'
+import { TEST_LAYOUT, realBundle, realGame } from '../fixtures/real'
 
 const data = loadBundle()
 
@@ -34,7 +34,7 @@ describe('data adapter: bundleFromData(loadBundle())', () => {
       expect(Object.values(b.datacards).filter((c) => c.teamId === team), `${team} datacards mapped`).toHaveLength(cards.length)
     }
     expect(Object.keys(b.missions ?? {}).sort()).toEqual(['mission.prelim-loot', 'mission.prelim-secure', 'mission.prelim-transmission'])
-    expect(Object.keys(b.layouts ?? {})).toHaveLength(3)
+    expect(Object.keys(b.layouts ?? {}).filter((id) => id !== TEST_LAYOUT)).toHaveLength(6) // the six official cards (plus the engine tests' fixture layout)
     // strategy ploys become gambits, firefight ploys stay ploys
     const strategy = Object.values(b.ploys ?? {}).filter((p) => p.type === 'strategy')
     expect(b.gambits.map((g) => g.id).sort()).toEqual(strategy.map((p) => p.id).sort())
@@ -111,14 +111,14 @@ describe('data adapter: bundleFromData(loadBundle())', () => {
   })
 
   it('ADAPT-007 mission maps compose drop zones, territories and objective spots onto the layout', () => {
-    const base = layoutMap(realBundle, 'kz.volkus-01')
+    const base = layoutMap(realBundle, 'kz.volkus-ao25-1')
     expect(base.dropZones).toHaveLength(0)
     expect(base.features.length).toBeGreaterThan(5)
     const secure = realBundle.missions!['mission.prelim-secure']!
     const m1 = composeMissionMap(base, missionMap(secure, 'prelim-1'))
     expect(m1.dropZones.map((z) => z.id)).toEqual(['prelim-1.a', 'prelim-1.b'])
     expect(m1.dropZones[0]!.territory).toBeDefined()
-    expect(m1.meta!.objectiveSpots!.default.centre).toEqual({ x: 0, z: 0 })
+    expect(m1.meta!.objectiveSpots!.default.centre).toEqual({ x: 0, z: -5 })
     expect(m1.meta!.centreline.a.x).toBe(0)
     // part ids are unique across the board and the door is transparent to control range
     const parts = m1.features.flatMap((f) => f.parts.map((p) => p.id))

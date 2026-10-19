@@ -16,6 +16,7 @@ import {
   type DatacardData,
   type EquipmentData,
   type Id,
+  type KillzoneLayoutData,
   type MissionData,
   type RosterSelection,
   type TeamData,
@@ -69,14 +70,37 @@ export function resolveMission(b: DataBundle, key: string | null | undefined): M
   return list[0]!
 }
 
+/** Layout choice that lets the seed pick one of the official cards. */
+export const AUTO_LAYOUT = 'auto'
+
 export function resolveLayout(b: DataBundle, key: string | null | undefined) {
   const list = layoutList(b)
   if (key) {
     const k = key.toLowerCase()
-    const hit = list.find((l) => l.id === k || l.id.endsWith(k) || l.id.endsWith(`volkus-${k.padStart(2, '0')}`))
+    const num = /^(?:volkus-)?0*(\d+)$/.exec(k)?.[1]
+    const hit = list.find((l) => l.id === k || l.id === `kz.${k}` || l.id.endsWith(`-${k}`) || (num !== undefined && l.id.endsWith(`-${num}`)))
     if (hit) return hit
   }
   return list[0]!
+}
+
+/** 32-bit FNV-1a, so a seed string rolls the same layout in every browser. */
+function seedHash(text: string): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193)
+  return h >>> 0
+}
+
+/** The seed's roll for the killzone card: a D6 for the map in the Approved Ops method (one layout per card). */
+export function rollLayout(b: DataBundle, seed: string): KillzoneLayoutData {
+  const list = layoutList(b)
+  return list[seedHash(`layout:${seed}`) % list.length]!
+}
+
+/** The layout a session or game really uses: 'auto' is rolled from the seed, any other key must be a layout id. */
+export function effectiveLayout(b: DataBundle, key: string, seed: string): KillzoneLayoutData {
+  if (key === AUTO_LAYOUT) return rollLayout(b, seed)
+  return b.layouts[key] ?? resolveLayout(b, key)
 }
 
 /**

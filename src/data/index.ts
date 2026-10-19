@@ -71,9 +71,12 @@ import hkEquipment from './teams/hearthkyn-salvagers/equipment.json'
 import f17 from './missions/preliminary-ops-secure.json'
 import f18 from './missions/preliminary-ops-loot.json'
 import f19 from './missions/preliminary-ops-transmission.json'
-import f20 from './killzones/volkus-01.json'
-import f21 from './killzones/volkus-02.json'
-import f22 from './killzones/volkus-03.json'
+import f20 from './killzones/volkus-ao25-1.json'
+import f21 from './killzones/volkus-ao25-2.json'
+import f22 from './killzones/volkus-ao25-3.json'
+import f23 from './killzones/volkus-ao25-4.json'
+import f24 from './killzones/volkus-ao25-5.json'
+import f25 from './killzones/volkus-ao25-6.json'
 
 export * from './types'
 export * from './kill-grades'
@@ -154,9 +157,12 @@ const FILES: Record<string, unknown> = {
   'missions/preliminary-ops-secure.json': f17,
   'missions/preliminary-ops-loot.json': f18,
   'missions/preliminary-ops-transmission.json': f19,
-  'killzones/volkus-01.json': f20,
-  'killzones/volkus-02.json': f21,
-  'killzones/volkus-03.json': f22,
+  'killzones/volkus-ao25-1.json': f20,
+  'killzones/volkus-ao25-2.json': f21,
+  'killzones/volkus-ao25-3.json': f22,
+  'killzones/volkus-ao25-4.json': f23,
+  'killzones/volkus-ao25-5.json': f24,
+  'killzones/volkus-ao25-6.json': f25,
 }
 
 function parsedFiles(): { path: string; type: RecordType; records: DataRecord[] }[] {

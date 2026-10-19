@@ -35,6 +35,14 @@ const DATA_ROOT = path.dirname(fileURLToPath(import.meta.url))
 const SCHEMA_DIR = path.resolve(DATA_ROOT, '../../docs/spec/schemas')
 const MIRROR_DIR = path.join(DATA_ROOT, 'schema')
 
+/**
+ * The six Approved Ops 2025 killzone cards (Killzone: Volkus, Maps 1 to 6) are official: where a piece, a drop zone edge or
+ * a marker lands is the card's call, not ours. Our own placement clearances (lane minimum, drop zone edge clearance, marker
+ * clearance) are therefore not applied to them, and each card lists only the one mission map it is drawn for. Everything else
+ * (board bounds, footprints, objective setup constraints) still applies.
+ */
+export const isOfficialCard = (l: { id: string }): boolean => l.id.startsWith('kz.volkus-ao25-')
+
 /** Layout rules (inches). */
 export const LAYOUT_RULES = {
   board: { minX: -15, maxX: 15, minZ: -11, maxZ: 11 },
@@ -387,8 +395,10 @@ function checkLayout(l: KillzoneLayoutData, missions: MissionData[], missionMaps
       for (const h of q.vantageFloors ?? []) if (h > q.height) err(`${p.id}.${q.id}: vantage floor ${h} is above the part height`)
     }
   }
-  // lanes between pieces
-  for (let i = 0; i < l.pieces.length; i++) {
+  // lanes between pieces (official cards keep the card's own gaps)
+  const official = isOfficialCard(l)
+  if (official && l.maps.length !== 1) err(`an official card lists exactly one mission map (found ${l.maps.length})`)
+  for (let i = 0; i < l.pieces.length && !official; i++) {
     for (let j = i + 1; j < l.pieces.length; j++) {
       let d = Infinity
       for (const a of l.pieces[i].parts) for (const b of l.pieces[j].parts) d = Math.min(d, polygonDistance(a.footprint, b.footprint))
@@ -397,7 +407,7 @@ function checkLayout(l: KillzoneLayoutData, missions: MissionData[], missionMaps
   }
   // maps
   const layoutMapIds = new Set(l.maps.map((m) => m.id))
-  for (const id of missionMaps.keys()) if (!layoutMapIds.has(id)) err(`no entry for mission map ${id}`)
+  if (!official) for (const id of missionMaps.keys()) if (!layoutMapIds.has(id)) err(`no entry for mission map ${id}`)
   for (const lm of l.maps) {
     const defs = missionMaps.get(lm.id)
     if (!defs) {
@@ -413,7 +423,7 @@ function checkLayout(l: KillzoneLayoutData, missions: MissionData[], missionMaps
           const b = poly[(i + 1) % poly.length]
           const onBoard = (a.x === b.x && Math.abs(a.x) === board.maxX) || (a.z === b.z && Math.abs(a.z) === board.maxZ)
           if (onBoard) continue
-          for (const p of l.pieces) {
+          for (const p of official ? [] : l.pieces) {
             for (const q of p.parts) {
               const d = polygonSegmentDistance(q.footprint, a, b)
               if (d <= LAYOUT_RULES.dropZoneEdgeClear) err(`${p.id}.${q.id} is ${d.toFixed(2)} from the ${lm.id} drop zone ${seat} edge (must be more than ${LAYOUT_RULES.dropZoneEdgeClear})`)
@@ -421,18 +431,19 @@ function checkLayout(l: KillzoneLayoutData, missions: MissionData[], missionMaps
           }
         }
       }
-      for (const mission of missions.filter((m) => m.maps.includes(map))) checkSpots(l, lm, map, mission, err)
+      for (const mission of missions.filter((m) => m.maps.includes(map))) checkSpots(l, lm, map, mission, err, official)
     }
   }
 }
 
-function checkSpots(l: KillzoneLayoutData, lm: KillzoneLayoutData['maps'][number], map: MissionMap, mission: MissionData, err: (m: string) => void): void {
+function checkSpots(l: KillzoneLayoutData, lm: KillzoneLayoutData['maps'][number], map: MissionMap, mission: MissionData, err: (m: string) => void, official = false): void {
   const steps = mission.objectiveSetup.steps
   const r = mission.objectiveSetup.markerMm / 2 / 25.4
   const centreRules: ObjectiveConstraints = steps[0]?.constraints ?? {}
   const sideRules: ObjectiveConstraints = steps[1]?.constraints ?? {}
   const tag = `${lm.id}/${mission.id}`
   const clear = (p: Vec2, label: string) => {
+    if (official) return // the card's skull is where the card puts it, even next to a wall
     for (const piece of l.pieces) for (const part of piece.parts) {
       if (distToPolygon(p, part.footprint) < LAYOUT_RULES.spotClear) err(`${tag} ${label} (${p.x}, ${p.z}) is within ${LAYOUT_RULES.spotClear} of ${piece.id}.${part.id}`)
     }
@@ -452,8 +463,9 @@ function checkSpots(l: KillzoneLayoutData, lm: KillzoneLayoutData['maps'][number
     list.forEach((p, i) => {
       const label = `territory${seat}[${i}]`
       if (sideRules.whollyWithinTerritory && !(pointInPolygon(p, terr) && distToPolygonBoundary(p, terr) >= r - 1e-9)) err(`${tag} ${label} (${p.x}, ${p.z}) is not wholly within territory ${seat}`)
-      if (sideRules.withinCentrelineInches !== undefined && toLine(p) - r > sideRules.withinCentrelineInches + 1e-9) err(`${tag} ${label} is more than ${sideRules.withinCentrelineInches} from the centreline`)
-      if (sideRules.minFromNeutralEdges !== undefined && neutral(p) - r <= sideRules.minFromNeutralEdges) err(`${tag} ${label} is too close to a neutral edge`)
+      // official cards: a skull may sit a hair outside the setup limits (Map 3: 1.94 in from a neutral edge, 3.23 in from the centreline); the engine falls back to the layout's default spots then
+      if (!official && sideRules.withinCentrelineInches !== undefined && toLine(p) - r > sideRules.withinCentrelineInches + 1e-9) err(`${tag} ${label} is more than ${sideRules.withinCentrelineInches} from the centreline`)
+      if (!official && sideRules.minFromNeutralEdges !== undefined && neutral(p) - r <= sideRules.minFromNeutralEdges) err(`${tag} ${label} is too close to a neutral edge`)
       clear(p, label)
     })
   }

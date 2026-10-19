@@ -5,7 +5,7 @@
  */
 
 // ---------------------------------------------------------------- primitives
-/** Lowercase kebab, dot-namespaced: aod.intercessor-sergeant, core.wr.piercing, kz.volkus-01. */
+/** Lowercase kebab, dot-namespaced: aod.intercessor-sergeant, core.wr.piercing, kz.volkus-ao25-1. */
 export type Id = string
 export type Slug = string
 export type ActionId = string

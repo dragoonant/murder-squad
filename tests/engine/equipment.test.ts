@@ -76,7 +76,7 @@ describe('EQP placement in set-up (R-1.4)', () => {
   })
 
   it('refuses a spot outside the territory, too close to other markers or access points, or overlapping terrain', () => {
-    const s = realGame({ layoutId: 'kz.volkus-01' })
+    const s = realGame()
     const mines = item('core.e.mines')
     expect(placementIssue(s, 'A', mines, { x: 5, z: 0 }, 0)?.reason).toMatch(/territory/) // seat A owns x <= 0
     expect(placementIssue(s, 'A', mines, { x: -30, z: 0 }, 0)).not.toBeNull()

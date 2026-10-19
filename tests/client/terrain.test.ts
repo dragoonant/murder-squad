@@ -14,7 +14,7 @@ const slugs = [...new Set(pieces.map((p) => p.piece.model))]
 
 describe('terrain GLBs', () => {
   it('layouts use terrain slugs', () => {
-    expect(LAYOUT_FILES).toHaveLength(3)
+    expect(LAYOUT_FILES).toHaveLength(6)
     expect(slugs.length).toBeGreaterThanOrEqual(6)
   })
 
@@ -29,30 +29,38 @@ describe('terrain GLBs', () => {
     }
   })
 
-  it('the footprint of a slug is the same in every piece and layout, centred on pos, and matches the manifest', () => {
-    const bySlug = new Map<string, ReturnType<typeof pieceFootprint>>()
+  it('each kit piece has the same footprint in every layout, centred on pos; the GLB of its slug fits it with a sane stretch', () => {
+    // the official cards use one slug for different kit pieces (stronghold A and B, large ruins C and D, ...), so the
+    // footprint is per piece kind: same slug and same part list means the same piece
+    const byKind = new Map<string, ReturnType<typeof pieceFootprint>>()
     for (const { layout, piece } of pieces) {
       const fp = pieceFootprint(piece)
       expect(Math.abs(fp.cx), `${layout}/${piece.id} centre x`).toBeLessThan(0.01)
       expect(Math.abs(fp.cz), `${layout}/${piece.id} centre z`).toBeLessThan(0.01)
-      const ref = bySlug.get(piece.model)
-      if (!ref) bySlug.set(piece.model, fp)
-      else expect({ w: fp.w, d: fp.d, h: fp.h }, `${layout}/${piece.id} ${piece.model}`).toEqual({ w: ref.w, d: ref.d, h: ref.h })
+      expect(fp.w, `${layout}/${piece.id} long axis on x`).toBeGreaterThanOrEqual(fp.d - 0.01)
+      const kind = `${piece.model}:${piece.parts.map((q) => q.id).join(',')}`
+      const ref = byKind.get(kind)
+      if (!ref) byKind.set(kind, fp)
+      else expect({ w: fp.w, d: fp.d, h: fp.h }, `${layout}/${piece.id} ${kind}`).toEqual({ w: ref.w, d: ref.d, h: ref.h })
     }
-    for (const [slug, fp] of bySlug) {
-      const e = terrain[slug]!
-      expect(e.footprint.w).toBeCloseTo(fp.w, 2)
-      expect(e.footprint.d).toBeCloseTo(fp.d, 2)
-      expect(e.heightIn).toBeCloseTo(fp.h, 2)
-      const s = fitScale(e, fp)
-      for (const k of s) expect(k).toBeCloseTo(1, 2)
+    for (const [kind, fp] of byKind) {
+      const e = terrain[kind.split(':')[0]!]!
+      // fitScale stretches the finalised GLB onto the rules footprint (the GLBs are regenerated per footprint later)
+      for (const k of fitScale(e, fp)) {
+        expect(k, kind).toBeGreaterThan(0.2)
+        expect(k, kind).toBeLessThan(5)
+      }
     }
   })
 
   it('pieceMeta finds the placement of an engine feature id', () => {
-    const m = pieceMeta('kz.volkus-01', 'p01')
-    expect(m).toEqual({ model: 't-large-ruin', pos: { x: -4.75, z: -4.75 }, yaw: 180 })
-    expect(pieceMeta('kz.volkus-01', 'nope')).toBeNull()
+    // Map 1, large ruin C: drawn with its door wall on the card's top edge
+    const m = pieceMeta('kz.volkus-ao25-1', 'p06')
+    expect(m).toMatchObject({ model: 't-large-ruin', yaw: 270 })
+    expect(m!.pos.x).toBeCloseTo(6.795, 2)
+    expect(m!.pos.z).toBeCloseTo(-4.77, 2)
+    expect(pieceMeta('kz.volkus-ao25-1', 'nope')).toBeNull()
+    expect(pieceMeta('kz.volkus-01', 'p01')).toBeNull()
   })
 
   it('toLocal inverts rotation.y = yaw', () => {

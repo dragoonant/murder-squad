@@ -5,12 +5,19 @@ import { ScriptedRng } from '@/engine/rng'
 import { createGame, step } from '@/engine'
 import { cloneState } from '@/engine/state'
 import type { GameSetup, GameState, RosterEntry, Seat } from '@/engine/types'
-import { loadBundle } from '../../src/data'
+import { loadBundle, type KillzoneLayoutData } from '../../src/data'
+import crossing from './layout-crossing.json'
 import { drive, expectOk, newGame as _unused } from './helpers'
 
 void _unused
 
-export const realBundle: EngineBundle = bundleFromData(loadBundle())
+/**
+ * The retired invented layout, kept as an engine-test fixture: open ground and the coordinates the rules tests were written
+ * against. The shipped layouts are the six official cards; tests that need a card name one (kz.volkus-ao25-N).
+ */
+export const TEST_LAYOUT = 'kz.test-crossing'
+const data = loadBundle()
+export const realBundle: EngineBundle = bundleFromData({ ...data, layouts: { ...data.layouts, [TEST_LAYOUT]: crossing as unknown as KillzoneLayoutData } })
 
 export const AOD = 'angels-of-death'
 export const KOM = 'kommandos'
@@ -41,7 +48,7 @@ export interface RealOpts {
 export function realSetupWith(o: RealOpts = {}): GameSetup {
   const setup = realSetup(realBundle, {
     ...(o.teams ? { teams: o.teams } : {}),
-    ...(o.layoutId ? { layoutId: o.layoutId } : {}),
+    layoutId: o.layoutId ?? TEST_LAYOUT,
     missionId: o.missionId ?? 'mission.prelim-secure',
     mapId: o.mapId ?? 'prelim-1',
     autoObjectives: o.autoObjectives ?? true,

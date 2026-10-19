@@ -5,9 +5,12 @@
 // the ground (y = 0), already scaled to footprint.w x footprint.d x heightIn inches.
 import { useEffect, useMemo, useState } from 'react'
 import { Mesh, type Camera, type Material, type Object3D } from 'three'
-import k1 from '@/data/killzones/volkus-01.json'
-import k2 from '@/data/killzones/volkus-02.json'
-import k3 from '@/data/killzones/volkus-03.json'
+import k1 from '@/data/killzones/volkus-ao25-1.json'
+import k2 from '@/data/killzones/volkus-ao25-2.json'
+import k3 from '@/data/killzones/volkus-ao25-3.json'
+import k4 from '@/data/killzones/volkus-ao25-4.json'
+import k5 from '@/data/killzones/volkus-ao25-5.json'
+import k6 from '@/data/killzones/volkus-ao25-6.json'
 import { useGlbInstance } from '../figures/glbLoader'
 
 export interface TerrainEntry {
@@ -33,7 +36,7 @@ interface LayoutFile {
   pieces: LayoutPiece[]
 }
 
-export const LAYOUT_FILES: readonly LayoutFile[] = [k1, k2, k3] as unknown as LayoutFile[]
+export const LAYOUT_FILES: readonly LayoutFile[] = [k1, k2, k3, k4, k5, k6] as unknown as LayoutFile[]
 
 /** Placement of a layout piece: the engine's MapDef features carry the piece id and model slug but not pos/yaw. */
 export function pieceMeta(mapId: string, pieceId: string): PieceMeta | null {

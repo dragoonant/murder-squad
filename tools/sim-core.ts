@@ -446,7 +446,7 @@ export function setupFor(game: number): GameSetup {
  * M2b-game: every pairing of the playable teams (team.json `playable` not false) with their default rosters,
  * built through the data adapter. With only Angels of Death and Kommandos playable this is exactly the
  * original AoD-vs-Kommandos rotation. Seats swap every game, the pairing changes every two games, and the
- * killzone layouts rotate; the engine rolls the map and the crit op, and the bots place the objective
+ * killzone layouts rotate; each official card plays its own map, the engine rolls the crit op, and the bots place the objective
  * markers and the equipment themselves.
  */
 export function realSetupFor(bundle: EngineBundle): (game: number) => GameSetup {

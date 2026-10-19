@@ -229,10 +229,10 @@ test('vantage: the staged move is evaluated at the end point height', async ({ p
     page,
     3,
     [
-      { x: -3.5, z: -4.75 },
-      { x: -4.75, z: -3.5 },
-      { x: -6, z: -4.75 },
-      { x: -4.75, z: -6 },
+      { x: 7.2, z: -4.2 },
+      { x: 6.4, z: -3.4 },
+      { x: 5.6, z: -4.2 },
+      { x: 6.4, z: -5 },
     ],
     async (p) => page.mouse.click(p.x, p.y),
   )
