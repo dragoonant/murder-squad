@@ -253,5 +253,45 @@
   "prompt": "super-deformed heroic body for ht-plasmacyte-reanimator, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/ht-plasmacyte-reanimator.png)",
   "height": 0.75,
   "base": 25
+ },
+ "pm-plague-marine-warrior": {
+  "prompt": "super-deformed heroic body for pm-plague-marine-warrior, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/pm-plague-marine-warrior.png)",
+  "height": 1.25,
+  "base": 32
+ },
+ "pm-plague-marine-champion": {
+  "prompt": "super-deformed heroic body for pm-plague-marine-champion, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/pm-plague-marine-champion.png)",
+  "height": 1.4,
+  "base": 32
+ },
+ "pm-plague-marine-bombardier": {
+  "prompt": "super-deformed heroic body for pm-plague-marine-bombardier, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/pm-plague-marine-bombardier.png)",
+  "height": 1.3,
+  "base": 32
+ },
+ "pm-plague-marine-fighter": {
+  "prompt": "super-deformed heroic body for pm-plague-marine-fighter, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/pm-plague-marine-fighter.png)",
+  "height": 1.25,
+  "base": 32
+ },
+ "pm-plague-marine-heavy-gunner": {
+  "prompt": "super-deformed heroic body for pm-plague-marine-heavy-gunner, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/pm-plague-marine-heavy-gunner.png)",
+  "height": 1.35,
+  "base": 32
+ },
+ "pm-plague-marine-icon-bearer": {
+  "prompt": "super-deformed heroic body for pm-plague-marine-icon-bearer, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/pm-plague-marine-icon-bearer.png)",
+  "height": 1.7,
+  "base": 32
+ },
+ "pm-malignant-plaguecaster": {
+  "prompt": "super-deformed heroic body for pm-malignant-plaguecaster, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/pm-malignant-plaguecaster.png)",
+  "height": 1.3,
+  "base": 32
+ },
+ "pm-plague-marine-warrior-b": {
+  "prompt": "super-deformed heroic body for pm-plague-marine-warrior-b, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/pm-plague-marine-warrior-b.png)",
+  "height": 1.25,
+  "base": 32
  }
 }
