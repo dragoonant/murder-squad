@@ -19,7 +19,7 @@ import { useGlbInstance } from './glbLoader'
 import { attachmentFor } from './attachmentFor'
 import { HOLDS, SHEATHED, handRight, heaviestHold, holdClassOf, type HoldSpec } from './hold'
 import { modelManifest, pointOf, slugOf, useModelManifest, type BodyEntry, type HoldClass, type ModelManifest, type V3 } from './manifest'
-import { BaseRing } from './OvalBase'
+import { BaseRing, OvalPlinth, isOvalBase, setBakedBaseVisible } from './OvalBase'
 import { Procedural, type HslLike } from './Procedural'
 
 export interface FigureSpec {
@@ -160,11 +160,15 @@ export function GlbBody({ body, spec, ranged, melee }: { body: BodyEntry; spec: 
   // natural weapons (no hand sockets, e.g. the bomb squig) draw nothing
   const armed = !!(sockets.handR || sockets.handL)
   const flip = body.facing === '-Z'
+  // an oval footprint (engine ovalHalfAxis): hide the GLB's round disc and stand the figure on the oval plinth instead
+  const oval = isOvalBase(spec.ovalHalfAxis)
+  setBakedBaseVisible(obj, !oval)
   return (
     <group>
       <group rotation={[0, flip ? Math.PI : 0, 0]}>
         <primitive object={obj} />
       </group>
+      {oval && <OvalPlinth baseRadius={spec.baseRadius} ovalHalfAxis={spec.ovalHalfAxis} height={body.baseTopIn ?? 0.12} seatColor={spec.attachSlugs ? undefined : spec.seatColor} />}
       {armed &&
         placed.map((p) => {
           const sock = sockets[p.spec.socket]

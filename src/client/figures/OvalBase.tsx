@@ -4,7 +4,7 @@
 // `ovalHalfAxis` (along the facing). Everything is drawn in the operative's local frame (+Z = facing), so a wrapper
 // group rotated by the facing is all a caller needs; round bases keep the plain disc and ring.
 import { useMemo } from 'react'
-import { DoubleSide, Path, Shape } from 'three'
+import { DoubleSide, ExtrudeGeometry, Path, Shape, type Mesh, type Object3D } from 'three'
 
 /** Semi-axes of the base: x across the facing, z along it. */
 export function baseAxes(baseRadius: number, ovalHalfAxis?: number): { rx: number; rz: number } {
@@ -93,4 +93,44 @@ export function baseOfCard(card: { base: number; ovalBase?: { long: number; shor
     return { baseRadius: Math.round((o.short / 25.4 / 2) * 1000) / 1000, ovalHalfAxis: Math.round(((o.long - o.short) / 25.4 / 2) * 1000) / 1000 }
   }
   return { baseRadius: card.base / 25.4 / 2 }
+}
+
+/** The round disc baked into a body GLB (a node named `base`, material `base_black`). Hides or shows it; true when one was found. */
+export function setBakedBaseVisible(obj: Object3D, visible: boolean): boolean {
+  let found = false
+  obj.traverse((o) => {
+    const mat = (o as Mesh).material as { name?: string } | undefined
+    if (o.name === 'base' || mat?.name === 'base_black') {
+      o.visible = visible
+      found = true
+    }
+  })
+  return found
+}
+
+/**
+ * The solid oval plinth of a GLB figure whose engine footprint is oval: the GLB's round disc is hidden and this stands
+ * in its place, the same black and as tall as the disc, long axis along +Z (the figure's front).
+ */
+export function OvalPlinth({ baseRadius, ovalHalfAxis, height = 0.12, seatColor }: { baseRadius: number; ovalHalfAxis?: number; height?: number; seatColor?: string }) {
+  const { rx, rz } = baseAxes(baseRadius, ovalHalfAxis)
+  const geo = useMemo(() => {
+    const s = new Shape()
+    s.absellipse(0, 0, rx, rz, 0, Math.PI * 2, false, 0)
+    return new ExtrudeGeometry(s, { depth: height, bevelEnabled: false, curveSegments: 48 })
+  }, [rx, rz, height])
+  if (!isOvalBase(ovalHalfAxis)) return null
+  return (
+    <group>
+      <mesh geometry={geo} rotation={[-Math.PI / 2, 0, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color="#040404" roughness={0.6} metalness={0} />
+      </mesh>
+      {seatColor && (
+        <>
+          <BaseRing baseRadius={baseRadius} ovalHalfAxis={ovalHalfAxis} inner={-baseRadius * 0.08} outer={0} color={seatColor} y={height + 0.003} />
+          <FrontMark baseRadius={baseRadius} ovalHalfAxis={ovalHalfAxis} color={seatColor} y={height + 0.004} />
+        </>
+      )}
+    </group>
+  )
 }

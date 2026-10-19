@@ -16,5 +16,12 @@ test('hunter clade gallery shows the oval base of the arquebus gunner', async ({
   await expect(page.getByTestId('gallery-hc.skitarii-ranger-gunner')).toBeVisible()
   mkdirSync('tools/out/screens', { recursive: true })
   await screenshotRendered(page, 'tools/out/screens/hunter-clade-oval.png')
+  // the GLB body of the Gunner is loaded and stands on the oval plinth (its round disc is hidden), not the 25mm disc
+  await page.waitForFunction(() => {
+    const ms = window.__ms as unknown as { glbStats?: (p?: string) => { loaded: number } } | undefined
+    return (ms?.glbStats?.('bodies/hc-skitarii-ranger-gunner').loaded ?? 0) >= 1
+  }, undefined, { timeout: 60_000 })
+  await page.waitForTimeout(1500)
+  await screenshotRendered(page, 'tools/out/screens/hunter-clade-oval-glb.png')
   expect(errors).toEqual([])
 })
