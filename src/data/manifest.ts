@@ -38,9 +38,12 @@ export const MANIFEST: ManifestEntry[] = [
   { path: 'missions/preliminary-ops-secure.json', schema: 'mission', array: false },
   { path: 'missions/preliminary-ops-loot.json', schema: 'mission', array: false },
   { path: 'missions/preliminary-ops-transmission.json', schema: 'mission', array: false },
-  { path: 'killzones/volkus-01.json', schema: 'killzone-layout', array: false },
-  { path: 'killzones/volkus-02.json', schema: 'killzone-layout', array: false },
-  { path: 'killzones/volkus-03.json', schema: 'killzone-layout', array: false },
+  { path: 'killzones/volkus-ao25-1.json', schema: 'killzone-layout', array: false },
+  { path: 'killzones/volkus-ao25-2.json', schema: 'killzone-layout', array: false },
+  { path: 'killzones/volkus-ao25-3.json', schema: 'killzone-layout', array: false },
+  { path: 'killzones/volkus-ao25-4.json', schema: 'killzone-layout', array: false },
+  { path: 'killzones/volkus-ao25-5.json', schema: 'killzone-layout', array: false },
+  { path: 'killzones/volkus-ao25-6.json', schema: 'killzone-layout', array: false },
 ]
 
 export const SCHEMA_NAMES = [

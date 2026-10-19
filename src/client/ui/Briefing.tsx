@@ -2,7 +2,7 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
 import { killGradeThresholds } from '@/data'
 import { dataBundle, flattenRoster } from '../game/adapter'
-import { buildProblems } from '../game/defaults'
+import { buildProblems, effectiveLayout } from '../game/defaults'
 import { humanize } from '../game/labels'
 import { useSession } from '../store/session'
 import { colors, fontStack, panel } from './theme'
@@ -26,7 +26,7 @@ export function Briefing() {
   const s = useSession()
   const b = dataBundle()
   const mission = b.missions[s.missionId]!
-  const layout = b.layouts[s.layoutId]!
+  const layout = effectiveLayout(b, s.layoutId, s.seed)
   const controlsRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (s.howTo) controlsRef.current?.scrollIntoView({ block: 'start' })

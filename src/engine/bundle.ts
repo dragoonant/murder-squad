@@ -525,7 +525,7 @@ export interface RealSetupOptions {
 /** A complete GameSetup for two real teams with default rosters, tactics, equipment and grenade picks. */
 export function realSetup(bundle: EngineBundle, opts: RealSetupOptions = {}): GameSetup {
   const [ta, tb] = opts.teams ?? ['angels-of-death', 'kommandos']
-  const layoutId = opts.layoutId ?? 'kz.volkus-01'
+  const layoutId = opts.layoutId ?? 'kz.volkus-ao25-1'
   const picks = (teamId: string): Record<string, string[]> => {
     const out: Record<string, string[]> = {}
     for (const e of defaultEquipmentFor(teamId, bundle)) if (DEFAULT_PICKS[e]) out[e] = [...DEFAULT_PICKS[e]!]
@@ -533,7 +533,10 @@ export function realSetup(bundle: EngineBundle, opts: RealSetupOptions = {}): Ga
   }
   const mission: NonNullable<GameSetup['mission']> = {}
   if (opts.missionId) mission.missionId = opts.missionId
+  // An official card is terrain plus map: unless the caller names a map, play the one the layout lists.
+  const ownMaps = Object.keys(bundle.layouts?.[layoutId]?.spots ?? {})
   if (opts.mapId) mission.mapId = opts.mapId
+  else if (ownMaps.length === 1) mission.mapId = ownMaps[0]!
   const setup: GameSetup = {
     teams: { A: ta, B: tb },
     rosters: { A: defaultRosterFor(bundle, ta), B: defaultRosterFor(bundle, tb) },

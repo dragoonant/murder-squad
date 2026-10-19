@@ -69,7 +69,7 @@ if (real) {
   TEAMS = arg('pair', '') ? arg('pair', '').split(',') : playableTeams(bundle)
   const layouts = Object.keys(bundle.layouts ?? {}).sort()
   const layoutId = arg('layout', layouts[0] ?? '')
-  // `--layouts all` rotates the three killzone layouts per game pair
+  // `--layouts all` rotates the six killzone layouts per game pair
   const all = arg('layouts', '') === 'all'
   setupFor = (_g, aiSeat, ti) => {
     const ai = TEAMS[ti]!

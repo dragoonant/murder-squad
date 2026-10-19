@@ -9,6 +9,7 @@ Fan game: 3D Warhammer 40,000: Kill Team (2024 edition, mechanics 1:1, our own p
 | v1 teams | Angels of Death vs Kommandos | owner |
 | v1 missions | Preliminary Ops (Secure / Loot / Transmission crit ops + kill op), 4 turning points; Approved Ops tac ops added when the card text is sourced | sources available |
 | Killzone | Open Volkus-style killzone first (ruins, Light/Heavy/Vantage), several layouts; Gallowdark later | owner |
+| Killzone layouts | The six official Approved Ops 2025 Volkus tournament cards (Maps 1-6, each with its own drop zones and objective spots), measured from the cards on the 1" grid; the three invented layouts were removed because they used pieces outside the Volkus kit. Layout rolls from the seed by default (the card pack's D6 random method). 2024 Volkus cards not included: the 2025 pack replaced all of them and they are not available online | owner 2026-10-18 |
 | Figures | Fresh MGSD body per operative archetype, bare-handed with named sockets; weapons and equipment as attachment GLBs; pose variants for two-handed weapons; procedural stand-ins until GLBs exist | owner |
 | Customisation | Team builder with rules-legal loadouts only; figure shows the chosen loadout (WYSIWYG) | owner |
 | Concepts | Gemini via Claude in Chrome on this PC, one chat per team, base figure then edits; placeholders until a Gemini session exists; never Flux/SDXL substitutes for figure concepts | owner |

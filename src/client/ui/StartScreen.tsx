@@ -4,8 +4,8 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { Seat } from '@/engine'
 import { MATS, matThumbUrl } from '../board/mats'
 import { BOT_TIERS, type BotTier } from '../bot/botTier'
-import { dataBundle } from '../game/adapter'
-import { layoutList, missionList, teamList } from '../game/defaults'
+import { dataBundle, layoutMapId } from '../game/adapter'
+import { AUTO_LAYOUT, effectiveLayout, layoutList, missionList, teamList } from '../game/defaults'
 import { useSettings, type AnimSpeed } from '../presentation/settings'
 import { randomSeed, useSession } from '../store/session'
 import { colors, fontStack, panel } from './theme'
@@ -139,9 +139,9 @@ export function StartScreen() {
   const speed = useSettings((x) => x.animSpeed)
   const setSpeed = useSettings((x) => x.setAnimSpeed)
   const b = dataBundle()
-  const layout = b.layouts[s.layoutId]
+  const layout = effectiveLayout(b, s.layoutId, s.seed)
   const mission = b.missions[s.missionId]
-  const maps = mission && layout ? mission.maps.filter((m) => layout.maps.some((lm) => lm.id === m.id)) : []
+  const mapName = mission?.maps.find((m) => m.id === layoutMapId(layout, mission))?.name ?? '-'
   return (
     <div className="ms-touch" style={page} data-testid="start-screen">
       <div style={{ width: 'min(620px, 100%)' }}>
@@ -164,23 +164,25 @@ export function StartScreen() {
             </select>
           </Row>
           <Row label="Killzone layout">
-            <select data-testid="layout" style={field} value={s.layoutId} onChange={(e) => s.setLayout(e.target.value)}>
-              {layoutList(b).map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
+            <span>
+              <select data-testid="layout" style={field} value={s.layoutId} onChange={(e) => s.setLayout(e.target.value)}>
+                <option value={AUTO_LAYOUT}>Roll from the seed</option>
+                {layoutList(b).map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+              <Muted style={{ marginTop: 4 }}>
+                {s.layoutId === AUTO_LAYOUT ? `This seed rolls ${layout.name}.` : layout.text}
+              </Muted>
+            </span>
           </Row>
           <Row label="Map">
-            <select data-testid="map" style={field} value={s.mapId} onChange={(e) => s.setMap(e.target.value)}>
-              <option value="auto">Roll from the seed</option>
-              {maps.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
+            <div style={{ fontSize: 13 }}>
+              <span data-testid="map">{mapName}</span>
+              <Muted style={{ marginTop: 2 }}>Each official card comes with its own deployment map.</Muted>
+            </div>
           </Row>
           <Row label="Seed">
             <span style={{ display: 'flex', gap: 6 }}>

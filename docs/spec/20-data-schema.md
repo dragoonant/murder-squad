@@ -18,7 +18,7 @@ All content is JSON under `src/data/`, validated at build by `tools/validate-dat
 | `src/data/killzones/*.json` | `killzone-layout` | terrain pieces with traits and positions, drop zones, objective spots per map |
 | `src/data/index.ts` | — | `loadBundle(): DataBundle` (byId maps, `dataVersion`), throws on duplicate id or dangling ref; `CODE_HOOKS`, `playableTeamIds` |
 
-Ids: lowercase kebab, dot-namespaced: `aod.intercessor-sergeant`, `aod.w.bolt-rifle`, `aod.a.heroic-leader`, `aod.p.combat-doctrine`, `kom.boss-nob`, `core.wr.piercing`, `core.e.mines`, `mission.prelim-secure`, `kz.volkus-01`.
+Ids: lowercase kebab, dot-namespaced: `aod.intercessor-sergeant`, `aod.w.bolt-rifle`, `aod.a.heroic-leader`, `aod.p.combat-doctrine`, `kom.boss-nob`, `core.wr.piercing`, `core.e.mines`, `mission.prelim-secure`, `kz.volkus-ao25-1`.
 
 ## 2. Shared primitives (`common.schema.json`)
 `Id`, `Keyword` (`^[A-Z0-9][A-Z0-9 '\-]*$`), `RollTarget` (2..6 as `x+`), `Inches` (number, multiples of 0.5), `DiceExpr` (`D3`, `D6`, `2D6`, `D3+3`, int), `Vec2 {x,z}`, `Vec3`, `Polygon`, `TimingWindowId` (00 §4 enum), `Seat`, `Order` (`engage|conceal`), `TerrainTrait` (`light heavy blocking vantage accessible insignificant exposed ceiling barred wall`), `Condition`, `Effect`, `TargetSpec`.

@@ -28,7 +28,7 @@ describe('data schemas', () => {
     const result = validateAll({ hooksFile: 'check' })
     expect(result.errors).toEqual([])
     expect(result.files).toBe(MANIFEST.length)
-    expect(result.files).toBe(23 + 6 * 8)
+    expect(result.files).toBe(26 + 6 * 8)
     expect(result.records).toBeGreaterThan(150)
   })
 
@@ -73,7 +73,7 @@ describe('data schemas', () => {
     expect(playableTeamIds(bundle)).toEqual(Object.values(bundle.teams).filter((t) => t.playable !== false).map((t) => t.id).sort())
     expect(playableTeamIds(bundle)).toEqual(expect.arrayContaining(['angels-of-death', 'kommandos']))
     expect(Object.keys(bundle.missions)).toHaveLength(3)
-    expect(Object.keys(bundle.layouts)).toHaveLength(3)
+    expect(Object.keys(bundle.layouts)).toHaveLength(6)
     expect(bundle.byId['core.wr.piercing']).toBeDefined()
     expect(bundle.weaponGroups['aod.wg.stalker-bolt-rifle']).toEqual(['aod.w.stalker-bolt-rifle-heavy', 'aod.w.stalker-bolt-rifle-mobile'])
   })
