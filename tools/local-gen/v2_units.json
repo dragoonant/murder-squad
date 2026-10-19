@@ -403,5 +403,55 @@
   "prompt": "super-deformed heroic body for lg-warrior-b, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/lg-warrior-b.png)",
   "height": 1.25,
   "base": 32
+ },
+ "ha-agent": {
+  "prompt": "super-deformed heroic body for ha-agent, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/ha-agent.png)",
+  "height": 1.05,
+  "base": 25
+ },
+ "ha-archsybarite": {
+  "prompt": "super-deformed heroic body for ha-archsybarite, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/ha-archsybarite.png)",
+  "height": 1.15,
+  "base": 25
+ },
+ "ha-crimson-duellist": {
+  "prompt": "super-deformed heroic body for ha-crimson-duellist, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/ha-crimson-duellist.png)",
+  "height": 1.1,
+  "base": 25
+ },
+ "ha-disciple-of-yaelindra": {
+  "prompt": "super-deformed heroic body for ha-disciple-of-yaelindra, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/ha-disciple-of-yaelindra.png)",
+  "height": 1.05,
+  "base": 25
+ },
+ "ha-elixicant": {
+  "prompt": "super-deformed heroic body for ha-elixicant, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/ha-elixicant.png)",
+  "height": 1.05,
+  "base": 25
+ },
+ "ha-flayer": {
+  "prompt": "super-deformed heroic body for ha-flayer, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/ha-flayer.png)",
+  "height": 1.1,
+  "base": 25
+ },
+ "ha-gunner": {
+  "prompt": "super-deformed heroic body for ha-gunner, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/ha-gunner.png)",
+  "height": 1.05,
+  "base": 25
+ },
+ "ha-heavy-gunner": {
+  "prompt": "super-deformed heroic body for ha-heavy-gunner, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/ha-heavy-gunner.png)",
+  "height": 1.1,
+  "base": 25
+ },
+ "ha-skysplinter-assassin": {
+  "prompt": "super-deformed heroic body for ha-skysplinter-assassin, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/ha-skysplinter-assassin.png)",
+  "height": 1.1,
+  "base": 25
+ },
+ "ha-agent-b": {
+  "prompt": "super-deformed heroic body for ha-agent-b, weapons in hand, dynamic pose (concept image in art/unit-concepts/v2/ha-agent-b.png)",
+  "height": 1.05,
+  "base": 25
  }
 }
