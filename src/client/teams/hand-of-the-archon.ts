@@ -2,8 +2,7 @@
 // this team's weapons and datacards (teams/types.ts). Owned by the team implementer. Coverage tests require an entry
 // for every weapon once team.json says `playable`.
 //
-// Bodies (ha-*) and attachments (ha-w-*) come from the concept art (concept slugs use the `ha-` prefix); until a mesh is
-// built the renderer draws the procedural stand-in or the hold-class placeholder. Splinter weapons reuse the bolt
+// Bodies (ha-*) and attachments (ha-w-*) come from the concept art (concept slugs use the `ha-` prefix) and all exist as GLBs. Splinter weapons reuse the bolt
 // effect family, the darklight weapons (blast pistol, blaster, dark lance) the plasma one. Sounds reuse existing ids.
 // Glossary entries for the team's abilities, ploys and equipment come from the data records (game/glossary.ts); the
 // entries below are the keywords and the Pain token. Shared role keywords (LEADER, GUNNER, HEAVY GUNNER) keep the shared text.
@@ -89,20 +88,10 @@ export const PRESENTATION: TeamPresentation = {
     [w('dark-lance')]: ['ha-w-dark-lance'],
     [w('splinter-cannon-focused')]: ['ha-w-splinter-cannon'],
     [w('splinter-cannon-sweeping')]: ['ha-w-splinter-cannon'],
-    [w('razorwing')]: ['ha-w-razorwing'],
+    // the razorwing is the wing set already modelled on the Skysplinter Assassin body, so it draws nothing in the hand
+    [w('razorwing')]: [],
     [w('shardcarbine')]: ['ha-w-shardcarbine'],
   },
-  standIns: [
-    'ha-archsybarite',
-    'ha-agent',
-    'ha-crimson-duellist',
-    'ha-disciple-of-yaelindra',
-    'ha-elixicant',
-    'ha-flayer',
-    'ha-gunner',
-    'ha-heavy-gunner',
-    'ha-skysplinter-assassin',
-  ],
   // Keywords and rule terms in our own wording (game/glossary.ts merges them over the generic fallbacks).
   glossary: [
     { term: 'AELDARI', kind: 'keyword', body: 'Species keyword carried by every Hand of the Archon operative. No current rule names it, so it only identifies the operative.' },

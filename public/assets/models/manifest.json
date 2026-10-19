@@ -20,7 +20,7 @@
           0.109
         ],
         "back": [
-          0.0,
+          0,
           0.78,
           -0.351
         ],
@@ -71,7 +71,7 @@
           0.131
         ],
         "back": [
-          0.0,
+          0,
           0.808,
           -0.337
         ],
@@ -122,7 +122,7 @@
           0.333
         ],
         "back": [
-          0.0,
+          0,
           0.78,
           -0.066
         ],
@@ -173,7 +173,7 @@
           -0.005
         ],
         "back": [
-          0.0,
+          0,
           0.78,
           -0.199
         ],
@@ -224,7 +224,7 @@
           0.164
         ],
         "back": [
-          0.0,
+          0,
           0.863,
           -0.416
         ],
@@ -275,7 +275,7 @@
           0.142
         ],
         "back": [
-          0.0,
+          0,
           0.78,
           -0.285
         ],
@@ -326,7 +326,7 @@
           0.327
         ],
         "back": [
-          0.0,
+          0,
           0.808,
           -0.161
         ],
@@ -377,7 +377,7 @@
           0.13
         ],
         "back": [
-          0.0,
+          0,
           0.78,
           -0.344
         ],
@@ -428,7 +428,7 @@
           0.075
         ],
         "back": [
-          0.0,
+          0,
           0.835,
           -0.289
         ],
@@ -459,6 +459,1740 @@
         ]
       }
     },
+    "ha-agent": {
+      "file": "bodies/ha-agent.glb",
+      "archetype": "ha-agent",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.392,
+          0.555,
+          -0.078
+        ],
+        "handL": [
+          0.399,
+          0.544,
+          -0.08
+        ],
+        "back": [
+          0,
+          0.697,
+          -0.154
+        ],
+        "beltR": [
+          -0.41,
+          0.54,
+          -0.066
+        ],
+        "beltL": [
+          0.41,
+          0.54,
+          -0.08
+        ],
+        "shoulderR": [
+          -0.161,
+          0.907,
+          0.013
+        ],
+        "shoulderL": [
+          0.155,
+          0.907,
+          0.012
+        ],
+        "head": [
+          0,
+          1.17,
+          -0.133
+        ]
+      }
+    },
+    "ha-archsybarite": {
+      "file": "bodies/ha-archsybarite.glb",
+      "archetype": "ha-archsybarite",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.468,
+          0.371,
+          -0.145
+        ],
+        "handL": [
+          0.458,
+          0.379,
+          -0.146
+        ],
+        "back": [
+          0,
+          0.752,
+          -0.172
+        ],
+        "beltR": [
+          -0.407,
+          0.58,
+          -0.089
+        ],
+        "beltL": [
+          0.409,
+          0.58,
+          -0.091
+        ],
+        "shoulderR": [
+          -0.157,
+          0.982,
+          0.054
+        ],
+        "shoulderL": [
+          0.161,
+          0.982,
+          0.048
+        ],
+        "head": [
+          -0.002,
+          1.27,
+          -0.125
+        ]
+      }
+    },
+    "ha-crimson-duellist": {
+      "file": "bodies/ha-crimson-duellist.glb",
+      "archetype": "ha-crimson-duellist",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.422,
+          0.358,
+          -0.163
+        ],
+        "handL": [
+          0.419,
+          0.359,
+          -0.17
+        ],
+        "back": [
+          0,
+          0.725,
+          -0.167
+        ],
+        "beltR": [
+          -0.425,
+          0.56,
+          -0.093
+        ],
+        "beltL": [
+          0.434,
+          0.56,
+          -0.093
+        ],
+        "shoulderR": [
+          -0.128,
+          0.945,
+          0.042
+        ],
+        "shoulderL": [
+          0.133,
+          0.945,
+          0.04
+        ],
+        "head": [
+          0.013,
+          1.22,
+          0.028
+        ]
+      }
+    },
+    "ha-disciple-of-yaelindra": {
+      "file": "bodies/ha-disciple-of-yaelindra.glb",
+      "archetype": "ha-disciple-of-yaelindra",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.488,
+          0.404,
+          0.005
+        ],
+        "handL": [
+          0.398,
+          0.575,
+          0.018
+        ],
+        "back": [
+          0,
+          0.698,
+          -0.231
+        ],
+        "beltR": [
+          -0.512,
+          0.54,
+          -0.071
+        ],
+        "beltL": [
+          0.418,
+          0.54,
+          0.01
+        ],
+        "shoulderR": [
+          -0.355,
+          0.908,
+          0.116
+        ],
+        "shoulderL": [
+          0.513,
+          0.908,
+          0.069
+        ],
+        "head": [
+          -0.139,
+          1.17,
+          0.11
+        ]
+      }
+    },
+    "ha-elixicant": {
+      "file": "bodies/ha-elixicant.glb",
+      "archetype": "ha-elixicant",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.328,
+          0.4,
+          0.065
+        ],
+        "handL": [
+          0.329,
+          0.394,
+          0.07
+        ],
+        "back": [
+          0,
+          0.698,
+          -0.309
+        ],
+        "beltR": [
+          -0.293,
+          0.54,
+          0.024
+        ],
+        "beltL": [
+          0.3,
+          0.54,
+          0.012
+        ],
+        "shoulderR": [
+          -0.169,
+          0.908,
+          -0.039
+        ],
+        "shoulderL": [
+          0.181,
+          0.908,
+          -0.017
+        ],
+        "head": [
+          0.002,
+          1.17,
+          0.013
+        ]
+      }
+    },
+    "ha-flayer": {
+      "file": "bodies/ha-flayer.glb",
+      "archetype": "ha-flayer",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.413,
+          0.573,
+          -0.055
+        ],
+        "handL": [
+          0.417,
+          0.566,
+          -0.054
+        ],
+        "back": [
+          0,
+          0.725,
+          -0.229
+        ],
+        "beltR": [
+          -0.432,
+          0.56,
+          -0.059
+        ],
+        "beltL": [
+          0.432,
+          0.56,
+          -0.049
+        ],
+        "shoulderR": [
+          -0.25,
+          0.945,
+          -0.188
+        ],
+        "shoulderL": [
+          0.247,
+          0.945,
+          -0.186
+        ],
+        "head": [
+          0,
+          1.22,
+          -0.11
+        ]
+      }
+    },
+    "ha-gunner": {
+      "file": "bodies/ha-gunner.glb",
+      "archetype": "ha-gunner",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.326,
+          0.38,
+          0.096
+        ],
+        "handL": [
+          0.329,
+          0.375,
+          0.081
+        ],
+        "back": [
+          0,
+          0.698,
+          -0.269
+        ],
+        "beltR": [
+          -0.332,
+          0.54,
+          -0.157
+        ],
+        "beltL": [
+          0.335,
+          0.54,
+          -0.154
+        ],
+        "shoulderR": [
+          -0.16,
+          0.908,
+          0.093
+        ],
+        "shoulderL": [
+          0.16,
+          0.908,
+          0.107
+        ],
+        "head": [
+          0.001,
+          1.17,
+          0.003
+        ]
+      }
+    },
+    "ha-heavy-gunner": {
+      "file": "bodies/ha-heavy-gunner.glb",
+      "archetype": "ha-heavy-gunner",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.452,
+          0.661,
+          0.026
+        ],
+        "handL": [
+          0.454,
+          0.674,
+          0.032
+        ],
+        "back": [
+          0,
+          0.725,
+          -0.31
+        ],
+        "beltR": [
+          -0.381,
+          0.56,
+          -0.18
+        ],
+        "beltL": [
+          0.384,
+          0.56,
+          -0.189
+        ],
+        "shoulderR": [
+          -0.413,
+          0.945,
+          0.055
+        ],
+        "shoulderL": [
+          0.414,
+          0.945,
+          0.064
+        ],
+        "head": [
+          0,
+          1.22,
+          0.143
+        ]
+      }
+    },
+    "ha-skysplinter-assassin": {
+      "file": "bodies/ha-skysplinter-assassin.glb",
+      "archetype": "ha-skysplinter-assassin",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.478,
+          0.453,
+          -0.2
+        ],
+        "handL": [
+          0.474,
+          0.457,
+          -0.202
+        ],
+        "back": [
+          0,
+          0.725,
+          -0.229
+        ],
+        "beltR": [
+          -0.677,
+          0.56,
+          -0.21
+        ],
+        "beltL": [
+          0.666,
+          0.56,
+          -0.206
+        ],
+        "shoulderR": [
+          -0.419,
+          0.945,
+          -0.194
+        ],
+        "shoulderL": [
+          0.422,
+          0.945,
+          -0.176
+        ],
+        "head": [
+          0.001,
+          1.22,
+          -0.07
+        ]
+      }
+    },
+    "hc-sicarian-infiltrator-princeps": {
+      "file": "bodies/hc-sicarian-infiltrator-princeps.glb",
+      "archetype": "hc-sicarian-infiltrator-princeps",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 40,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.361,
+          0.445,
+          0.002
+        ],
+        "handL": [
+          0.367,
+          0.439,
+          -0.013
+        ],
+        "back": [
+          0,
+          0.808,
+          -0.148
+        ],
+        "beltR": [
+          -0.324,
+          0.62,
+          -0.039
+        ],
+        "beltL": [
+          0.33,
+          0.62,
+          -0.033
+        ],
+        "shoulderR": [
+          -0.282,
+          1.058,
+          -0.111
+        ],
+        "shoulderL": [
+          0.283,
+          1.058,
+          -0.111
+        ],
+        "head": [
+          0.005,
+          1.37,
+          0.047
+        ]
+      }
+    },
+    "hc-sicarian-infiltrator-warrior": {
+      "file": "bodies/hc-sicarian-infiltrator-warrior.glb",
+      "archetype": "hc-sicarian-infiltrator-warrior",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 40,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.374,
+          0.457,
+          0.007
+        ],
+        "handL": [
+          0.373,
+          0.453,
+          0.012
+        ],
+        "back": [
+          0,
+          0.78,
+          -0.171
+        ],
+        "beltR": [
+          -0.342,
+          0.6,
+          -0.036
+        ],
+        "beltL": [
+          0.338,
+          0.6,
+          -0.048
+        ],
+        "shoulderR": [
+          -0.218,
+          1.02,
+          0.04
+        ],
+        "shoulderL": [
+          0.219,
+          1.02,
+          0.017
+        ],
+        "head": [
+          -0.006,
+          1.32,
+          0.002
+        ]
+      }
+    },
+    "hc-sicarian-ruststalker-princeps": {
+      "file": "bodies/hc-sicarian-ruststalker-princeps.glb",
+      "archetype": "hc-sicarian-ruststalker-princeps",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 40,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.581,
+          0.419,
+          -0.17
+        ],
+        "handL": [
+          0.593,
+          0.541,
+          0.237
+        ],
+        "back": [
+          0,
+          0.808,
+          -0.179
+        ],
+        "beltR": [
+          -0.521,
+          0.62,
+          -0.054
+        ],
+        "beltL": [
+          0.6,
+          0.62,
+          0.203
+        ],
+        "shoulderR": [
+          -0.181,
+          1.058,
+          0.268
+        ],
+        "shoulderL": [
+          0.495,
+          1.058,
+          0.202
+        ],
+        "head": [
+          0.158,
+          1.37,
+          0.22
+        ]
+      }
+    },
+    "hc-sicarian-ruststalker-warrior": {
+      "file": "bodies/hc-sicarian-ruststalker-warrior.glb",
+      "archetype": "hc-sicarian-ruststalker-warrior",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 40,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.607,
+          0.533,
+          -0.234
+        ],
+        "handL": [
+          0.611,
+          0.504,
+          0.097
+        ],
+        "back": [
+          0,
+          0.78,
+          -0.348
+        ],
+        "beltR": [
+          -0.587,
+          0.6,
+          -0.221
+        ],
+        "beltL": [
+          0.624,
+          0.6,
+          0.027
+        ],
+        "shoulderR": [
+          -0.328,
+          1.02,
+          -0.005
+        ],
+        "shoulderL": [
+          0.529,
+          1.02,
+          0.071
+        ],
+        "head": [
+          0.129,
+          1.32,
+          0.157
+        ]
+      }
+    },
+    "hc-skitarii-ranger-alpha": {
+      "file": "bodies/hc-skitarii-ranger-alpha.glb",
+      "archetype": "hc-skitarii-ranger-alpha",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.474,
+          0.456,
+          -0.084
+        ],
+        "handL": [
+          0.469,
+          0.444,
+          0.073
+        ],
+        "back": [
+          0,
+          0.752,
+          -0.132
+        ],
+        "beltR": [
+          -0.415,
+          0.58,
+          -0.065
+        ],
+        "beltL": [
+          0.439,
+          0.58,
+          0.037
+        ],
+        "shoulderR": [
+          -0.109,
+          0.982,
+          0.035
+        ],
+        "shoulderL": [
+          0.431,
+          0.982,
+          0.056
+        ],
+        "head": [
+          0.118,
+          1.27,
+          0.085
+        ]
+      }
+    },
+    "hc-skitarii-ranger-diktat": {
+      "file": "bodies/hc-skitarii-ranger-diktat.glb",
+      "archetype": "hc-skitarii-ranger-diktat",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.314,
+          0.39,
+          0.032
+        ],
+        "handL": [
+          0.312,
+          0.383,
+          0.026
+        ],
+        "back": [
+          0,
+          0.725,
+          -0.164
+        ],
+        "beltR": [
+          -0.273,
+          0.56,
+          0.027
+        ],
+        "beltL": [
+          0.274,
+          0.56,
+          0.011
+        ],
+        "shoulderR": [
+          -0.18,
+          0.945,
+          -0.032
+        ],
+        "shoulderL": [
+          0.307,
+          0.945,
+          0.005
+        ],
+        "head": [
+          -0.004,
+          1.22,
+          0.204
+        ]
+      }
+    },
+    "hc-skitarii-ranger-gunner": {
+      "file": "bodies/hc-skitarii-ranger-gunner.glb",
+      "archetype": "hc-skitarii-ranger-gunner",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.369,
+          0.39,
+          -0.054
+        ],
+        "handL": [
+          0.367,
+          0.403,
+          -0.05
+        ],
+        "back": [
+          0,
+          0.725,
+          -0.308
+        ],
+        "beltR": [
+          -0.352,
+          0.56,
+          -0.019
+        ],
+        "beltL": [
+          0.364,
+          0.56,
+          -0.028
+        ],
+        "shoulderR": [
+          -0.221,
+          0.945,
+          0.068
+        ],
+        "shoulderL": [
+          0.243,
+          0.945,
+          0.058
+        ],
+        "head": [
+          0.004,
+          1.22,
+          0.051
+        ]
+      }
+    },
+    "hc-skitarii-ranger-surveyor": {
+      "file": "bodies/hc-skitarii-ranger-surveyor.glb",
+      "archetype": "hc-skitarii-ranger-surveyor",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.346,
+          0.441,
+          0.043
+        ],
+        "handL": [
+          0.351,
+          0.487,
+          0.045
+        ],
+        "back": [
+          0,
+          0.725,
+          -0.284
+        ],
+        "beltR": [
+          -0.317,
+          0.56,
+          -0.004
+        ],
+        "beltL": [
+          0.347,
+          0.56,
+          0.002
+        ],
+        "shoulderR": [
+          -0.334,
+          0.945,
+          -0.149
+        ],
+        "shoulderL": [
+          0.257,
+          0.945,
+          -0.05
+        ],
+        "head": [
+          0.152,
+          1.22,
+          -0.011
+        ]
+      }
+    },
+    "hc-skitarii-ranger-warrior": {
+      "file": "bodies/hc-skitarii-ranger-warrior.glb",
+      "archetype": "hc-skitarii-ranger-warrior",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.344,
+          0.426,
+          0.063
+        ],
+        "handL": [
+          0.344,
+          0.425,
+          0.067
+        ],
+        "back": [
+          0,
+          0.725,
+          -0.145
+        ],
+        "beltR": [
+          -0.313,
+          0.56,
+          0.046
+        ],
+        "beltL": [
+          0.312,
+          0.56,
+          0.03
+        ],
+        "shoulderR": [
+          -0.252,
+          0.945,
+          0.046
+        ],
+        "shoulderL": [
+          0.243,
+          0.945,
+          0.034
+        ],
+        "head": [
+          0.007,
+          1.22,
+          0.025
+        ]
+      }
+    },
+    "hc-skitarii-vanguard-alpha": {
+      "file": "bodies/hc-skitarii-vanguard-alpha.glb",
+      "archetype": "hc-skitarii-vanguard-alpha",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.348,
+          0.416,
+          0.065
+        ],
+        "handL": [
+          0.343,
+          0.425,
+          0.029
+        ],
+        "back": [
+          0,
+          0.752,
+          -0.152
+        ],
+        "beltR": [
+          -0.314,
+          0.58,
+          -0.042
+        ],
+        "beltL": [
+          0.313,
+          0.58,
+          -0.012
+        ],
+        "shoulderR": [
+          -0.221,
+          0.982,
+          0.025
+        ],
+        "shoulderL": [
+          0.262,
+          0.982,
+          0.017
+        ],
+        "head": [
+          -0.007,
+          1.27,
+          0.084
+        ]
+      }
+    },
+    "hc-skitarii-vanguard-diktat": {
+      "file": "bodies/hc-skitarii-vanguard-diktat.glb",
+      "archetype": "hc-skitarii-vanguard-diktat",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.323,
+          0.396,
+          -0.022
+        ],
+        "handL": [
+          0.322,
+          0.397,
+          -0.006
+        ],
+        "back": [
+          0,
+          0.725,
+          -0.184
+        ],
+        "beltR": [
+          -0.283,
+          0.56,
+          -0.041
+        ],
+        "beltL": [
+          0.279,
+          0.56,
+          -0.062
+        ],
+        "shoulderR": [
+          -0.198,
+          0.945,
+          -0.043
+        ],
+        "shoulderL": [
+          0.26,
+          0.945,
+          -0.039
+        ],
+        "head": [
+          0.006,
+          1.22,
+          0.033
+        ]
+      }
+    },
+    "hc-skitarii-vanguard-gunner": {
+      "file": "bodies/hc-skitarii-vanguard-gunner.glb",
+      "archetype": "hc-skitarii-vanguard-gunner",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.385,
+          0.429,
+          -0.086
+        ],
+        "handL": [
+          0.384,
+          0.434,
+          -0.097
+        ],
+        "back": [
+          0,
+          0.725,
+          -0.291
+        ],
+        "beltR": [
+          -0.391,
+          0.56,
+          -0.167
+        ],
+        "beltL": [
+          0.391,
+          0.56,
+          -0.168
+        ],
+        "shoulderR": [
+          -0.223,
+          0.945,
+          0.004
+        ],
+        "shoulderL": [
+          0.222,
+          0.945,
+          0.014
+        ],
+        "head": [
+          -0.009,
+          1.22,
+          0.082
+        ]
+      }
+    },
+    "hc-skitarii-vanguard-surveyor": {
+      "file": "bodies/hc-skitarii-vanguard-surveyor.glb",
+      "archetype": "hc-skitarii-vanguard-surveyor",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.367,
+          0.431,
+          0.074
+        ],
+        "handL": [
+          0.374,
+          0.471,
+          0.084
+        ],
+        "back": [
+          0,
+          0.725,
+          -0.308
+        ],
+        "beltR": [
+          -0.341,
+          0.56,
+          0.043
+        ],
+        "beltL": [
+          0.389,
+          0.56,
+          0.063
+        ],
+        "shoulderR": [
+          -0.233,
+          0.945,
+          -0.151
+        ],
+        "shoulderL": [
+          0.186,
+          0.945,
+          0.006
+        ],
+        "head": [
+          -0.143,
+          1.22,
+          -0.086
+        ]
+      }
+    },
+    "hc-skitarii-vanguard-warrior": {
+      "file": "bodies/hc-skitarii-vanguard-warrior.glb",
+      "archetype": "hc-skitarii-vanguard-warrior",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.356,
+          0.422,
+          0.022
+        ],
+        "handL": [
+          0.356,
+          0.417,
+          0.018
+        ],
+        "back": [
+          0,
+          0.725,
+          -0.206
+        ],
+        "beltR": [
+          -0.332,
+          0.56,
+          -0.028
+        ],
+        "beltL": [
+          0.322,
+          0.56,
+          -0.033
+        ],
+        "shoulderR": [
+          -0.214,
+          0.945,
+          -0.033
+        ],
+        "shoulderL": [
+          0.208,
+          0.945,
+          -0.042
+        ],
+        "head": [
+          -0.007,
+          1.22,
+          -0.025
+        ]
+      }
+    },
+    "hk-dozr": {
+      "file": "bodies/hk-dozr.glb",
+      "archetype": "hk-dozr",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 28,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.452,
+          0.454,
+          0.051
+        ],
+        "handL": [
+          0.45,
+          0.455,
+          0.046
+        ],
+        "back": [
+          0,
+          0.698,
+          -0.301
+        ],
+        "beltR": [
+          -0.465,
+          0.54,
+          0.017
+        ],
+        "beltL": [
+          0.465,
+          0.54,
+          0.081
+        ],
+        "shoulderR": [
+          -0.338,
+          0.908,
+          0
+        ],
+        "shoulderL": [
+          0.338,
+          0.908,
+          0.012
+        ],
+        "head": [
+          0.003,
+          1.17,
+          0.053
+        ]
+      }
+    },
+    "hk-field-medic": {
+      "file": "bodies/hk-field-medic.glb",
+      "archetype": "hk-field-medic",
+      "heightIn": 1.12,
+      "figureHeightIn": 1,
+      "baseTopIn": 0.12,
+      "baseMm": 28,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.405,
+          0.392,
+          0.074
+        ],
+        "handL": [
+          0.403,
+          0.393,
+          0.076
+        ],
+        "back": [
+          0,
+          0.67,
+          -0.283
+        ],
+        "beltR": [
+          -0.407,
+          0.52,
+          -0.043
+        ],
+        "beltL": [
+          0.409,
+          0.52,
+          0.007
+        ],
+        "shoulderR": [
+          -0.292,
+          0.87,
+          -0.205
+        ],
+        "shoulderL": [
+          0.288,
+          0.87,
+          -0.182
+        ],
+        "head": [
+          0.016,
+          1.12,
+          0.086
+        ]
+      }
+    },
+    "hk-grenadier": {
+      "file": "bodies/hk-grenadier.glb",
+      "archetype": "hk-grenadier",
+      "heightIn": 1.12,
+      "figureHeightIn": 1,
+      "baseTopIn": 0.12,
+      "baseMm": 28,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.393,
+          0.406,
+          0.079
+        ],
+        "handL": [
+          0.393,
+          0.398,
+          0.095
+        ],
+        "back": [
+          0,
+          0.67,
+          -0.298
+        ],
+        "beltR": [
+          -0.397,
+          0.52,
+          0.05
+        ],
+        "beltL": [
+          0.396,
+          0.52,
+          0.048
+        ],
+        "shoulderR": [
+          -0.314,
+          0.87,
+          -0.181
+        ],
+        "shoulderL": [
+          0.316,
+          0.87,
+          -0.196
+        ],
+        "head": [
+          0.004,
+          1.12,
+          0.062
+        ]
+      }
+    },
+    "hk-gunner": {
+      "file": "bodies/hk-gunner.glb",
+      "archetype": "hk-gunner",
+      "heightIn": 1.12,
+      "figureHeightIn": 1,
+      "baseTopIn": 0.12,
+      "baseMm": 28,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.398,
+          0.417,
+          -0.177
+        ],
+        "handL": [
+          0.4,
+          0.388,
+          0.102
+        ],
+        "back": [
+          0,
+          0.67,
+          -0.349
+        ],
+        "beltR": [
+          -0.408,
+          0.52,
+          -0.212
+        ],
+        "beltL": [
+          0.407,
+          0.52,
+          0.03
+        ],
+        "shoulderR": [
+          -0.267,
+          0.87,
+          -0.176
+        ],
+        "shoulderL": [
+          0.274,
+          0.87,
+          -0.145
+        ],
+        "head": [
+          0.022,
+          1.12,
+          0.089
+        ]
+      }
+    },
+    "hk-jump-pack-warrior": {
+      "file": "bodies/hk-jump-pack-warrior.glb",
+      "archetype": "hk-jump-pack-warrior",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 28,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.448,
+          0.452,
+          0.235
+        ],
+        "handL": [
+          0.448,
+          0.46,
+          0.229
+        ],
+        "back": [
+          0,
+          0.752,
+          -0.336
+        ],
+        "beltR": [
+          -0.448,
+          0.58,
+          0.162
+        ],
+        "beltL": [
+          0.447,
+          0.58,
+          0.158
+        ],
+        "shoulderR": [
+          -0.491,
+          0.982,
+          0.009
+        ],
+        "shoulderL": [
+          0.477,
+          0.982,
+          0.031
+        ],
+        "head": [
+          -0.004,
+          1.27,
+          0.178
+        ]
+      }
+    },
+    "hk-kinlynk": {
+      "file": "bodies/hk-kinlynk.glb",
+      "archetype": "hk-kinlynk",
+      "heightIn": 1.12,
+      "figureHeightIn": 1,
+      "baseTopIn": 0.12,
+      "baseMm": 28,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.371,
+          0.386,
+          0.103
+        ],
+        "handL": [
+          0.37,
+          0.382,
+          0.071
+        ],
+        "back": [
+          0,
+          0.67,
+          -0.267
+        ],
+        "beltR": [
+          -0.369,
+          0.52,
+          -0.153
+        ],
+        "beltL": [
+          0.372,
+          0.52,
+          -0.124
+        ],
+        "shoulderR": [
+          -0.206,
+          0.87,
+          0.012
+        ],
+        "shoulderL": [
+          0.248,
+          0.87,
+          -0.157
+        ],
+        "head": [
+          0.224,
+          1.12,
+          -0.176
+        ]
+      }
+    },
+    "hk-kognitaar": {
+      "file": "bodies/hk-kognitaar.glb",
+      "archetype": "hk-kognitaar",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 28,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.395,
+          0.397,
+          0.077
+        ],
+        "handL": [
+          0.395,
+          0.398,
+          0.073
+        ],
+        "back": [
+          0,
+          0.698,
+          -0.339
+        ],
+        "beltR": [
+          -0.388,
+          0.54,
+          -0.043
+        ],
+        "beltL": [
+          0.391,
+          0.54,
+          -0.038
+        ],
+        "shoulderR": [
+          -0.249,
+          0.908,
+          -0.08
+        ],
+        "shoulderL": [
+          0.251,
+          0.908,
+          -0.195
+        ],
+        "head": [
+          0.158,
+          1.17,
+          -0.213
+        ]
+      }
+    },
+    "hk-lokatr": {
+      "file": "bodies/hk-lokatr.glb",
+      "archetype": "hk-lokatr",
+      "heightIn": 1.12,
+      "figureHeightIn": 1,
+      "baseTopIn": 0.12,
+      "baseMm": 28,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.366,
+          0.385,
+          0.083
+        ],
+        "handL": [
+          0.367,
+          0.387,
+          0.083
+        ],
+        "back": [
+          0,
+          0.67,
+          -0.276
+        ],
+        "beltR": [
+          -0.368,
+          0.52,
+          0.022
+        ],
+        "beltL": [
+          0.367,
+          0.52,
+          0.01
+        ],
+        "shoulderR": [
+          -0.196,
+          0.87,
+          0.15
+        ],
+        "shoulderL": [
+          0.215,
+          0.87,
+          0.007
+        ],
+        "head": [
+          0.196,
+          1.12,
+          -0.022
+        ]
+      }
+    },
+    "hk-lugger": {
+      "file": "bodies/hk-lugger.glb",
+      "archetype": "hk-lugger",
+      "heightIn": 1.12,
+      "figureHeightIn": 1,
+      "baseTopIn": 0.12,
+      "baseMm": 28,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.423,
+          0.408,
+          0.206
+        ],
+        "handL": [
+          0.424,
+          0.415,
+          0.218
+        ],
+        "back": [
+          0,
+          0.67,
+          -0.486
+        ],
+        "beltR": [
+          -0.426,
+          0.52,
+          0.25
+        ],
+        "beltL": [
+          0.43,
+          0.52,
+          0.229
+        ],
+        "shoulderR": [
+          -0.274,
+          0.87,
+          -0.351
+        ],
+        "shoulderL": [
+          0.267,
+          0.87,
+          -0.292
+        ],
+        "head": [
+          0.001,
+          1.12,
+          -0.211
+        ]
+      }
+    },
+    "hk-theyn": {
+      "file": "bodies/hk-theyn.glb",
+      "archetype": "hk-theyn",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 28,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.386,
+          0.382,
+          0.054
+        ],
+        "handL": [
+          0.396,
+          0.394,
+          0.037
+        ],
+        "back": [
+          0,
+          0.698,
+          -0.323
+        ],
+        "beltR": [
+          -0.378,
+          0.54,
+          -0.005
+        ],
+        "beltL": [
+          0.398,
+          0.54,
+          -0.007
+        ],
+        "shoulderR": [
+          -0.175,
+          0.908,
+          -0.057
+        ],
+        "shoulderL": [
+          0.203,
+          0.908,
+          -0.055
+        ],
+        "head": [
+          0.009,
+          1.17,
+          0.014
+        ]
+      }
+    },
+    "hk-warrior": {
+      "file": "bodies/hk-warrior.glb",
+      "archetype": "hk-warrior",
+      "heightIn": 1.12,
+      "figureHeightIn": 1,
+      "baseTopIn": 0.12,
+      "baseMm": 28,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.397,
+          0.389,
+          0.104
+        ],
+        "handL": [
+          0.396,
+          0.391,
+          0.106
+        ],
+        "back": [
+          0,
+          0.67,
+          -0.258
+        ],
+        "beltR": [
+          -0.403,
+          0.52,
+          0.057
+        ],
+        "beltL": [
+          0.402,
+          0.52,
+          0.055
+        ],
+        "shoulderR": [
+          -0.246,
+          0.87,
+          0.035
+        ],
+        "shoulderL": [
+          0.231,
+          0.87,
+          -0.001
+        ],
+        "head": [
+          -0.002,
+          1.12,
+          0.081
+        ]
+      }
+    },
     "ht-apprentek": {
       "file": "bodies/ht-apprentek.glb",
       "archetype": "ht-apprentek",
@@ -479,7 +2213,7 @@
           0.055
         ],
         "back": [
-          0.0,
+          0,
           0.752,
           -0.327
         ],
@@ -530,7 +2264,7 @@
           -0.134
         ],
         "back": [
-          0.0,
+          0,
           0.89,
           -0.324
         ],
@@ -581,7 +2315,7 @@
           0.06
         ],
         "back": [
-          0.0,
+          0,
           0.807,
           -0.383
         ],
@@ -632,7 +2366,7 @@
           0.005
         ],
         "back": [
-          0.0,
+          0,
           0.835,
           -0.358
         ],
@@ -683,7 +2417,7 @@
           0.027
         ],
         "back": [
-          0.0,
+          0,
           0.808,
           -0.34
         ],
@@ -708,7 +2442,7 @@
           0.09
         ],
         "head": [
-          0.0,
+          0,
           1.37,
           0.071
         ]
@@ -734,7 +2468,7 @@
           0.041
         ],
         "back": [
-          0.0,
+          0,
           0.533,
           -0.398
         ],
@@ -785,7 +2519,7 @@
           -0.075
         ],
         "back": [
-          0.0,
+          0,
           0.533,
           -0.555
         ],
@@ -836,7 +2570,7 @@
           0.003
         ],
         "back": [
-          0.0,
+          0,
           0.835,
           -0.193
         ],
@@ -887,7 +2621,7 @@
           0.062
         ],
         "back": [
-          0.0,
+          0,
           0.945,
           -0.447
         ],
@@ -928,7 +2662,7 @@
       "measured": true,
       "sockets": {
         "back": [
-          0.0,
+          0,
           0.533,
           -0.237
         ],
@@ -979,7 +2713,7 @@
           -0.051
         ],
         "back": [
-          0.0,
+          0,
           0.863,
           -0.36
         ],
@@ -1004,7 +2738,7 @@
           -0.172
         ],
         "head": [
-          0.0,
+          0,
           1.47,
           0.116
         ]
@@ -1030,7 +2764,7 @@
           0.057
         ],
         "back": [
-          0.0,
+          0,
           0.752,
           -0.495
         ],
@@ -1081,7 +2815,7 @@
           0.246
         ],
         "back": [
-          0.0,
+          0,
           0.752,
           -0.49
         ],
@@ -1132,7 +2866,7 @@
           0.025
         ],
         "back": [
-          0.0,
+          0,
           0.752,
           -0.496
         ],
@@ -1183,7 +2917,7 @@
           0.035
         ],
         "back": [
-          0.0,
+          0,
           0.752,
           -0.328
         ],
@@ -1234,7 +2968,7 @@
           0.114
         ],
         "back": [
-          0.0,
+          0,
           0.752,
           -0.475
         ],
@@ -1285,7 +3019,7 @@
           -0.045
         ],
         "back": [
-          0.0,
+          0,
           0.56,
           -0.222
         ],
@@ -1336,7 +3070,7 @@
           0.07
         ],
         "back": [
-          0.0,
+          0,
           0.752,
           -0.453
         ],
@@ -1361,7 +3095,7 @@
           -0.126
         ],
         "head": [
-          -0.0,
+          0,
           1.27,
           0.248
         ]
@@ -1387,7 +3121,7 @@
           -0.044
         ],
         "back": [
-          0.0,
+          0,
           0.752,
           -0.31
         ],
@@ -1438,7 +3172,7 @@
           -0.027
         ],
         "back": [
-          0.0,
+          0,
           0.752,
           -0.332
         ],
@@ -1469,6 +3203,516 @@
         ]
       }
     },
+    "lg-anointed": {
+      "file": "bodies/lg-anointed.glb",
+      "archetype": "lg-anointed",
+      "heightIn": 1.52,
+      "figureHeightIn": 1.4,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.505,
+          0.502,
+          0.052
+        ],
+        "handL": [
+          0.506,
+          0.503,
+          0.046
+        ],
+        "back": [
+          0,
+          0.89,
+          -0.301
+        ],
+        "beltR": [
+          -0.484,
+          0.68,
+          -0.025
+        ],
+        "beltL": [
+          0.485,
+          0.68,
+          -0.027
+        ],
+        "shoulderR": [
+          -0.446,
+          1.17,
+          -0.294
+        ],
+        "shoulderL": [
+          0.444,
+          1.17,
+          -0.28
+        ],
+        "head": [
+          -0.097,
+          1.52,
+          0.044
+        ]
+      }
+    },
+    "lg-aspiring-champion": {
+      "file": "bodies/lg-aspiring-champion.glb",
+      "archetype": "lg-aspiring-champion",
+      "heightIn": 1.52,
+      "figureHeightIn": 1.4,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.51,
+          0.417,
+          -0.275
+        ],
+        "handL": [
+          0.572,
+          0.508,
+          -0.013
+        ],
+        "back": [
+          0,
+          0.89,
+          -0.445
+        ],
+        "beltR": [
+          -0.373,
+          0.68,
+          -0.219
+        ],
+        "beltL": [
+          0.572,
+          0.68,
+          -0.152
+        ],
+        "shoulderR": [
+          -0.265,
+          1.17,
+          -0.379
+        ],
+        "shoulderL": [
+          0.582,
+          1.17,
+          -0.326
+        ],
+        "head": [
+          0.082,
+          1.52,
+          -0.105
+        ]
+      }
+    },
+    "lg-balefire-acolyte": {
+      "file": "bodies/lg-balefire-acolyte.glb",
+      "archetype": "lg-balefire-acolyte",
+      "heightIn": 1.42,
+      "figureHeightIn": 1.3,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.451,
+          0.475,
+          0.087
+        ],
+        "handL": [
+          0.455,
+          0.472,
+          0.076
+        ],
+        "back": [
+          0,
+          0.835,
+          -0.363
+        ],
+        "beltR": [
+          -0.433,
+          0.64,
+          0.006
+        ],
+        "beltL": [
+          0.445,
+          0.64,
+          -0.017
+        ],
+        "shoulderR": [
+          -0.415,
+          1.095,
+          -0.281
+        ],
+        "shoulderL": [
+          0.455,
+          1.095,
+          -0.186
+        ],
+        "head": [
+          -0.003,
+          1.42,
+          0.069
+        ]
+      }
+    },
+    "lg-butcher": {
+      "file": "bodies/lg-butcher.glb",
+      "archetype": "lg-butcher",
+      "heightIn": 1.47,
+      "figureHeightIn": 1.35,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.505,
+          0.484,
+          0.033
+        ],
+        "handL": [
+          0.505,
+          0.498,
+          0.035
+        ],
+        "back": [
+          0,
+          0.863,
+          -0.257
+        ],
+        "beltR": [
+          -0.482,
+          0.66,
+          -0.036
+        ],
+        "beltL": [
+          0.5,
+          0.66,
+          -0.068
+        ],
+        "shoulderR": [
+          -0.427,
+          1.133,
+          -0.249
+        ],
+        "shoulderL": [
+          0.426,
+          1.133,
+          -0.238
+        ],
+        "head": [
+          -0.005,
+          1.47,
+          0.05
+        ]
+      }
+    },
+    "lg-chosen": {
+      "file": "bodies/lg-chosen.glb",
+      "archetype": "lg-chosen",
+      "heightIn": 1.42,
+      "figureHeightIn": 1.3,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.575,
+          0.464,
+          0.098
+        ],
+        "handL": [
+          0.538,
+          0.411,
+          -0.307
+        ],
+        "back": [
+          0,
+          0.835,
+          -0.251
+        ],
+        "beltR": [
+          -0.586,
+          0.64,
+          -0.006
+        ],
+        "beltL": [
+          0.35,
+          0.64,
+          -0.043
+        ],
+        "shoulderR": [
+          -0.605,
+          1.095,
+          -0.136
+        ],
+        "shoulderL": [
+          0.309,
+          1.095,
+          -0.206
+        ],
+        "head": [
+          -0.137,
+          1.42,
+          0.087
+        ]
+      }
+    },
+    "lg-gunner": {
+      "file": "bodies/lg-gunner.glb",
+      "archetype": "lg-gunner",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.524,
+          0.473,
+          -0.205
+        ],
+        "handL": [
+          0.53,
+          0.642,
+          -0.431
+        ],
+        "back": [
+          0,
+          0.808,
+          -0.666
+        ],
+        "beltR": [
+          -0.495,
+          0.62,
+          -0.308
+        ],
+        "beltL": [
+          0.547,
+          0.62,
+          -0.43
+        ],
+        "shoulderR": [
+          -0.314,
+          1.058,
+          -0.206
+        ],
+        "shoulderL": [
+          0.316,
+          1.058,
+          -0.471
+        ],
+        "head": [
+          -0.1,
+          1.37,
+          -0.198
+        ]
+      }
+    },
+    "lg-heavy-gunner": {
+      "file": "bodies/lg-heavy-gunner.glb",
+      "archetype": "lg-heavy-gunner",
+      "heightIn": 1.47,
+      "figureHeightIn": 1.35,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.496,
+          0.49,
+          0.086
+        ],
+        "handL": [
+          0.497,
+          0.484,
+          0.085
+        ],
+        "back": [
+          0,
+          0.863,
+          -0.367
+        ],
+        "beltR": [
+          -0.473,
+          0.66,
+          -0.005
+        ],
+        "beltL": [
+          0.472,
+          0.66,
+          0.017
+        ],
+        "shoulderR": [
+          -0.274,
+          1.133,
+          -0.116
+        ],
+        "shoulderL": [
+          0.275,
+          1.133,
+          -0.019
+        ],
+        "head": [
+          -0.008,
+          1.47,
+          0.078
+        ]
+      }
+    },
+    "lg-icon-bearer": {
+      "file": "bodies/lg-icon-bearer.glb",
+      "archetype": "lg-icon-bearer",
+      "heightIn": 1.82,
+      "figureHeightIn": 1.7,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.582,
+          0.565,
+          0.022
+        ],
+        "handL": [
+          0.585,
+          0.576,
+          0.02
+        ],
+        "back": [
+          0,
+          1.055,
+          -0.372
+        ],
+        "beltR": [
+          -0.559,
+          0.8,
+          -0.088
+        ],
+        "beltL": [
+          0.561,
+          0.8,
+          -0.087
+        ],
+        "shoulderR": [
+          -0.501,
+          1.395,
+          -0.412
+        ],
+        "shoulderL": [
+          0.57,
+          1.395,
+          -0.29
+        ],
+        "head": [
+          0.355,
+          1.82,
+          -0.302
+        ]
+      }
+    },
+    "lg-shrivetalon": {
+      "file": "bodies/lg-shrivetalon.glb",
+      "archetype": "lg-shrivetalon",
+      "heightIn": 1.42,
+      "figureHeightIn": 1.3,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.475,
+          0.477,
+          0.031
+        ],
+        "handL": [
+          0.476,
+          0.483,
+          0.012
+        ],
+        "back": [
+          0,
+          0.835,
+          -0.256
+        ],
+        "beltR": [
+          -0.446,
+          0.64,
+          -0.021
+        ],
+        "beltL": [
+          0.448,
+          0.64,
+          -0.034
+        ],
+        "shoulderR": [
+          -0.416,
+          1.095,
+          -0.258
+        ],
+        "shoulderL": [
+          0.425,
+          1.095,
+          -0.248
+        ],
+        "head": [
+          0.01,
+          1.42,
+          0.044
+        ]
+      }
+    },
+    "lg-warrior": {
+      "file": "bodies/lg-warrior.glb",
+      "archetype": "lg-warrior",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "handR": [
+          -0.455,
+          0.459,
+          0.054
+        ],
+        "handL": [
+          0.457,
+          0.462,
+          0.055
+        ],
+        "back": [
+          0,
+          0.808,
+          -0.253
+        ],
+        "beltR": [
+          -0.436,
+          0.62,
+          -0.013
+        ],
+        "beltL": [
+          0.448,
+          0.62,
+          -0.01
+        ],
+        "shoulderR": [
+          -0.4,
+          1.058,
+          -0.241
+        ],
+        "shoulderL": [
+          0.403,
+          1.058,
+          -0.227
+        ],
+        "head": [
+          0.009,
+          1.37,
+          0.054
+        ]
+      }
+    },
     "pf-assault-grenadier": {
       "file": "bodies/pf-assault-grenadier.glb",
       "archetype": "pf-assault-grenadier",
@@ -1489,7 +3733,7 @@
           -0.023
         ],
         "back": [
-          0.0,
+          0,
           0.698,
           -0.289
         ],
@@ -1540,7 +3784,7 @@
           0.038
         ],
         "back": [
-          0.0,
+          0,
           0.698,
           -0.247
         ],
@@ -1591,7 +3835,7 @@
           0.041
         ],
         "back": [
-          0.0,
+          0,
           0.698,
           -0.307
         ],
@@ -1642,7 +3886,7 @@
           0.027
         ],
         "back": [
-          0.0,
+          0,
           0.698,
           -0.248
         ],
@@ -1693,7 +3937,7 @@
           -0.069
         ],
         "back": [
-          0.0,
+          0,
           0.698,
           -0.314
         ],
@@ -1744,7 +3988,7 @@
           0.084
         ],
         "back": [
-          0.0,
+          0,
           0.56,
           -0.475
         ],
@@ -1795,7 +4039,7 @@
           0.052
         ],
         "back": [
-          0.0,
+          0,
           0.698,
           -0.31
         ],
@@ -1846,7 +4090,7 @@
           0.409
         ],
         "back": [
-          0.0,
+          0,
           0.56,
           -0.85
         ],
@@ -1897,7 +4141,7 @@
           0.098
         ],
         "back": [
-          0.0,
+          0,
           0.615,
           -0.292
         ],
@@ -1948,7 +4192,7 @@
           0.004
         ],
         "back": [
-          0.0,
+          0,
           0.56,
           -0.282
         ],
@@ -1975,7 +4219,7 @@
         "head": [
           -0.215,
           0.92,
-          0.0
+          0
         ]
       }
     },
@@ -1999,7 +4243,7 @@
           -0.077
         ],
         "back": [
-          0.0,
+          0,
           0.587,
           -0.452
         ],
@@ -2050,7 +4294,7 @@
           -0.223
         ],
         "back": [
-          0.0,
+          0,
           0.588,
           -0.629
         ],
@@ -2075,7 +4319,7 @@
           -0.572
         ],
         "head": [
-          0.0,
+          0,
           0.97,
           -0.573
         ]
@@ -2101,7 +4345,7 @@
           0.001
         ],
         "back": [
-          0.0,
+          0,
           0.697,
           -0.272
         ],
@@ -2128,7 +4372,7 @@
         "head": [
           -0.004,
           1.17,
-          0.0
+          0
         ]
       }
     },
@@ -2152,7 +4396,7 @@
           -0.085
         ],
         "back": [
-          0.0,
+          0,
           0.752,
           -0.164
         ],
@@ -2203,7 +4447,7 @@
           0.06
         ],
         "back": [
-          0.0,
+          0,
           0.698,
           -0.265
         ],
@@ -2254,7 +4498,7 @@
           -0.003
         ],
         "back": [
-          0.0,
+          0,
           0.725,
           -0.348
         ],
@@ -2305,7 +4549,7 @@
           0.026
         ],
         "back": [
-          0.0,
+          0,
           0.835,
           -0.387
         ],
@@ -2356,7 +4600,7 @@
           0.026
         ],
         "back": [
-          0.0,
+          0,
           0.835,
           -0.4
         ],
@@ -2407,7 +4651,7 @@
           -0.045
         ],
         "back": [
-          0.0,
+          0,
           0.89,
           -0.443
         ],
@@ -2458,7 +4702,7 @@
           0.002
         ],
         "back": [
-          0.0,
+          0,
           0.808,
           -0.404
         ],
@@ -2509,7 +4753,7 @@
           0.1
         ],
         "back": [
-          0.0,
+          0,
           0.863,
           -0.788
         ],
@@ -2560,7 +4804,7 @@
           -0.093
         ],
         "back": [
-          0.0,
+          0,
           1.055,
           -0.525
         ],
@@ -2611,7 +4855,7 @@
           -0.031
         ],
         "back": [
-          0.0,
+          0,
           0.808,
           -0.416
         ],
@@ -2662,7 +4906,7 @@
           0.017
         ],
         "back": [
-          0.0,
+          0,
           0.752,
           -0.206
         ],
@@ -2713,7 +4957,7 @@
           0.047
         ],
         "back": [
-          0.0,
+          0,
           0.78,
           -0.212
         ],
@@ -2764,7 +5008,7 @@
           0.014
         ],
         "back": [
-          0.0,
+          0,
           0.698,
           -0.307
         ],
@@ -2815,7 +5059,7 @@
           -0.054
         ],
         "back": [
-          0.0,
+          0,
           0.752,
           -0.288
         ],
@@ -2866,7 +5110,7 @@
           0.02
         ],
         "back": [
-          0.0,
+          0,
           0.917,
           -0.304
         ],
@@ -2917,7 +5161,7 @@
           0.035
         ],
         "back": [
-          0.0,
+          0,
           0.725,
           -0.29
         ],
@@ -2968,7 +5212,7 @@
           0.019
         ],
         "back": [
-          0.0,
+          0,
           0.698,
           -0.251
         ],
@@ -3019,14 +5263,14 @@
           0.008
         ],
         "back": [
-          0.0,
+          0,
           0.752,
           -0.194
         ],
         "beltR": [
           -0.358,
           0.58,
-          -0.0
+          0
         ],
         "beltL": [
           0.356,
@@ -3070,7 +5314,7 @@
           -0.008
         ],
         "back": [
-          0.0,
+          0,
           0.752,
           -0.216
         ],
@@ -3194,7 +5438,7 @@
     "w-rokkit-launcha": {
       "file": "attachments/w-rokkit-launcha.glb",
       "holdClass": "heavy",
-      "lengthIn": 1.0,
+      "lengthIn": 1,
       "grip": {
         "x": 0,
         "y": 0,
@@ -3336,7 +5580,7 @@
     "w-stalker-bolt-rifle": {
       "file": "attachments/w-stalker-bolt-rifle.glb",
       "holdClass": "long",
-      "lengthIn": 1.0,
+      "lengthIn": 1,
       "grip": {
         "x": 0,
         "y": 0,
@@ -3634,7 +5878,7 @@
     "pf-w-ion-rifle": {
       "file": "attachments/pf-w-ion-rifle.glb",
       "holdClass": "rifle",
-      "lengthIn": 1.0,
+      "lengthIn": 1,
       "grip": {
         "x": 0,
         "y": 0,
@@ -3990,14 +6234,659 @@
         "z": 0
       },
       "scale": 1
+    },
+    "ha-w-agoniser": {
+      "file": "attachments/ha-w-agoniser.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.6,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "ha-w-array-of-blades": {
+      "file": "attachments/ha-w-array-of-blades.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.55,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "ha-w-blast-pistol": {
+      "file": "attachments/ha-w-blast-pistol.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.45,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "ha-w-blaster": {
+      "file": "attachments/ha-w-blaster.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.8,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "ha-w-dark-lance": {
+      "file": "attachments/ha-w-dark-lance.glb",
+      "holdClass": "heavy",
+      "lengthIn": 1.1,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1,
+      "support": {
+        "x": 0.33,
+        "y": 0.024,
+        "z": 0
+      }
+    },
+    "ha-w-pain-sculptors": {
+      "file": "attachments/ha-w-pain-sculptors.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.5,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "ha-w-power-weapon": {
+      "file": "attachments/ha-w-power-weapon.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.75,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "ha-w-razorflail": {
+      "file": "attachments/ha-w-razorflail.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.7,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "ha-w-shardcarbine": {
+      "file": "attachments/ha-w-shardcarbine.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.8,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "ha-w-shredder": {
+      "file": "attachments/ha-w-shredder.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.85,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "ha-w-splinter-cannon": {
+      "file": "attachments/ha-w-splinter-cannon.glb",
+      "holdClass": "heavy",
+      "lengthIn": 1.1,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1,
+      "support": {
+        "x": 0.33,
+        "y": 0.125,
+        "z": 0
+      }
+    },
+    "ha-w-splinter-pistol": {
+      "file": "attachments/ha-w-splinter-pistol.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.45,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "ha-w-splinter-rifle": {
+      "file": "attachments/ha-w-splinter-rifle.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.95,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "ha-w-stim-needler": {
+      "file": "attachments/ha-w-stim-needler.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.45,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "ha-w-stinger-pistol": {
+      "file": "attachments/ha-w-stinger-pistol.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.45,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "ha-w-venom-blade": {
+      "file": "attachments/ha-w-venom-blade.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.55,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hc-w-arc-maul": {
+      "file": "attachments/hc-w-arc-maul.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.65,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hc-w-arc-pistol": {
+      "file": "attachments/hc-w-arc-pistol.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.45,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hc-w-arc-rifle": {
+      "file": "attachments/hc-w-arc-rifle.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.95,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hc-w-chordclaw": {
+      "file": "attachments/hc-w-chordclaw.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.55,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hc-w-flechette-blaster": {
+      "file": "attachments/hc-w-flechette-blaster.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.7,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hc-w-galvanic-rifle": {
+      "file": "attachments/hc-w-galvanic-rifle.glb",
+      "holdClass": "rifle",
+      "lengthIn": 1,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hc-w-plasma-caliver": {
+      "file": "attachments/hc-w-plasma-caliver.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.95,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hc-w-radium-carbine": {
+      "file": "attachments/hc-w-radium-carbine.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.85,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hc-w-radium-pistol": {
+      "file": "attachments/hc-w-radium-pistol.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.45,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hc-w-stubcarbine": {
+      "file": "attachments/hc-w-stubcarbine.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.7,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hc-w-taser-goad": {
+      "file": "attachments/hc-w-taser-goad.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.8,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "lg-w-daemon-blade": {
+      "file": "attachments/lg-w-daemon-blade.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.75,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "lg-w-daemonic-claw": {
+      "file": "attachments/lg-w-daemonic-claw.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.55,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "lg-w-double-handed-chainaxe": {
+      "file": "attachments/lg-w-double-handed-chainaxe.glb",
+      "holdClass": "melee2h",
+      "lengthIn": 0.9,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "lg-w-fell-dagger": {
+      "file": "attachments/lg-w-fell-dagger.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.4,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "lg-w-flensing-blades": {
+      "file": "attachments/lg-w-flensing-blades.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.6,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "lg-w-malefic-blade": {
+      "file": "attachments/lg-w-malefic-blade.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.75,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "lg-w-meltagun": {
+      "file": "attachments/lg-w-meltagun.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.8,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "lg-w-plasma-gun": {
+      "file": "attachments/lg-w-plasma-gun.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.85,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "lg-w-power-maul": {
+      "file": "attachments/lg-w-power-maul.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.7,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "lg-w-reaper-chaincannon": {
+      "file": "attachments/lg-w-reaper-chaincannon.glb",
+      "holdClass": "heavy",
+      "lengthIn": 1.1,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1,
+      "support": {
+        "x": 0.33,
+        "y": 0.051,
+        "z": 0
+      }
+    },
+    "hc-w-transonic-blade": {
+      "file": "attachments/hc-w-transonic-blade.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.55,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hc-w-transuranic-arquebus": {
+      "file": "attachments/hc-w-transuranic-arquebus.glb",
+      "holdClass": "long",
+      "lengthIn": 1.3,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1,
+      "support": {
+        "x": 0.39,
+        "y": 0.097,
+        "z": 0
+      }
+    },
+    "hk-w-autoch-bolt-pistol": {
+      "file": "attachments/hk-w-autoch-bolt-pistol.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.45,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hk-w-autoch-bolter": {
+      "file": "attachments/hk-w-autoch-bolter.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.8,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hk-w-bolt-revolver": {
+      "file": "attachments/hk-w-bolt-revolver.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.45,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hk-w-concussion-gauntlet": {
+      "file": "attachments/hk-w-concussion-gauntlet.glb",
+      "holdClass": "melee2h",
+      "lengthIn": 0.5,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hk-w-concussion-knux": {
+      "file": "attachments/hk-w-concussion-knux.glb",
+      "holdClass": "melee2h",
+      "lengthIn": 0.5,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hk-w-etacarn-plasma-pistol": {
+      "file": "attachments/hk-w-etacarn-plasma-pistol.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.45,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hk-w-ion-blaster": {
+      "file": "attachments/hk-w-ion-blaster.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.75,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hk-w-ion-pistol": {
+      "file": "attachments/hk-w-ion-pistol.glb",
+      "holdClass": "pistol",
+      "lengthIn": 0.45,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hk-w-plasma-knife": {
+      "file": "attachments/hk-w-plasma-knife.glb",
+      "holdClass": "melee1h",
+      "lengthIn": 0.4,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hk-w-plasma-weapon": {
+      "file": "attachments/hk-w-plasma-weapon.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.6,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hk-e-c8-hx-charge": {
+      "file": "attachments/hk-e-c8-hx-charge.glb",
+      "holdClass": "grenade",
+      "lengthIn": 0.25,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hk-w-hylas-auto-rifle": {
+      "file": "attachments/hk-w-hylas-auto-rifle.glb",
+      "holdClass": "rifle",
+      "lengthIn": 0.9,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1
+    },
+    "hk-w-hylas-rotary-cannon": {
+      "file": "attachments/hk-w-hylas-rotary-cannon.glb",
+      "holdClass": "heavy",
+      "lengthIn": 1.1,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1,
+      "support": {
+        "x": 0.33,
+        "y": 0.152,
+        "z": 0
+      }
+    },
+    "hk-w-l7-missile-launcher": {
+      "file": "attachments/hk-w-l7-missile-launcher.glb",
+      "holdClass": "heavy",
+      "lengthIn": 1.0,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1,
+      "support": {
+        "x": 0.3,
+        "y": 0.002,
+        "z": 0
+      }
+    },
+    "hk-w-magna-rail-rifle": {
+      "file": "attachments/hk-w-magna-rail-rifle.glb",
+      "holdClass": "long",
+      "lengthIn": 1.2,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1,
+      "support": {
+        "x": 0.36,
+        "y": 0.142,
+        "z": 0
+      }
+    },
+    "hk-w-etacarn-plasma-beamer": {
+      "file": "attachments/hk-w-etacarn-plasma-beamer.glb",
+      "holdClass": "heavy",
+      "lengthIn": 1.0,
+      "grip": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": 1,
+      "support": {
+        "x": 0.3,
+        "y": 0.068,
+        "z": 0
+      }
     }
   },
   "terrain": {
     "t-large-ruin": {
       "file": "terrain/t-large-ruin.glb",
       "footprint": {
-        "w": 6.0,
-        "d": 4.0
+        "w": 6,
+        "d": 4
       },
       "heightIn": 4,
       "origin": "centre-ground"
@@ -4005,8 +6894,8 @@
     "t-small-ruin": {
       "file": "terrain/t-small-ruin.glb",
       "footprint": {
-        "w": 4.0,
-        "d": 3.0
+        "w": 4,
+        "d": 3
       },
       "heightIn": 2.5,
       "origin": "centre-ground"
@@ -4023,7 +6912,7 @@
     "t-heavy-rubble": {
       "file": "terrain/t-heavy-rubble.glb",
       "footprint": {
-        "w": 3.0,
+        "w": 3,
         "d": 1.8
       },
       "heightIn": 1.5,
@@ -4032,7 +6921,7 @@
     "t-light-rubble": {
       "file": "terrain/t-light-rubble.glb",
       "footprint": {
-        "w": 3.0,
+        "w": 3,
         "d": 1.6
       },
       "heightIn": 1,
@@ -4041,7 +6930,7 @@
     "t-barricade": {
       "file": "terrain/t-barricade.glb",
       "footprint": {
-        "w": 3.0,
+        "w": 3,
         "d": 0.6
       },
       "heightIn": 1,
@@ -4050,7 +6939,7 @@
     "t-container": {
       "file": "terrain/t-container.glb",
       "footprint": {
-        "w": 3.0,
+        "w": 3,
         "d": 1.5
       },
       "heightIn": 2.5,
@@ -4059,7 +6948,7 @@
     "t-pipes": {
       "file": "terrain/t-pipes.glb",
       "footprint": {
-        "w": 4.0,
+        "w": 4,
         "d": 0.6
       },
       "heightIn": 1,

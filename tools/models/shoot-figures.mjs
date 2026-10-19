@@ -14,6 +14,10 @@ const TEAMS = {
   pm: { name: 'figures-plague-marines', teamId: 'plague-marines', att: 'att-pm' },
   wb: { name: 'figures-wyrmblade', teamId: 'wyrmblade', att: 'att-wb' },
   aod: { name: 'figures-angels-of-death', teamId: 'angelsofdeath', att: 'att-aod' },
+    lg: { name: 'figures-legionaries', teamId: 'legionaries', att: 'att-lg' },
+  ha: { name: 'figures-hand-of-the-archon', teamId: 'handofthearchon', att: 'att-ha' },
+  hc: { name: 'figures-hunter-clade', teamId: 'hunterclade', att: 'att-hc' },
+  hk: { name: 'figures-hearthkyn-salvagers', teamId: 'hearthkynsalvagers', att: 'att-hk' },
 }
 const out = 'tools/out/screens'
 mkdirSync(out, { recursive: true })
@@ -68,10 +72,12 @@ for (const key of want.length ? want : Object.keys(TEAMS)) {
   await page.getByTestId('view-three-quarter').click()
   await page.waitForTimeout(1200)
   await page.screenshot({ path: `${out}/${t.name}-3q.png` })
-  await page.getByTestId(t.att).click()
-  await page.getByTestId('view-front').click()
-  await page.waitForTimeout(3500)
-  await page.screenshot({ path: `${out}/${t.name}-att.png` })
+  if (t.att) {
+    await page.getByTestId(t.att).click()
+    await page.getByTestId('view-front').click()
+    await page.waitForTimeout(3500)
+    await page.screenshot({ path: `${out}/${t.name}-att.png` })
+  }
   console.log('shot', t.name)
 }
 console.log('console errors:', errors.length ? errors.slice(0, 5) : 'none')
