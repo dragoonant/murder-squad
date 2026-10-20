@@ -328,7 +328,7 @@ function MoveBody({ pending, state }: { pending: PendingDecision; state: GameSta
         {c?.mustEndOutsideControlRange && c.kind !== 'charge' && <>, finishing outside every enemy <Keyword term="Control range">control range</Keyword></>}.
       </div>
       <div data-testid="move-total" style={{ fontSize: 15, fontWeight: 800, color: plan ? colors.text : colors.muted }}>
-        {plan ? `Path cost ${plan.cost}/${plan.maxInches}″` : waypoints.length || facing !== null ? 'Path not allowed' : 'Click the board to lay the first step'}
+        {plan ? `Path cost ${plan.cost}/${plan.maxInches}″ · ${plan.maxInches - plan.cost}″ left` : waypoints.length || facing !== null ? 'Path not allowed' : `Click the board to lay the first step (${max}″ available)`}
       </div>
       {plan && (
         <div style={{ fontSize: 12, color: colors.muted, margin: '2px 0 4px' }} data-testid="move-segments">

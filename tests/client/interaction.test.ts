@@ -5,7 +5,7 @@ import { act, legalActions, type GameState, type PendingDecision } from '@/engin
 import { RandomBot } from '@/client/bot/randomBot'
 import { dataBundle } from '@/client/game/adapter'
 import { defaultBuild, resolveLayout, resolveMission, resolveTeam } from '@/client/game/defaults'
-import { deployAction, deployChoice, previewMove } from '@/client/interaction/controller'
+import { deployAction, deployChoice, moveReach, previewMove } from '@/client/interaction/controller'
 import { useSettings } from '@/client/presentation/settings'
 import { useGame } from '@/client/store/game'
 
@@ -86,5 +86,61 @@ describe('interaction', () => {
     const before = state.firefight.activation!.apSpent
     expect(useGame.getState().dispatch(act.pass(move))).toBeNull()
     expect(useGame.getState().state!.firefight.activation?.apSpent ?? before).toBe(before)
+  })
+
+  /** Start a reposition and return the move.path decision with its operative. */
+  function startMovePath(seed: string) {
+    start(seed)
+    const { pending } = driveUntil((p, s) => {
+      if (p.kind !== 'firefight.action') return false
+      const op = s.operatives[String(p.context.operativeId)]!
+      return !!p.options?.some((o) => o.action.type === 'firefight.action' && o.action.payload.action === 'reposition') && op.status === 'active'
+    }, seed)
+    const reposition = pending.options!.find((o) => o.action.type === 'firefight.action' && o.action.payload.action === 'reposition')!
+    expect(useGame.getState().dispatch(reposition.action)).toBeNull()
+    const move = useGame.getState().pending!
+    const state = useGame.getState().state!
+    return { state, move, op: state.operatives[move.constraints!.operativeId!]! }
+  }
+
+  it('moveReach with no waypoints centres on the operative and stays inside the allowance', () => {
+    const { state, move, op } = startMovePath('ix-3')
+    const reach = moveReach(state, move, [])
+    expect(reach).not.toBeNull()
+    expect(reach!.centre).toEqual({ x: op.pos.x, y: op.pos.y, z: op.pos.z })
+    expect(reach!.left).toBe(move.constraints!.maxInches ?? Number(move.context.maxInches))
+    expect(reach!.points).toHaveLength(48)
+    const dists = reach!.points.map((p) => Math.hypot(p.x - op.pos.x, p.z - op.pos.z))
+    expect(Math.max(...dists)).toBeGreaterThan(0)
+    for (const d of dists) expect(d).toBeLessThanOrEqual(reach!.left + 1e-6)
+  })
+
+  it('moveReach after a waypoint centres on the plan end with the inches left, and every rim point is accepted', () => {
+    const { state, move, op } = startMovePath('ix-3')
+    const wp = [0, 1, 2, 3, 4, 5, 6, 7]
+      .map((k) => ({ x: op.pos.x + Math.sin(k * 0.8) * 1.5, z: op.pos.z + Math.cos(k * 0.8) * 1.5, y: op.pos.y }))
+      .find((w) => previewMove(state, move, [w]).ok)!
+    expect(wp).toBeDefined()
+    const plan = previewMove(state, move, [wp]).plan!
+    const reach = moveReach(state, move, [wp])!
+    expect(reach.centre).toEqual({ x: plan.end.x, y: plan.end.y, z: plan.end.z })
+    expect(reach.left).toBe(plan.maxInches - plan.cost)
+    for (const p of reach.points) {
+      if (Math.hypot(p.x - reach.centre.x, p.z - reach.centre.z) === 0) continue
+      const r = previewMove(state, move, [wp, { x: p.x, z: p.z, y: reach.centre.y }])
+      expect(r.ok || r.rejection?.code === 'E_CONTROL_RANGE').toBe(true)
+    }
+  })
+
+  it('moveReach returns to the original range when the path is undone', () => {
+    const { state, move } = startMovePath('ix-3')
+    const op = state.operatives[move.constraints!.operativeId!]!
+    const first = moveReach(state, move, [])
+    const wp = [0, 1, 2, 3, 4, 5, 6, 7]
+      .map((k) => ({ x: op.pos.x + Math.sin(k * 0.8) * 1.5, z: op.pos.z + Math.cos(k * 0.8) * 1.5, y: op.pos.y }))
+      .find((w) => previewMove(state, move, [w]).ok)!
+    const moved = moveReach(state, move, [wp])!
+    expect(moved.left).toBeLessThan(first!.left)
+    expect(moveReach(state, move, [])).toEqual(first)
   })
 })

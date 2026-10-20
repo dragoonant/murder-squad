@@ -46,6 +46,57 @@ export function previewMove(state: GameState, pending: PendingDecision, waypoint
   return r.ok ? { ok: true, plan: r, rejection: null } : { ok: false, plan: null, rejection: r.rejection }
 }
 
+/** Where the next straight increment can reach: the centre it starts from, the inches left, and one rim point per bearing. */
+export interface MoveReach {
+  centre: { x: number; y: number; z: number }
+  left: number
+  points: { x: number; z: number }[]
+}
+
+const REACH_BEARINGS = 48
+const REACH_STEP = 0.5
+
+/**
+ * The movement range for the next increment of a move path. The client only samples: every verdict is the engine's
+ * `previewMove` (planMove). A sample counts as reached when the engine accepts it or only objects to the control-range
+ * ending (a Charge must finish in control range, a Reposition cannot), and a ray does not stop at its first failure
+ * (a barricade can be crossed but not stood in). Null when there is nothing left to show.
+ */
+export function moveReach(state: GameState, pending: PendingDecision, waypoints: Waypoint[], facing: number | null = null, fly = false): MoveReach | null {
+  const c = pending.constraints
+  if (!c || !c.operativeId || !isMoveKind(c.kind)) return null
+  const op = state.operatives[c.operativeId]
+  if (!op) return null
+  let centre = { x: op.pos.x, y: op.pos.y, z: op.pos.z }
+  let left = c.maxInches ?? Number(pending.context.maxInches ?? 0)
+  if (!fly && waypoints.length > 0) {
+    const plan = previewMove(state, pending, waypoints, facing, false).plan
+    if (!plan) return null
+    centre = { x: plan.end.x, y: plan.end.y, z: plan.end.z }
+    left = plan.maxInches - plan.cost
+  }
+  if (!(left >= 0.5)) return null
+  const reached = (p: Waypoint): boolean => {
+    const r = previewMove(state, pending, fly ? [p] : [...waypoints, p], facing, fly)
+    return r.ok || r.rejection?.code === 'E_CONTROL_RANGE'
+  }
+  const dists: number[] = []
+  for (let d = REACH_STEP; d < left; d += REACH_STEP) dists.push(d)
+  dists.push(left)
+  const points: { x: number; z: number }[] = []
+  for (let i = 0; i < REACH_BEARINGS; i++) {
+    const b = (i / REACH_BEARINGS) * Math.PI * 2
+    const sx = Math.sin(b)
+    const cz = Math.cos(b)
+    let best = 0
+    for (const d of dists) {
+      if (reached({ x: centre.x + sx * d, z: centre.z + cz * d, y: centre.y })) best = d
+    }
+    points.push({ x: centre.x + sx * best, z: centre.z + cz * best })
+  }
+  return { centre, left, points }
+}
+
 /** Can the operative whose move is pending FLY (Jump Pack)? The engine's team rules answer. */
 export function canFlyNow(state: GameState, pending: PendingDecision): boolean {
   const c = pending.constraints

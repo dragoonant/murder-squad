@@ -7,7 +7,7 @@ import { DoubleSide, Shape } from 'three'
 import type { GameState, PendingDecision, Waypoint } from '@/engine'
 import { fightTargetCard, pct, targetCard, unlistedTargets } from '../game/promptLabels'
 import { BaseRing, FrontMark } from '../figures/OvalBase'
-import { bearingTo, deployChoice, optionOperative, placedMarkerRadius, previewMove, spotOptions } from './controller'
+import { bearingTo, deployChoice, optionOperative, moveReach, placedMarkerRadius, previewMove, spotOptions } from './controller'
 import { useUi, type Pt } from '../ui/uiStore'
 
 const KIND_COLOR: Record<string, string> = { walk: '#ffffff', climb: '#ff9f43', drop: '#2ee6c8', jump: '#ff5ce1' }
@@ -54,6 +54,14 @@ export function MovePreviewLayer({ state, pending }: { state: GameState; pending
   const opId = pending.constraints?.operativeId
   const op = opId ? state.operatives[opId] : null
   const committed = useMemo(() => previewMove(state, pending, waypoints, turn, fly), [state, pending, waypoints, turn, fly])
+  const reach = useMemo(() => moveReach(state, pending, waypoints, turn, fly), [state, pending, waypoints, turn, fly])
+  const reachShape = useMemo(() => {
+    if (!reach) return null
+    const sh = new Shape()
+    reach.points.forEach((p, i) => (i === 0 ? sh.moveTo(p.x, -p.z) : sh.lineTo(p.x, -p.z)))
+    sh.closePath()
+    return sh
+  }, [reach])
   const whatIf = useMemo(() => {
     if (!hover) return null
     const wp: Waypoint = { x: hover.x, z: hover.z, y: hover.y, ...(jumpNext ? { jump: true } : {}) }
@@ -64,8 +72,21 @@ export function MovePreviewLayer({ state, pending }: { state: GameState; pending
   const segs = committed.plan?.segments ?? []
   const last = waypoints[waypoints.length - 1]
   const lastPt: [number, number, number] = last ? [last.x, (last.y ?? op.pos.y) + 0.12, last.z] : start
+  const showReach = reach && reachShape && !jumpNext
+  const reachRim = showReach ? reach.points.map((p) => [p.x, reach.centre.y + 0.06, p.z] as [number, number, number]) : []
+  const farthest = showReach ? reach.points.reduce((a, p) => (Math.hypot(p.x - reach.centre.x, p.z - reach.centre.z) > Math.hypot(a.x - reach.centre.x, a.z - reach.centre.z) ? p : a), reach.points[0]!) : null
   return (
     <group>
+      {showReach && reachShape && farthest && (
+        <>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, reach.centre.y + 0.04, 0]} renderOrder={2}>
+            <shapeGeometry args={[reachShape]} />
+            <meshBasicMaterial color="#4fc3ff" transparent opacity={0.25} side={DoubleSide} depthWrite={false} />
+          </mesh>
+          <Line points={[...reachRim, reachRim[0]!]} color="#4fc3ff" lineWidth={2.5} />
+          <Label at={[farthest.x, reach.centre.y + 0.5, farthest.z]} text={`${reach.left}″ left`} color="#4fc3ff" />
+        </>
+      )}
       {segs.map((s, i) => (
         <group key={i}>
           <Line points={[[s.from.x, s.from.y + 0.12, s.from.z], [s.to.x, s.to.y + 0.12, s.to.z]]} color={KIND_COLOR[s.kind] ?? '#fff'} lineWidth={3} />
