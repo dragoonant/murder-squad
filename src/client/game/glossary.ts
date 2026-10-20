@@ -46,6 +46,8 @@ const CORE: Core[] = [
   { term: 'Wounds', kind: 'stat', aliases: ['Wound'], body: 'How much damage the operative can take. At 0 it is incapacitated and removed; below half it is Injured.' },
   { term: 'Atk', kind: 'stat', aliases: ['Attacks', 'Attack stat'], body: 'Attacks: how many attack dice the weapon rolls each time it is used.' },
   { term: 'Hit', kind: 'stat', aliases: ['Hit stat'], body: 'The target number for attack dice: a die at this value or higher is a success, a 6 is always a critical success and a 1 always fails. Lower is better.' },
+  { term: 'Rng', kind: 'stat', aliases: ['Reach'], body: 'How far the weapon reaches. A ranged weapon with the Range rule can only target enemies within that distance; one without it (∞) can target any valid target on the killzone. A melee weapon fights enemies in its control range (1 inch).' },
+  { term: 'Unlimited range', kind: 'rule', body: 'This ranged weapon has no Range rule, so distance never limits it: any valid target on the killzone can be shot.' },
   { term: 'Dmg', kind: 'stat', aliases: ['Damage'], body: 'Damage per successful attack die, shown as normal/critical. A normal success deals the first number and a critical success deals the second, taken off the target\'s Wounds.' },
   { term: 'Weapon rules', kind: 'rule', aliases: ['Weapon rule'], body: 'Special rules printed on a weapon profile, such as Piercing or Blast. They change how an attack with that weapon plays out; hover each one for its effect.' },
 
@@ -420,6 +422,20 @@ export function weaponRuleParts(r: WeaponRuleUseLike): { term: string; label: st
   const value = r.inches !== undefined ? ` ${r.inches}″` : r.x !== undefined ? ` ${r.x}` : r.target !== undefined ? ` ${String(r.target).replace(/\+?$/, '+')}` : ''
   const term = `${name}${r.crits ? ' Crits' : ''}${value}`
   return { term, label: r.only ? `${term} (${r.only} only)` : term }
+}
+
+/** The Range weapon rule, as data (`core.wr.range`) or engine state (`range`, after `ruleName`) spells it. */
+export const isRangeRule = (r: WeaponRuleUseLike): boolean => r.rule === 'core.wr.range' || r.rule === 'range'
+
+/**
+ * A weapon's reach as the sheet shows it. Range is a weapon rule, not a stat: a ranged profile without
+ * one reaches any valid target, and a melee profile fights enemies in
+ * control range (1″).
+ */
+export function weaponReach(w: { type: string; rules: readonly WeaponRuleUseLike[] }): { label: string; term: string } {
+  if (w.type === 'melee') return { label: '1″', term: 'Control range' }
+  const r = w.rules.find((u) => isRangeRule(u) && u.inches !== undefined)
+  return r ? { label: `${r.inches}″`, term: weaponRuleParts(r).term } : { label: '∞', term: 'Unlimited range' }
 }
 
 // ---------------------------------------------------------------- linking free text

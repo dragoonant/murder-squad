@@ -26,6 +26,7 @@ import type { Seat } from '@/engine'
 import { dataBundle, flattenRoster, type SeatBuild } from '../game/adapter'
 import { buildProblems, choiceOptions, defaultBuild, defaultEquipmentPicks, equipmentFor, equipmentLimitOf, teamList } from '../game/defaults'
 import { humanize } from '../game/labels'
+import { isRangeRule, weaponReach } from '../game/glossary'
 import { Figure, seatColor as figureSeatColor } from '../figures/Operative'
 import { baseOfCard } from '../figures/OvalBase'
 import { chosenWeaponIds } from '../game/adapter'
@@ -68,26 +69,31 @@ export function weaponsOf(ref: string): WeaponData[] {
 }
 
 function weaponLine(w: WeaponData): string {
-  const rules = w.rules.map((r) => `${humanize(r.rule.replace('core.wr.', ''))}${r.inches !== undefined ? ` ${r.inches}″` : r.x !== undefined ? ` ${r.x}` : ''}`).join(', ')
-  return `A${w.atk} ${w.hit} ${w.dmg.normal}/${w.dmg.crit}${rules ? ` · ${rules}` : ''}`
+  const rules = w.rules.filter((r) => !isRangeRule(r)).map((r) => `${humanize(r.rule.replace('core.wr.', ''))}${r.inches !== undefined ? ` ${r.inches}″` : r.x !== undefined ? ` ${r.x}` : ''}`).join(', ')
+  return `Rng ${weaponReach(w).label} A${w.atk} ${w.hit} ${w.dmg.normal}/${w.dmg.crit}${rules ? ` · ${rules}` : ''}`
 }
 
 /** The stat line of each profile of a weapon, with every weapon rule as its own keyword. */
 function WeaponLines({ ws }: { ws: WeaponData[] }) {
   return (
     <>
-      {ws.map((w, i) => (
-        <span key={w.id}>
-          {i > 0 && ' | '}
-          {w.profile ? `${w.profile}: ` : ''}A{w.atk} {w.hit} {w.dmg.normal}/{w.dmg.crit}
-          {w.rules.length > 0 && (
-            <>
-              {' · '}
-              <WeaponRules rules={w.rules} />
-            </>
-          )}
-        </span>
-      ))}
+      {ws.map((w, i) => {
+        const reach = weaponReach(w)
+        const rules = w.rules.filter((r) => !isRangeRule(r))
+        return (
+          <span key={w.id}>
+            {i > 0 && ' | '}
+            {w.profile ? `${w.profile}: ` : ''}
+            <Keyword term="Rng" /> <Keyword term={reach.term} kind="weaponRule">{reach.label}</Keyword> A{w.atk} {w.hit} {w.dmg.normal}/{w.dmg.crit}
+            {rules.length > 0 && (
+              <>
+                {' · '}
+                <WeaponRules rules={rules} />
+              </>
+            )}
+          </span>
+        )
+      })}
     </>
   )
 }

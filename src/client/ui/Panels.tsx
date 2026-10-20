@@ -8,6 +8,7 @@ import { effectiveApl } from '@/engine/state'
 import { killStatus, mission } from '../game/kill'
 import { dataBundle } from '../game/adapter'
 import { humanize, SEAT_NAME } from '../game/labels'
+import { isRangeRule, weaponReach } from '../game/glossary'
 import { teamPicks } from '../game/promptLabels'
 import { useAudioSettings } from '../audio'
 import { groupFeed, useFeedStore } from '../presentation/feedStore'
@@ -150,30 +151,36 @@ export function OperativeCard({ docked }: { docked?: boolean }) {
         <thead>
           <tr style={{ color: colors.muted, textAlign: 'left' }}>
             <th>Weapon</th>
+            <th><Keyword term="Rng" /></th>
             <th><Keyword term="Atk">A</Keyword></th>
             <th><Keyword term="Hit" /></th>
             <th><Keyword term="Dmg" /></th>
           </tr>
         </thead>
         <tbody>
-          {weapons.map((w) => (
+          {weapons.map((w) => {
+            const reach = weaponReach(w!)
+            const rules = w!.rules.filter((r) => !isRangeRule(r))
+            return (
             <tr key={w!.id} style={{ borderTop: `1px solid ${colors.border}` }}>
               <td style={{ padding: '2px 0' }}>
                 {w!.name}
                 {w!.type === 'melee' ? ' (melee)' : ''}
-                {w!.rules.length > 0 && (
+                {rules.length > 0 && (
                   <div data-testid="weapon-rules" style={{ fontSize: 10, color: colors.muted }}>
-                    <WeaponRules rules={w!.rules} />
+                    <WeaponRules rules={rules} />
                   </div>
                 )}
               </td>
+              <td data-testid="weapon-range"><Keyword term={reach.term} kind="weaponRule">{reach.label}</Keyword></td>
               <td>{w!.atk}</td>
               <td>{w!.hit}+</td>
               <td>
                 {w!.dmg.normal}/{w!.dmg.crit}
               </td>
             </tr>
-          ))}
+            )
+          })}
         </tbody>
       </table>
       )}
