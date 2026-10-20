@@ -168,7 +168,7 @@ describe('a whole game on the real engine', () => {
     const heard = new Set<string>()
     const kindsSeen = new Set<string>()
     let mode: SoundContext['mode'] = null
-    const { final, steps } = playGame({ seed: 'audio-1', maxSteps: 2500 }, ({ state, events }) => {
+    const listen = ({ state, events }: { state: GameState; events: GameEvent[] }) => {
       for (const e of events) {
         if (e.type === 'ShootStarted') mode = 'shoot'
         if (e.type === 'FightStarted') mode = 'fight'
@@ -179,7 +179,10 @@ describe('a whole game on the real engine', () => {
         if (e.type === 'ShootEnded' || e.type === 'FightEnded') mode = null
         kindsSeen.add(e.type)
       }
-    })
+    }
+    const { final, steps } = playGame({ seed: 'audio-1', maxSteps: 2500 }, listen)
+    // a seed whose game happens to end with nobody killed is topped up with a second game
+    if (![...heard].some((i) => i.startsWith('death-'))) playGame({ seed: 'audio-2', maxSteps: 2500 }, listen)
     expect(steps).toBeGreaterThan(200)
     expect(final.seq).toBeGreaterThan(200)
     const ids = [...heard]

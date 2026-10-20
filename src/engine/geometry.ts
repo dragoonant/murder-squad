@@ -12,9 +12,15 @@ export function dist2(a: Vec2, b: Vec2): number {
   return Math.hypot(a.x - b.x, a.z - b.z)
 }
 
+/**
+ * Measuring tolerance for rounding an increment up (1/200 inch). Waypoints are rounded to 1/1000 inch, so a step
+ * aimed at exactly 6" can land at 6.0004"; that is still a 6" move, not 7".
+ */
+export const INCREMENT_TOLERANCE = 0.005
+
 /** Movement cost of one straight-line increment: its length rounded UP to the next whole inch (R-4.1). */
 export function incrementCost(length: number): number {
-  return length <= EPS ? 0 : Math.ceil(length - EPS)
+  return length <= EPS ? 0 : Math.max(1, Math.ceil(length - INCREMENT_TOLERANCE))
 }
 
 /** Bearing of the vector a -> b with +Z as 0 and +X as pi/2. */

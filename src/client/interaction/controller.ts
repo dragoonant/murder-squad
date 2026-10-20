@@ -46,21 +46,20 @@ export function previewMove(state: GameState, pending: PendingDecision, waypoint
   return r.ok ? { ok: true, plan: r, rejection: null } : { ok: false, plan: null, rejection: r.rejection }
 }
 
-/** Where the next straight increment can reach: the centre it starts from, the inches left, and one rim point per bearing. */
+/** The movement range for the next increment: the centre it starts from, the inches left, and a circle of that radius. */
 export interface MoveReach {
   centre: { x: number; y: number; z: number }
   left: number
   points: { x: number; z: number }[]
 }
 
-const REACH_BEARINGS = 48
-const REACH_STEP = 0.5
+const REACH_SEGMENTS = 96
 
 /**
- * The movement range for the next increment of a move path. The client only samples: every verdict is the engine's
- * `previewMove` (planMove). A sample counts as reached when the engine accepts it or only objects to the control-range
- * ending (a Charge must finish in control range, a Reposition cannot), and a ray does not stop at its first failure
- * (a barricade can be crossed but not stood in). Null when there is nothing left to show.
+ * The movement range for the next increment of a move path: a plain circle of the inches left around the end of the
+ * committed path (around the operative before the first click), drawn as if there were no terrain. Walls, bases and
+ * control range still decide whether a particular step is legal; that verdict is the engine's (`previewMove`), shown
+ * on the hovered step. Null when there is nothing left to show.
  */
 export function moveReach(state: GameState, pending: PendingDecision, waypoints: Waypoint[], facing: number | null = null, fly = false): MoveReach | null {
   const c = pending.constraints
@@ -76,25 +75,30 @@ export function moveReach(state: GameState, pending: PendingDecision, waypoints:
     left = plan.maxInches - plan.cost
   }
   if (!(left >= 0.5)) return null
-  const reached = (p: Waypoint): boolean => {
-    const r = previewMove(state, pending, fly ? [p] : [...waypoints, p], facing, fly)
-    return r.ok || r.rejection?.code === 'E_CONTROL_RANGE'
-  }
-  const dists: number[] = []
-  for (let d = REACH_STEP; d < left; d += REACH_STEP) dists.push(d)
-  dists.push(left)
   const points: { x: number; z: number }[] = []
-  for (let i = 0; i < REACH_BEARINGS; i++) {
-    const b = (i / REACH_BEARINGS) * Math.PI * 2
-    const sx = Math.sin(b)
-    const cz = Math.cos(b)
-    let best = 0
-    for (const d of dists) {
-      if (reached({ x: centre.x + sx * d, z: centre.z + cz * d, y: centre.y })) best = d
-    }
-    points.push({ x: centre.x + sx * best, z: centre.z + cz * best })
+  for (let i = 0; i < REACH_SEGMENTS; i++) {
+    const b = (i / REACH_SEGMENTS) * Math.PI * 2
+    points.push({ x: centre.x + Math.sin(b) * left, z: centre.z + Math.cos(b) * left })
   }
   return { centre, left, points }
+}
+
+/**
+ * A flat step clicked beyond the range is pulled back along its own line to the edge of the range, so clicking past the
+ * circle moves the full distance instead of being refused. Climbs, drops, jumps and steps inside the range are unchanged.
+ */
+export function snapStep(state: GameState, pending: PendingDecision, waypoints: Waypoint[], wp: Waypoint, facing: number | null = null, fly = false): Waypoint {
+  if (wp.jump) return wp
+  const reach = moveReach(state, pending, waypoints, facing, fly)
+  if (!reach) return wp
+  if (wp.y !== undefined && Math.abs(wp.y - reach.centre.y) > 0.01) return wp
+  const dx = wp.x - reach.centre.x
+  const dz = wp.z - reach.centre.z
+  const len = Math.hypot(dx, dz)
+  const max = reach.left - 0.002
+  if (len <= max) return wp
+  const k = max / len
+  return { ...wp, x: round(reach.centre.x + dx * k), z: round(reach.centre.z + dz * k) }
 }
 
 /** Can the operative whose move is pending FLY (Jump Pack)? The engine's team rules answer. */
@@ -276,7 +280,8 @@ export function clickPoint(pt: Pt): void {
       return
     }
     if (ui.jumpNext) wp.jump = true
-    useUi.setState({ waypoints: [...ui.waypoints, wp], jumpNext: false })
+    const turn = ui.facing !== null && state.operatives[pending.constraints?.operativeId ?? '']?.ovalHalfAxis ? ui.facing : null
+    useUi.setState({ waypoints: [...ui.waypoints, snapStep(state, pending, ui.waypoints, wp, turn)], jumpNext: false })
     return
   }
   ui.set({ selectedOp: null })

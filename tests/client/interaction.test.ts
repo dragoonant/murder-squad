@@ -5,7 +5,7 @@ import { act, legalActions, type GameState, type PendingDecision } from '@/engin
 import { RandomBot } from '@/client/bot/randomBot'
 import { dataBundle } from '@/client/game/adapter'
 import { defaultBuild, resolveLayout, resolveMission, resolveTeam } from '@/client/game/defaults'
-import { deployAction, deployChoice, moveReach, previewMove } from '@/client/interaction/controller'
+import { deployAction, deployChoice, moveReach, previewMove, snapStep } from '@/client/interaction/controller'
 import { useSettings } from '@/client/presentation/settings'
 import { useGame } from '@/client/store/game'
 
@@ -103,19 +103,16 @@ describe('interaction', () => {
     return { state, move, op: state.operatives[move.constraints!.operativeId!]! }
   }
 
-  it('moveReach with no waypoints centres on the operative and stays inside the allowance', () => {
+  it('moveReach with no waypoints is a full circle of the move around the operative, terrain ignored', () => {
     const { state, move, op } = startMovePath('ix-3')
     const reach = moveReach(state, move, [])
     expect(reach).not.toBeNull()
     expect(reach!.centre).toEqual({ x: op.pos.x, y: op.pos.y, z: op.pos.z })
     expect(reach!.left).toBe(move.constraints!.maxInches ?? Number(move.context.maxInches))
-    expect(reach!.points).toHaveLength(48)
-    const dists = reach!.points.map((p) => Math.hypot(p.x - op.pos.x, p.z - op.pos.z))
-    expect(Math.max(...dists)).toBeGreaterThan(0)
-    for (const d of dists) expect(d).toBeLessThanOrEqual(reach!.left + 1e-6)
+    for (const p of reach!.points) expect(Math.hypot(p.x - op.pos.x, p.z - op.pos.z)).toBeCloseTo(reach!.left, 6)
   })
 
-  it('moveReach after a waypoint centres on the plan end with the inches left, and every rim point is accepted', () => {
+  it('moveReach after a waypoint centres on the plan end with the inches left', () => {
     const { state, move, op } = startMovePath('ix-3')
     const wp = [0, 1, 2, 3, 4, 5, 6, 7]
       .map((k) => ({ x: op.pos.x + Math.sin(k * 0.8) * 1.5, z: op.pos.z + Math.cos(k * 0.8) * 1.5, y: op.pos.y }))
@@ -125,11 +122,24 @@ describe('interaction', () => {
     const reach = moveReach(state, move, [wp])!
     expect(reach.centre).toEqual({ x: plan.end.x, y: plan.end.y, z: plan.end.z })
     expect(reach.left).toBe(plan.maxInches - plan.cost)
-    for (const p of reach.points) {
-      if (Math.hypot(p.x - reach.centre.x, p.z - reach.centre.z) === 0) continue
-      const r = previewMove(state, move, [wp, { x: p.x, z: p.z, y: reach.centre.y }])
-      expect(r.ok || r.rejection?.code === 'E_CONTROL_RANGE').toBe(true)
-    }
+    for (const p of reach.points) expect(Math.hypot(p.x - reach.centre.x, p.z - reach.centre.z)).toBeCloseTo(reach.left, 6)
+  })
+
+  it('a flat click past the range snaps to its edge and the engine accepts the full move', () => {
+    const { state, move, op } = startMovePath('ix-3')
+    const max = move.constraints!.maxInches!
+    // the open bearing where a straight full-length step is legal
+    const dir = Array.from({ length: 48 }, (_, i) => (i / 48) * Math.PI * 2).find((b) => {
+      const snapped = snapStep(state, move, [], { x: op.pos.x + Math.sin(b) * 20, z: op.pos.z + Math.cos(b) * 20, y: op.pos.y })
+      return previewMove(state, move, [snapped]).ok
+    })
+    expect(dir).toBeDefined()
+    const snapped = snapStep(state, move, [], { x: op.pos.x + Math.sin(dir!) * 20, z: op.pos.z + Math.cos(dir!) * 20, y: op.pos.y })
+    expect(Math.hypot(snapped.x - op.pos.x, snapped.z - op.pos.z)).toBeCloseTo(max, 2)
+    expect(previewMove(state, move, [snapped]).plan!.cost).toBe(max)
+    // a click inside the range is left where it is
+    const inside = { x: op.pos.x + Math.sin(dir!) * 1.2, z: op.pos.z + Math.cos(dir!) * 1.2, y: op.pos.y }
+    expect(snapStep(state, move, [], inside)).toEqual(inside)
   })
 
   it('moveReach returns to the original range when the path is undone', () => {

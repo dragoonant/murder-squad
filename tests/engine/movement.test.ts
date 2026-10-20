@@ -21,6 +21,9 @@ describe('MOVE movement and control range', () => {
     expect(code(path(s, seven))).toBe('E_OUT_OF_RANGE')
     expect(code(path(s, [wp(6, 0)]))).toBeUndefined()
     expect(code(path(s, [wp(6.01, 0)]))).toBe('E_OUT_OF_RANGE')
+    // a full-length step that lands a hair past 6" from 1/1000" rounding is still a 6" move
+    expect(code(path(s, [wp(4.2431, 4.2429)]))).toBeUndefined()
+    expect(moved(expectOk(path(s, [wp(6.004, 0)]))).cost).toBe(6)
   })
 
   it('MOVE-002 Reposition is rejected while in an enemy control range and after Fall Back or Charge', () => {

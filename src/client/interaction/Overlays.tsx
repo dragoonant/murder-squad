@@ -7,7 +7,7 @@ import { DoubleSide, Shape } from 'three'
 import type { GameState, PendingDecision, Waypoint } from '@/engine'
 import { fightTargetCard, pct, targetCard, unlistedTargets } from '../game/promptLabels'
 import { BaseRing, FrontMark } from '../figures/OvalBase'
-import { bearingTo, deployChoice, optionOperative, moveReach, placedMarkerRadius, previewMove, spotOptions } from './controller'
+import { bearingTo, deployChoice, optionOperative, moveReach, placedMarkerRadius, previewMove, snapStep, spotOptions } from './controller'
 import { useUi, type Pt } from '../ui/uiStore'
 
 const KIND_COLOR: Record<string, string> = { walk: '#ffffff', climb: '#ff9f43', drop: '#2ee6c8', jump: '#ff5ce1' }
@@ -64,8 +64,9 @@ export function MovePreviewLayer({ state, pending }: { state: GameState; pending
   }, [reach])
   const whatIf = useMemo(() => {
     if (!hover) return null
-    const wp: Waypoint = { x: hover.x, z: hover.z, y: hover.y, ...(jumpNext ? { jump: true } : {}) }
-    return previewMove(state, pending, fly ? [wp] : [...waypoints, wp], turn, fly)
+    const raw: Waypoint = { x: hover.x, z: hover.z, y: hover.y, ...(jumpNext ? { jump: true } : {}) }
+    const wp = fly ? raw : snapStep(state, pending, waypoints, raw, turn)
+    return { at: { x: wp.x, y: hover.y, z: wp.z }, ...previewMove(state, pending, fly ? [wp] : [...waypoints, wp], turn, fly) }
   }, [state, pending, waypoints, hover, jumpNext, turn, fly])
   if (!op) return null
   const start: [number, number, number] = [op.pos.x, op.pos.y + 0.12, op.pos.z]
@@ -108,7 +109,7 @@ export function MovePreviewLayer({ state, pending }: { state: GameState; pending
       {hover && whatIf && (
         <>
           <Line
-            points={[lastPt, [hover.x, hover.y + 0.12, hover.z]]}
+            points={[lastPt, [whatIf.at.x, whatIf.at.y + 0.12, whatIf.at.z]]}
             color={whatIf.ok ? '#6dff9a' : '#ff5a4f'}
             lineWidth={2}
             dashed
@@ -116,7 +117,7 @@ export function MovePreviewLayer({ state, pending }: { state: GameState; pending
             gapSize={0.2}
           />
           <Label
-            at={[hover.x, hover.y + 1.1, hover.z]}
+            at={[whatIf.at.x, whatIf.at.y + 1.1, whatIf.at.z]}
             text={whatIf.plan ? `total ${whatIf.plan.cost}/${whatIf.plan.maxInches}″` : (whatIf.rejection?.reason ?? 'blocked').slice(0, 56)}
             color={whatIf.ok ? '#6dff9a' : '#ff8a80'}
           />
