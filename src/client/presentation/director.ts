@@ -19,6 +19,7 @@ import { clearFx, clearOverrides, setControlOverride, setWoundOverride, spawnFx 
 import { setPresentationIdle } from './idleStore'
 import { catchUpPresented, setPresentedSeq } from './presentedStore'
 import { speedFactor, useSettings } from './settings'
+import { finalKinds, heldItemOf, holdVerdict, planLandings, rerollKinds, type DieKind } from './heldVolley'
 
 export interface Batch {
   seq: number
@@ -160,13 +161,16 @@ function isDiceLine(ev: GameEvent): boolean {
   return ev.type === 'DiceRolled' || ev.type === 'AttackDiceRolled' || ev.type === 'DefenceDiceRolled' || ev.type === 'DiceRerolled' || ev.type === 'DiceBlocked'
 }
 
-async function playEvent(ev: GameEvent, state: GameState, gen: number): Promise<void> {
+async function playEvent(ev: GameEvent, state: GameState, gen: number, opts: { landing?: boolean } = {}): Promise<void> {
   const f = speedFactor(useSettings.getState().animSpeed)
   // HIDING is open information: the opponent's set-aside operatives get their feed line like any other event
   let text = describeEvent(ev, state)
-  const wait = (ms: number) => sleep(Math.round(ms * f))
+  // a held shot's landing is one beat of the volley, which paces itself: no pause of its own
+  const wait = (ms: number) => (opts.landing ? Promise.resolve() : sleep(Math.round(ms * f)))
   const fx = f > 0
-  if (fx) playEventSounds((id, o) => audio.play(id, o), [ev], soundContext(state))
+  // A shot's weapon sound waits for the volley, and its save sound for the tracer that lands on a blocked die.
+  const heldShot = fx && ((ev.type === 'AttackDiceRolled' && mode !== 'fight' && !!ev.weaponId && !!lookup(state, ev.operativeId) && !!lookup(state, ev.targetId)) || (ev.type === 'DiceBlocked' && heldVolley !== null))
+  if (fx && !heldShot) playEventSounds((id, o) => audio.play(id, o), [ev], soundContext(state))
 
   switch (ev.type) {
     case 'DiceRolled': {
@@ -207,13 +211,24 @@ async function playEvent(ev: GameEvent, state: GameState, gen: number): Promise<
       const who = lookup(state, ev.operativeId)
       const target = lookup(state, ev.targetId)
       pushDice(ev.seq, ev.seat, 'attack', ev.dice, ev.kinds)
-      if (fx && mode !== 'fight' && who && target && ev.weaponId) {
-        // the muzzle flash fires on the same beat as the weapon sound (eventSounds.ts): one tracer per attack die
-        const info = vfx.volley(who, target, ev.weaponId, ev.kinds.map(diceKind), shot?.secondary ?? false, shot?.inCover ?? false)
-        faceToward(who, target, 700 + 1000 * info.duration)
-        triggerCue(who.id, 'shoot', performance.now(), 'beat')
-        // hold the dice until the first shots have landed
-        await wait(1000 * Math.min(info.duration, info.first + (info.duration - info.first) * 0.5) + 40)
+      // Dice first: the shooter fires only once the whole exchange has been rolled (fireHeldVolley).
+      if (heldShot && who && target && ev.weaponId) {
+        heldVolley = {
+          shooterId: ev.operativeId,
+          targetId: ev.targetId,
+          weaponId: ev.weaponId,
+          secondary: shot?.secondary ?? false,
+          inCover: shot?.inCover ?? false,
+          atk: ev,
+          state,
+          kinds: ev.kinds.map(diceKind),
+          need: ev.need,
+          lethal: ev.lethal,
+          retained: null,
+          block: null,
+          windowOpen: false,
+          held: [],
+        }
       }
       trayAttack(
         { operativeId: ev.operativeId, seat: ev.seat, label: opName(state, ev.operativeId), need: ev.need, lethal: ev.lethal, dice: ev.dice, kinds: ev.kinds },
@@ -242,7 +257,8 @@ async function playEvent(ev: GameEvent, state: GameState, gen: number): Promise<
       trayShootBlock(ev.blockedNormal, ev.blockedCrit)
       const def = lookup(state, ev.targetId)
       // saved dice: a shimmer of cover (or armour) on the defender, with the hit-armour sound
-      if (fx && def && ev.blockedNormal + ev.blockedCrit > 0) vfx.shield(def, ev.blockedNormal + ev.blockedCrit, shot?.inCover ?? false)
+      // (with a held volley the shimmer plays on the tracer that lands on each blocked die instead)
+      if (fx && def && !heldVolley && ev.blockedNormal + ev.blockedCrit > 0) vfx.shield(def, ev.blockedNormal + ev.blockedCrit, shot?.inCover ?? false)
       trayNote(ev.unblockedNormal + ev.unblockedCrit === 0 ? 'Everything is blocked.' : `${ev.unblockedNormal} normal and ${ev.unblockedCrit} critical get through.`)
       await wait(beatMs(ev))
       break
@@ -411,12 +427,160 @@ async function playEvent(ev: GameEvent, state: GameState, gen: number): Promise<
   requestRepaint()
 }
 
+// ---------------------------------------------------------------- the held shooting volley
+//
+// A shot plays its dice first (reticle, attack dice, re-rolls, cover, defence dice, the block). Only then does the
+// shooter fire, one tracer per attack die; a blocked success shimmers when its tracer lands, an unblocked one plays
+// its damage, and the target's wound or fall lands with the shot that caused it. The target's damage events wait in
+// the volley until then (see heldVolley.ts for who gets what and when the volley fires).
+
+type AttackDice = Extract<GameEvent, { type: 'AttackDiceRolled' }>
+type BlockEvent = Extract<GameEvent, { type: 'DiceBlocked' }>
+
+interface HeldVolley {
+  shooterId: string
+  targetId: string
+  weaponId: string
+  secondary: boolean
+  inCover: boolean
+  atk: AttackDice
+  /** state of the batch the attack dice were rolled in (positions of shooter and target) */
+  state: GameState
+  kinds: DieKind[]
+  need: number
+  lethal: number | null
+  retained: { normal: number; crit: number } | null
+  block: { ev: BlockEvent; state: GameState } | null
+  /** the target's defence has been reached: its damage events wait for the volley */
+  windowOpen: boolean
+  held: { ev: GameEvent; state: GameState }[]
+}
+
+let heldVolley: HeldVolley | null = null
+
+/** Longest the director waits for a volley's tracers to land before playing what is left. */
+const VOLLEY_WAIT_MAX_MS = 3800
+/** Pause after the last landing, before whatever comes next. */
+const VOLLEY_SETTLE_MS = 550
+
+/** Records what a dice-phase event changes in the held volley (final attack dice, retention, the block). */
+function noteDice(h: HeldVolley, ev: GameEvent, state: GameState): void {
+  if (ev.type === 'DiceRerolled' && ev.side === 'attack' && ev.operativeId === h.shooterId) h.kinds = rerollKinds(h.kinds, ev.indexes, ev.after, h.need, h.lethal)
+  else if (ev.type === 'AttackRetained' && ev.operativeId === h.shooterId) h.retained = { normal: ev.normal, crit: ev.crit }
+  else if (ev.type === 'DefenceDiceRolled' && ev.targetId === h.targetId) h.windowOpen = true
+  else if (ev.type === 'DiceBlocked' && ev.targetId === h.targetId) {
+    h.block = { ev, state }
+    h.windowOpen = true
+  }
+}
+
+/**
+ * Fires the held volley: the shooter turns and fires (cue + weapon sound), one tracer per attack die (misses fly and
+ * miss), and each landing plays when its tracer arrives. Resolves once every shot has landed or the wait cap runs
+ * out; whatever has not landed by then plays at once. The held events are taken up front, so a failure below can
+ * never leave events stuck.
+ */
+async function fireHeldVolley(gen: number): Promise<void> {
+  const h = heldVolley
+  if (!h) return
+  heldVolley = null
+  const held = h.held
+  h.held = []
+  const f = speedFactor(useSettings.getState().animSpeed)
+  const play = (id: Parameters<typeof audio.play>[0], o?: Parameters<typeof audio.play>[1]) => audio.play(id, o)
+  const kinds = finalKinds(h.kinds, h.retained)
+  const items = held.map((x) => heldItemOf(x.ev as { type: string; operativeId?: string })!)
+  const plan = planLandings(kinds, h.block?.ev ?? null, items)
+  const running: Promise<void>[] = []
+  const landed = new Set<number>()
+
+  const playItem = (idx: number): void => {
+    const x = held[idx]!
+    running.push(
+      playEvent(x.ev, x.state, gen, { landing: true }).catch((err) => console.warn('[presentation] failed to play landing', x.ev.type, err)),
+    )
+  }
+  const shimmer = (n: number): void => {
+    if (f <= 0 || n <= 0 || !h.block || gen !== generation) return
+    try {
+      const def = lookup(h.block.state, h.targetId)
+      if (def) vfx.shield(def, n, h.inCover)
+      playEventSounds((id, o) => audio.play(id, o), [{ ...h.block.ev, blockedNormal: n, blockedCrit: 0 }], soundContext(h.block.state))
+    } catch (err) {
+      console.warn('[presentation] failed to play save shimmer', err)
+    }
+  }
+  const land = (die: number): void => {
+    if (landed.has(die) || gen !== generation) return
+    landed.add(die)
+    const s = plan.shots[die]
+    if (!s) return
+    if (s.outcome === 'blocked') shimmer(1)
+    else if (s.outcome === 'damage') s.items.forEach(playItem)
+  }
+
+  const who = lookup(h.state, h.shooterId)
+  const target = lookup(h.state, h.targetId)
+  let volleyed = false
+  if (f > 0 && who && target && plan.shots.length > 0 && gen === generation) {
+    try {
+      let remaining = plan.shots.length
+      let allLanded: () => void = () => {}
+      const done = new Promise<void>((resolve) => { allLanded = resolve })
+      playEventSounds(play, [h.atk], { ...soundContext(h.state), mode: 'shoot' })
+      const info = vfx.volley(who, target, h.weaponId, kinds, h.secondary, h.inCover, (die) => {
+        land(die)
+        if (--remaining === 0) allLanded()
+      })
+      faceToward(who, target, 700 + 1000 * info.duration)
+      triggerCue(who.id, 'shoot', performance.now(), 'beat')
+      volleyed = true
+      await Promise.race([done, sleep(Math.round(VOLLEY_WAIT_MAX_MS * f))])
+    } catch (err) {
+      console.warn('[presentation] failed to fire volley', err)
+    }
+  }
+  // Whatever has not landed yet (no tracer for it, the vfx layer not running, the wait ran out) plays now.
+  plan.shots.forEach((s) => land(s.die))
+  shimmer(plan.orphanBlocked)
+  plan.orphanItems.forEach(playItem)
+  await Promise.all(running)
+  if (volleyed && gen === generation) {
+    if (items.some((it) => it.kind === 'down')) await sleep(Math.round(450 * f))
+    await sleep(Math.round(VOLLEY_SETTLE_MS * f))
+  }
+}
+
+async function safeFire(gen: number): Promise<void> {
+  try {
+    await fireHeldVolley(gen)
+  } catch (err) {
+    console.warn('[presentation] failed to fire held volley', err)
+  }
+}
+
 async function playBatch(b: Batch, gen: number): Promise<void> {
   for (const ev of b.events) {
     if (gen !== generation) return
+    if (heldVolley) {
+      const h = heldVolley
+      if (ev.type === 'AttackDiceRolled') await safeFire(gen) // a shot that never closed
+      else {
+        const e = ev as { type: string; operativeId?: string; purpose?: string }
+        const verdict = holdVerdict({ targetId: h.targetId, windowOpen: h.windowOpen, outcomeKnown: h.block !== null }, e)
+        if (verdict === 'fire-first') await safeFire(gen)
+        else if (verdict === 'hold') {
+          h.held.push({ ev, state: b.state })
+          continue
+        } else noteDice(h, ev, b.state)
+      }
+      if (gen !== generation) return
+    }
     // Move events keep the old position on screen while they play; every other event is shown as it plays.
     await playEvent(ev, b.state, gen)
   }
+  // The batch ended with the target's damage held: a decision is waiting on it, so the volley fires now.
+  if (heldVolley && heldVolley.held.length > 0 && gen === generation) await safeFire(gen)
 }
 
 async function run(): Promise<void> {
@@ -458,6 +622,7 @@ export function enqueueBatch(batch: Batch): void {
 export function resetDirector(): void {
   generation++
   queue.length = 0
+  heldVolley = null
   running = false
   mode = null
   fight = null
