@@ -105,6 +105,7 @@ function editor(state: GameState): ScenarioEditor {
 const INTERCESSOR = 'aod.intercessor-gunner'
 const ASSAULT = 'aod.assault-intercessor-warrior'
 const BOY = 'kom.boy'
+const GROT = 'kom.grot'
 
 export const SCENARIOS: Record<string, Scenario> = {
   'shoot-cover': {
@@ -138,13 +139,16 @@ export const SCENARIOS: Record<string, Scenario> = {
   },
   vantage: {
     name: 'vantage',
-    summary: 'An Intercessor Gunner on the upper floor of the large ruin shooting a Boy on the ground 3 inches below: Vantage grants Accurate 1.',
+    summary: 'An Intercessor Gunner on the upper floor of the large ruin shooting a Boy on the ground 3 inches below: Vantage grants Accurate 1 against the Engaged Boy, not against the Concealed Grot beside him.',
     arrange(e) {
       const shooter = e.op('A', INTERCESSOR)
       e.place(shooter, 6.4, -4.2, 3)
       const target = e.op('B', BOY)
       e.place(target, 2.6, -4.4)
       e.order(target, 'engage')
+      const concealed = e.op('B', GROT)
+      e.place(concealed, 2.6, -2.9)
+      e.order(concealed, 'conceal')
     },
   },
   'objective-contest': {
