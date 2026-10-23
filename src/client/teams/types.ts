@@ -3,6 +3,7 @@
 // WEAPON_SOUND and ATTACHMENT_FOR at module load (teams/index.ts). Type-only imports, so no cycles.
 import type { SoundId } from '../audio/ids'
 import type { WeaponVfx } from '../vfx/families'
+import type { GameState, Operative } from '@/engine'
 import type { GlossaryEntry } from '../game/glossary'
 import type { WeaponFlavour } from '../weaponFlavour'
 
@@ -29,4 +30,39 @@ export interface TeamPresentation {
   pools?: Record<string, string>
   /** M10 batch C: wording of a ploy option's `param` that is not an operative or a data record, keyed `<ployId>:<param>` */
   ployParams?: Record<string, string>
+  /** M10 batch D: extra chips on the operative card for team state that is not a token (the Chaos Cult form and gifts); read from the engine */
+  cardChips?: (state: GameState, op: Operative) => CardChip[]
+  /** M10 batch D: how the team's set-aside operatives are worded (the Wyrmblade hide, the Aquilons wait above); default is the hiding wording */
+  setAside?: SetAsideWording
+}
+
+/** One chip on the operative card: a short label with a tooltip. */
+export interface CardChip {
+  label: string
+  title: string
+  body: string
+}
+
+/** Wording for operatives set aside at set-up (HiddenTray, the set-up prompt, the event feed). All prose is our own. */
+export interface SetAsideWording {
+  /** glossary term the tray header and prompts link to ('HIDING', 'Set up above') */
+  term: string
+  /** what the tray header says after the term */
+  trayNote: string
+  /** "<name> is <state>" in the chip tooltip title */
+  state: string
+  /** the action that brings one back, as the team calls it ('Emerge', 'Land') */
+  action: string
+  /** set-up button verb: "<verb> <name>" */
+  verb: string
+  /** explanation above the set-up buttons */
+  intro: string
+  /** shown when nothing more can be set aside */
+  none: string
+  /** chip tooltip for the viewer's own operative */
+  mine(ready: boolean): string
+  /** chip tooltip for an opponent's operative */
+  theirs(ready: boolean): string
+  /** event feed line for the operative coming back ("emerges from hiding") */
+  returned: string
 }

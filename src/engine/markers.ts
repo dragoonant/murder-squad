@@ -16,7 +16,7 @@ import { noteRemoval } from './kills'
 import { markerControl } from './query'
 import { reject, type Ctx, type Handled, type ModuleDef } from './registry'
 import { activeOps, getOp } from './state'
-import type { Activation, Marker, Operative, GameState, Vec2, Vec3 } from './types'
+import type { Activation, Marker, Operative, GameState, PendingDecision, Seat, TimingWindowId, Vec2, Vec3 } from './types'
 
 /** Markers whose control matters and is tracked with ControlChanged events. */
 export function tracksControl(m: Marker): boolean {
@@ -207,10 +207,68 @@ function handlePlace(state: GameState, action: { type: string; payload?: unknown
   }
 }
 
+// ---------------------------------------------------------------------------
+// M10 batch D shared: free-point decisions (any legal point, not sampled options): pre-battle Redeploy, Trip Alarm
+// ---------------------------------------------------------------------------
+
+/** What a free-point decision checks and does; registered by name (registerPointHandler). */
+export interface PointHandler {
+  /** why `p` is not a legal answer, or null */
+  problem(state: GameState, seat: Seat, p: Vec2, context: Record<string, unknown>): string | null
+  /** the answer: a legal point, or null for a pass (the rule's own default or skip); must raise the next decision */
+  done(ctx: Ctx, seat: Seat, p: Vec2 | null, context: Record<string, unknown>): void
+}
+
+const pointHandlers = new Map<string, PointHandler>()
+
+export function registerPointHandler(name: string, h: PointHandler): void {
+  pointHandlers.set(name, h)
+}
+
+/**
+ * Raise a free-point decision: kind `marker.place` (the client's free placement), payload `{ x, z }`, answered
+ * anywhere `handler.problem` accepts. `spots` (sampled legal points) and `suggestion` are hints for bots and the UI;
+ * `operativeId` names the operative it is about (Redeploy). A pass calls `done(ctx, seat, null)`.
+ */
+export function raisePointChoice(
+  ctx: Ctx,
+  o: { handler: string; seat: Seat; window?: TimingWindowId; context?: Record<string, unknown>; spots?: Vec2[]; suggestion?: Vec2; operativeId?: string; canPass?: boolean },
+): void {
+  ctx.raise({
+    kind: 'marker.place',
+    seat: o.seat,
+    window: o.window ?? 'setup.*',
+    context: {
+      ...(o.context ?? {}),
+      pointHook: o.handler,
+      ...(o.operativeId ? { operativeId: o.operativeId } : {}),
+      ...(o.spots ? { spots: o.spots } : {}),
+      ...(o.suggestion ? { suggestion: o.suggestion } : {}),
+    },
+    canPass: o.canPass ?? true,
+  })
+}
+
+function handlePoint(state: GameState, action: { type: string; seat: Seat; payload?: unknown }, pending: PendingDecision): Handled {
+  const name = String(pending.context.pointHook)
+  const h = pointHandlers.get(name)
+  if (!h) return reject('E_TODO', `no point handler ${name}`)
+  const context = pending.context
+  if (action.type === 'pass') return { run: (ctx) => h.done(ctx, pending.seat, null, context) }
+  if (action.type !== 'marker.place') return reject('E_WRONG_DECISION', 'expected a position')
+  const p = action.payload as { x?: unknown; z?: unknown }
+  if (typeof p.x !== 'number' || typeof p.z !== 'number' || !Number.isFinite(p.x) || !Number.isFinite(p.z)) return reject('E_SCHEMA', 'a position needs x and z')
+  const pt = { x: Math.round(p.x * 1000) / 1000, z: Math.round(p.z * 1000) / 1000 }
+  const why = h.problem(state, pending.seat, pt, context)
+  if (why) return reject('E_OUT_OF_RANGE', why)
+  return { run: (ctx) => h.done(ctx, pending.seat, pt, context) }
+}
+
 export const markersModule: ModuleDef = {
   id: 'markers',
   namespaces: ['marker'],
   handle(state, action, pending) {
+    if (pending.kind === 'marker.place' && typeof pending.context.pointHook === 'string') return handlePoint(state, action, pending)
     if (pending.kind === 'marker.place') return handlePlace(state, action)
     return reject('E_TODO', `${pending.kind} is not a decision of this version (use firefight.action ${PICK_UP})`)
   },
@@ -299,13 +357,33 @@ function processRemovals(ctx: Ctx, seen: Set<string>): void {
   }
 }
 
+/** M10 batch D shared: removals already processed in this step (updateControl and settleRemovals share it). */
+const seenInStep = new WeakMap<Ctx, Set<string>>()
+function seenOf(ctx: Ctx): Set<string> {
+  let seen = seenInStep.get(ctx)
+  if (!seen) seenInStep.set(ctx, (seen = new Set()))
+  return seen
+}
+
+/**
+ * M10 batch D shared: after the deferred removal pass at the end of a step (attack-common.runDeferredRemovals), the
+ * removals it made: drop markers, count kills, end an activation whose operative is gone.
+ */
+export function settleRemovals(ctx: Ctx): void {
+  const s = ctx.state
+  processRemovals(ctx, seenOf(ctx))
+  if (s.removal) return
+  const act = s.firefight.activation
+  if (act && s.operatives[act.operativeId]?.status === 'removed' && !act.frame && !act.declared) afterActiveOperativeRemoved(ctx)
+}
+
 /**
  * Control cannot change in the middle of an action (R-8.6), so everything here runs only between
  * actions, i.e. while no action is declared and waiting for a path.
  */
 export function updateControl(ctx: Ctx): void {
   const s = ctx.state
-  const seen = new Set<string>()
+  const seen = seenOf(ctx)
   processRemovals(ctx, seen)
   // limited-weapon uses are counted in the step the weapon is picked, which is inside the declared Shoot
   noteWeaponUses(ctx)

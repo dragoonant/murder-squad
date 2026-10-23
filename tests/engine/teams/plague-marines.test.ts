@@ -3,7 +3,8 @@
 import { describe, expect, it } from 'vitest'
 import { createGame } from '@/engine'
 import { abilityOffers, canCounteractWithOrder, maxRepeats } from '@/engine/abilities'
-import { attackStats, effectiveRules, inflict, weaponDamage, weaponUnusable } from '@/engine/attack-common'
+import { attackStats, effectiveRules, inflict, runDeferredRemovals, weaponDamage, weaponUnusable } from '@/engine/attack-common'
+const ID_DEMISE = 'pm.p.poisonous-demise'
 import { addUse, removeNow, usesOf } from '@/engine/effects'
 import { territoryOf } from '@/engine/equipment'
 import { runHook } from '@/engine/hooks'
@@ -514,7 +515,17 @@ describe('TEAM-PM Plague Marines', () => {
     })
     s = poison(s, boy)
     const cp = s.players.A.cp
-    const r = withCtx(s, (ctx) => removeNow(ctx, warrior))
+    // M10 batch D shared: outside an attack the removal waits for the end-of-step queue, whose operative.incapacitated
+    // window offers the ploy; using it removes the Plague Marine and gives the parked decision back
+    const parked = s.pending
+    const asked = withCtx(s, (ctx) => {
+      removeNow(ctx, warrior)
+      expect(ctx.state.operatives[warrior]!.status).toBe('active')
+      runDeferredRemovals(ctx)
+    })
+    expect(asked.state.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'A', window: 'operative.incapacitated' })
+    const r = take(asked.state, ID_DEMISE)
+    expect(r.state.pending?.id).toBe(parked?.id)
     expect(r.state.operatives[warrior]!.status).toBe('removed')
     expect(r.state.operatives[boy]!.wounds).toBe(r.state.operatives[boy]!.maxWounds - 1) // already poisoned: 1 damage
     expect(tokenCount(r.state, nob, POISON, 'A')).toBe(1) // newly poisoned
@@ -523,7 +534,9 @@ describe('TEAM-PM Plague Marines', () => {
     expect(r.state.players.A.cp).toBe(cp - 1)
     // no CP left: nothing happens
     const broke = edit(s, (st) => (st.players.A.cp = 0))
-    expect(tokenCount(withCtx(broke, (ctx) => removeNow(ctx, warrior)).state, nob, POISON)).toBe(0)
+    const gone = withCtx(broke, (ctx) => removeNow(ctx, warrior)).state
+    expect(gone.operatives[warrior]!.status).toBe('removed') // nothing to offer: removed at once
+    expect(tokenCount(gone, nob, POISON)).toBe(0)
   })
 
   it('TEAM-PM-023 CURSE OF ROT: every 3 the opponent rolls deals 1 damage and cannot be a success, shooting or fighting; not while retaliating', () => {

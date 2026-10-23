@@ -285,7 +285,8 @@ export interface EquipmentData {
     withinDropZoneInches?: Inches
     onFloor?: boolean
     uprightAgainstMinHeight?: Inches
-    clearances?: { from: ClearanceFrom[]; moreThan: Inches }[]
+    /** M10 batch D shared: `except` lists markers the clearance ignores (equipment id, marker kind or marker id) */
+    clearances?: { from: ClearanceFrom[]; moreThan: Inches; except?: string[] }[]
   }
   terrain?: { model?: Slug; traits?: TerrainTrait[]; tags?: Slug[]; height?: Inches }
   choice?: { pick: number; from: Id[]; repeatable?: boolean }

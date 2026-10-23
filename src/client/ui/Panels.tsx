@@ -21,6 +21,7 @@ import { AP_DARK, AP_LIT, ORDER_COLOR, apTip, orderTip, woundTip } from './marke
 import { colors, fontStack, panel } from './theme'
 import { Keyword, KeywordText, WeaponRules } from './Keyword'
 import { Tooltip } from './Tooltip'
+import { cardChipsFor } from '../teams'
 import { TokenChips } from './TokenChips'
 import { tokenDef } from './tokenDefs'
 import { useUi, type DrawerId } from './uiStore'
@@ -143,6 +144,13 @@ export function OperativeCard({ docked }: { docked?: boolean }) {
           <Keyword term="Save" /> <b>{op.save}+</b>
         </span>
         <TokenChips tokens={op.tokens} />
+        {cardChipsFor(state, op).map((c) => (
+          <Tooltip key={c.label} title={c.title} body={c.body}>
+            <span data-testid="card-chip" style={{ borderBottom: `2px solid ${colors.accent}`, cursor: 'help' }}>
+              {c.label}
+            </span>
+          </Tooltip>
+        ))}
         {op.flags.guard && <b style={{ color: colors.accent }}><Keyword term="On Guard" /></b>}
         {op.flags.injured && <b style={{ color: colors.danger }}><Keyword term="Injured" /></b>}
       </div>

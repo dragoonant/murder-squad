@@ -411,6 +411,18 @@ async function playEvent(ev: GameEvent, state: GameState, gen: number, opts: { l
       }
       break
     }
+    case 'OperativeTransformed': {
+      // Mutation: the figure swaps to the new datacard's body when the cursor reaches this beat; a violet pulse and a shudder cover the change
+      const changed = lookup(state, ev.operativeId)
+      if (fx && changed) {
+        vfx.ring(changed.pos.x, changed.pos.y + 0.1, changed.pos.z, '#b44bff', 2.4, 0.7)
+        vfx.ring(changed.pos.x, changed.pos.y + 0.1, changed.pos.z, '#ff7ad9', 1.4, 0.5, true)
+        triggerCue(changed.id, 'hit', performance.now(), 'beat')
+        pushToast(`${opName(state, ev.operativeId)} mutates`, 'info', 2400)
+        await wait(700)
+      }
+      break
+    }
     case 'OperativeMoved': {
       const dur = Math.round(Math.min(1800, 300 + 160 * Math.max(1, ev.cost)) * f)
       if (dur > 0) {

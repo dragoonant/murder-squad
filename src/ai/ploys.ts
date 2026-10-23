@@ -8,8 +8,11 @@ import { hasKeyword } from '@/engine/conditions'
 import { enemiesOf, seatOps } from '@/engine/state'
 import { distanceBetween } from '@/engine/measure'
 import { bodyOf } from '@/engine/los'
+import { tokenCount as gmTokenCount } from '@/engine/tokens'
 import type { Action, DecisionOption, GameState, Operative } from '@/engine'
 import type { AiCtx } from './tiers'
+import { withOrder } from './eval'
+import { threatAt } from './threat'
 import { passAction } from './random'
 
 // ---------------------------------------------------------------------------
@@ -97,6 +100,13 @@ export function ruleReroll(ctx: AiCtx): Action | null {
 // ---------------------------------------------------------------------------
 
 const GAMBIT_SCORE: Record<string, number> = {
+  // Tempestus Aquilons: the two free gambits (Rapid Insertion, moving the Drop markers) are scored on the board in taGambitScore
+  'ta.p.rapid-insertion': 0.7,
+  'ta.p.drop-insertion': 1.6,
+  'ta.p.sudden-offensive': 1.7,
+  'ta.p.maintain-momentum': 1.6,
+  'ta.p.eye-above': 1.2,
+  'ta.p.drop-and-secure': 1.3,
   // Farstalker Kinband (the Ready-step order change is a human convenience: the planner never wants it)
   'fk.p.call-the-kill': 2.0,
   'fk.p.farstalker-orders': 0,
@@ -104,6 +114,12 @@ const GAMBIT_SCORE: Record<string, number> = {
   'fk.p.rogue': 1.2,
   'fk.p.prey': 1.8,
   'fk.p.bound': 0.6,
+  // Fellgor Ravagers: Call the Attack is free and moves the herd up; the flag ploys are scored by what the team carries
+  'fg.p.call-the-attack': 1.6,
+  'fg.p.violent-temperament': 1.4,
+  'fg.p.ambush': 1.2,
+  'fg.p.pelting-firepower': 1.3,
+  'fg.p.reckless-determination': 1.1,
   'aod.p.combat-doctrine': 2.6,
   // Phobos Strike Team
   'ph.p.deadly-shots': 2.0,
@@ -136,6 +152,13 @@ const GAMBIT_SCORE: Record<string, number> = {
   'ks.p.engage-from-cover': 1.2,
   'ks.p.clearance-sweep': 1.3,
   'ks.p.relocate': 0.9,
+  // Scout Squad: the two Forward Scouting gambits are free (0 CP)
+  'ss.p.guerrilla-engagement': 1.2,
+  'ss.p.ambush': 1.5,
+  'ss.p.adaptable-training': 0.5,
+  'ss.p.stealth-relocation': 0.9,
+  'ss.p.tactical-manoeuvre': 1.4,
+  'ss.p.diversion': 1.2,
   // Hand of the Archon
   'ha.p.blade-artists': 2.0,
   'ha.p.merciless-sadists': 1.8,
@@ -167,11 +190,40 @@ const GAMBIT_SCORE: Record<string, number> = {
   'cv.p.outcasts': 1.0,
   'cv.p.erudite-hunter': 1.0,
   'cv.p.star-charts': 1.0,
+  // Goremongers: Enhanced Violence suits a melee team, Hunt for Blood is scored by the distance to the enemy below
+  'gm.p.enhanced-violence': 1.7,
+  'gm.p.augmented-endurance': 1.2,
+  'gm.p.gory-tenacity': 1.3,
+  'gm.p.hunt-for-blood': 1.4,
   // Imperial Navy Breachers
   'nb.p.attack-order': 1.9,
   'nb.p.defence-order': 1.3,
   'nb.p.close-assault': 1.5,
   'nb.p.brace-for-counterattack': 1.4,
+  // Exaction Squad (the mark and the mastiff's patterns are scored per option in gambitScore)
+  'ex.p.marked-for-justice': 2.0,
+  'ex.p.attack-pattern': 1.6,
+  'ex.p.first-in-the-field': 1.0,
+  'ex.p.guilt-reveals-itself': 0.9,
+  'ex.p.inviolate-jurisdiction': 0.9,
+  'ex.p.dispense-justice': 1.2,
+  'ex.p.terminal-decree': 1.3,
+  // Chaos Cult: Mutation is free and turns Devotees into Mutants, so it always goes first; Baleful Script is never
+  // worth giving up a gift for, and Covert Guises' free Repositions are a convenience the planner does not need
+  'cc.p.mutation': 3.0,
+  'cc.p.exaltation-in-pain': 1.0,
+  'cc.p.fervent-onslaught': 1.5,
+  'cc.p.creatures-of-nightmare': 0.9,
+  'cc.p.sickening-aura': 1.0,
+  'cc.p.baleful-script': 0,
+  'cc.p.covert-guises': 0,
+  // Blooded: the Blooded gambit is free and hands out the pool, so it always goes first
+  'bl.p.blooded': 3.0,
+  'bl.p.name-whispered': 1.6,
+  'bl.p.glory-kill': 1.5,
+  'bl.p.reckless-aspirant': 1.1,
+  'bl.p.malevolent-grit': 1.2,
+  'bl.p.bitter-demise': 1.0,
 }
 
 function nearestEnemyDistances(view: GameState, seat: string): number[] {
@@ -236,9 +288,42 @@ function imperativeScore(view: GameState, seat: string, param: string): number {
   return s
 }
 
+/** Tempestus Aquilons gambits: Drop markers are worth moving while operatives are still above; the marks go where the team fights. */
+function taGambitScore(view: GameState, seat: string, gambitId: string, param: string | undefined, s: number): number {
+  const mine = Object.values(view.operatives).filter((o) => o.seat === seat)
+  const live = mine.filter((o) => o.status === 'active' && o.wounds > 0)
+  const above = mine.filter((o) => o.status === 'reserve' && o.offboard !== undefined).length
+  const near = (x: number, z: number): number => Math.min(99, ...live.map((o) => Math.hypot(o.pos.x - x, o.pos.z - z)))
+  switch (gambitId) {
+    case 'ta.p.rapid-insertion':
+      return live.filter((o) => view.data.datacards[o.datacardId]?.keywords.includes('TROOPER')).length >= 2 ? s : 0.4
+    case 'ta.p.drop-insertion':
+      // only the operatives still above use the markers
+      return above > 0 ? s : 0
+    case 'ta.p.sudden-offensive':
+      return live.length + above >= 6 ? s : 0.8
+    case 'ta.p.eye-above': {
+      // the Detected mark: the enemy nearest to the team, a little more for a group of enemies within 3 inches of it
+      const e = param ? view.operatives[param] : undefined
+      if (!e) return s
+      const crowd = enemiesOf(view, { seat: seat as 'A' | 'B' }).filter((x) => x.id !== e.id && x.status === 'active' && distanceBetween(bodyOf(x), bodyOf(e)) <= 3).length
+      return s - Math.min(near(e.pos.x, e.pos.z), 20) * 0.03 + 0.15 * crowd
+    }
+    case 'ta.p.drop-and-secure': {
+      // an objective or mission marker the team will contest: the nearest one counts most
+      const m = param ? view.markers.find((k) => k.id === param) : undefined
+      if (!m) return s
+      return s - Math.min(near(m.pos.x, m.pos.z), 20) * 0.05
+    }
+    default:
+      return s
+  }
+}
+
 /** Param-aware value of one gambit option. */
 function gambitScore(view: GameState, seat: string, gambitId: string, param: string | undefined): number {
   const s = GAMBIT_SCORE[gambitId] ?? 0.8
+  if (gambitId.startsWith('ta.p.')) return taGambitScore(view, seat, gambitId, param, s)
   if (gambitId === 'aod.p.combat-doctrine' && param) return doctrineScore(view, seat, param)
   if (gambitId === 'hc.p.doctrina' && param) return imperativeScore(view, seat, param) + 0.8
   const { ranged, melee } = mix(view, seat)
@@ -306,6 +391,25 @@ function gambitScore(view: GameState, seat: string, gambitId: string, param: str
       const pick = param ? view.operatives[param] : undefined
       return pick ? s + Math.min(1, (countKeyword(view, seat, 'KASRKIN') - 3) * 0.1) : s
     }
+    case 'ss.p.guerrilla-engagement':
+      return ranged >= 3 ? s : 0.6
+    case 'ss.p.tactical-manoeuvre': {
+      // +1 APL for the friend nearest the enemy that can shoot or fight with it
+      const pick = param ? view.operatives[param] : undefined
+      if (!pick) return s
+      const near = Math.min(99, ...enemiesOf(view, pick).map((e) => distanceBetween(bodyOf(pick), bodyOf(e))))
+      return s - Math.min(near, 20) * 0.03 + (pick.weapons.some((w) => view.data.weapons[w]?.type === 'ranged') ? 0.2 : 0) + (pick.apl >= 3 ? -0.3 : 0)
+    }
+    case 'ss.p.diversion': {
+      // -1 APL for the enemy nearest our team (the one that will act against us), more for APL 3
+      const e = param ? view.operatives[param] : undefined
+      if (!e) return s
+      const near = Math.min(99, ...liveOps(view, seat).map((m) => distanceBetween(bodyOf(m), bodyOf(e))))
+      return s - Math.min(near, 20) * 0.03 + (e.apl >= 3 ? 0.3 : 0)
+    }
+    case 'ss.p.adaptable-training':
+    case 'ss.p.stealth-relocation':
+      return view.turningPoint >= 2 ? s : 0.3
     case 'ha.p.blade-artists':
       return melee >= 2 ? s : 0.8
     case 'ha.p.merciless-sadists':
@@ -319,6 +423,14 @@ function gambitScore(view: GameState, seat: string, gambitId: string, param: str
       return liveOps(view, seat).some((o) => hasKeyword(view, o, 'VANGUARD')) ? s : 0.3
     case 'hc.p.neurostatic-interference':
       return liveOps(view, seat).some((o) => hasKeyword(view, o, 'INFILTRATOR')) ? s : 0.3
+    case 'cc.p.creatures-of-nightmare':
+    case 'cc.p.sickening-aura':
+      // both read the Mutants and Torments around the enemy: worth a point once the cult has some
+      return liveOps(view, seat).some((o) => o.datacardId === 'cc.mutant' || o.datacardId === 'cc.torment') ? s : 0.2
+    case 'cc.p.exaltation-in-pain':
+      return liveOps(view, seat).some((o) => o.wounds < o.maxWounds) ? s + 0.3 : 0.4
+    case 'cc.p.fervent-onslaught':
+      return melee >= 3 ? s : 0.7
     case 'hk.p.tactician':
       return param === 'defence' ? s - 0.3 : s
     case 'nv.p.blessed-rejuvenation':
@@ -344,8 +456,39 @@ function gambitScore(view: GameState, seat: string, gambitId: string, param: str
       const covered = liveOps(view, seat).filter((o) => Math.hypot(o.pos.x - x, o.pos.z - z) - o.baseRadius <= 3).length
       return s + 0.3 * Math.min(covered, 5) - 0.6
     }
+    case 'gm.p.hunt-for-blood': {
+      // a free 3" Charge (and Engage): worth it when the pick starts close enough to reach an enemy
+      const g = param ? view.operatives[param] : undefined
+      if (!g) return s
+      const near = Math.min(99, ...enemiesOf(view, g).filter((e) => e.status === 'active').map((e) => distanceBetween(bodyOf(g), bodyOf(e))))
+      return near <= 4 ? s + 0.5 : near <= 7 ? s - 0.4 : 0.2
+    }
     case 'nb.p.close-assault':
       return ranged >= 2 ? s : 0.8
+    case 'ex.p.marked-for-justice': {
+      // the mark: the enemy nearest to our team (it will be shot and fought), a little more for a big one
+      const e = param ? view.operatives[param] : undefined
+      if (!e) return s
+      const near = Math.min(99, ...liveOps(view, seat).map((m) => distanceBetween(bodyOf(m), bodyOf(e))))
+      return s - Math.min(near, 20) * 0.03 + e.maxWounds * 0.02
+    }
+    case 'ex.p.attack-pattern':
+      // Swift and Aggressive carry the hound into the fight; Defensive only toughens it
+      return s + (param === 'aggressive+swift' ? 0.4 : param === 'swift+defensive' ? 0.1 : 0)
+    case 'ex.p.first-in-the-field':
+      return s
+    case 'ex.p.terminal-decree':
+      return ranged >= 4 ? s : 0.7
+    case 'ex.p.dispense-justice':
+      return melee >= 3 ? s : 0.7
+    case 'bl.p.name-whispered':
+    case 'bl.p.glory-kill': {
+      // the mark: the enemy nearest to our team (the one we will shoot and fight), a little more for a big one
+      const e = param ? view.operatives[param] : undefined
+      if (!e) return s
+      const near = Math.min(99, ...liveOps(view, seat).map((m) => distanceBetween(bodyOf(m), bodyOf(e))))
+      return s - Math.min(near, 20) * 0.03 + e.maxWounds * 0.02
+    }
     case 'hk.p.need-keeps':
     case 'hk.p.toil-earns': {
       const m = param ? view.markers.find((k) => k.id === param) : undefined
@@ -384,6 +527,13 @@ export function gambit(ctx: AiCtx): Action {
 // ---------------------------------------------------------------------------
 
 const PLOY_SCORE: Record<string, number> = {
+  // Tempestus Aquilons: Hot Drop re-rolls the whole attack, Progena heals (scored by the wounds missing in taPloyScore), the
+  // Exemplars discount is only offered with a marker or mission action to take, Adjust Coordinates is paid inside the landing
+  'ta.p.hot-drop': 2.0,
+  'ta.p.progena': 1.2,
+  'ta.p.tempestus-exemplars': 1.1,
+  'ta.p.adjust-coordinates': 0,
+  'ta.e.drop-augury': 0.7,
   // Farstalker Kinband: firefight ploys and the free (0 CP) offers
   'fk.p.savage-ambush': 2.0,
   'fk.p.slip-away': 1.2,
@@ -440,6 +590,11 @@ const PLOY_SCORE: Record<string, number> = {
   'ks.p.give-no-ground': 1.6,
   'ks.medicDash': 1.0,
   'ks.e.relics-of-cadia': 1.6,
+  // Scout Squad: Astartes Training is scored per option in ployScore
+  'ss.p.emboldened-aspirant': 2.0,
+  'ss.p.raw-physiology': 0.9,
+  'ss.p.covert-position': 0.8,
+  'ss.e.targeting-oculars': 1.7,
   // Hand of the Archon: paid ploys
   'ha.p.cruel-deception': 0.7,
   'ha.p.devious-scheme': 1.2,
@@ -487,6 +642,11 @@ const PLOY_SCORE: Record<string, number> = {
   // free offers: Slicing Attack is D3+2 damage; Mistfield only comes up when the shot has Piercing
   'cv.a.slicing-attack': 1.9,
   'cv.e.mistfield': 1.4,
+  // Goremongers: the paid firefight ploys; the free (gm.x) offers are scored by gmScore
+  'gm.p.unbridled-aggression': 2.0,
+  'gm.p.gorethirst': 1.0,
+  'gm.p.destructive-demise': 2.0,
+  'gm.p.lacerate-flesh': 0.8,
   // Imperial Navy Breachers
   'nb.p.overwhelm-target': 1.6,
   'nb.p.blitz': 1.8,
@@ -496,6 +656,43 @@ const PLOY_SCORE: Record<string, number> = {
   'nb.bc': 1.7,
   'nb.e.slugs': 1.4,
   'nb.redirect': 0.2,
+  // Exaction Squad: paid ploys and the free (0 CP) offers
+  'ex.p.long-arm': 1.0,
+  'ex.p.brutal-backup': 1.9,
+  'ex.p.execution-order': 1.2,
+  'ex.p.exact-punishment': 1.6,
+  'ex.x.handler': 2.2,
+  'ex.x.medicDash': 1.0,
+  'ex.x.exec-shoot': 2.0,
+  'ex.x.exec-fight': 2.0,
+  'ex.x.shells-saturate': 1.5,
+  'ex.x.shells-piercing': 1.6,
+  'ex.x.shells-torrent': 0.8,
+  // Blooded: Callous Disregard hurts our own, so it is held back; the free offers (Avalanche of Muscle, Shielding) are scored below
+  'bl.p.callous-disregard': 0.2,
+  'bl.p.moment-of-repute': 1.5,
+  'bl.p.reward-earned': 1.6,
+  'bl.p.dark-favour': 0.4,
+  'bl.a.avalanche-of-muscle': 2.0,
+  'bl.a.shielding': 0.2,
+  // Fellgor Ravagers: paid ploys, and the free offers (Savage, Violent Temperament and Chaos Sigil are scored below; Gore Marks
+  // costs wounds and Sagacious only flips an order, so the planner leaves them)
+  'fg.p.ruthless-rampage': 1.3,
+  'fg.p.wild-rage': 1.2,
+  'fg.p.animalistic-fury': 1.8,
+  'fg.p.bloodsense': 1.4,
+  'fg.x.savage': 2.0,
+  'fg.x.sagacious': 0.2,
+  'fg.e.gore-marks': 0.2,
+  'fg.e.chaos-sigil': 1.3,
+  // Chaos Cult: paid ploys (Abhorrent Mutation's gift pick is scored in ployScore) and the free offers
+  'cc.p.faithful-follower': 1.6,
+  'cc.p.abhorrent-mutation': 1.4,
+  'cc.p.frenzied-demise': 1.8,
+  'cc.p.unleash-the-daemon': 2.2,
+  'cc.a.attuned-in-purpose': 1.2,
+  'cc.a.gift-horned': 1.8,
+  'cc.e.unholy-talisman': 1.7,
 }
 
 // ---------------------------------------------------------------------------
@@ -600,6 +797,76 @@ function phStrategyValue(view: GameState, seat: string, id: string): number {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Goremongers: the free (0 CP) offers between actions and in the attack windows, and the firefight ploys that need the
+// board. A gore tank level is the currency: Sanguavitae is spent when it clearly pays, the half tank is kept for
+// Enhanced Violence otherwise, and the free refills (Khorne's Favour, Bleeding, Incite the Hunt) are always taken.
+// ---------------------------------------------------------------------------
+
+function gmScore(view: GameState, p: { ployId: string; param?: string; operativeId?: string }): number | null {
+  const op = p.operativeId ? view.operatives[p.operativeId] : undefined
+  const level = op ? Math.min(2, gmTokenCount(view, op.id, 'gm.gore')) : 0
+  const nearest = op ? Math.min(99, ...enemiesOf(view, op).filter((e) => e.status === 'active').map((e) => distanceBetween(bodyOf(op), bodyOf(e)))) : 99
+  switch (p.ployId) {
+    case 'gm.x.rejuvenate': {
+      // D3+1 wounds back: from 3 lost wounds up
+      const missing = op ? op.maxWounds - op.wounds : 0
+      return missing >= 3 ? 0.5 + 0.2 * Math.min(missing, 6) : 0
+    }
+    case 'gm.x.mania':
+      // one more AP for a full tank, with enemies about
+      return level >= 2 && nearest <= 14 ? 0.7 : 0
+    case 'gm.x.fury':
+      // two Fights once an enemy is in control range
+      return nearest <= 1.05 && level >= 1 ? (level >= 2 ? 1.6 : 1.1) : 0
+    case 'gm.x.surge':
+      // a Charge that is just out of reach: 9 inches of Move plus the 1 inch of control range
+      return nearest > 10 && nearest <= 11.2 ? 1.1 : 0
+    case 'gm.x.rage':
+      return level >= 2 ? 0.9 : 0.28
+    case 'gm.x.rake': {
+      const t = p.param ? view.operatives[p.param] : undefined
+      return 1.3 + (t && t.wounds <= 3 ? 0.8 : 0) - (level <= 1 ? 0.3 : 0)
+    }
+    case 'gm.x.favour':
+      return 3
+    case 'gm.x.bleeding':
+      return 2.4
+    case 'gm.x.incite': {
+      const f = p.param ? view.operatives[p.param] : undefined
+      return 2.0 + (f && gmTokenCount(view, f.id, 'gm.gore') === 0 ? 0.5 : 0)
+    }
+    case 'gm.x.apotheosis': {
+      // once per battle: spend it when it decides whether the Herald is taken down, or at least keeps it above half
+      const u = view.attack?.seq?.unblocked
+      const w = view.attack?.weaponId ? view.data.weapons[view.attack.weaponId] : undefined
+      if (!u || !w || !op) return 0.2
+      const total = u.normal * w.dmg.normal + u.crit * w.dmg.crit
+      if (total >= op.wounds && total - w.dmg.normal < op.wounds) return 3
+      const left = op.wounds - total
+      return left <= op.maxWounds / 2 && left + w.dmg.normal > op.maxWounds / 2 ? 1.3 : 0.2
+    }
+    case 'gm.x.drag': {
+      // a full pull sets up the charge; the drag distance is the parameter
+      const n = Number(p.param ?? 0)
+      return n === 0 ? 0.35 : 0.4 + 0.1 * n
+    }
+    case 'gm.x.discard':
+      return 0
+    case 'gm.x.sigil':
+      return 1.6
+    case 'gm.p.gorethirst':
+      // the planner only counteracts with a Conceal Goremonger when the counteraction pays; unpaid it can do nothing at all
+      return 3
+    case 'gm.p.destructive-demise': {
+      const t = p.param ? view.operatives[p.param] : undefined
+      return 2.0 - (t ? Math.min(t.wounds, 10) * 0.05 : 0)
+    }
+    default:
+      return null
+  }
+}
+
 /** Value of one offered firefight ploy, from the id and the operative or parameter it names. */
 function ployScore(view: GameState, seat: string, p: { ployId: string; param?: string; operativeId?: string }, windowId: string): number {
   // Comms Array: swap a strategy ploy already used for one not yet used; worth the difference on this board
@@ -607,9 +874,27 @@ function ployScore(view: GameState, seat: string, p: { ployId: string; param?: s
     const gain = phStrategyValue(view, seat, p.ployId) - phStrategyValue(view, seat, p.param)
     return gain >= 0.25 ? 0.3 + gain : 0
   }
+  if (p.ployId.startsWith('gm.')) {
+    const g = gmScore(view, p)
+    if (g !== null) return g
+  }
   const s = PLOY_SCORE[p.ployId] ?? (p.ployId.startsWith('ha.inv.') ? 1.4 : 0.9)
   const op = p.operativeId ? view.operatives[p.operativeId] : undefined
+  // Tempestus Aquilons: Progena is worth the wounds it can give back; Drop Augury only while an operative is still above
+  if (p.ployId === 'ta.p.progena') return op ? Math.min(op.maxWounds - op.wounds, 4) * 0.55 : 0
+  if (p.ployId === 'ta.e.drop-augury') return view.turningPoint <= 1 ? s : 0.3
   switch (p.ployId) {
+    case 'fg.e.gore-marks':
+      return goreMarksScore(view, p)
+    case 'fg.x.violent-temperament': {
+      // re-roll every die: worth it when the fighter has more fails than successes on the table
+      const seq = view.attack?.seq
+      const side = seq ? [seq.atk, seq.def].find((x) => x?.operativeId === p.operativeId) : undefined
+      if (!side) return 0
+      const wins = side.dice.filter((d) => !d.used && d.kind !== 'fail').length
+      const fails = side.dice.filter((d) => !d.used && d.kind === 'fail').length
+      return fails > wins ? 1.6 : 0.1
+    }
     case 'ha.inv.rejuvenation':
       // D3+1 wounds back: worth what is actually missing
       return op ? Math.min(op.maxWounds - op.wounds, 3) * 0.55 : s
@@ -646,6 +931,17 @@ function ployScore(view: GameState, seat: string, p: { ployId: string; param?: s
     case 'wc.p.capricious-plan':
       // the flux options also bring the Sorcerer's friend back first, so they are worth a little more than the plain ones
       return p.param === 'order' ? 0.4 : p.param === 'both' ? 1.0 : p.param === 'flux-dash' ? 1.0 : p.param === 'flux-both' ? 1.1 : 0.9
+    case 'ss.p.astartes-training': {
+      // a second Shoot or Fight for the acting Scout: worth it only when the action has a target in reach (the all-heavy
+      // option also needs an AP more than the operative has at APL 2)
+      if (!op) return s
+      const foes = enemiesOf(view, op).filter((e) => e.status === 'active' && e.wounds > 0)
+      const reach = (r: number): boolean => foes.some((e) => distanceBetween(bodyOf(op), bodyOf(e)) <= r)
+      const apl = op.apl + Math.max(-1, Math.min(1, op.aplMods))
+      if (p.param === 'fight') return reach(2.5) ? 1.6 : 0.2
+      if (p.param === 'heavy') return apl >= 3 && reach(14) ? 1.5 : 0
+      return reach(12) ? 1.7 : 0.3
+    }
     case 'ph.p.patient-ambush': {
       // skip this activation: sensible when the enemy has more operatives ready, so the order of activations stays level and
       // they commit first; pointless while we hold the numbers
@@ -680,12 +976,78 @@ function ployScore(view: GameState, seat: string, p: { ployId: string; param?: s
       const near = op ? enemiesOf(view, op).filter((e) => e.status === 'active' && distanceBetween(bodyOf(op), bodyOf(e)) <= 2).length : 0
       return near > 0 ? s + near * 0.4 : 0
     }
+    case 'cc.p.abhorrent-mutation': {
+      // the gift pick follows the fixed preference of the team picks (Chitinous first)
+      const i = ['chitinous', 'fleet', 'sinewed', 'horned', 'barbed', 'deformed-wings'].indexOf(p.param ?? '')
+      return i < 0 ? 0 : 1.9 - 0.15 * i
+    }
+    case 'cc.a.attuned-in-purpose':
+      return (p.param ?? '').endsWith(':engage') ? s : 0.2
+    case 'cc.a.gift-horned': {
+      const e = p.param ? view.operatives[p.param] : undefined
+      return e && e.wounds <= 1 ? s + 0.6 : s
+    }
+    case 'cc.p.frenzied-demise': {
+      const e = p.param ? view.operatives[p.param] : undefined
+      return e ? s + Math.min(e.wounds, 3) * 0.1 : s
+    }
+    case 'cc.p.unleash-the-daemon':
+      // two Fights for the price of one AP: only with an enemy in reach
+      return op && enemiesOf(view, op).some((e) => e.status === 'active' && distanceBetween(bodyOf(op), bodyOf(e)) <= 2.5) ? s : 0.3
     case 'hc.p.omnissiahs-imperative':
       // the extra rule helps most once the dice are in play
       return windowId === 'firefight.activationStart' || windowId === 'firefight.actionDeclared' ? s - 0.4 : s
+    case 'bl.p.dark-favour': {
+      // the shot goes to a healthier friend: only when the holder is badly hurt and the stand-in has more wounds
+      const sub = p.param ? view.operatives[p.param] : undefined
+      return op && sub && op.wounds * 2 <= op.maxWounds && sub.wounds > op.wounds ? 1.4 : 0
+    }
+    case 'bl.a.shielding': {
+      // Move 2 inches less for defence re-rolls: worth it when an enemy is near enough to shoot, not when the sweeper will charge
+      if (!op) return 0
+      return enemiesOf(view, op).some((e) => e.status === 'active' && e.wounds > 0 && distanceBetween(bodyOf(op), bodyOf(e)) <= 12 && distanceBetween(bodyOf(op), bodyOf(e)) > 3) ? 1.0 : 0
+    }
     default:
       return s
   }
+}
+
+/**
+ * Fellgor Ravagers, Gnarlscar's Sagacious: it flips the order as its activation ends. It has just acted, so Engage buys
+ * nothing until its next activation (which picks a fresh order); Conceal in cover is what keeps it alive. Flip when the
+ * engine's own threat estimate drops by a clear margin.
+ */
+function sagaciousScore(ctx: AiCtx, opId: string | undefined): number {
+  const me = opId ? ctx.view.operatives[opId] : undefined
+  if (!me || me.status !== 'active') return 0
+  const to = me.order === 'engage' ? 'conceal' : 'engage'
+  const now = threatAt(ctx, ctx.view, me).expected
+  const after = threatAt(ctx, withOrder(ctx.view, me.id, to), withOrder(ctx.view, me.id, to).operatives[me.id]!).expected
+  // the margin is in expected wounds: a clear reduction is worth the free flip. Going to Conceal costs nothing even when the
+  // estimate sees no danger (the next activation picks its own order, and a Conceal operative in cover cannot be shot at), so
+  // that flip is taken unless it would raise the threat; Engage is never worth it once the activation is over.
+  if (now - after >= 0.25) return 0.3 + Math.min(1, now - after)
+  return to === 'conceal' && after <= now + 0.05 ? 0.35 : 0
+}
+
+/**
+ * Fellgor Ravagers, Gore Marks: 1 damage to the fighter, then re-roll one attack die; a re-roll that fails costs 1 more.
+ * Worth it only for a failed die with decent odds on a fighter that is not close to Frenzy.
+ */
+function goreMarksScore(view: GameState, p: { operativeId?: string; param?: string }): number {
+  const seq = view.attack?.seq
+  const op = p.operativeId ? view.operatives[p.operativeId] : undefined
+  const i = Number(p.param)
+  if (!seq || !op || !Number.isInteger(i) || op.wounds < 5) return 0
+  const side = [seq.atk, seq.def].find((x) => x?.operativeId === op.id)
+  const die = side?.dice[i]
+  if (!side || !die || die.kind !== 'fail' || die.used) return 0
+  const w = side.weaponId ? view.data.weapons[side.weaponId] : undefined
+  if (!w) return 0
+  const hit = 1 - dieOdds(side.need, side.lethal ?? undefined).fail
+  const gain = hit * avgDmg(w.dmg) * 0.9
+  const cost = (1 + (1 - hit)) * 0.8
+  return gain - cost > 0.3 ? gain - cost : 0
 }
 
 /** ploy.firefight: use the best offered ploy when the window's swing is positive, else pass. Free (0 CP) offers need little. */
@@ -698,7 +1060,7 @@ export function firefightPloy(ctx: AiCtx): Action {
     const p = o.action.payload as { ployId: string; param?: string; operativeId?: string }
     const cost = Number(o.data?.cost ?? 1)
     if (cost > cp) continue
-    let s = ployScore(view, ctx.seat, p, String(pending.window ?? ''))
+    let s = p.ployId === 'fg.x.sagacious' ? sagaciousScore(ctx, p.operativeId) : ployScore(view, ctx.seat, p, String(pending.window ?? ''))
     // defensive dice ploys matter when the attack is heavy; offensive ones when the swing is open
     if (pending.window === 'shoot.defenceRolled' && (info.attackFails ?? 0) > 3) s *= 0.7
     if (!ctx.params.tacAware && cost > 0) s *= 0.6

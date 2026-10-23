@@ -1,6 +1,7 @@
 // Every team's client presentation, merged into the shared weapon tables (M9 prep). Angels of Death and
 // Kommandos keep their entries in the shared tables; teams added later list theirs in teams/<team>.ts.
-import type { TeamPresentation } from './types'
+import type { GameState, Operative } from '@/engine'
+import type { CardChip, SetAsideWording, TeamPresentation } from './types'
 import { PRESENTATION as pathfinders } from './pathfinders'
 import { PRESENTATION as hierotekCircle } from './hierotek-circle'
 import { PRESENTATION as plagueMarines } from './plague-marines'
@@ -93,4 +94,27 @@ export function poolLabel(kind: string): string {
   }
   const base = kind.includes('.') ? kind.slice(kind.lastIndexOf('.') + 1) : kind
   return base.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+const HIDING_WORDING: SetAsideWording = {
+  term: 'HIDING',
+  trayNote: '(off the board)',
+  state: 'hiding',
+  action: 'Emerge',
+  verb: 'Hide',
+  intro: 'Instead of placing an operative you may start it in HIDING: out of the killzone, ready to Emerge near your drop zone later (it is incapacitated if it is still hiding when turning point 2 ends).',
+  none: 'No more operatives can start hiding (a third of the team at most, Neophytes only).',
+  mine: (ready) => `Out of the killzone. It still activates when it is ready${ready ? '' : ' (expended this turning point)'}; its only action is Emerge, which sets it up near your drop zone. If it is still hiding when turning point 2 ends, it is incapacitated.`,
+  theirs: (ready) => `Out of the killzone, and nothing about it is secret. It still activates when it is ready${ready ? '' : ' (expended this turning point)'}; it can Emerge near its own drop zone, more than 6" from your operatives. If it is still hiding when turning point 2 ends, it is incapacitated.`,
+  returned: 'emerges from hiding',
+}
+
+/** M10 batch D: the set-aside wording of a team (its presentation file), the hiding wording when it gives none. */
+export function setAsideWording(teamId: string | null | undefined): SetAsideWording {
+  return (teamId ? TEAM_PRESENTATION[teamId]?.setAside : undefined) ?? HIDING_WORDING
+}
+
+/** M10 batch D: the card chips a team shows for one operative (Chaos Cult form and gifts), none for most teams. */
+export function cardChipsFor(state: GameState, op: Operative): CardChip[] {
+  return TEAM_PRESENTATION[state.players[op.seat]?.teamId]?.cardChips?.(state, op) ?? []
 }

@@ -3,7 +3,7 @@
 import { createGame } from '@/engine'
 import { act } from '@/engine/actions'
 import { maxRepeats } from '@/engine/abilities'
-import { inflict, weaponDamage } from '@/engine/attack-common'
+import { inflict, runDeferredRemovals, weaponDamage } from '@/engine/attack-common'
 import { removeNow } from '@/engine/effects'
 import { territoryOf } from '@/engine/equipment'
 import { runHook } from '@/engine/hooks'
@@ -140,7 +140,12 @@ export const scenarios: Record<string, () => void> = {
     const s = open()
     const warrior = A(s, 'warrior')
     const t = edit(place(place(s, warrior, 0, 0), B(s, 'boy'), 2, 0), (st) => (st.operatives[warrior]!.wounds = 0))
-    withCtx(t, (ctx) => removeNow(ctx, warrior))
+    // M10 batch D shared: the removal waits for the end-of-step queue, whose operative.incapacitated window offers it
+    const asked = withCtx(t, (ctx) => {
+      removeNow(ctx, warrior)
+      runDeferredRemovals(ctx)
+    }).state
+    take(asked, 'pm.p.poisonous-demise')
   },
   curseOfRot() {
     // a real Shoot: the defence roll shows two 3s, and the ploy is taken in the window before the defender's re-rolls

@@ -1,9 +1,10 @@
-// Tray of the operatives that are out of the killzone (Wyrmblade HIDING). They are not drawn on the board, so they
+// Tray of the operatives that are out of the killzone (Wyrmblade HIDING, Aquilons above; the wording is the team's). They are not drawn on the board, so they
 // live here: a chip each, clickable to select (and to activate when the engine offers it). HIDING is open
 // information (docs/spec/13-teams.md section 6; operatives are revealed at selection and set aside in the open), so
 // the opponent's hidden operatives show too, marked as theirs and listed after the viewer's own.
 import type { Operative, Seat } from '@/engine'
 import { clickOperative } from '../interaction/controller'
+import { setAsideWording } from '../teams'
 import { useDisplayState } from '../presentation/presentedStore'
 import { useGame } from '../store/game'
 import { Keyword } from './Keyword'
@@ -34,24 +35,23 @@ export function HiddenTray() {
   if (!state) return null
   const hidden = trayEntries(state.operatives, viewerSeats(seats, acting))
   if (hidden.length === 0) return null
+  const wording = (seat: Seat) => setAsideWording(state.players[seat]?.teamId)
+  // one header when every chip reads alike, else the first viewer-owned team's
+  const head = wording((hidden.find((h) => !h.theirs) ?? hidden[0]!).op.seat)
   return (
     <div
       data-testid="hidden-tray"
       style={{ ...panel, position: 'absolute', top: 62, left: 8, padding: '5px 8px', fontFamily: fontStack, fontSize: 12, pointerEvents: 'auto', zIndex: 18, maxWidth: 260 }}
     >
       <div style={{ color: colors.muted, marginBottom: 3 }}>
-        <Keyword term="HIDING" /> (off the board)
+        <Keyword term={head.term} /> {head.trayNote}
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
         {hidden.map(({ op: o, theirs }) => (
           <Tooltip
             key={o.id}
-            title={`${theirs ? "Opponent's " : ''}${o.name} is hiding`}
-            body={
-              theirs
-                ? `Out of the killzone, and nothing about it is secret. It still activates when it is ready${o.ready ? '' : ' (expended this turning point)'}; it can Emerge near its own drop zone, more than 6" from your operatives. If it is still hiding when turning point 2 ends, it is incapacitated.`
-                : `Out of the killzone. It still activates when it is ready${o.ready ? '' : ' (expended this turning point)'}; its only action is Emerge, which sets it up near your drop zone. If it is still hiding when turning point 2 ends, it is incapacitated.`
-            }
+            title={`${theirs ? "Opponent's " : ''}${o.name} is ${wording(o.seat).state}`}
+            body={theirs ? wording(o.seat).theirs(o.ready) : wording(o.seat).mine(o.ready)}
           >
             <button
               data-testid={`hidden-${o.id}`}

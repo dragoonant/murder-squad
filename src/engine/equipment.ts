@@ -226,7 +226,12 @@ function stripSpentWeapons(s: GameState): void {
       const key = `${TEAM_LIMIT_PREFIX}${limit.weaponId}`
       const used = limit.per === 'battle' ? usesOf(s, seat, key) : (s.ledger[seat].tpUses[key] ?? 0)
       if (used < limit.total || used === 0) continue
-      for (const o of Object.values(s.operatives)) if (o.seat === seat && o.weapons.includes(limit.weaponId)) o.weapons = o.weapons.filter((x) => x !== limit.weaponId)
+      for (const o of Object.values(s.operatives)) {
+        if (o.seat !== seat || !o.weapons.includes(limit.weaponId)) continue
+        // M10 batch D shared: a Grenadier's own frag/krak allowance is separate from the team's picks; keep it while unspent
+        if ((o.usedLimited[limit.weaponId] ?? 0) < ownAllowance(s, o, limit.weaponId)) continue
+        o.weapons = o.weapons.filter((x) => x !== limit.weaponId)
+      }
     }
   }
 }
@@ -386,6 +391,8 @@ export function placementIssue(state: GameState, seat: Seat, item: EquipItem, po
       }
       if (from === 'otherMarkers') {
         for (const m of state.markers) {
+          // M10 batch D shared: `except` exempts named markers (equipment id, marker kind or marker id: Totem and Cadaver)
+          if (c.except && (c.except.includes(m.id) || c.except.includes(m.kind) || (m.equipmentId !== undefined && c.except.includes(m.equipmentId)))) continue
           const r = m.kind === 'objective' ? 40 / 25.4 / 2 : MARKER_RADIUS
           const gap = Math.hypot(m.pos.x - pos.x, m.pos.z - pos.z) - r - radius
           if (gap <= c.moreThan + 1e-6) return bad(`it must be more than ${c.moreThan}" from other markers`)

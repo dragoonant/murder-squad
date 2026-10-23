@@ -109,6 +109,96 @@ function TaintMark({ r }: { r: number }) {
   )
 }
 
+/** An Aquilon Drop marker (Tempestus Aquilons Drop Insertion): the engine tags it with the equipment id `ta.drop`. */
+function isDropMarker(m: { kind: string; equipmentId?: string }): boolean {
+  return m.kind === 'equipment' && m.equipmentId === 'ta.drop'
+}
+
+/** The Exaction Squad Nuncio-aquila: the engine tags it with the equipment id `ex.nuncio`. */
+function isNuncioMarker(m: { kind: string; equipmentId?: string }): boolean {
+  return m.kind === 'equipment' && m.equipmentId === 'ex.nuncio'
+}
+
+/** A broadcast beacon: a double-headed eagle read as two crossed bars on a post, with a ring in the owner's colour. */
+function NuncioMark({ r, color }: { r: number; color: string }) {
+  const over = useRef(false)
+  const entry = lookupTerm('Nuncio-aquila marker')
+  return (
+    <group data-nuncio-marker>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+        <ringGeometry args={[r * 1.4, r * 1.6, 24]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <mesh position={[0, 0.5, 0]}>
+        <boxGeometry args={[0.06, 0.9, 0.06]} />
+        <meshBasicMaterial color="#e8e8f2" />
+      </mesh>
+      <mesh position={[0, 0.85, 0]} rotation={[0, 0, Math.PI / 4]}>
+        <boxGeometry args={[0.55, 0.07, 0.07]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <mesh position={[0, 0.85, 0]} rotation={[0, 0, -Math.PI / 4]}>
+        <boxGeometry args={[0.55, 0.07, 0.07]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <mesh
+        position={[0, 0.5, 0]}
+        onPointerOver={(e) => {
+          if (e.pointerType === 'touch') return
+          over.current = true
+          useBoardTip.setState({ tip: { title: 'Nuncio-aquila', body: entry?.body ?? 'The Proctor\'s broadcast marker.', x: e.nativeEvent.clientX, y: e.nativeEvent.clientY } })
+        }}
+        onPointerOut={() => {
+          if (!over.current) return
+          over.current = false
+          useBoardTip.setState({ tip: null })
+        }}
+      >
+        <cylinderGeometry args={[r * 1.6, r * 1.6, 1.2, 12]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+    </group>
+  )
+}
+
+/** The landing anchor: a hexagonal pad in the owner's colour with a downward arrow above it, so it never reads as an objective. */
+function DropMark({ r, color }: { r: number; color: string }) {
+  const over = useRef(false)
+  const entry = lookupTerm('Drop marker')
+  return (
+    <group data-drop-marker>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+        <ringGeometry args={[r * 1.25, r * 1.5, 6]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <mesh position={[0, 0.7, 0]} rotation={[Math.PI, 0, 0]}>
+        <coneGeometry args={[0.2, 0.42, 4]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <mesh position={[0, 1.1, 0]}>
+        <boxGeometry args={[0.07, 0.4, 0.07]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <mesh
+        position={[0, 0.5, 0]}
+        onPointerOver={(e) => {
+          if (e.pointerType === 'touch') return
+          over.current = true
+          useBoardTip.setState({ tip: { title: 'Drop marker', body: entry?.body ?? 'An Aquilon landing anchor.', x: e.nativeEvent.clientX, y: e.nativeEvent.clientY } })
+        }}
+        onPointerOut={() => {
+          if (!over.current) return
+          over.current = false
+          useBoardTip.setState({ tip: null })
+        }}
+      >
+        <cylinderGeometry args={[r * 1.5, r * 1.5, 1.2, 12]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+    </group>
+  )
+}
+
 export function Markers({ state }: { state: GameState }) {
   // a control change shows at its beat, before the display state catches up
   const control = useFx((s) => s.control)
@@ -130,10 +220,16 @@ export function Markers({ state }: { state: GameState }) {
                 <ringGeometry args={[r * 0.78, r, 28]} />
                 <meshBasicMaterial color={color} />
               </mesh>
-              <mesh position={[0, 0.25, 0]}>
-                <octahedronGeometry args={[0.22, 0]} />
-                <meshBasicMaterial color={m.kind === 'objective' ? '#ffe066' : '#6fe0ff'} />
-              </mesh>
+              {isDropMarker(m) ? (
+                <DropMark r={r} color={m.owner ? SEAT[m.owner] : '#6fe0ff'} />
+              ) : isNuncioMarker(m) ? (
+                <NuncioMark r={r} color={m.owner ? SEAT[m.owner] : '#6fe0ff'} />
+              ) : (
+                <mesh position={[0, 0.25, 0]}>
+                  <octahedronGeometry args={[0.22, 0]} />
+                  <meshBasicMaterial color={m.kind === 'objective' ? '#ffe066' : '#6fe0ff'} />
+                </mesh>
+              )}
               {m.kind === 'objective' && isTainted(state, m.id) && <TaintMark r={r} />}
             </group>
           )

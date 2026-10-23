@@ -609,6 +609,15 @@ export function activate(ctx: AiCtx): Action | null {
     // operatives out of the killzone (Wyrmblade HIDING) cannot be planned from a position: they emerge before the
     // end of turning point 2 (or they are lost), and otherwise wait until nothing else is ready
     const hidden = ready.filter((id) => view.operatives[id]?.status === 'reserve')
+    // Tempestus Aquilons above land at once: an operative that lands gets to act this turning point, and the rules end the
+    // wait (fewer than half above after turning point 1, none after turning point 2)
+    const dropping = hidden.filter((id) => view.data.datacards[view.operatives[id]!.datacardId]?.keywords.includes('TEMPESTUS AQUILON'))
+    if (dropping.length > 0) {
+      const pick = dropping[0]!
+      resetActivation(ctx, pick)
+      ctx.memory.plan = null
+      return opt(pick)
+    }
     if (hidden.length > 0) {
       const onBoard = ready.filter((id) => !hidden.includes(id))
       if (onBoard.length === 0 || view.turningPoint >= 2) {
@@ -707,7 +716,7 @@ export function action(ctx: AiCtx): Action | null {
   const mem = ctx.memory
   // out of the killzone (HIDING): the only thing to do is the emerge action the engine offers
   if (view.operatives[opId]?.status === 'reserve') {
-    const emerge = opts.find((o) => /^ability:/.test(o.id) && /emerge/i.test(o.id))
+    const emerge = opts.find((o) => /^ability:/.test(o.id) && /emerge|\.land/i.test(o.id))
     return emerge?.action ?? endOpt
   }
   mem.activationDecisions++

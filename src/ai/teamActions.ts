@@ -131,6 +131,67 @@ function value(ctx: AiCtx, v: GameState, op: Operative, offer: AbilityOffer): nu
     case 'ks.a.place-melta-mine':
       // 2D6+3 to whoever walks into it: worth placing while enemies are close enough to come to it
       return enemiesOf(v, op).some((e) => e.status === 'active' && distanceBetween(bodyOf(e), bodyOf(op)) <= 10) ? 1.2 : 0.4
+    // ---- Tempestus Aquilons
+    case 'ta.a.command': {
+      // +1 APL for a ready friend; best for a shooter or fighter that is close to the enemy
+      if (!target || target.seat !== op.seat || !target.ready) return 0
+      const near = enemiesOf(v, target).some((e) => e.status === 'active' && distanceBetween(bodyOf(e), bodyOf(target)) <= 14)
+      return near ? 1.3 : 0.8
+    }
+    // landing is decided before the activation is planned (moves.ts activate): never part of a plan
+    case 'ta.a.land':
+      return 0
+    // ---- Blooded
+    case 'bl.a.signal':
+      return target && target.seat === op.seat && target.ready ? 1.2 : 0
+    case 'bl.a.sacrilegious-actuation':
+      // a token for the pool: modest, so a good attack still comes first
+      return 0.9
+    case 'bl.a.stimms': {
+      // Rejuvenated heals what is missing; Enraged suits a fighter, Fortified anyone about to be shot
+      if (!target || target.seat !== op.seat) return 0
+      const k = String(offer.params.param ?? '')
+      if (k === 'rejuvenated') return Math.min(wounded(target), 5) * 0.55
+      const fighter = target.weapons.some((w) => v.data.weapons[w]?.type === 'melee' && v.data.weapons[w]!.atk * v.data.weapons[w]!.dmg.normal >= 12)
+      return k === 'enraged' ? (fighter ? 0.8 : 0.2) : 0.6
+    }
+    case 'bl.a.enforce':
+      // a free quick action for a ready friend (it cannot be a 2 AP action)
+      return target && target.seat === op.seat && target.ready ? 1.3 : 0
+    // ---- Fellgor Ravagers
+    case 'fg.a.gong-knell':
+      // a better Save while shot at: worth an AP when an enemy can see the Deathknell
+      return enemiesOf(v, op).some((e) => e.status === 'active' && distanceBetween(bodyOf(e), bodyOf(op)) <= 14 && visible(v, bodyOf(e), bodyOf(op))) ? 0.7 : 0.1
+    case 'fg.a.sweeping-blow': {
+      // D3+1 (about 3) to everything it can see within 2 inches: friends count against it
+      let total = 0
+      for (const o of Object.values(v.operatives)) {
+        if (o.id === op.id || o.status !== 'active' || o.wounds <= 0) continue
+        if (distanceBetween(bodyOf(op), bodyOf(o)) > 2 || !visible(v, bodyOf(op), bodyOf(o))) continue
+        const dmg = Math.min(3, o.wounds)
+        total += o.seat === op.seat ? -dmg * 1.4 : dmg + 0.3
+      }
+      return Math.max(0, total) * 0.9
+    }
+    case 'fg.a.cleaver-flurry': {
+      // 2 AP for D3+1 on each enemy passed: worth it with two or more enemies about 8 inches away
+      const near = enemiesOf(v, op).filter((e) => e.status === 'active' && distanceBetween(bodyOf(op), bodyOf(e)) <= 8).length
+      return near >= 2 ? 1.1 * near : 0
+    }
+    case 'fg.a.uncompromising-attack':
+      // a free Fight and a free Shoot for 1 AP: worth it in melee
+      return enemiesOf(v, op).some((e) => e.status === 'active' && distanceBetween(bodyOf(op), bodyOf(e)) <= 1.2) ? 2.4 : 0
+    case 'fg.a.incite-fury':
+      return target && target.seat === op.seat && target.ready ? 1.2 : 0
+    case 'fg.a.apoplectic-rejuvenation':
+      // 2D3 averages 4 wounds, 6 after a fight kill
+      return target && target.seat === op.seat ? Math.min(wounded(target), 5) * 0.6 : 0
+    case 'fg.a.mantle-of-darkness':
+      // hides concealed friends in cover; worth it when some friend is on Conceal near the Shaman
+      return friendsOf(v, op).some((f) => f.order === 'conceal' && distanceBetween(bodyOf(f), bodyOf(op)) <= 3) ? 0.7 : 0.1
+    case 'fg.a.pox-bomb-stun':
+      // a stun plus half the roll in damage on a 3+
+      return target && target.seat !== op.seat ? (target.ready ? 1.2 : 0.7) : 0
     // ---- Hunter Clade
     case 'hc.a.signal':
       // +1 APL for a ready friend is worth most when that friend is close to the fight
@@ -302,6 +363,26 @@ function value(ctx: AiCtx, v: GameState, op: Operative, offer: AbilityOffer): nu
     case 'fk.a.gather':
       // two moves around a marker that no v1 mission uses: the planner never spends the AP
       return 0
+    // ---- Scout Squad
+    case 'ss.a.guidance-and-experience':
+      // a free +1 APL for a ready friend, worth more when that friend is close to the fight
+      if (!target || target.seat !== op.seat || !target.ready || target.aplMods >= 1) return 0
+      return 1.3 + (enemiesOf(v, target).some((e) => e.status === 'active' && distanceBetween(bodyOf(target), bodyOf(e)) <= 10) ? 0.3 : 0)
+    case 'ss.a.optics':
+      // no obscuring for the Sniper's own shots: worth an AP with an enemy in sight and no Optics running
+      return tokenCount(v, op.id, 'ss.optics', op.seat) === 0 && enemiesOf(v, op).some((e) => e.status === 'active' && visible(v, bodyOf(op), bodyOf(e))) ? 0.7 : 0
+    case 'ss.a.track-enemy': {
+      // Seek Light for the whole squad against one enemy; best against a Conceal enemy the friends can shoot
+      if (!target || target.seat === op.seat || tokenCount(v, target.id, 'ss.trackEnemy', op.seat) > 0) return 0
+      return 0.35 + 0.3 * shootersFor(v, op, target) + (target.order === 'conceal' ? 0.4 : 0)
+    }
+    case 'ss.a.auspex-scan': {
+      // no obscuring against enemies within 8" of the Tracker: worth an AP while friends can shoot some
+      if (tokenCount(v, op.id, 'ss.auspexScan', op.seat) > 0) return 0
+      const foes = enemiesOf(v, op).filter((e) => e.status === 'active' && distanceBetween(bodyOf(e), bodyOf(op)) <= 8)
+      const shooters = friendsOf(v, op).filter((f) => f.ready && hasRanged(v, f)).length
+      return foes.length > 0 ? 0.3 + 0.25 * Math.min(shooters, 3) + (hasRanged(v, op) ? 0.2 : 0) : 0
+    }
     // ---- Novitiates
     case 'nv.a.stirring-rhetoric': {
       // +1 APL for a ready friend, worth more when that friend is close to the enemy
@@ -321,11 +402,85 @@ function value(ctx: AiCtx, v: GameState, op: Operative, offer: AbilityOffer): nu
     }
     case 'nv.a.chirurgeons-tools':
       return target && target.seat === op.seat ? Math.min(wounded(target), 5) * 0.6 : 0
+    // ---- Chaos Cult
+    case 'cc.a.incite-slaughter':
+      // a free Fight for a friend that already has an enemy in its control range (the offer only exists for those)
+      return target && target.seat === op.seat ? 1.6 : 0
+    case 'cc.a.incite-urgency': {
+      // a free Dash or a Charge of 3": worth it when an enemy is close enough for the friend to reach
+      if (!target || target.seat !== op.seat) return 0
+      return enemiesOf(v, target).some((e) => e.status === 'active' && distanceBetween(bodyOf(target), bodyOf(e)) <= 4.5) ? 1.0 : 0.2
+    }
+    case 'cc.a.ruinous-icon': {
+      // Invigoration for a cult that is about to be hit, Deterioration for foes the cult is about to hit; both need foes near
+      const foes = enemiesOf(v, op).filter((e) => e.status === 'active' && distanceBetween(bodyOf(e), bodyOf(op)) <= 4).length
+      if (foes === 0) return 0
+      const friends = friendsOf(v, op).filter((f) => f.datacardId.startsWith('cc.') && distanceBetween(bodyOf(f), bodyOf(op)) <= 4).length + 1
+      return offer.params.param === 'invigoration' ? 0.35 + 0.2 * Math.min(friends, 4) : 0.5 + 0.3 * Math.min(foes, 3)
+    }
+    case 'cc.a.heinous-deluge':
+      // 1 less APL for the enemy's next activation: best on one that has not acted yet
+      return target && target.seat !== op.seat ? (target.ready ? 1.0 : 0.25) + (target.apl >= 3 ? 0.2 : 0) : 0
+    case 'cc.a.malefic-vortex': {
+      // 1 damage now and in every later Ready step to each enemy within 2" of the marker
+      const [x, z] = String(offer.params.param ?? '').split(',').map(Number)
+      if (x === undefined || z === undefined || !Number.isFinite(x) || !Number.isFinite(z)) return 0
+      const foes = enemiesOf(v, op).filter((e) => e.status === 'active' && Math.hypot(e.pos.x - x, e.pos.z - z) - e.baseRadius <= 2).length
+      const placed = v.markers.some((m) => m.equipmentId === 'cc.maleficVortex' && m.owner === op.seat)
+      return foes > 0 ? 0.8 * Math.min(foes, 3) + (placed ? 0 : 0.2) : 0
+    }
     case 'nv.a.raise-icon': {
       // 1 Faith, plus the turning point number while standing on an objective
       const holds = v.markers.some((m) => m.kind === 'objective' && Math.hypot(m.pos.x - op.pos.x, m.pos.z - op.pos.z) <= 2)
       return holds ? 0.9 + 0.35 * v.turningPoint : 0.5
     }
+    // ---- Goremongers
+    case 'gm.a.transfusion-ritual': {
+      // one gore level from the Bloodtaker to a friend: best for an empty friend, and when the Bloodtaker has gore to spare
+      if (!target || target.seat !== op.seat) return 0
+      const mine = tokenCount(v, op.id, 'gm.gore', op.seat)
+      const theirs = tokenCount(v, target.id, 'gm.gore', op.seat)
+      const gain = theirs === 0 ? 1.2 : theirs === 1 ? 0.6 : 0
+      return Math.max(0, gain - (mine <= 1 ? 0.45 : 0.1)) * (target.ready ? 1.2 : 0.7)
+    }
+    case 'gm.a.gore-fuel': {
+      // Severe on the fleshskewer is worth a level only with an enemy in reach of the next Shoot or Fight
+      const foes = enemiesOf(v, op).filter((e) => e.status === 'active' && distanceBetween(bodyOf(e), bodyOf(op)) <= 11)
+      return foes.length > 0 ? (tokenCount(v, op.id, 'gm.gore', op.seat) >= 2 ? 0.9 : 0.5) : 0
+    }
+    case 'gm.a.dash-and-spray': {
+      // a free Dash and a free focused Shoot for 1 AP: worth a lot while an enemy is within Dash plus Range
+      const foes = enemiesOf(v, op).filter((e) => e.status === 'active' && distanceBetween(bodyOf(e), bodyOf(op)) <= 11 && visible(v, bodyOf(op), bodyOf(e)))
+      return foes.length > 0 ? 2.0 : 0
+    }
+    // ---- Exaction Squad
+    case 'ex.a.deploy-nuncio-aquila': {
+      // a 0 AP action: enemies near the marker pay more AP for markers and mission actions and count less APL. Place it once,
+      // and move it only when no enemy stands near it any more
+      const m = v.markers.find((k) => k.equipmentId === 'ex.nuncio' && k.owner === op.seat)
+      const foes = enemiesOf(v, op).filter((e) => e.status === 'active')
+      if (!m) return foes.length > 0 ? 0.8 : 0.3
+      return foes.some((e) => Math.hypot(e.pos.x - m.pos.x, e.pos.z - m.pos.z) <= 4) ? 0 : 0.5
+    }
+    case 'ex.a.medikit':
+      return target && target.seat === op.seat ? Math.min(wounded(target), 5) * 0.6 : 0
+    case 'ex.a.apprehend':
+      // free: pins an enemy in the mastiff's control range (Hit worse, no Fall Back)
+      return target && target.seat !== op.seat && tokenCount(v, target.id, 'ex.apprehend', op.seat) === 0 ? 1.4 : 0
+    case 'ex.a.veriscant': {
+      // Lethal 5+ and Severe for every friendly weapon against one enemy
+      if (!target || target.seat === op.seat || tokenCount(v, target.id, 'ex.veriscant', op.seat) > 0) return 0
+      return 0.4 + 0.3 * shootersFor(v, op, target) + (hasRanged(v, op) ? 0.2 : 0)
+    }
+    case 'ex.a.optics':
+      return tokenCount(v, op.id, 'ex.marksman-optics', op.seat) === 0 && enemiesOf(v, op).some((e) => e.status === 'active' && visible(v, bodyOf(op), bodyOf(e))) ? 0.8 : 0
+    case 'ex.a.spot': {
+      // Seek Light and no obscuring for the friends that can shoot the spotted enemy; best against a Conceal enemy in cover
+      if (!target || target.seat === op.seat || tokenCount(v, target.id, 'ex.revelatum-spot', op.seat) > 0) return 0
+      return 0.35 + 0.3 * shootersFor(v, op, target) + (target.order === 'conceal' ? 0.4 : 0)
+    }
+    case 'ex.a.signal':
+      return target && target.seat === op.seat && target.ready ? 1.2 : 0
     default:
       return 0
   }

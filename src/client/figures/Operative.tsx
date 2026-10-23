@@ -276,13 +276,23 @@ function TokenGlyphs({ kind, count }: { kind: string; count: number }) {
   const g = tokenDef(kind).glyph
   const gap = 0.22
   const n = Math.min(count, 4)
+  // a badge kind (Frenzy) is drawn larger inside a halo ring so it reads from across the killzone
+  const k = g.badge ? 1.9 : 1
   return (
     <>
       {Array.from({ length: n }, (_, i) => (
-        <mesh key={i} position={[(i - (n - 1) / 2) * gap, 0, 0]} rotation={[0, 0, g.sides === 4 ? 0 : Math.PI / 2]}>
-          {g.ring ? <ringGeometry args={[0.055, 0.1, g.sides]} /> : <circleGeometry args={[0.1, g.sides]} />}
-          <meshBasicMaterial color={g.color} side={DoubleSide} />
-        </mesh>
+        <group key={i} position={[(i - (n - 1) / 2) * gap * k, 0, 0]} scale={k}>
+          <mesh rotation={[0, 0, g.sides === 4 ? 0 : Math.PI / 2]}>
+            {g.ring ? <ringGeometry args={[0.055, 0.1, g.sides]} /> : <circleGeometry args={[0.1, g.sides]} />}
+            <meshBasicMaterial color={g.color} side={DoubleSide} />
+          </mesh>
+          {g.badge && (
+            <mesh position={[0, 0, -0.001]}>
+              <ringGeometry args={[0.12, 0.15, 24]} />
+              <meshBasicMaterial color="#ffffff" side={DoubleSide} />
+            </mesh>
+          )}
+        </group>
       ))}
     </>
   )
@@ -487,7 +497,7 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
 /** Left-to-right x offsets (centred) for the operative's token stacks under its wound bar. */
 function tokenLayout(tokens: EngineOperative['tokens']): { key: string; token: OperativeToken; x: number; w: number }[] {
   const list = (tokens ?? []).filter((t) => t.count > 0)
-  const widths = list.map((t) => Math.min(t.count, 4) * 0.22 + 0.04)
+  const widths = list.map((t) => Math.min(t.count, 4) * 0.22 * (tokenDef(t.kind).glyph.badge ? 1.9 : 1) + 0.04)
   const total = widths.reduce((a, b) => a + b, 0) + Math.max(0, list.length - 1) * 0.08
   let at = -total / 2
   return list.map((t, i) => {

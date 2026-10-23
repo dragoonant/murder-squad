@@ -36,6 +36,11 @@ function driveUntil(done: (p: PendingDecision, s: GameState) => boolean, seed: s
   throw new Error('decision not reached')
 }
 
+/** A ploy window (Adjust Doctrine and the like) may open after an action is declared: decline it to reach the action's own decision. */
+function declinePloys(): void {
+  for (let i = 0; i < 5 && useGame.getState().pending?.kind === 'ploy.firefight'; i++) expect(useGame.getState().pass()).toBeNull()
+}
+
 describe('interaction', () => {
   beforeEach(() => {
     useGame.getState().reset()
@@ -70,6 +75,7 @@ describe('interaction', () => {
     }, 'ix-3')
     const reposition = pending.options!.find((o) => o.action.type === 'firefight.action' && o.action.payload.action === 'reposition')!
     expect(useGame.getState().dispatch(reposition.action)).toBeNull()
+    declinePloys()
     const move = useGame.getState().pending!
     expect(move.kind).toBe('move.path')
     expect(move.canPass).toBe(true)
@@ -98,6 +104,7 @@ describe('interaction', () => {
     }, seed)
     const reposition = pending.options!.find((o) => o.action.type === 'firefight.action' && o.action.payload.action === 'reposition')!
     expect(useGame.getState().dispatch(reposition.action)).toBeNull()
+    declinePloys()
     const move = useGame.getState().pending!
     const state = useGame.getState().state!
     return { state, move, op: state.operatives[move.constraints!.operativeId!]! }

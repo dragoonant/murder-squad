@@ -81,6 +81,7 @@ const SAMPLES: Record<string, GameEvent> = {
   OperativeDeployed: ev({ type: 'OperativeDeployed', operativeId: 'A1', pos: { x: 0, y: 0, z: 0 } }),
   GambitUsed: ev({ type: 'GambitUsed', gambitId: 'g' }),
   PloyUsed: ev({ type: 'PloyUsed', ployId: 'p' }),
+  OperativeTransformed: ev({ type: 'OperativeTransformed', operativeId: 'A1', from: 'cc.devotee', to: 'cc.mutant' }),
   OrderSet: ev({ type: 'OrderSet', operativeId: 'A1', order: 'engage' }),
   ApSpent: ev({ type: 'ApSpent', operativeId: 'A1', amount: 1, total: 1 }),
   Counteracted: ev({ type: 'Counteracted', operativeId: 'A1' }),

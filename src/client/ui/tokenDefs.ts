@@ -9,6 +9,8 @@ export interface TokenGlyph {
   /** drawn as an outline instead of a filled shape */
   ring?: boolean
   color: string
+  /** drawn larger with a halo, for a state the table must not miss (Frenzy) */
+  badge?: boolean
 }
 
 export interface TokenDef {
@@ -105,6 +107,45 @@ const DEFS: Record<string, TokenDef> = {
   // batch C: Imperial Navy Breachers
   'nb.spotted': { label: 'Spot', glyph: { sides: 24, ring: true, color: '#ffd24d' }, term: 'C.A.T. Spot token', body: 'Spotted by a C.A.T. Unit: friendly Breachers shoot it with Seek Light and it cannot be obscured.' },
   'nb.emboldened': { label: 'Emboldened', glyph: { sides: 3, ring: true, color: '#ff5a4a' }, term: 'Emboldened token', body: 'The Axejack has Charged: big attack dice may do 1 less damage to it.' },
+  // batch D: Scout Squad
+  'ss.optics': { label: 'Optics', glyph: { sides: 24, ring: true, color: '#9be0ff' }, term: 'Optics token', body: 'The Sniper is using Optics: until it next activates, enemies cannot be obscured while it shoots them.' },
+  'ss.auspexScan': { label: 'Auspex scan', glyph: { sides: 24, ring: true, color: '#58f0c8' }, term: 'Scout Auspex Scan token', body: 'The Tracker is scanning: until it next activates, a Scout shooting an enemy within 8 inches of it ignores the obscured status, and an Optics Sniper also has Seek Light against that enemy.' },
+  'ss.trackEnemy': { label: 'Tracked', glyph: { sides: 3, ring: true, color: '#e8c34d' }, term: 'Track Enemy token', body: 'Picked out by a Tracker: until the end of the turning point, friendly Scouts shooting it have Seek Light.' },
+  'ss.target': { label: 'Designated', glyph: { sides: 4, ring: true, color: '#ff5a4a' }, term: 'Designate Target token', body: 'Chosen before the battle as the Scouts\' quarry: a Scout shooting, fighting or retaliating against it may re-roll one attack die.' },
+  'ss.covertPosition': { label: 'Covert', glyph: { sides: 6, ring: true, color: '#6fb7ff' }, term: 'Covert Position token', body: 'While this Scout has a Conceal order and is in cover it cannot be picked as a target unless the shooter is within 2 inches.' },
+  'ss.rawPhysiology': { label: 'Raw Physiology', glyph: { sides: 5, color: '#ffa94d' }, term: 'Raw Physiology token', body: 'Until this Scout next activates it has +1 inch of Move and ignores the Move and Hit penalties of being injured.' },
+  // batch D: Blooded
+  'bl.blooded': { label: 'Blooded', glyph: { sides: 4, color: '#d0332f' }, term: 'Blooded token', body: 'This operative holds a Blooded token: its weapons have Accurate 1, and several Blooded ploys and equipment name it.' },
+  'bl.gaze': { label: 'Gaze', glyph: { sides: 5, ring: true, color: '#ffd24d' }, term: 'Gaze token', body: 'Under the Gaze of the Gods until the end of the turning point: one normal success it keeps through Accurate 1 is kept as a crit.' },
+  'bl.name-whispered': { label: 'Name whispered', glyph: { sides: 3, color: '#b36bff' }, term: 'Name whispered token', body: 'A name whispered in blood: the Sharpshooter shooting this enemy counts as a holder under the Gaze, for the rest of the battle.' },
+  'bl.glory-kill': { label: 'Glory kill', glyph: { sides: 24, color: '#ff7a2a' }, term: 'Glory kill token', body: 'Marked for a glory kill: friendly Blooded operatives shooting, fighting or retaliating against it have Ceaseless (Relentless for holders) until the end of the turning point.' },
+  'bl.stimm-enraged': { label: 'Enraged', glyph: { sides: 3, color: '#ff4a3a' }, term: 'Stimm enraged token', body: 'Enraged by a stimm: its melee weapons have Relentless for the rest of the battle.' },
+  'bl.stimm-fortified': { label: 'Fortified', glyph: { sides: 6, color: '#7fd0ff' }, term: 'Stimm fortified token', body: 'Fortified by a stimm: each attack die that would deal it 3 or more damage is cut by 1 on a D6 of 5 or more, for the rest of the battle.' },
+  'bl.shielding': { label: 'Shielding', glyph: { sides: 6, ring: true, color: '#c4cce0' }, term: 'Shielding token', body: 'The Trench Sweeper is shielded: its Move is 2 inches less and its defence dice can be re-rolled until its next activation starts.' },
+  // batch D: Fellgor Ravagers
+  'fg.frenzy': { label: 'Frenzy', glyph: { sides: 5, color: '#ff2a2a', badge: true }, term: 'Frenzy token', body: 'Frenzied: it stays on 1 wound and dies only when its activation or counteraction ends, or to a critical strike, a second normal strike, critical shooting damage or two Normal Dmg dice in one Shoot. Engage only, no markers or unique actions.' },
+  'fg.gongKnell': { label: 'Gong Knell', glyph: { sides: 24, ring: true, color: '#e0b04d' }, term: 'Gong Knell token', body: 'The Deathknell\'s Save is 1 better whenever it is shot, until its next activation starts.' },
+  'fg.mantle': { label: 'Mantle', glyph: { sides: 6, color: '#7a5ae0' }, term: 'Mantle of Darkness token', body: 'The Shaman hides nearby friendly Fellgor Ravagers on Conceal and in cover: shooters cannot pick them unless within 2 inches. Lasts until the Shaman next activates.' },
+  // batch D: Goremongers
+  'gm.gore': { label: 'Gore', glyph: { sides: 24, color: '#c01820' }, term: 'Gore token', body: 'Shows a Goremonger\'s gore tank: one token is a half tank, two is a full tank, none is empty.' },
+  'gm.bleeding': { label: 'Bleeding', glyph: { sides: 3, color: '#ff3a4a' }, term: 'Bleeding token', body: 'Wounded but not taken down by the Inciter\'s dual autopistols. A friendly Goremonger within 8 inches may remove the token to raise its own gore tank.' },
+  'gm.apotheosis': { label: 'Apotheosis', glyph: { sides: 5, ring: true, color: '#ffb347' }, term: 'Apotheosis token', body: 'The Blood Herald has used Impending Apotheosis for this battle.' },
+  'gm.gore-fuel': { label: 'Gore fuel', glyph: { sides: 4, color: '#ff6a3d' }, term: 'Gore fuel token', body: 'The Impaler\'s fleshskewer has Severe on both profiles until it next uses one of them.' },
+  'gm.claim-skull': { label: 'Skull claimed', glyph: { sides: 6, ring: true, color: '#e8e2cc' }, term: 'Claim skull token', body: 'The Skullclaimer has claimed its skull for this turning point.' },
+  // batch D: Chaos Cult
+  'cc.ruinousIcon': { label: 'Ruinous Icon', glyph: { sides: 5, color: '#b44bff' }, term: 'Ruinous Icon token', body: 'The Iconarch\'s effect is in force: friendly cultists within 4 inches cut big Dmg by 1, or enemies within 4 inches take 1 more Dmg, until its next activation.' },
+  // batch D: Exaction Squad
+  'ex.marked-for-justice': { label: 'Marked for justice', glyph: { sides: 4, color: '#ffd24d', ring: true }, term: 'Marked for justice token', body: 'The enemy the squad marked this turning point: friendly Exaction Squad weapons have Punishing against it, and when it falls the squad may pick a new mark.' },
+  'ex.medic': { label: 'Medic', glyph: { sides: 4, color: '#7be0a0' }, term: 'Medic token', body: 'Pulled back by Medic!: it was left on 1 wound and cannot be taken down for the rest of that action. It then dashes to the Chirurgant, and both have 1 less APL for a while.' },
+  'ex.apprehend': { label: 'Apprehended', glyph: { sides: 6, color: '#ff7a3a' }, term: 'Apprehend token', body: 'Pinned by a Cyber-mastiff: its weapons hit 1 worse and it cannot Fall Back, while it stays in the mastiff\'s control range.' },
+  'ex.veriscant': { label: 'Scanned', glyph: { sides: 24, ring: true, color: '#58d0ff' }, term: 'Veriscant token', body: 'Scanned by the Malocator: friendly Exaction Squad weapons have Lethal 5+ and Severe against it until the Malocator next activates or falls.' },
+  'ex.revelatum-spot': { label: 'Spotted', glyph: { sides: 3, ring: true, color: '#e8c34d' }, term: 'Revelatum spot token', body: 'Spotted by the Revelatum: friendly Exaction Squad ranged weapons have Seek Light against it and it cannot be obscured, until the end of the turning point.' },
+  'ex.marksman-optics': { label: 'Optics', glyph: { sides: 24, ring: true, color: '#9be0ff' }, term: 'Marksman optics token', body: 'The Marksman is lined up: its concealed and stationary shots have Lethal 5+ and enemies cannot be obscured to its executioner shotgun, until it next activates.' },
+  'ex.aggressive': { label: 'Aggressive', glyph: { sides: 3, color: '#ff4a3a' }, term: 'Aggressive token', body: 'Attack Pattern: the mastiff\'s melee weapons have Relentless.' },
+  'ex.swift': { label: 'Swift', glyph: { sides: 4, color: '#7bd44a' }, term: 'Swift token', body: 'Attack Pattern: the mastiff has +2 inches Move.' },
+  'ex.defensive': { label: 'Defensive', glyph: { sides: 6, ring: true, color: '#c4cce0' }, term: 'Defensive token', body: 'Attack Pattern: the mastiff\'s Save is improved by 1.' },
+  // batch D: Tempestus Aquilons
+  'ta.detected': { label: 'Detected', glyph: { sides: 24, ring: true, color: '#6fd0ff' }, term: 'Detected token', body: 'Picked out by Eye Above for the turning point: when it shoots an Aquilon you may re-roll one defence die, and when it fights or retaliates against one, one of your blocks cancels two unresolved successes.' },
 }
 
 const FALLBACK_GLYPH: TokenGlyph = { sides: 24, color: '#d4d6e2' }

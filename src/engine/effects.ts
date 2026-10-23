@@ -1,8 +1,9 @@
 // Shared bookkeeping for the rules modules: CP accounting, the once-per-TP / once-per-battle ledger,
 // timed effects, and damage that does not come from an attack sequence (mines, Dat All You Got?).
 // Damage that does come from an attack goes through attack-common.inflict so hooks see it.
-import { applyAplEffect, inflict } from './attack-common'
+import { applyAplEffect, deferRemoval, inflict, removalCanPause } from './attack-common'
 import { runHook } from './hooks'
+import { noteRemoval } from './kills'
 import type { Ctx } from './registry'
 import { getOp } from './state'
 import type { ActiveEffect, GameState, Ledger, Seat } from './types'
@@ -119,11 +120,18 @@ export function removeNow(ctx: Ctx, operativeId: string): void {
   const s = ctx.state
   const op = getOp(s, operativeId)
   if (op.status === 'removed') return
+  // M10 batch D shared: a removal that may need a decision waits for the end of the step (attack-common.runDeferredRemovals)
+  if (removalCanPause(s, op)) {
+    deferRemoval(ctx, operativeId)
+    return
+  }
   runHook('operative.incapacitated', { seat: op.seat, state: s, engine: ctx, operativeId })
   op.status = 'removed'
   op.ready = false
   op.flags.guard = false
   ctx.emit({ type: 'OperativeRemoved', operativeId }, op.seat)
+  // M10 batch D shared: the kill log at removal time
+  noteRemoval(ctx, op)
   // damage the "before removal" hooks dealt (Boom!) incapacitates others: remove them too
   if (!s.attack) {
     for (const o of Object.values(s.operatives)) if (o.status === 'active' && o.wounds <= 0) removeNow(ctx, o.id)

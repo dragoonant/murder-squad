@@ -8,7 +8,7 @@ import { useFeedStore } from '../presentation/feedStore'
 import { cameraApi } from '../board/cameraApi'
 import { currentParams } from '../params'
 import { useAnnouncementStore } from '../presentation/announceStore'
-import { usePresentedStore } from '../presentation/presentedStore'
+import { pickDisplaySnapshot, usePresentedStore } from '../presentation/presentedStore'
 import { useUi } from '../ui/uiStore'
 import { useSight } from '../interaction/sightStore'
 import { useGame } from './game'
@@ -17,6 +17,8 @@ import { useSession } from './session'
 export interface MsHooks {
   getState(): unknown
   getPending(): unknown
+  /** the engine state as the player currently sees it (the presentation cursor, not the live head) */
+  display(): unknown
   legal(): Action[] | null
   dispatch(action: Action): unknown
   choose(optionId: string): unknown
@@ -75,6 +77,10 @@ export function installTestHooks(): void {
   window.__ms = {
     getState: () => useGame.getState().state,
     getPending: () => useGame.getState().pending,
+    display: () => {
+      const s = usePresentedStore.getState()
+      return pickDisplaySnapshot(s.snapshots, s.presentedSeq)
+    },
     legal: () => useGame.getState().legal,
     dispatch: (a) => useGame.getState().dispatch(a),
     choose: (id) => useGame.getState().choose(id),

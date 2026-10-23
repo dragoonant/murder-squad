@@ -7,6 +7,7 @@ import * as firefight from '@/engine/firefight'
 import { effectiveApl } from '@/engine/state'
 import { ACTION_HELP, ACTION_LABEL, ACTION_ORDER_FALLBACK, contextFacts, decisionInfo, humanize, opName, optionDetail, optionLabel, ORDER_HELP, SEAT_NAME } from '../game/labels'
 import { abilityActions, markerActionLabel } from '../game/promptLabels'
+import { setAsideWording } from '../teams'
 import { AbilityChoiceBody, EquipBody, GuardBody, MarkerPlaceBody, ObjectiveBody, PloyBody } from './GamePrompts'
 import { BlockBody, CoverSaveBody, FightResolveBody, FightTargetBody, FightWeaponBody, RerollBody, ShootTargetBody, ShootWeaponBody } from './AttackPrompts'
 import { bearingTo, canFlyNow, cancelPath, confirmPath, deployAction, deployChoice, facingTowardEnemy, optionOperative, previewMove, turnedBy } from '../interaction/controller'
@@ -216,26 +217,27 @@ function HidingControl({ pending, state }: { pending: PendingDecision; state: Ga
   const allowed = Array.isArray(pending.context.setAsideIds) ? (pending.context.setAsideIds as string[]) : []
   const hidden = Object.values(state.operatives).filter((o) => o.seat === pending.seat && o.offboard !== undefined)
   if (allowed.length === 0 && hidden.length === 0) return null
+  const wording = setAsideWording(state.players[pending.seat]?.teamId)
   return (
     <div data-testid="hiding-control" style={{ marginBottom: 8 }}>
       <Muted style={{ marginBottom: 4 }}>
-        <KeywordText text="Instead of placing an operative you may start it in HIDING: out of the killzone, ready to Emerge near your drop zone later (it is incapacitated if it is still hiding when turning point 2 ends)." />
+        <KeywordText text={wording.intro} />
       </Muted>
       {hidden.length > 0 && (
         <div data-testid="hiding-list" style={{ fontSize: 12, marginBottom: 4 }}>
-          <Keyword term="HIDING" />: {hidden.map((o) => o.name).join(', ')}
+          <Keyword term={wording.term} />: {hidden.map((o) => o.name).join(', ')}
         </div>
       )}
       {allowed.length > 0 ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {allowed.map((id) => (
             <Btn key={id} data-testid={`hide-op-${id}`} onClick={() => dispatch(act.setAside(pending, id))}>
-              Hide {opName(state, id)}
+              {wording.verb} {opName(state, id)}
             </Btn>
           ))}
         </div>
       ) : (
-        <Muted>No more operatives can start hiding (a third of the team at most, Neophytes only).</Muted>
+        <Muted>{wording.none}</Muted>
       )}
     </div>
   )

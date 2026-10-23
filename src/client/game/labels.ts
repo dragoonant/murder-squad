@@ -2,7 +2,7 @@
 // only (no Games Workshop text). Unknown decision kinds and label keys degrade to a readable generic form,
 // never a crash, so decision kinds added by the engine later still render as an option list.
 import { tokenDef } from '../ui/tokenDefs'
-import { poolLabel } from '../teams'
+import { poolLabel, setAsideWording } from '../teams'
 import type { DecisionKind, DecisionOption, GameEvent, GameState, PendingDecision, Rejection, Seat } from '@/engine'
 
 export const SEAT_NAME: Record<Seat, string> = { A: 'Seat A', B: 'Seat B' }
@@ -405,8 +405,20 @@ export function describeEvent(ev: GameEvent, state: GameState | null): string | 
       return `${ev.seat ? SEAT_NAME[ev.seat] : 'A seat'} scores ${ev.amount} VP (${humanize(ev.ruleId)}); now ${ev.vp}.`
     case 'MineTriggered':
       return `A mine hits ${who(ev.operativeId)} for ${ev.damage}.`
-    case 'AbilityUsed':
-      return `${ev.operativeId ? `${who(ev.operativeId)}: ` : ''}${humanize(ev.abilityId)}${ev.detail ? ` (${ev.detail})` : ''}.`
+    case 'AbilityUsed': {
+      // Covert Guises: the cult's D3, rolled at set-up and shown to both players
+      const roll = /^D3: (\d)$/.exec(ev.detail ?? '')
+      if (roll && /covert-guises$/.test(ev.abilityId)) return `Covert Guises: the cult rolled a D3 and got ${roll[1]}. In the first turning point that many Devotees in its drop zone may take a free Reposition.`
+      // the record's own name when the data has one, and a "mutant:chitinous" style detail read as words
+      const named = state?.data.abilities?.[ev.abilityId]?.name ?? state?.data.ploys?.[ev.abilityId]?.name ?? state?.data.equipment?.[ev.abilityId]?.name
+      const title = named ? named.charAt(0) + named.slice(1).toLowerCase() : humanize(ev.abilityId)
+      const detail = ev.detail && /^[a-z-]+(:[a-z-]+)+$/.test(ev.detail) ? ev.detail.split(':').map((x) => x.replace(/-/g, ' ')).join(', ') : ev.detail
+      return `${ev.operativeId ? `${who(ev.operativeId)}: ` : ''}${title}${detail ? ` (${detail})` : ''}.`
+    }
+    case 'PloyUsed': {
+      const ploy = state?.data.ploys?.[ev.ployId]?.name
+      return `${ploy ? ploy.charAt(0) + ploy.slice(1).toLowerCase() : humanize(ev.ployId)} is used.`
+    }
     case 'TokenChanged': {
       if (ev.delta === 0) return null
       const d = tokenDef(ev.kind)
@@ -434,7 +446,7 @@ export function describeEvent(ev: GameEvent, state: GameState | null): string | 
       return ev.delta > 0 ? `${side} gains ${ev.delta} ${name} (${humanize(ev.reason)}), now ${ev.value}.` : `${side} spends ${-ev.delta} ${name} (${humanize(ev.reason)}), ${ev.value} left.`
     }
     case 'OperativeReturned':
-      return `${who(ev.operativeId)} ${ev.kind === 'emerge' ? 'emerges from hiding' : ev.kind === 'reanimated' ? 'is reanimated' : 'returns to the killzone'}.`
+      return `${who(ev.operativeId)} ${ev.kind === 'emerge' || ev.kind === 'land' ? setAsideWording(state?.players[state.operatives[ev.operativeId]?.seat ?? 'A']?.teamId).returned : ev.kind === 'reanimated' ? 'is reanimated' : 'returns to the killzone'}.`
     case 'ActivationChained':
       return `${who(ev.fromId)} hands the next activation on (${ev.operativeIds.map(who).join(', ')}).`
     case 'ActivationGated':

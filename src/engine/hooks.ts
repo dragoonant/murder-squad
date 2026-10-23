@@ -34,6 +34,8 @@ export const HOOK_NAMES = [
   'gambit.passed',
   // batch D prep: an operative left the killzone for good, any cause (killLog); see OperativeRemovedData
   'operative.removed',
+  // M10 batch D shared: a counteraction ended, before its expiry and the end-of-counteraction reaction point
+  'counteraction.end',
 ] as const
 
 /**

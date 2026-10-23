@@ -434,6 +434,9 @@ function finishEndActivation(ctx: Ctx): void {
 function endCounteract(ctx: Ctx): void {
   const s = ctx.state
   const act = s.firefight.activation!
+  // M10 batch D shared: "at the end of its counteraction" team rules (Fellgor frenzied counteract, Lacerate)
+  const actor = s.operatives[act.operativeId]
+  if (actor) runHook('counteraction.end', { seat: actor.seat, state: s, engine: ctx, operativeId: actor.id, data: { performed: act.performed.slice(), removed: actor.status === 'removed' } })
   for (const o of Object.values(s.operatives)) delete o.flags.cannotRetaliate
   expireEffects(ctx, 'activation')
   s.firefight.activation = null
@@ -640,6 +643,50 @@ export interface FreeActionOpts {
   pointBlank?: boolean
   /** only weapons whose name contains this (Dakka Dash needs a dakka shoota) */
   weaponNameContains?: string
+  /**
+   * M10 batch D shared (opt-in, R-3.9): inside the operative's own activation or counteraction the free action keeps
+   * the activation's action restrictions (no second Dash, no Dash after Charge, barred actions) and, once finished,
+   * counts as performed there. Off by default because most team free actions say "even if" or count it themselves
+   * (Vitalised Surge, Dynamic, Absolution Through Destruction, Uncompromising Attack); Goremongers Surge sets it.
+   */
+  checkPerformed?: boolean
+  /** M10 batch D shared: never apply the performed checks, even with `checkPerformed` (a rule that says "even if") */
+  ignorePerformed?: boolean
+}
+
+/**
+ * M10 batch D shared: the operative's own activation (or counteraction) that a free action would run inside, or null
+ * when it is not activated (a free action outside its activation, R-3.9). Frames above it do not count.
+ */
+export function ownActivationOf(state: GameState, op: Operative): Activation | null {
+  const chain = [state.firefight.activation, ...[...(state.firefight.stack ?? [])].reverse()]
+  for (const a of chain) {
+    if (!a || a.frame) continue
+    if (a.operativeId === op.id) return a
+    if (a.partner?.operativeId === op.id) return a.partner
+    return null
+  }
+  return null
+}
+
+/** M10 batch D shared: R-3.7 and the move bars of R-4 for a free action inside the operative's own activation. */
+function performedProblem(state: GameState, op: Operative, action: string, own: Activation): string | null {
+  const performed = own.performed
+  if (!own.counteract && performed.filter((p) => p === action).length >= maxRepeats(state, op, action, performed)) {
+    return `${action} cannot be performed twice in one activation`
+  }
+  const any = (...ids: string[]): boolean => ids.some((id) => performed.includes(id))
+  switch (action) {
+    case 'reposition':
+      return any('fallBack', 'charge') ? 'Reposition is barred after Fall Back or Charge' : null
+    case 'dash':
+      return any('charge') ? 'Dash is barred after Charge' : null
+    case 'fallBack':
+      return any('reposition', 'charge') ? 'Fall Back is barred after Reposition or Charge' : null
+    case 'charge':
+      return any('reposition', 'dash', 'fallBack') ? 'Charge is barred after Reposition, Dash or Fall Back' : null
+  }
+  return null
 }
 
 function freeActionProblem(state: GameState, op: Operative, o: FreeActionOpts): Rejection | null {
@@ -647,6 +694,13 @@ function freeActionProblem(state: GameState, op: Operative, o: FreeActionOpts): 
   const bad = (reason: string): Rejection => ({ code: 'E_ACTION_RESTRICTED', reason })
   const forbidden = actionForbidden(state, op, o.action)
   if (forbidden) return bad(forbidden)
+  // M10 batch D shared: inside its own activation the activation's performed actions still bar it (R-3.9)
+  const own = o.checkPerformed && !o.ignorePerformed && !o.interrupt ? ownActivationOf(state, op) : null
+  if (own) {
+    if (own.barred?.includes(o.action)) return bad(`${o.action} was stopped and cannot be tried again this activation`)
+    const why = performedProblem(state, op, o.action, own)
+    if (why) return bad(why)
+  }
   switch (o.action) {
     case 'dash':
     case 'reposition':
@@ -682,6 +736,7 @@ export function startFreeAction(ctx: Ctx, o: FreeActionOpts): boolean {
   if (!op || op.status !== 'active' || freeActionProblem(s, op, o)) return false
   const data: Record<string, unknown> = { ...(o.data ?? {}), kind: o.action }
   if (o.pointBlank) data.pointBlank = true
+  if (o.checkPerformed && !o.ignorePerformed) data.checkPerformed = true
   // a ploy window that started this frame (KRUMP 'EM!, SSSSHHHH!) waits aside: the attack inside opens windows of its own
   if (s.window) {
     data.savedWindow = s.window
@@ -712,9 +767,15 @@ export function startFreeAction(ctx: Ctx, o: FreeActionOpts): boolean {
   s.firefight.activation = frame
   ctx.emit({ type: 'ActionDeclared', operativeId: op.id, action: o.action, cost: 0 }, op.seat)
   if (declaredVeto(ctx, op, o.action, true)) return true
+  // M10 batch D shared: the actor's firefight.actionDeclared window opens inside free-action frames too (Surge), with
+  // `free` set; Guard interrupts excluded
+  if (!o.interrupt && DECLARED_WINDOW_ACTIONS.includes(o.action) && openFirefightWindow(ctx, 'firefight.actionDeclared', { subjectId: op.id, counteracting: false, action: o.action, free: true }, 'declared')) return true
   declaredOpponentWindow(ctx)
   return true
 }
+
+/** Actions whose declaration opens the actor's firefight.actionDeclared window (marker and mission actions apart). */
+const DECLARED_WINDOW_ACTIONS: string[] = ['shoot', 'fight', 'fallBack', 'charge', 'reposition']
 
 /** Start free actions one after another for the queue; `resume` runs once the queue is exhausted. */
 export function startFreeSequence(
@@ -745,6 +806,11 @@ export function closeFrame(ctx: Ctx, outcome: 'finished' | 'cancelled'): void {
     op.weapons = (data.savedWeapons as string[]).filter((w) => keep.has(w) || !(s.data.weapons[w]?.name ?? '').toLowerCase().includes(filter))
   }
   s.firefight.activation = (s.firefight.stack ?? []).pop() ?? null
+  // M10 batch D shared: a free action inside the operative's own activation counts as performed there (R-3.9)
+  if (op && outcome === 'finished' && data.checkPerformed === true && info.kind !== 'interrupt' && typeof data.kind === 'string') {
+    const own = ownActivationOf(s, op)
+    if (own) own.performed.push(data.kind)
+  }
   // M9 shared: a move made in the Strategy phase (a gambit's free Dash) and a finished Guard interrupt are reaction
   // points too (Quicksilver Strike; Medic! when the save happened inside the interrupt)
   if (op && outcome === 'finished' && frameReaction(ctx, op, String(data.kind ?? ''), info, data)) return
@@ -759,7 +825,7 @@ function afterFrame(ctx: Ctx, resume: string, outcome: 'finished' | 'cancelled',
   if (!hasQueue && data.savedWindow) s.window = data.savedWindow as typeof s.window
   if (Array.isArray(queue) && queue.length > 0) {
     const carry = { ...data }
-    for (const k of ['savedWeapons', 'nameFilter', 'queue', 'kind', 'pointBlank']) delete carry[k]
+    for (const k of ['savedWeapons', 'nameFilter', 'queue', 'kind', 'pointBlank', 'checkPerformed']) delete carry[k]
     startFreeSequence(ctx, { kind: data.kind as FreeActionOpts['action'], resume, queue: queue as string[], data: carry })
     return
   }
@@ -789,11 +855,21 @@ function frameReaction(ctx: Ctx, actor: Operative, kind: string, frame: NonNulla
   const seat = otherSeat(actor.seat)
   const flag = strategy || strategyOther ? { strategy: true } : interrupt ? { interrupt: true } : { freeAction: true }
   const info = { actorId: actor.id, action: kind, activeSeat: actor.seat, moved: MOVE_KINDS.includes(kind), ...flag, ...(strategyOther ? { freeAction: true } : {}) }
+  const window: TimingWindowId = strategy || strategyOther ? 'strategy.gambit' : 'firefight.actionEnded'
+  const filterFree = strategyOther || ownFree
   let offers = providerReactions(s, seat, info)
-  if (strategyOther || ownFree) offers = offers.filter((o) => o.freeActions === true)
+  if (filterFree) offers = offers.filter((o) => o.freeActions === true)
+  // M10 batch D shared: the actor's own seat first (ownReactions marked `freeActions`: Dynamic after an in-activation
+  // free Shoot or a Guard interrupt Shoot), then the other seat's reactions as before
+  const own = s.phase === 'firefight' && kind !== '' ? providerOwnReactions(s, actor.seat, info).filter((o) => o.freeActions === true) : []
+  if (own.length > 0) {
+    s.firefight.reactionAfter = { resume: frame.resume, outcome: 'finished', data, ...(offers.length > 0 ? { then: { seat, info, window, filterFree } } : {}) }
+    raiseReaction(ctx, actor.seat, actor.id, kind, own, window)
+    return true
+  }
   if (offers.length === 0) return false
   s.firefight.reactionAfter = { resume: frame.resume, outcome: 'finished', data }
-  raiseReaction(ctx, seat, actor.id, kind, offers, strategy || strategyOther ? 'strategy.gambit' : 'firefight.actionEnded')
+  raiseReaction(ctx, seat, actor.id, kind, offers, window)
   return true
 }
 
@@ -1046,6 +1122,19 @@ export function reactionDone(ctx: Ctx): void {
   const s = ctx.state
   const after = s.firefight.reactionAfter
   if (after) {
+    // M10 batch D shared: the actor's own frame reaction is over: the other seat's reactions to that frame now
+    const then = after.then
+    if (then) {
+      const info = then.info as unknown as Parameters<typeof providerReactions>[2]
+      let offers = providerReactions(s, then.seat, info)
+      if (then.filterFree) offers = offers.filter((o) => o.freeActions === true)
+      const actorId = String(then.info.actorId ?? '')
+      if (offers.length > 0 && s.operatives[actorId]) {
+        s.firefight.reactionAfter = { resume: after.resume, outcome: after.outcome, data: after.data }
+        raiseReaction(ctx, then.seat, actorId, String(then.info.action ?? ''), offers, then.window)
+        return
+      }
+    }
     // a reaction at the end of a frame (Strategy-phase move, Guard interrupt): finish closing that frame
     s.firefight.reactionAfter = null
     afterFrame(ctx, after.resume, after.outcome, after.data)
@@ -1353,8 +1442,9 @@ function handleAction(state: GameState, action: Action): Handled {
       a.declaredSeq = s.seq
       consumeDiscounts(s, o, a, id, false)
       if (declaredVeto(ctx, o, id, a.frame !== undefined)) return
-      // firefight.actionDeclared ploy window for attacks (Adjust Doctrine) and, batch C shared, Fall Back (Cover Retreat)
-      if ((id === 'shoot' || id === 'fight' || id === 'fallBack') && openFirefightWindow(ctx, 'firefight.actionDeclared', { subjectId: o.id, counteracting: a.counteract, action: id }, 'declared')) return
+      // firefight.actionDeclared ploy window for attacks (Adjust Doctrine), batch C shared Fall Back (Cover Retreat) and
+      // M10 batch D shared Charge and Reposition
+      if (DECLARED_WINDOW_ACTIONS.includes(id) && openFirefightWindow(ctx, 'firefight.actionDeclared', { subjectId: o.id, counteracting: a.counteract, action: id }, 'declared')) return
       declaredOpponentWindow(ctx)
     },
   }

@@ -294,7 +294,7 @@ export const EVENT_POLICY: Record<GameEvent['type'], 'sound' | 'conditional' | '
   WoundsRegained: 'silent',
   OperativeSetAside: 'silent',
   OperativePickChanged: 'silent',
-  OperativeTransformed: 'silent',
+  OperativeTransformed: 'sound',
   PoolChanged: 'silent',
   OperativeReturned: 'conditional',
   ActivationChained: 'silent',
@@ -420,6 +420,8 @@ export function soundsForEvent(ev: GameEvent, ctx: SoundContext = EMPTY_CONTEXT)
       return ev.amount > 0 ? [{ id: 'ui-vp-scored' }] : []
     case 'MineTriggered':
       return [{ id: 'wpn-grenade-frag' }]
+    case 'OperativeTransformed':
+      return [{ id: 'fx-reanimate', opts: { volume: 0.8 } }]
     case 'DiceRolled':
       return [
         { id: 'ui-dice-rattle' },

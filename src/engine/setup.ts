@@ -247,12 +247,18 @@ function raiseDeploy(ctx: Ctx): void {
   const zone = s.map.dropZones.find((z) => z.id === s.players[seat].dropZoneId)!
   // batch D prep: a batch being set aside as a whole offers no deployment
   const deployable = s.setup.deploy.aside === true ? [] : reserve.map((o) => o.id)
+  const asideIds = setAsideChoices(s, seat)
   ctx.raise({
     kind: 'setup.deploy',
     seat,
     window: 'setup.*',
-    context: { left: s.setup.deploy.left, reserveIds: reserve.map((o) => o.id), zoneId: zone.id, setAsideIds: setAsideChoices(s, seat), ...(s.setup.deploy.aside === true ? { wholeBatchAside: true } : {}) },
+    context: { left: s.setup.deploy.left, reserveIds: reserve.map((o) => o.id), zoneId: zone.id, setAsideIds: asideIds, ...(s.setup.deploy.aside === true ? { wholeBatchAside: true } : {}) },
     constraints: { kind: 'deploy', operativeIds: deployable, region: zone.polygon },
+    // batch D (Tempestus Aquilons verification): a batch going aside whole is a finite decision, so legalActions lists
+    // the set-aside answers instead of returning null for a deployment nobody may make
+    ...(s.setup.deploy.aside === true
+      ? { options: asideIds.map((id) => ({ id: `aside:${id}`, labelKey: 'setup.setAside', type: 'setup.deploy' as const, payload: { operativeId: id, x: 0, z: 0, setAside: true } })) }
+      : {}),
   })
 }
 

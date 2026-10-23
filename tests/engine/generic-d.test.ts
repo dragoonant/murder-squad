@@ -290,7 +290,7 @@ describe('GEN batch C shared integration', () => {
     expect(canStartFreeAction(engaged, free)).toBe(true)
   })
 
-  it('SIM-010 --teams real rotates every playable team into at least 4 of 40 games', () => {
+  it('SIM-010 --teams real rotates every playable team into at least floor(2 * games / teams) of 40 games, never against itself', () => {
     const bundle = bundleFromData(loadBundle())
     const setupFor = realSetupFor(bundle)
     const count = new Map<string, number>()
@@ -300,7 +300,10 @@ describe('GEN batch C shared integration', () => {
         const team = setup.teams[seat]
         count.set(team, (count.get(team) ?? 0) + 1)
       }
+      if (playableTeams(bundle).length > 1) expect(setup.teams.A).not.toBe(setup.teams.B)
     }
-    expect(Math.min(...playableTeams(bundle).map((t) => count.get(t) ?? 0))).toBeGreaterThanOrEqual(4)
+    const n = playableTeams(bundle).length
+    // M10 batch D shared: scaled with the team count (24 teams: 3 each), the best any 40-game rotation can do
+    expect(Math.min(...playableTeams(bundle).map((t) => count.get(t) ?? 0))).toBeGreaterThanOrEqual(Math.min(4, Math.floor((2 * 40) / n)))
   })
 })

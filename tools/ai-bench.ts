@@ -1,5 +1,5 @@
 // npm run bench:ai -- --games 40 --seed 1 [--tier normal] [--vs random|easy] [--teams real|fixture] [--layout <id>] [--pair a,b]
-// Real teams: every playable team takes the tested tier in turn (game g: team g/2 mod N, seats alternating), against
+// Real teams: every playable team takes the tested tier in turn (game g: team g mod N, seats alternating), against
 // a rotating opponent team played by `--vs`, so `--games` is the total number of games whatever the team count.
 // `--pair a,b` restricts it to that pairing (the v1 mirror bench). Decisive results only; the report breaks the
 // result down per tested team. Gate (docs/spec/40-ai section 3): normal beats random >= 95% overall, zero
@@ -58,10 +58,17 @@ let setupFor: (g: number, aiSeat: Seat, teamIdx: number) => GameSetup
 /** The tested team of game g and its opponent: every team in turn, the opponent rotating through the others. */
 function pairingOf(g: number): { ti: number; oi: number } {
   const n = TEAMS.length
-  const ti = Math.floor(g / 2) % n
+  // M10 batch D shared: team g mod n, so any n games test every team once (40 games, 24 teams: all of them, 16 twice);
+  // the opponent moves one further on each lap
+  const ti = g % n
   if (n < 2) return { ti, oi: ti }
-  const round = Math.floor(g / (2 * n)) % (n - 1)
+  const round = Math.floor(g / n) % (n - 1)
   return { ti, oi: (ti + 1 + round) % n }
+}
+/** The tested tier's seat: alternating by game, and flipped on each lap so a team's repeat games swap seats. */
+function aiSeatOf(g: number): Seat {
+  const lap = real && TEAMS.length > 0 ? Math.floor(g / TEAMS.length) : 0
+  return (g + lap) % 2 === 0 ? 'A' : 'B'
 }
 if (real) {
   bundle = bundleFromData(loadBundle())
@@ -102,7 +109,7 @@ let vpGames = 0
 const byKind: Record<string, { n: number; ms: number; max: number; fallbacks: number }> = {}
 const byTeam: Record<string, { games: number; wins: number; losses: number; draws: number; unfinished: number; vpDiff: number; vpGames: number }> = {}
 for (let g = 0; g < games; g++) {
-  const aiSeat: Seat = g % 2 === 0 ? 'A' : 'B'
+  const aiSeat: Seat = aiSeatOf(g)
   const ti = real ? pairingOf(g).ti : 0
   const gameSeed = `${seed}-${g}`
   const setup = setupFor(g, aiSeat, ti)

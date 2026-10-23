@@ -456,17 +456,30 @@ export function realSetupFor(bundle: EngineBundle): (game: number) => GameSetup 
   const layouts = Object.keys(bundle.layouts ?? {}).sort()
   const teams = playableTeams(bundle)
   const n = teams.length
-  // batch C shared: rotate so every playable team plays early and often. Game g pits team g mod n against the team
-  // 1 + floor(g / n) places on (cycling through every gap), so each team appears twice in every n games and every
-  // pairing comes up within n(n-1) games; seats alternate.
+  // M10 batch D shared: game g fills seat slots 2g and 2g + 1 of a sequence that lists every playable team once per
+  // cycle of n slots (cycle c orders them j * m_c + c mod n, m_c a multiplier coprime with n), so over G games every
+  // team plays at least floor(2G / n) times (40 games, 24 teams: 3 each) and the opponents change with m_c; the lower
+  // team index takes seat A in even games, seat B in odd ones (two teams: the original AoD-vs-Kommandos rotation).
+  const mults: number[] = []
+  for (let m = 1; m <= n - 2; m++) if (gcd(m, n) === 1) mults.push(m)
+  if (mults.length === 0) mults.push(1)
+  const slotTeam = (k: number): number => {
+    const c = Math.floor(k / n)
+    return ((k % n) * mults[c % mults.length]! + c) % n
+  }
   return (game) => {
     const swap = game % 2 === 1
-    const gap = n > 1 ? 1 + (Math.floor(game / n) % (n - 1)) : 0
-    const a = teams[game % n]!
-    const b = teams[(game + gap) % n]!
+    const i = slotTeam(2 * game)
+    const j = n > 1 ? slotTeam(2 * game + 1) : i
+    const a = teams[Math.min(i, j)]!
+    const b = teams[Math.max(i, j)]!
     return realSetup(bundle, {
       teams: swap ? [b, a] : [a, b],
       layoutId: layouts[game % layouts.length]!,
     })
   }
+}
+
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b)
 }

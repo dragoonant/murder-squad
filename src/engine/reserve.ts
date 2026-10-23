@@ -13,6 +13,7 @@
 //   the kill op like any incapacitation, without "before removal" rules (it is not in the killzone).
 // - placementSpots samples legal set-up points for a rule's region, for ability.choice options.
 import { onOperativeReturned } from './missions'
+import { noteRemoval } from './kills'
 import type { Ctx } from './registry'
 import { getOp } from './state'
 import { axisOf } from './footprint'
@@ -85,6 +86,7 @@ export function incapacitateOffboard(ctx: Ctx, opId: string): void {
   ctx.emit({ type: 'OperativeIncapacitated', operativeId: op.id })
   // markers.ts counts the kill when it sees OperativeRemoved after the step's action
   ctx.emit({ type: 'OperativeRemoved', operativeId: op.id }, op.seat)
+  noteRemoval(ctx, op)
 }
 
 export interface SpotOpts {

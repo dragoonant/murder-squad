@@ -310,6 +310,13 @@ export interface TeamRuleProvider {
    * on the table; any later batch is either all deployed or all set aside, decided by its first answer.
    */
   setAsideBatches?(state: GameState, seat: Seat): { skipFirst?: boolean } | null
+  /**
+   * M10 batch D shared: `op` has just been incapacitated outside an attack (mines, direct damage: effects.removeNow)
+   * and one of its before-removal rules may need a decision (Explosive Demise, Destructive Demise, a Medic! decline).
+   * True defers the removal to a queue at the end of the step that can pause (attack-common.runDeferredRemovals):
+   * the `operative.incapacitated` hooks there may raise a decision and the code hook calls continueRemovals.
+   */
+  pausableRemoval?(state: GameState, op: Operative): boolean
 }
 
 /** batch D prep: who rolls the dice a rerollBannedValues answer is about. */
@@ -767,4 +774,10 @@ export function providerSetAsideBatches(state: GameState, seat: Seat): { skipFir
     if (b.skipFirst === true) skipFirst = true
   }
   return any ? { skipFirst } : null
+}
+
+/** M10 batch D shared: some provider wants `op`'s removal outside an attack to be able to pause for a decision. */
+export function providerPausableRemoval(state: GameState, op: Operative): boolean {
+  for (const p of providers.values()) if (p.pausableRemoval?.(state, op)) return true
+  return false
 }

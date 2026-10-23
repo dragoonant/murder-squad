@@ -354,6 +354,17 @@ registerHook(
 // afterDefenceRoll: Hardy, Stealthy, Indomitus, Skulk About
 // ---------------------------------------------------------------------------
 
+/**
+ * M10 batch D shared: the operative is the target of the current Shoot and its player took the Vantage improved cover
+ * save (R-11.5b: two cover saves, or one as a crit). Every Stealthy-style improvement (Chapter Tactic, Camo Cloaks,
+ * provider `stealthyCover` / `extraCoverSaves`) is not cumulative with it; a player who retained a single cover save
+ * did not take the improvement, so those rules still apply.
+ */
+export function vantageImprovementTaken(state: GameState, op: Operative): boolean {
+  const seq = state.attack?.kind === 'shoot' ? state.attack.seq : null
+  return !!seq && seq.targetId === op.id && !!seq.improvedCover && (seq.coverMode === 'retainTwo' || seq.coverMode === 'retainCrit')
+}
+
 /** Number of Stealthy sources: the team tactic and Camo Cloak count separately (T-AOD.13). */
 export function stealthyLevel(state: GameState, op: Operative): number {
   const cfg = state.config[op.seat]
@@ -385,7 +396,9 @@ registerHook(
       if (any) markFired('ctHardy')
     }
     // Stealthy: when a cover save was retained, retain one more, or retain one cover save as a crit (T-AOD.16).
-    const level = stealthyLevel(state, op)
+    // M10 batch D shared: nothing once the Vantage improvement was taken (T-AOD.16 #4, T-AOD.13)
+    const vantage = vantageImprovementTaken(state, op)
+    const level = vantage ? 0 : stealthyLevel(state, op)
     const cover = dice.filter((d) => d.tag === 'cover')
     if (level > 0 && cover.length > 0) {
       const extra = (): boolean => {
@@ -414,7 +427,7 @@ registerHook(
       if (used) markFired('ctStealthy')
     }
     // batch D prep (extraCoverSaves): retain more cover saves, never as crits (Camo Cloak, extra-only versions)
-    const moreCover = providerExtraCoverSaves(state, op)
+    const moreCover = vantage ? 0 : providerExtraCoverSaves(state, op)
     if (moreCover > 0 && dice.some((d) => d.tag === 'cover')) {
       for (let i = 0; i < moreCover; i++) {
         const f = fails(dice)[0]

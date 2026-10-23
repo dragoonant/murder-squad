@@ -548,7 +548,13 @@ export interface FirefightState {
    * M9 shared: a reaction offered after a Strategy-phase move (no activation to go back to) is in progress;
    * firefight.reactionDone finishes closing the mover's frame with these (resume name, outcome, frame data)
    */
-  reactionAfter?: { resume: string; outcome: 'finished' | 'cancelled'; data: Record<string, unknown> } | null
+  reactionAfter?: {
+    resume: string
+    outcome: 'finished' | 'cancelled'
+    data: Record<string, unknown>
+    /** M10 batch D shared: the actor's own reaction comes first; then this seat's reactions are asked (reactionDone) */
+    then?: { seat: Seat; info: Record<string, unknown>; window: TimingWindowId; filterFree: boolean }
+  } | null
   /** M9 batch B: a reaction offered at the end of an activation or counteraction is in progress; reactionDone advances */
   reactionAtEnd?: boolean
   /** M9 batch B: a ploy in firefight.beforeActivation made this seat pass its activation this time (Heinous Arrogance) */
@@ -605,7 +611,18 @@ export interface GameState {
     killWindowed?: string[]
     /** M9 batch B: removed operative id -> the operative whose attack incapacitated it */
     killers?: Record<string, string>
+    /**
+     * M10 batch D shared: a queue of removals outside an attack, deferred to the end of the step so it can pause for
+     * decisions (attack-common.runDeferredRemovals); when it finishes, `parked` (the decision the step had raised)
+     * is pending again instead of the attack's finishAction
+     */
+    deferred?: boolean
+    parked?: PendingDecision | null
+    /** M10 batch D shared: ids a before-removal rule saved (attack-common.saveFromRemoval); the queue skips them */
+    saved?: string[]
   } | null
+  /** M10 batch D shared: operatives incapacitated outside an attack whose removal waits for the end of the step */
+  deferredRemovals?: string[]
   // M2b-game
   /** team configuration per seat: Chapter Tactics, Adaptive Tactics, Combat Doctrine */
   config: Record<Seat, TeamConfig>

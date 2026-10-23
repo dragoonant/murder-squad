@@ -15,18 +15,70 @@
         "from": [
           "gm.blood-herald"
         ]
+      },
+      {
+        "id": "main",
+        "label": "Selections",
+        "count": 7,
+        "from": [
+          "gm.aspirant",
+          "gm.bloodtaker",
+          "gm.impaler",
+          "gm.inciter",
+          "gm.skullclaimer",
+          "gm.stalker"
+        ],
+        "repeatable": [
+          "gm.aspirant"
+        ]
       }
     ]
   },
-  "factionRules": [],
-  "ploys": [],
-  "equipment": [],
-  "playable": false,
+  "factionRules": [
+    "gm.a.runes-of-khorne",
+    "gm.a.gore-tanks",
+    "gm.a.sanguavitae",
+    "gm.a.rejuvenate",
+    "gm.a.mania",
+    "gm.a.fury",
+    "gm.a.rake",
+    "gm.a.surge",
+    "gm.a.rage"
+  ],
+  "ploys": [
+    "gm.p.enhanced-violence",
+    "gm.p.augmented-endurance",
+    "gm.p.gory-tenacity",
+    "gm.p.hunt-for-blood",
+    "gm.p.unbridled-aggression",
+    "gm.p.gorethirst",
+    "gm.p.destructive-demise",
+    "gm.p.lacerate-flesh"
+  ],
+  "equipment": [
+    "gm.e.gory-totem",
+    "gm.e.bloody-cadaver",
+    "gm.e.chaos-sigil",
+    "gm.e.wrist-chains"
+  ],
+  "playable": true,
   "defaults": {
     "roster": [
-      "gm.blood-herald"
+      "gm.blood-herald",
+      "gm.aspirant",
+      "gm.aspirant",
+      "gm.bloodtaker",
+      "gm.impaler",
+      "gm.inciter",
+      "gm.skullclaimer",
+      "gm.stalker"
     ],
-    "equipment": []
+    "equipment": [
+      "gm.e.chaos-sigil",
+      "gm.e.wrist-chains",
+      "core.e.ladders",
+      "core.e.utility-grenades"
+    ]
   },
   "paint": {
     "major": {

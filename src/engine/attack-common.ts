@@ -9,8 +9,9 @@ import { getWindowOpener, runHook } from './hooks'
 import type { OptionInput, Ctx } from './registry'
 import { enemiesOf, getOp, hasInjuredPenalty, isInjured, otherSeat } from './state'
 import { terrainOf } from './terrain'
-import { providerAny, providerCommandRerollCost, providerOnCommandReroll, providerRerollBannedValues, providerRerollsBanned, providerWeaponForbidden } from './team-rules'
+import { providerAny, providerPausableRemoval, providerCommandRerollCost, providerOnCommandReroll, providerRerollBannedValues, providerRerollsBanned, providerWeaponForbidden } from './team-rules'
 import { isPsychicWeapon, psychicAllowed } from './psychic'
+import { noteRemoval } from './kills'
 import type {
   Action,
   AttackDie,
@@ -1137,10 +1138,18 @@ function processRemovals(ctx: Ctx): boolean {
         r.windowed = [...(r.windowed ?? []), id]
         if (removalWindow?.(ctx, op)) return false
       }
+      // M10 batch D shared: a before-removal decision saved it (saveFromRemoval: a Medic! taken at removal); plain
+      // wounds regained before removal do not stop it (R-7.4)
+      if ((r.saved ?? []).includes(id) && op.wounds > 0) {
+        r.ids.shift()
+        continue
+      }
       op.status = 'removed'
       op.ready = false
       op.flags.guard = false
       ctx.emit({ type: 'OperativeRemoved', operativeId: id }, op.seat)
+      // M10 batch D shared: the kill log at removal time, before this removal's windows
+      noteRemoval(ctx, op)
       // M9 batch B: the killer's seat may answer the removal (operative.killed window)
       if (!(r.killWindowed ?? []).includes(id)) {
         r.killWindowed = [...(r.killWindowed ?? []), id]
@@ -1180,8 +1189,107 @@ export function registerRemovalsDone(fn: (ctx: Ctx) => void): void {
 
 /** Resume a removal that a "before removal" free action suspended; finishes the original action afterwards. */
 export function continueRemovals(ctx: Ctx): void {
-  if (!ctx.state.removal) return
-  if (processRemovals(ctx)) removalsDone?.(ctx)
+  const r = ctx.state.removal
+  if (!r) return
+  if (!processRemovals(ctx)) return
+  // M10 batch D shared: a deferred queue (removals outside an attack) gives the step's own decision back
+  if (r.deferred) restoreParked(ctx, r.parked ?? null)
+  else removalsDone?.(ctx)
+}
+
+// ---------------------------------------------------------------------------
+// M10 batch D shared: removals outside an attack that can pause for a decision
+// ---------------------------------------------------------------------------
+
+/**
+ * M10 batch D shared: a rule taken while `operativeId` waits in the removal queue (its `operative.incapacitated` hook
+ * or a decision raised there) says it is not incapacitated after all (Medic! with a decline option): it keeps
+ * `wounds` and the queue skips it. Regaining wounds alone does not stop a removal (R-7.4). False outside a queue.
+ */
+export function saveFromRemoval(ctx: Ctx, operativeId: string, wounds: number): boolean {
+  const s = ctx.state
+  const r = s.removal
+  const op = s.operatives[operativeId]
+  if (!r || !op || op.status === 'removed' || !r.ids.includes(operativeId)) return false
+  op.wounds = Math.max(1, Math.min(op.maxWounds, Math.floor(wounds)))
+  delete op.incapacitatedBy
+  r.saved = [...(r.saved ?? []), operativeId]
+  if (s.deferredRemovals) s.deferredRemovals = s.deferredRemovals.filter((id) => id !== operativeId)
+  return true
+}
+
+let removalPauseCheck: ((state: GameState, op: Operative) => boolean) | null = null
+
+/** ploys.ts registers whether a removal would offer a ploy window (operative.incapacitated, operative.killed). */
+export function registerRemovalPauseCheck(fn: ((state: GameState, op: Operative) => boolean) | null): void {
+  removalPauseCheck = fn
+}
+
+/**
+ * Should the removal of `op` (incapacitated outside an attack, effects.removeNow) wait for the end of the step, where
+ * it can pause for decisions? True when a team provider asks for it (`pausableRemoval`) or a ploy window would offer
+ * something (the owner's `operative.incapacitated`, the killer's `operative.killed` for a rule kill).
+ */
+export function removalCanPause(state: GameState, op: Operative): boolean {
+  if (state.attack || state.removal) return false
+  return providerPausableRemoval(state, op) || (removalPauseCheck?.(state, op) ?? false)
+}
+
+/** Queue `op` for the deferred removal pass at the end of the step (effects.removeNow calls it). */
+export function deferRemoval(ctx: Ctx, operativeId: string): void {
+  const list = (ctx.state.deferredRemovals ??= [])
+  if (!list.includes(operativeId)) list.push(operativeId)
+}
+
+/**
+ * Run the deferred removals at the end of the step (apply.afterAction). The decision the step raised is parked on the
+ * queue; the queue runs the before-removal hooks and windows (which may raise decisions of their own: the step then
+ * ends on that decision and continueRemovals resumes later), removes, and gives the parked decision back. Inside an
+ * attack or another removal queue the ids join that one instead. True when at least one operative was removed now
+ * or a decision is waiting.
+ */
+export function runDeferredRemovals(ctx: Ctx): boolean {
+  const s = ctx.state
+  const ids = (s.deferredRemovals ?? []).filter((id) => {
+    const op = s.operatives[id]
+    return !!op && op.status !== 'removed' && op.wounds <= 0
+  })
+  delete s.deferredRemovals
+  if (ids.length === 0) return false
+  if (s.removal) {
+    for (const id of ids) if (!s.removal.ids.includes(id) && !s.removal.hooked.includes(id)) s.removal.ids.push(id)
+    return false
+  }
+  if (s.attack) {
+    for (const id of ids) if (!s.attack.incapacitated.includes(id)) s.attack.incapacitated.push(id)
+    return false
+  }
+  const killers: Record<string, string> = {}
+  for (const id of ids) {
+    const by = s.operatives[id]!.incapacitatedBy
+    const k = by ? s.operatives[by.id] : undefined
+    if (k && k.seat !== s.operatives[id]!.seat) killers[id] = k.id
+  }
+  const parked = s.pending
+  s.pending = null
+  s.removal = { ids, hooked: [], deferred: true, parked, ...(Object.keys(killers).length > 0 ? { killers } : {}) }
+  if (processRemovals(ctx)) restoreParked(ctx, parked)
+  return true
+}
+
+/** Give back the decision a deferred removal queue parked, without options that name an operative removed meanwhile. */
+function restoreParked(ctx: Ctx, parked: PendingDecision | null): void {
+  const s = ctx.state
+  if (s.pending || !parked) return
+  const gone = (id: unknown): boolean => typeof id === 'string' && s.operatives[id]?.status === 'removed'
+  if (parked.options) {
+    const keep = parked.options.filter((o) => {
+      const p = (o.action as { payload?: Record<string, unknown> }).payload ?? {}
+      return !gone(p.operativeId) && !gone(p.targetId)
+    })
+    if (keep.length > 0 && keep.length < parked.options.length) parked = { ...parked, options: keep }
+  }
+  s.pending = parked
 }
 
 /** Reduce an operative's APL by `delta` until the end of its next activation (Stun, R-10.22). */

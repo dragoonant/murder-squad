@@ -2,7 +2,8 @@
 // `state.kills` with the operative whose damage incapacitated it (`Operative.incapacitatedBy`, set in inflict, so
 // direct damage and mines name their source too), and the lifecycle hook `operative.removed` runs once for it. The
 // `operative.killed` ploy window still covers attack kills only; rules that need a decision after a kill of any cause
-// (Reward Earned, Mutation, Marked for Justice) read `killsSince` at the next reaction point.
+// (Reward Earned, Mutation, Marked for Justice) read `killsSince` at the next reaction point. M10 batch D shared: the
+// record is written at removal time, so a window raised in the same step already sees it.
 // `scoreAsIncapacitated` counts an operative for the kill op while it stays in the killzone (Frenzy); its later
 // removal is neither counted nor logged again.
 import { runHook } from './hooks'
@@ -52,12 +53,21 @@ export function killsSince(state: GameState, seq: number): KillRecord[] {
   return (state.kills ?? []).filter((k) => k.seq >= seq)
 }
 
+/** M10 batch D shared: removals already logged in the step that owns this state object (removal time, then step end). */
+const loggedInStep = new WeakMap<GameState, Set<string>>()
+
 /**
- * Called by the per-step removal pass (markers.updateControl) for each operative removed in the step. The cause is
- * `offboard` without incapacitating damage (a deadline out of the killzone), `direct` for rule damage, `attack`
- * otherwise.
+ * Called at removal time by every site that removes an operative (attack-common's removal queue, effects.removeNow,
+ * reserve.incapacitateOffboard), so the log and `operative.removed` are written before that step's ploy and reaction
+ * windows open (M10 batch D shared); the per-step removal pass (markers.updateControl) calls it again as a safety net
+ * and the second call does nothing. The cause is `offboard` without incapacitating damage (a deadline out of the
+ * killzone), `direct` for rule damage, `attack` otherwise.
  */
 export function noteRemoval(ctx: Ctx, op: Operative): void {
+  let logged = loggedInStep.get(ctx.state)
+  if (!logged) loggedInStep.set(ctx.state, (logged = new Set()))
+  if (logged.has(op.id)) return
+  logged.add(op.id)
   const last = lastKillOf(ctx.state, op.id)
   // already scored while still in the killzone (Frenzy): only mark it removed
   if (last && last.cause === 'scored' && !last.removedLater) {

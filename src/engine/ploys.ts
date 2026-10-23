@@ -5,7 +5,7 @@
 // through effects.ts.
 // first import on purpose: the leaf module is evaluated before anything that can cycle back into this file
 import { ployRules, registerPloyRule, type PloyOffer, type PloyRule } from './ploy-rules'
-import { continueRemovals, registerKillWindow, registerRemovalWindow, resumeAttack } from './attack-common'
+import { continueRemovals, registerKillWindow, registerRemovalPauseCheck, registerRemovalWindow, resumeAttack } from './attack-common'
 import { getCodeHook, type PloyOfferSeed, type PloyWindowInfo } from './code-hooks'
 import { effectList } from './conditions'
 import { evalCondition, hasKeyword, inScope } from './conditions'
@@ -79,7 +79,20 @@ function ployUsable(state: GameState, seat: Seat, ploy: RuntimePloy, window: str
   if (ploy.team && ploy.team !== state.players[seat].teamId) return false
   if (!windowsOf(ploy).includes(window)) return false
   if (ploy.limit !== 'unlimited' && usedThisTp(state, seat, ploy.id)) return false
+  if (window === 'firefight.actionDeclared' && beforeIsAfter(state, ploy, info)) return false
   return true
+}
+
+/**
+ * M10 batch D shared: a "before or after an action" ploy (both firefight.actionDeclared and firefight.actionEnded,
+ * Adjust Doctrine) is offered at a declaration only before the activation's first action: once an action is done,
+ * "before the next action" is the same moment as the firefight.actionEnded offer it already had. Never in a
+ * free-action frame (its activation's own windows cover it).
+ */
+function beforeIsAfter(state: GameState, ploy: RuntimePloy, info: PloyWindowInfo): boolean {
+  if (!windowsOf(ploy).includes('firefight.actionEnded')) return false
+  if (info.free === true) return true
+  return (state.firefight.activation?.performed.length ?? 0) > 0
 }
 
 /** Operatives of the seat that the ploy's scope covers. */
@@ -458,8 +471,25 @@ registerKillWindow((ctx, op) => {
   const killerId = s.removal?.killers?.[op.id]
   const killer = killerId ? s.operatives[killerId] : undefined
   if (!killer || killer.seat === op.seat || killer.status !== 'active') return false
-  const info: PloyWindowInfo = { window: 'operative.killed', subjectId: killer.id, removedId: op.id, removedPos: { ...op.pos } }
+  const info: PloyWindowInfo = { window: 'operative.killed', subjectId: killer.id, removedId: op.id, removedPos: { ...op.pos }, cause: killCause(op) }
   return openPloyWindow(ctx, 'operative.killed', info, [killer.seat], REMOVAL_RESUME)
+})
+
+/** M10 batch D shared: `attack` for an attack's dice, `direct` for rule damage (mines, Explosive Demise). */
+function killCause(op: Operative): 'attack' | 'direct' {
+  return op.incapacitatedBy?.source === 'direct' ? 'direct' : 'attack'
+}
+
+// M10 batch D shared: a removal outside an attack (effects.removeNow) waits for the end-of-step removal queue when a
+// ploy window there would offer something: the owner's operative.incapacitated, or (a rule kill, any activation) the
+// killer's operative.killed (Reward Earned).
+registerRemovalPauseCheck((state, op) => {
+  if (offersFor(state, op.seat, 'operative.incapacitated', { window: 'operative.incapacitated', subjectId: op.id }).length > 0) return true
+  const by = op.incapacitatedBy
+  const killer = by ? state.operatives[by.id] : undefined
+  if (!killer || killer.seat === op.seat || killer.status !== 'active') return false
+  const info: PloyWindowInfo = { window: 'operative.killed', subjectId: killer.id, removedId: op.id, removedPos: { ...op.pos }, cause: killCause(op) }
+  return offersFor(state, killer.seat, 'operative.killed', info).length > 0
 })
 
 // The attack sequences open windows through this registered opener (hooks.ts).

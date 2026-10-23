@@ -37,7 +37,13 @@
                 "minItems": 1,
                 "items": { "enum": ["otherMarkers", "accessPoints", "accessibleTerrain", "equipmentTerrain", "doors"] }
               },
-              "moreThan": { "$ref": "common.schema.json#/$defs/Inches" }
+              "moreThan": { "$ref": "common.schema.json#/$defs/Inches" },
+              "except": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string", "minLength": 1 },
+                "description": "Markers this clearance ignores: an equipment id, a marker kind or a marker id (Gory Totem and Bloody Cadaver)."
+              }
             }
           }
         }

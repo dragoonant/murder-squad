@@ -158,6 +158,7 @@ export function hideChoice(ctx: AiCtx): Action | null {
   const { pending, view } = ctx
   const allowed = Array.isArray(pending.context.setAsideIds) ? (pending.context.setAsideIds as string[]) : []
   if (allowed.length === 0) return null
+  if (isTempestus(view, ctx.seat)) return tempestusSetAside(ctx, allowed)
   const mine = Object.values(view.operatives).filter((o) => o.seat === ctx.seat)
   const hidden = mine.filter((o) => o.offboard !== undefined).length
   const cap = Math.floor(mine.length / 3)
@@ -171,6 +172,28 @@ export function hideChoice(ctx: AiCtx): Action | null {
   return validate(view, a) ? null : a
 }
 
+// ---------------------------------------------------------------------------
+// Tempestus Aquilons (Drop Insertion): the first batch stays on the table, every later batch goes above as a whole
+// ---------------------------------------------------------------------------
+
+const TA_TEAM = 'tempestus-aquilons'
+/** Who stays on the table for the first batch, best first: the slow Servo-Sentry and the Heavy sniper need no landing, the rest drop. */
+const TA_STAY = ['ta.marksman', 'ta.servo-sentry', 'ta.tempestor', 'ta.gunner', 'ta.gunfighter', 'ta.grenadier', 'ta.precursor', 'ta.trooper']
+
+const isTempestus = (view: GameState, seat: 'A' | 'B'): boolean => view.players[seat].teamId === TA_TEAM
+const taStayRank = (view: GameState, id: string): number => {
+  const i = TA_STAY.indexOf(view.operatives[id]?.datacardId ?? '')
+  return i < 0 ? TA_STAY.length : i
+}
+
+/** Set aside the operative that would rather drop in (the worst stay rank); the engine keeps the rest of the batch aside. */
+function tempestusSetAside(ctx: AiCtx, allowed: string[]): Action | null {
+  const { pending, view } = ctx
+  const pool = [...allowed].sort((a, b) => taStayRank(view, b) - taStayRank(view, a) || (a < b ? -1 : 1))
+  const a = act.setAside(pending, pool[0]!)
+  return validate(view, a) ? null : a
+}
+
 export function deploy(ctx: AiCtx): Action | null {
   const { pending, view } = ctx
   const aside = hideChoice(ctx)
@@ -178,10 +201,10 @@ export function deploy(ctx: AiCtx): Action | null {
   const c = pending.constraints
   // batch D prep (setAsideBatches): a batch being set aside as a whole offers only set-aside answers
   const asideOnly = Array.isArray(pending.context.setAsideIds) ? (pending.context.setAsideIds as string[]) : []
-  if (pending.context.wholeBatchAside === true && asideOnly.length > 0) return act.setAside(pending, asideOnly[0]!)
+  if (pending.context.wholeBatchAside === true && asideOnly.length > 0) return isTempestus(view, ctx.seat) ? tempestusSetAside(ctx, asideOnly) : act.setAside(pending, asideOnly[0]!)
   if (!c?.region || !c.operativeIds?.length) return null
   // guns first into the best cover; blades later nearer the front
-  const ids = [...c.operativeIds].sort((a, b) => rangedRating(view, view.operatives[b]!) - rangedRating(view, view.operatives[a]!))
+  const ids = [...c.operativeIds].sort((a, b) => (isTempestus(view, ctx.seat) ? taStayRank(view, a) - taStayRank(view, b) : 0) || rangedRating(view, view.operatives[b]!) - rangedRating(view, view.operatives[a]!))
   const op = view.operatives[ids[0]!]!
   const from = approachPoints(view, ctx.seat)
   const objs = view.markers.filter((m) => m.kind === 'objective')
