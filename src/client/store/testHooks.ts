@@ -1,6 +1,7 @@
 // window.__ms (docs/spec/50-client.md section 4): test hooks installed when ?test=1 (or ?gallery/?debug).
 // Read-only views of the store plus `dispatch`; the store remains the only step caller.
 import { legalActions, step, suggestPlacement, type Action } from '@/engine'
+import { act } from '@/engine/actions'
 import { audio } from '../audio/instance'
 import { RandomBot } from '../bot/randomBot'
 import { useFeedStore } from '../presentation/feedStore'
@@ -24,6 +25,8 @@ export interface MsHooks {
   settled(): boolean
   /** a legal deploy spot for the pending setup.deploy (engine suggestPlacement) with its page pixel */
   suggestSpot(skip?: number): { operativeId: string; x: number; y: number; z: number; px: number; py: number } | null
+  /** would the engine accept the pending move.path along these waypoints? A dry run: nothing is dispatched */
+  pathOk(waypoints: { x: number; z: number }[]): boolean
   project(x: number, y: number, z: number): { x: number; y: number } | null
   camera: typeof cameraApi
   session(): unknown
@@ -90,6 +93,11 @@ export function installTestHooks(): void {
       if (!spot) return null
       const px = cameraApi.current?.project(spot.x, spot.y, spot.z)
       return { ...spot, px: px?.x ?? -1, py: px?.y ?? -1 }
+    },
+    pathOk: (waypoints) => {
+      const { state, pending } = useGame.getState()
+      if (!state || !pending || pending.kind !== 'move.path') return false
+      return !step(state, act.path(pending, waypoints.map(({ x, z }) => ({ x, z })))).rejection
     },
     project: (x, y, z) => cameraApi.current?.project(x, y, z) ?? null,
     camera: cameraApi,
