@@ -1,25 +1,61 @@
 # Status
 
-Rewritten (not appended) as work lands. Orient from this file instead of exploring the codebase. Live: https://dragoonant.github.io/murder-squad/ (deploys from `main` on every green push). As of 2026-10-18 (M9 batch A and batch B done, cleanup pass): ten playable teams; typecheck clean, 1005 Vitest tests in 70 files, `validate:data` ok (71 files, 718 records), sim 40/40 real-team games with the normal AI (every pairing of the ten teams) with 0 rejections and 0 violations, bench normal 40-0 vs random across all ten teams (5.4 ms/decision, 1.7% zero-action activations), Playwright 19 spec files, 39 tests (all pass; under full parallel load on software GL a few long specs can time out and pass when rerun with fewer workers).
+Rewritten (not appended) as work lands. Orient from this file instead of exploring the codebase. Live: https://dragoonant.github.io/murder-squad/ (deploys from `main` on every green push). As of 2026-10-23 (M10 batches C and D done, follow-up pass on stopgap rules done): 24 playable teams.
+
+## Counts (measured 2026-10-23)
+- Vitest: 1750 tests pass across 94 files; typecheck clean; sim 40/40 real-team games with 0 rejections and 0 violations. Free-point handlers live in the leaf module `src/engine/point-handlers.ts` (it fixed a TDZ import cycle, like `ploy-rules.ts`).
+- `validate:data`: ok, 158 files, 1622 records. About 565 distinct `{"code": ...}` hook names appear in team data.
+- `docs/needs-rules-check.md`: 1164 RULING lines. By status word: Confirmed 278, Corrected 117, Unsourced 750, Fan-source 22 (a few lines carry two words).
+- Playwright: 21 spec files, 43 tests (last full run was at ten teams; not re-run for batches C and D in this docs pass).
+- Sim and AI bench were not re-run for this pass. Sim is now slow: about 4.5 minutes for 40 games, AI move planning is the hot path.
+- Figures: 122 v2 body GLBs, covering the first ten teams only.
 
 ## What exists
 | Area | State |
 |---|---|
-| Teams (M1, M9) | Ten playable teams in `src/data/teams/<team>/` (operatives, weapons, abilities, ploys, equipment): Angels of Death (9, 26, 18, 8, 4), Kommandos (11, 24, 16, 8, 4); batch A: Pathfinders (16, 17, 28, 10, 4), Hierotek Circle (9, 18, 21, 8, 4), Plague Marines (7, 17, 13, 8, 4), Wyrmblade (13, 32, 20, 8, 4); batch B: Legionaries (10, 29, 19, 10, 4), Hand of the Archon (9, 18, 20, 8, 4), Hunter Clade (14, 21, 16, 10, 4), Hearthkyn Salvagers (15, 23, 21, 10, 4). Universal equipment, Command Re-roll, Preliminary Ops Secure/Loot/Transmission with maps and the kill-grade table, Volkus layouts `volkus-01..03`. JSON Schemas, `tools/validate-data.ts`; about 220 code hooks named by the data, each with a firing scenario in `tests/engine/teams/<team>.hooks.ts`. Roster caps (`selection.caps`, `selection.loadoutCaps`), per-operative keyword picks (Marks of Chaos), oval bases by loadout. |
-| Engine (M2, M9) | `src/engine/`: frozen contracts (00 §11 change log, additive rows for M9), setup by thirds, strategy, firefight (orders, AP, counteract, Guard interrupts), movement (oval bases translate at a fixed facing and pay the arc to turn), shoot and fight sequences with every weapon rule, markers, Preliminary Ops scoring, ploys, equipment, abilities. M9 generic layer: team rule providers (`team-rules.ts`), tokens, reserve / set-aside (HIDING, Reanimation), free, delegated and forced actions, joint activations, lifecycle hooks, per-action `maxRepeats`, the shared windows (activation start and end, action declared for attacks, Pick Up Marker and mission actions, opponent declaration, before re-rolls, defence rolled for both sides, incapacitation, kill, opponent ploy) and query odds that include pure after-roll conversions (Grudge). `ploy-rules.ts` is a leaf: team ploy rules register at module load. One file per team in `src/engine/teams/`. Replay hashes verified in the sim. |
-| Rules made exact | Batch A polish: Slink Into Darkness, Curse of Rot, Poisonous Demise, A Plan Generations in the Making, A Worthy Cause, Quicksilver Strike, Medic!'s Dash, FLAIL + FLAIL; HIDING is open information. Batch B: per-TP use ledger reset each turning point, Scrapcode Overload on the Infiltrator's own Pick Up and mission actions (counteractions too), Grudge reads its own sequence's obscured flag (odds agree mid-Shoot), forced moves exempt from the MOVE invariant, `modifyStat move`. The remaining approximations are in "Known gaps". |
-| AI (M4, M9) | `src/ai/`: random/easy/normal; threat map, activation planner, grid nav, shoot/fight scoring, ploy heuristics, setup (HIDING picks), team action and choice handlers for all ten teams, FLY set-ups, Imperatives, oval facing at the end of a move (toward the nearest enemy when the arc fits); Web Worker host with 3 s timeout and random fallback. `tools/ai-bench.ts` tests every playable team in turn against a rotating opponent and reports per team (`--pair a,b` for one pairing). |
-| Client (M3, M7, M9) | Start, Team Builder (rules-legal loadouts, mark picks, all ten teams), Briefing, Battle (terrain, markers, operatives with attachments and rigid cues, oval bases with a Turn control, Fly button, HUD, activation bar, dedicated prompts with engine odds, dice tray, event feed, keyword tooltips on every game term, token chips, HIDING tray showing both seats), End screen, `?gallery` (bodies and per-team attachment pages), `?scenario=` fixtures, phone layout (a tap on a keyword inside a button presses the button). Per-team presentation (weapon flavour, VFX, sounds, glossary, default rosters) in `src/client/teams/<team>.ts`. |
-| Figures (M5, M9, v2) | 122 super-deformed body GLBs for all ten teams, regenerated in dynamic poses with the default weapons fused into the mesh (`docs/spec/30-figures.md` section 7; 105 archetypes plus 17 pose variants picked per operative id), measured sockets (back, belt, shoulders, head) in `public/assets/models/manifest.json`; the 73 v1 attachment GLBs remain for equipment; 8 terrain GLBs, 6 floor mats. Concepts and per-team contact sheets in `art/unit-concepts/v2/`. Skeletal animation (M8) was piloted and dropped. |
-| Sightlines and effects | Movement range overlay while laying a path (reach of the next step and inches left, updated per waypoint); move preview sight lines with expected damage and kill odds, threat view (T), measure/LoS tool (M); pooled per-family weapon VFX, `vfx.html` gallery, `?fx=low`. |
-| Audio (M6, M9) | About 115 mp3s (generated SFX, narrator lines, music, reused Mallet sounds) via the local Audio Studio; new-team events routed through faction tables; `AudioManager`, `eventSounds.ts`, music director, settings. **Not verified by ear.** |
-| Repo hygiene | `.gitattributes` keeps text LF (`* text=auto eol=lf`), `.bat` CRLF, workflow scripts LF; the index was renormalised once. |
-| Docs | `docs/spec/00..60`, `12-rules-test-checklist`, `13-teams` (sections 3 to 10: batch A and B), `14-golden-examples`, `docs/knowledge-base/*`, `docs/needs-rules-check.md` (428 RULING lines: 60 Confirmed, 39 Corrected, 306 Unsourced, 20 Fan-source), `docs/audio.md`, `art/*/PROMPTS.md`. |
+| Teams (M1, M9, M10) | 24 playable teams in `src/data/teams/<team>/` (operatives, weapons, abilities, ploys, equipment), one engine file each in `src/engine/teams/`. Each was verified line by line against the sources, then a follow-up pass made most stopgap rules exact through new engine windows. Spec: `docs/spec/13-teams.md`. Universal equipment, Command Re-roll, Preliminary Ops Secure/Loot/Transmission with maps and the kill-grade table, Volkus layouts `volkus-01..03`. JSON Schemas, `tools/validate-data.ts`; code hooks each have a firing scenario in `tests/engine/teams/<team>.hooks.ts`. Roster caps (`selection.caps`, `selection.loadoutCaps`), per-operative keyword picks (Marks of Chaos), oval bases by loadout. |
+| Engine (M2, M9, M10) | `src/engine/`: frozen contracts (00 section 11 change log, additive rows through M10 batch D shared), setup by thirds, strategy, firefight (orders, AP, counteract, Guard interrupts), movement (oval bases), shoot and fight sequences with every weapon rule, markers, Preliminary Ops scoring, ploys, equipment, abilities. Generic layer: team rule providers (`team-rules.ts`), tokens, pools, reserve / set-aside, free, delegated and forced actions, joint activations, lifecycle hooks, per-action `maxRepeats`, and the shared windows (activation start and end, action declared for attacks, Charge, Reposition and free-action frames, Pick Up Marker and mission actions, opponent declaration, before re-rolls, defence rolled for both sides, defender attack rolled, incapacitation, kill, opponent ploy). Free actions take the opt-in `checkPerformed`. Query odds include pure after-roll conversions. `ploy-rules.ts` is a leaf: team ploy rules register at module load. Replay hashes verified in the sim. |
+| AI (M4, M9, M10) | `src/ai/`: random/easy/normal; threat map, activation planner, grid nav, shoot/fight scoring, ploy heuristics, setup (HIDING picks), team action and choice handlers (`teamActions.ts`), FLY set-ups, Imperatives, oval facing; Web Worker host with 3 s timeout and random fallback. `tools/ai-bench.ts` rotates every playable team (`--pair a,b` for one pairing). |
+| Client (M3, M7, M9) | Start, Team Builder (rules-legal loadouts, mark picks), Briefing, Battle (terrain, markers, operatives with attachments, oval bases with a Turn control, Fly button, HUD, activation bar, prompts with engine odds, dice tray, event feed, keyword tooltips, token chips, HIDING tray), End screen, `?gallery`, `?scenario=` fixtures, phone layout. Shooting plays dice first, then one tracer per attack die (`heldVolley.ts`). Movement range overlay, sight lines with expected damage, threat view, measure tool. Per-team presentation in `src/client/teams/<team>.ts`. |
+| Figures (M5, M9, v2) | 122 super-deformed body GLBs in dynamic poses with weapons fused in (`docs/spec/30-figures.md` section 7), measured sockets in `public/assets/models/manifest.json`; v1 attachment GLBs remain for equipment; 8 terrain GLBs, 6 floor mats. Batches C and D have no figures: procedural stand-ins only. Their v2 concept prompt lists are ready in `art/unit-concepts/v2/prompts/*-prompts-gemini.json` (118 bodies batch C, 101 batch D); `tools/local-gen/v2_units.json` holds the batch C units. Skeletal animation (M8) was dropped. |
+| Audio (M6, M9) | About 115 mp3s via the local Audio Studio; new-team events routed through faction tables. **Not verified by ear.** |
+| Repo hygiene | `.gitattributes` keeps text LF, `.bat` CRLF. One early commit (`ae22229`) carries a machine path in history. |
+| Docs | `docs/spec/00..60`, `12-rules-test-checklist`, `13-teams`, `14-golden-examples`, `docs/knowledge-base/*`, `docs/needs-rules-check.md`, `docs/audio.md`, `art/*/PROMPTS.md`. |
+
+## Teams
+Counts are operatives, weapons, abilities, ploys, equipment. "GLB" means v2 body GLBs wired and checked in `?gallery`; "stand-in" means procedural figures.
+
+| Team | Counts | Figures |
+|---|---|---|
+| Angels of Death | 9, 26, 18, 8, 4 | GLB (10 bodies) |
+| Kommandos | 11, 24, 16, 8, 4 | GLB (13) |
+| Pathfinders | 16, 17, 28, 10, 4 | GLB (18) |
+| Hierotek Circle | 9, 18, 21, 8, 4 | GLB (18) |
+| Plague Marines | 7, 17, 13, 8, 4 | GLB (8) |
+| Wyrmblade | 13, 32, 20, 8, 4 | GLB (11) |
+| Legionaries | 10, 29, 19, 10, 4 | GLB (11) |
+| Hand of the Archon | 9, 18, 20, 8, 4 | GLB (10) |
+| Hunter Clade | 14, 21, 16, 10, 4 | GLB (10) |
+| Hearthkyn Salvagers | 15, 23, 21, 10, 4 | GLB (13) |
+| Kasrkin | 8, 21, 18, 9, 4 | stand-in (16 prompts ready) |
+| Novitiates | 12, 20, 24, 8, 4 | stand-in (16) |
+| Phobos Strike Team | 13, 10, 19, 9, 4 | stand-in (17) |
+| Corsair Voidscarred | 11, 20, 19, 10, 4 | stand-in (15) |
+| Warpcoven | 10, 20, 27, 8, 4 | stand-in (21) |
+| Farstalker Kinband | 11, 19, 20, 9, 4 | stand-in (15) |
+| Imperial Navy Breachers | 13, 20, 26, 8, 4 | stand-in (18) |
+| Blooded | 13, 29, 26, 10, 4 | stand-in (21) |
+| Fellgor Ravagers | 11, 16, 25, 9, 4 | stand-in (15) |
+| Chaos Cult | 7, 11, 22, 11, 4 | stand-in (12) |
+| Goremongers | 7, 15, 22, 8, 4 | stand-in (9) |
+| Scout Squad | 6, 14, 11, 10, 4 | stand-in (14) |
+| Tempestus Aquilons | 8, 24, 16, 10, 4 | stand-in (15) |
+| Exaction Squad | 12, 21, 24, 11, 4 | stand-in (15) |
 
 ## Known gaps
 - Approved Ops tac ops and the other crit ops: card text unsourced; Preliminary Ops only.
-- Engine rulings that stay approximate: direct damage (mines, Poison, FLAIL) removes at once, so before-removal ploys there are auto-played or not offered; lifecycle-hook choices (Reanimation order, Medic! acceptance, Weavefield Crest, Secure Salvage) are picked by the team code; no `weapon.choice` for Rending/Punishing/Severe; the Utility Grenade marker uses the Smoke Grenade spots; Beam counts the crits a trial retention keeps when the attack dice are final; Climbing Rigs shorten every climb of one move.
-- AI does not score tac ops, grenades or most unique actions; it does not face an oval base at set-up beyond the engine default; zero-action activations sit near the 2% gate.
-- The v2 bodies (all ten teams) are not yet reviewed by the owner beyond the contact sheets and gallery screenshots sent during the run.
-- No skeletal animation yet (M8). Audio unverified by ear. The ten teams are not play-verified by the owner.
-- One early commit (`ae22229`) carries a machine path in history.
+- Rules that wait on a pausable damage pipeline (see HANDOFF next steps): Medic! inside attacks, Sadistic Competition, Weavefield Crest, Flay timing, Chaos Cult Mutation note, Long Arm / Torrent shell, Phobos Detonate order, Farstalker Quick Draw. Also approximate: direct damage (mines, Poison, FLAIL) removes at once, so before-removal ploys there are auto-played or not offered; no `weapon.choice` for Rending/Punishing/Severe; the Utility Grenade marker uses the Smoke Grenade spots; Climbing Rigs shorten every climb of one move.
+- AI does not score tac ops, grenades or most unique actions; sim is slow (about 4.5 minutes for 40 games).
+- Batch C and D teams have no figures. The v2 bodies of the first ten teams are not reviewed by the owner beyond contact sheets and gallery screenshots.
+- No skeletal animation (M8, dropped). Audio unverified by ear. No team is play-verified by the owner.
+- The art run for batches C and D is blocked on two owner actions: Claude in Chrome connected with Gemini signed in, and the Alteisen GPU machine powered on (it was unreachable; its C: drive is nearly full, TEMP now on E:).

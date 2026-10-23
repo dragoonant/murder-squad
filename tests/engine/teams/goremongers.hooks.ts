@@ -213,7 +213,7 @@ export const scenarios: Record<string, () => void> = {
   gmSurge() {
     const s = open()
     const a = asp(s)
-    const t = take(useOffer(activateStop(place(s, a, 0, 0), a), 'gm.x.surge'), 'reposition').state
+    const t = useOffer(take(toAction(activateStop(place(s, a, 0, 0), a)), 'reposition').state, 'gm.x.surge:reposition')
     if (t.pending?.kind !== 'move.path') throw new Error('no move decision')
   },
   gmRage() {
@@ -224,7 +224,7 @@ export const scenarios: Record<string, () => void> = {
     const s = open()
     const a = asp(s)
     const boy = B(s, 'boy')
-    let t = take(toAction(activateStop(place(place(s, a, 0, 0), boy, 4, 0), a)), 'charge').state
+    let t = toAction(take(toAction(activateStop(place(place(s, a, 0, 0), boy, 4, 0), a)), 'charge').state)
     t = expectOk(step(t, act.path(t.pending!, [{ x: 2.2, z: 0 }]))).state
     take(t, `gm.x.rake:${boy}`, dice(4))
   },
@@ -327,7 +327,7 @@ export const scenarios: Record<string, () => void> = {
       x.players.A.cp = 1
       x.operatives[boy]!.wounds = x.operatives[boy]!.maxWounds = 40
     })
-    let c = take(toAction(activateStop(far, a)), 'charge').state
+    let c = toAction(take(toAction(activateStop(far, a)), 'charge').state)
     c = toAction(expectOk(step(c, act.path(c.pending!, [{ x: 2.2, z: 0 }]))).state)
     fightWith(c, boy, dice(3, 3, 2, 2), takePloy('gm.p.unbridled-aggression'))
   },

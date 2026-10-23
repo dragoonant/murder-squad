@@ -152,6 +152,9 @@ export function contagionApplies(state: GameState, op: Operative): boolean {
 
 registerTeamRules({
   id: TEAM_ID,
+  // Poisonous Demise (T-PM.26): a Plague Marine incapacitated outside an attack (Poison, FLAIL, a mine, other rule
+  // damage) waits for the before-removal queue whenever the ploy could be used, so its owner is asked there
+  pausableRemoval: (state, op) => isPm(state, op) && !!demiseVictims(state, op),
   maxRepeats(state, op, actionId, performed) {
     if (!isPm(state, op)) return null
     const count = (a: string) => performed.filter((p) => p === a).length
@@ -514,7 +517,7 @@ function demiseEffect(ctx: Ctx, pm: Operative): void {
   }
 }
 
-/** Played outside a ploy window, and paid here: direct damage, or a removal while another ploy timing is open. */
+/** Played outside a ploy window, and paid here: a removal queue that waits while another ploy timing is open. */
 function playDemise(ctx: Ctx, pm: Operative): void {
   const state = ctx.state
   const ploy = state.data.ploys?.[ID.demise]
@@ -570,8 +573,9 @@ registerHook(
       })
       return null
     }
-    // direct damage removes at once and cannot wait for an answer: the ploy is played for its owner (RULING)
-    playDemise(ctx, pm)
+    // a queue whose decision slot is already taken (rare): the ploy is played for its owner. Outside a queue nothing
+    // reaches here with the ploy usable: such removals wait for a queue (pausableRemoval)
+    if (state.removal) playDemise(ctx, pm)
     return null
   },
   'pm.operative.incapacitated',

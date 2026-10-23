@@ -31,11 +31,12 @@ import { A, B, bTurn, dice, engaged, movePath, open, STD, STOP_PLOY, strikes, ta
 const data = loadBundle()
 
 /** Pass the opponent's ploy windows until a decision for seat A (or a non-ploy decision) is pending. */
-function untilMine(s: GameState): GameState {
+function untilMine(s: GameState, stop = STOP_PLOY): GameState {
   let t = s
-  for (let i = 0; i < 10 && t.pending?.kind === 'ploy.firefight' && t.pending.seat === 'B'; i++) t = play(passIt(t, dice()).state, dice(), {}, STOP_PLOY).state
+  for (let i = 0; i < 10 && t.pending?.kind === 'ploy.firefight' && t.pending.seat === 'B'; i++) t = play(passIt(t, dice()).state, dice(), {}, stop).state
   return t
 }
+const STOP_REACT: typeof STOP_PLOY = [...STOP_PLOY, 'ability.choice']
 const cards = realBundle.datacards
 
 describe('TEAM-WC Warpcoven', () => {
@@ -571,17 +572,19 @@ describe('TEAM-WC Warpcoven', () => {
     // ---- Savage Brutality: a free Fight after the first Fight of its own activation; no third, nothing when counteracting
     const duel = engaged(s, champ, boy)
     const fought = take(take(activateOp(duel, champ), 'fight').state, boy, dice()).state
-    const afterFight = untilMine(play(fought, dice(), strikes, STOP_PLOY).state)
-    expect(afterFight.pending!.kind).toBe('ploy.firefight')
-    expect(optionIds(afterFight)).toContain('wc.a.savage-brutality')
-    const second = take(afterFight, 'wc.a.savage-brutality').state
+    const afterFight = untilMine(play(fought, dice(), strikes, STOP_REACT).state, STOP_REACT)
+    // T-WC.16 exact: the Champion's own seat reacts at once (ownReactions), before the opponent's reactions
+    expect(afterFight.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { hook: 'reaction', actorId: champ } })
+    expect(afterFight.pending!.options!.map((o) => o.data?.hook)).toEqual(['savageBrutality'])
+    const second = take(afterFight, 'react:0').state
     expect(second.pending!.kind).toBe('fight.target')
     const secondDone = untilMine(play(take(second, boy, dice()).state, dice(), strikes, STOP_PLOY).state)
     // the free Fight leaves nothing else to do and no third Fight is offered: the activation is over
     expect(secondDone.pending!.kind).toBe('firefight.activate')
     expect(secondDone.operatives[champ]!.ready).toBe(false)
     const cc = take(toCounteract(engaged(s, champ, boy)), `counteract:${champ}`).state
-    expect(offersFor(cc, 'A', 'firefight.actionEnded', { window: 'firefight.actionEnded', subjectId: champ, counteracting: true, action: 'fight' }).some((o) => o.id === 'wc.a.savage-brutality')).toBe(false)
+    const ccFought = untilMine(play(take(take(cc, 'fight').state, boy, dice()).state, dice(), strikes, STOP_REACT).state, STOP_REACT)
+    expect(ccFought.pending?.kind === 'ability.choice' && ccFought.pending.context.hook === 'reaction' && ccFought.pending.seat === 'A').toBe(false)
     // ---- Brayhorn: 0 AP, +1" Move for friendly Tzaangors until the next Ready step; never a counteraction
     const hg = activateOp(place(s, horn, 0, 0), horn)
     expect(hg.pending!.options!.find((o) => o.id === 'ability:wc.a.brayhorn')!.data?.cost).toBe(0)
@@ -839,6 +842,29 @@ describe('TEAM-WC Warpcoven', () => {
     const cs = take(toCounteract(scrolled), `counteract:${sd}`).state
     const echo = take(cs, 'wc.e.sorcerous-scrolls:ECHOES FROM THE WARP').state
     expect(optionIds(echo)).toEqual(expect.arrayContaining(['wc.a.boon-echoes-from-the-warp:keep']))
+  })
+
+  it("TEAM-WC-033 Fate Itself is My Weapon on the opponent's Shoot: the defender replaces a fresh attack die before any attack re-roll (shoot.defenderAttackRolled)", () => {
+    const s0 = open()
+    const d = A(s0, 'sorcerer-of-destiny')
+    const champ = A(s0, 'tzaangor-champion')
+    const boy = B(s0, 'boy')
+    const held = edit(place(place(s0, d, 0, 0), boy, 5, 0), (x) => {
+      x.effects.push({ id: 'e71', seat: 'A', kind: 'ployFlag', expires: 'turningPoint', source: 'wc.fate', data: { dice: [1, 2], sum: 3, spent: [] } })
+    })
+    const shot = take(take(take(activateOp(bTurn(held, champ), boy), 'shoot').state, 'kom.w.slugga').state, d, dice(6, 6, 6, 6)).state
+    // the shooter's own window first (passed), then the Warpcoven defender on the fresh roll
+    let w = shot
+    for (let i = 0; i < 6 && !(w.pending?.kind === 'ploy.firefight' && w.pending.window === 'shoot.defenderAttackRolled'); i++) w = play(passIt(w, dice()).state, dice(), {}, STOP_PLOY).state
+    expect(w.pending).toMatchObject({ kind: 'ploy.firefight', window: 'shoot.defenderAttackRolled', seat: 'A' })
+    expect(w.attack!.seq!.atk.dice.every((x) => !x.rerolled)).toBe(true)
+    expect(optionIds(w)).toEqual(expect.arrayContaining(['wc.a.fate-reserve:0:a:6', 'wc.a.fate-reserve:1:a:6']))
+    const used = take(w, 'wc.a.fate-reserve:0:a:6').state
+    const die = used.attack!.seq!.atk.dice.find((x) => x.tag === 'wc.fate')!
+    expect(die).toMatchObject({ value: 1, kind: 'fail', rerolled: true })
+    expect(used.attack!.seq!.atk.dice.filter((x) => x.value === 6)).toHaveLength(used.attack!.seq!.atk.dice.length - 1)
+    // 1 + 2 < 9: the pair is spent
+    expect(used.effects.find((e) => e.source === 'wc.fate')!.data!.dice).toEqual([])
   })
 
   it('TEAM-WC-016 TEAM-WC-023 TEAM-WC-028 TEAM-WC-030 verification fixes: Flux on the Tempyrion itself, Flux before a Capricious Dash, Relic Hunters never in a counteraction, Savage Herd sight from the Sorcerer', () => {

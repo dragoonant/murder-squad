@@ -16,6 +16,7 @@ import { ScriptedRng } from '@/engine/rng'
 import { shootableWeapons } from '@/engine/shoot'
 import { effectiveApl, effectiveMove } from '@/engine/state'
 import { BRUTAL, DRUG, MARK, OMEN, PAIN, POISON, TEAM_ID, drugOf, gainPain, painOf, riflesApply } from '@/engine/teams/hand-of-the-archon'
+import { readyChoiceDone } from '@/engine/strategy'
 import { providerActionForbidden } from '@/engine/team-rules'
 import { tokenCount } from '@/engine/tokens'
 import type { GameState } from '@/engine/types'
@@ -458,22 +459,43 @@ describe('TEAM-HA Hand of the Archon', () => {
     expect(hit(3, 'normal', [5])).toBe(3)
     expect(hit(2, 'crit', [6])).toBe(2)
     expect(hit(4, 'direct', [6])).toBe(4)
-    // Adrenalight: the Ready step gives the Archsybarite (fewest, ties to the leader) a Pain token, then the next holder
+    // Adrenalight: in the Ready step the owner may pick one holder to gain a Pain token; the offers list the fewest
+    // tokens first, ties to the Archsybarite (the AI takes the first)
     const adr = edit(choose('ha.a.adrenalight'), (st) => {
       for (const o of Object.values(st.operatives)) o.tokens = (o.tokens ?? []).filter((t) => t.kind !== PAIN)
       st.ledger.A.tp = []
     })
-    const ready = (st: GameState) => withCtx(st, (ctx) => void runHook('turningPoint.start', { seat: 'A', state: ctx.state, engine: ctx, data: { turningPoint: 2 } })).state
-    const one = ready(adr)
+    const ready = (st: GameState) => {
+      const at = edit(st, (x) => {
+        x.phase = 'strategy'
+        x.initiative = 'A'
+        x.ledger.A.tp = []
+        x.strategy = { step: 'ready', rolls: {}, gambit: { turn: 'A', passes: 0, used: { A: [], B: [] } }, readyChoices: ['A', 'B'] }
+      })
+      return withCtx(at, (ctx) => {
+        runHook('turningPoint.start', { seat: 'A', state: ctx.state, engine: ctx, data: { turningPoint: 2 } })
+        readyChoiceDone(ctx)
+      }).state
+    }
+    const asked = ready(adr)
+    expect(asked.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { readyStep: true } })
+    expect(asked.pending!.options![0]!.data?.operativeId).toBe(A(adr, 'archsybarite'))
+    const one = take(asked, 'ready:0').state
     const total = (st: GameState) => Object.values(st.operatives).filter((o) => o.seat === 'A').reduce((n, o) => n + painOf(st, o.id), 0)
     expect(painOf(one, A(adr, 'archsybarite'))).toBe(1)
     // Sadistic Competition also gives the Agent a token (once per turning point)
     expect(painOf(one, A(adr, 'agent'))).toBe(1)
     expect(total(one)).toBe(2)
-    // the next Ready step goes to a holder with the fewest tokens (lowest id)
-    const two = ready(edit(one, (st) => (st.ledger.A.tp = [])))
+    // one pick per Ready step: the Gambit step is next
+    expect(one.strategy.step).toBe('gambit')
+    // the next Ready step lists a holder with the fewest tokens (lowest id) first
+    const two = take(ready(one), 'ready:0').state
     expect(painOf(two, A(adr, 'crimson-duellist'))).toBe(1)
     expect(total(two)).toBe(3)
+    // any holder may be picked, and passing picks none
+    const other = asked.pending!.options![3]!
+    expect(painOf(take(asked, other.id).state, String(other.data?.operativeId))).toBe(1)
+    expect(total(passIt(asked).state)).toBe(0)
     // Hypex: an injured operative keeps its Move (its Hit still worsens); Painbringer's loses 2"
     const hurt = (st: GameState) => edit(st, (x) => (x.operatives[A(st, 'agent')]!.wounds = 3))
     const hy = hurt(hypex)

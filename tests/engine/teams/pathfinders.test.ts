@@ -14,13 +14,13 @@ import { effectiveMove } from '@/engine/state'
 import { ownEdge } from '@/engine/teams/pathfinders'
 import { providerControlApl, providerMoveSurcharge } from '@/engine/team-rules'
 import { tokenCount, tokensOnActivationStart, tokensOnTurningPointEnd } from '@/engine/tokens'
-import type { Action, GameState } from '@/engine/types'
+import type { Action, GameState, Marker, PendingDecision } from '@/engine/types'
 import { CODE_HOOKS, enumerateLoadouts, loadBundle, resolveLoadout, slotCost, validateRoster } from '../../../src/data'
 import { play } from '../../fixtures/attack'
 import { place } from '../../fixtures/helpers'
 import { feature, part, rect } from '../../fixtures/maps'
 import { activateOp, edit, hasOption, openReal, optionIds, passIt, realBundle, take, withCtx } from '../../fixtures/real'
-import { A, B, go, lightWall, ML, opsOf, pfOpen, scenarios, toGambit, withEffect, withTerrain, worthyStart } from './pathfinders.hooks'
+import { A, B, go, lightWall, ML, opsOf, pfOpen, ruleKill, scenarios, toGambit, withEffect, withTerrain, worthyStart } from './pathfinders.hooks'
 
 const data = loadBundle()
 const TEAM = data.teams['pathfinders']!
@@ -324,8 +324,13 @@ describe('pathfinders', () => {
     t = take(activateOp(t, boy), 'shoot').state
     t = take(t, 'kom.w.slugga').state
     t = take(t, v, new ScriptedRng([6, 6, 6, 6, 1, 1, 1])).state
-    const r = play(t, new ScriptedRng([6, 6, 6, 6, 1, 1, 1]), { 'dice.commandReroll': pass, 'dice.reroll': pass }, ['firefight.action', 'ability.choice', 'firefight.activate'])
-    t = r.state
+    const stops: PendingDecision['kind'][] = ['firefight.action', 'ability.choice', 'firefight.activate']
+    const rng = new ScriptedRng([6, 6, 6, 6, 1, 1, 1])
+    t = play(t, rng, { 'dice.commandReroll': pass, 'dice.reroll': pass }, stops).state
+    // the owner is asked before the removal, the operative still at 0 wounds
+    expect(t.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { hook: 'medic', operativeId: v, medicId: m } })
+    expect(t.operatives[v]).toMatchObject({ status: 'active', wounds: 0 })
+    t = play(take(t, 'save').state, rng, { 'dice.commandReroll': pass, 'dice.reroll': pass }, stops).state
     expect(t.operatives[v]!.status).toBe('active')
     expect(t.operatives[v]!.wounds).toBe(1)
     expect(t.operatives[v]!.aplMods).toBe(-1)
@@ -337,18 +342,15 @@ describe('pathfinders', () => {
     expect(t.pending!.constraints!.mustEndInControlRangeOfId).toBe(m)
     // once per turning point: a second fatal blow does not trigger it again
     const ti = A(s, 'pf.transpectral-interference')
-    const again = withCtx(place(edit(t, (st) => void (st.pending = null)), ti, 2.2, 2.6), (ctx) => inflict(ctx, { targetId: ti, attackerId: boy, weaponId: null, amount: 99, source: 'direct' }))
-    expect(again.state.operatives[ti]!.wounds).toBe(0)
-    // the same blow in a fresh turning point is saved
-    const fresh = withCtx(place(edit(t, (st) => {
-      st.pending = null
-      st.ledger.A.tp = []
-    }), ti, 2.2, 2.6), (ctx) => inflict(ctx, { targetId: ti, attackerId: boy, weaponId: null, amount: 99, source: 'direct' }))
-    expect(fresh.state.operatives[ti]!.wounds).toBe(1)
+    const again = ruleKill(place(t, ti, 2.2, 2.6), ti, boy)
+    expect(again.operatives[ti]!.status).toBe('removed')
+    // the same blow in a fresh turning point is offered, and taken
+    const fresh = ruleKill(place(edit(t, (st) => void (st.ledger.A.tp = [])), ti, 2.2, 2.6), ti, boy)
+    expect(fresh.pending).toMatchObject({ kind: 'ability.choice', context: { hook: 'medic', operativeId: ti } })
+    expect(take(fresh, 'save').state.operatives[ti]).toMatchObject({ status: 'active', wounds: 1 })
     // not when the medic or the victim is in an enemy control range
     const engaged = place(place(place(pfOpen(), v, 0, 0), m, 2.2, 0), boy, 2.9, 0)
-    const dead = withCtx(engaged, (ctx) => inflict(ctx, { targetId: v, attackerId: boy, weaponId: null, amount: 99, source: 'direct' }))
-    expect(dead.state.operatives[v]!.wounds).toBe(0)
+    expect(ruleKill(engaged, v, boy).operatives[v]!.status).toBe('removed')
     // Medikit heals 2D3 (never above starting wounds), not the operative Medic! saved this turning point
     const wounded = edit(place(place(pfOpen(), m, 0, 0), v, 1.5, 0), (st) => {
       st.operatives[v]!.wounds = 1
@@ -756,7 +758,11 @@ describe('pathfinders rules verification fixes', () => {
     s = take(s, 'kom.w.slugga').state
     const rng = new ScriptedRng([6, 6, 6, 6, 1, 1, 1, 1, 1, 1])
     s = take(s, v, rng).state
-    s = play(s, rng, { 'dice.commandReroll': pass, 'dice.reroll': pass }, ['ability.choice', 'firefight.action', 'firefight.activate', 'move.path']).state
+    const stops: PendingDecision['kind'][] = ['ability.choice', 'firefight.action', 'firefight.activate', 'move.path']
+    s = play(s, rng, { 'dice.commandReroll': pass, 'dice.reroll': pass }, stops).state
+    // the owner takes Medic! before the removal
+    expect(s.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { hook: 'medic', operativeId: v } })
+    s = play(take(s, 'save').state, rng, { 'dice.commandReroll': pass, 'dice.reroll': pass }, stops).state
     expect(s.operatives[v]).toMatchObject({ status: 'active', wounds: 1 })
     // the interrupt has finished; the Pathfinder player is offered the Dash as a reaction
     expect(s.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { reaction: true } })
@@ -780,9 +786,12 @@ describe('pathfinders rules verification fixes', () => {
     const s = activateOp(place(place(place(base, v, 0, 0), m, 2.2, 0), boy, 8, 0), v)
     expect(s.firefight.activation?.operativeId).toBe(v)
     // struck down in its own activation: saved, its activation can spend no more AP, the Dash waits for the action's end
-    const own = withCtx(s, (ctx) => inflict(ctx, { targetId: v, attackerId: boy, weaponId: null, amount: 99, source: 'direct' })).state
+    const own = take(ruleKill(s, v, boy), 'save').state
     expect(own.operatives[v]!.wounds).toBe(1)
     expect(own.firefight.activation!.endsAfterAction).toBe(true)
+    // the removal ran after the step: the activation's waiting action choice now offers only End
+    expect(own.pending).toMatchObject({ kind: 'firefight.action', seat: 'A' })
+    expect(optionIds(own)).toEqual(['end'])
     expect(own.effects.some((e) => e.kind === 'pf.medicDash' && e.operativeId === v)).toBe(true)
     // the Pathfinder player is the active one, so the Dash comes as a 0 CP offer in the action-ended window
     const info = { window: 'firefight.actionEnded', subjectId: v }
@@ -799,7 +808,7 @@ describe('pathfinders rules verification fixes', () => {
       st.firefight.stack = [st.firefight.activation]
       st.firefight.activation = { operativeId: boy, seat: 'B', counteract: false, stage: 'action', apSpent: 0, performed: [], declared: null, frame: { kind: 'interrupt', resume: 'test' } }
     })
-    const guard = withCtx(interrupted, (ctx) => inflict(ctx, { targetId: v, attackerId: boy, weaponId: null, amount: 99, source: 'direct' })).state
+    const guard = take(ruleKill(interrupted, v, boy), 'save').state
     expect(guard.operatives[v]!.wounds).toBe(1)
     expect(guard.firefight.stack![0]!.endsAfterAction).toBe(true)
     expect(guard.firefight.activation!.apSpent).toBe(0)
@@ -811,7 +820,7 @@ describe('pathfinders rules verification fixes', () => {
     const m = A(base, 'pf.medical-technician')
     const boy = B(base, 'kom.boy')
     const s = activateOp(place(place(place(base, v, 0, 0), m, 2.2, 0), boy, 8, 0), v)
-    const own = withCtx(s, (ctx) => inflict(ctx, { targetId: v, attackerId: boy, weaponId: null, amount: 99, source: 'direct' })).state
+    const own = take(ruleKill(s, v, boy), 'save').state
     expect(own.operatives[v]!.wounds).toBe(1)
     // the saved operative is mid-activation: nothing yet, a deferred change instead; the medic is not, so -1 now
     expect(own.operatives[v]!.aplMods).toBe(0)
@@ -833,6 +842,38 @@ describe('pathfinders rules verification fixes', () => {
     // and it ends with that activation
     u = clear(take(clear(u), 'end').state)
     expect(u.operatives[v]!.aplMods).toBe(0)
+  })
+
+  it("TEAM-PF-007 Medic! is the owner's choice before removal: declining lets it fall and spends the turning point's use; rule damage waits for the queue; a carried marker stays carried", () => {
+    const base = pfOpen()
+    const v = A(base, 'pf.shasla')
+    const m = A(base, 'pf.medical-technician')
+    const ti = A(base, 'pf.transpectral-interference')
+    const boy = B(base, 'kom.boy')
+    const s = place(place(place(base, v, 0, 0), m, 2.2, 0), boy, 8, 0)
+    // rule damage outside an attack: the operative waits at 0 wounds, the step's own decision parked
+    const asked = ruleKill(s, v, boy)
+    expect(asked.operatives[v]).toMatchObject({ status: 'active', wounds: 0 })
+    expect(asked.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', window: 'operative.incapacitated', context: { hook: 'medic', operativeId: v, medicId: m } })
+    expect(optionIds(asked)).toEqual(['save', 'none'])
+    // declined: removed, nothing applied, the parked decision is back
+    const fell = take(asked, 'none').state
+    expect(fell.operatives[v]!.status).toBe('removed')
+    expect(fell.pending?.id).toBe(s.pending?.id)
+    expect(fell.operatives[m]!.aplMods).toBe(0)
+    expect(fell.effects.some((e) => e.kind === 'pf.medicDash' || e.kind === 'pf.medicAsk')).toBe(false)
+    // "the first time" each turning point: the declined moment spent it, so the next casualty is not offered
+    const next = ruleKill(place(fell, ti, 2.2, 2.6), ti, boy)
+    expect(next.operatives[ti]!.status).toBe('removed')
+    // a carrier saved by Medic! keeps the marker the before-removal step dropped
+    const carrier = edit(s, (st) => {
+      st.markers.push({ id: 'pf-test-obj', kind: 'objective', pos: { x: 0, z: 0 }, owner: null, carriedBy: v, controller: null } as Marker)
+      st.operatives[v]!.flags.carrying = 'pf-test-obj'
+    })
+    const kept = take(ruleKill(carrier, v, boy), 'save').state
+    expect(kept.operatives[v]).toMatchObject({ status: 'active', wounds: 1 })
+    expect(kept.operatives[v]!.flags.carrying).toBe('pf-test-obj')
+    expect(kept.markers.find((x) => x.id === 'pf-test-obj')!.carriedBy).toBe(v)
   })
 
   it('TEAM-PF-017 SIGNAL: may be done in a counteraction (no such ban is printed), needs sight of the friend and stays within 6"', () => {

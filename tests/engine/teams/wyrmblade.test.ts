@@ -3,7 +3,8 @@
 import { describe, expect, it } from 'vitest'
 import { act } from '@/engine/actions'
 import { step, view, type GameState, type PendingDecision } from '@/engine'
-import { attackStats, effectiveRules, inflict, ruleSetFor, targetInfo, validTargets } from '@/engine/attack-common'
+import { attackStats, effectiveRules, inflict, ruleSetFor, runDeferredRemovals, targetInfo, validTargets } from '@/engine/attack-common'
+import { queueRemoval } from '@/engine/effects'
 import { chargeUnderConceal, maxRepeats } from '@/engine/abilities'
 import { stealthyLevel } from '@/engine/handlers'
 import { markerControl } from '@/engine/query'
@@ -408,6 +409,53 @@ describe('wyrmblade', () => {
     expect(g.pending).toMatchObject({ kind: 'firefight.action', seat: 'B' })
   })
 
+  it('TEAM-WYR-015 a Neophyte killed by a mine or rule damage waits for the before-removal queue: Overthrow the Oppressors, then A Plan Generations in the Making, are offered as after a Shoot', () => {
+    const base = inTp(wyr(), 2)
+    const icon = opOf(base, 'A', 'wyr.icon-bearer')
+    const w = idsOf(base, 'A', 'wyr.warrior')[0]!
+    const boy = opOf(base, 'B', 'kom.boy')
+    const objective = (st: GameState) => st.markers.find((k) => k.kind === 'objective')!
+    const pinned = edit(base, (st) => {
+      objective(st).pos = { x: -2, z: 0 }
+      st.operatives[w]!.wounds = 1
+    })
+    // the Kommando's activation is under way when rule damage (a mine, Poison and the like) takes the Neophyte down
+    const g = activateOp(bTurn(place(place(place(pinned, icon, -0.5, 3), w, -0.5, 0), boy, 5.5, 0)), boy)
+    const parked = g.pending!
+    const asked = withCtx(g, (ctx) => {
+      inflict(ctx, { targetId: w, attackerId: boy, weaponId: null, amount: 3, source: 'direct' })
+      queueRemoval(ctx, w)
+      expect(ctx.state.operatives[w]!.status).toBe('active')
+      runDeferredRemovals(ctx)
+    }).state
+    expect(asked.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', window: 'operative.incapacitated', context: { hook: 'planGenerations', operativeId: w } })
+    expect(asked.pending!.options!.map((o) => o.id)).toEqual(['overthrow-plan', 'overthrow-shoot', 'none'])
+    // let it go: the ploy at its printed cost in the incapacitation window; passed, it is removed and play goes on
+    const cp = asked.players.A.cp
+    const win = take(asked, 'none').state
+    expect(win.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'A', window: 'operative.incapacitated', context: { subjectId: w } })
+    expect(win.pending!.options!.find((o) => o.id === 'wyr.p.a-plan-generations-in-the-making')!.data).toMatchObject({ cost: 1 })
+    const fell = passIt(win).state
+    expect(fell.operatives[w]!.status).toBe('removed')
+    expect(fell.players.A.cp).toBe(cp)
+    expect(fell.pending?.id).toBe(parked.id)
+    // through Overthrow: the free mission action for 0 CP, then the removal, then the Kommando carries on
+    let p = take(asked, 'overthrow-plan').state
+    expect(p.pending).toMatchObject({ kind: 'firefight.action', seat: 'A', context: { operativeId: w } })
+    p = takeStarting(p, 'ability:core.a.secure')
+    expect(p.mission!.secured[objective(p).id]).toBe('A')
+    expect(p.players.A.cp).toBe(cp)
+    expect(p.operatives[w]!.status).toBe('removed')
+    expect(p.pending).toMatchObject({ kind: 'firefight.action', seat: 'B' })
+    // nothing to offer (no Icon Bearer in sight, no CP for the ploy): removed at once
+    const alone = edit(place(g, icon, 12, -9), (st) => (st.players.A.cp = 0))
+    const gone = withCtx(alone, (ctx) => {
+      inflict(ctx, { targetId: w, attackerId: boy, weaponId: null, amount: 3, source: 'direct' })
+      queueRemoval(ctx, w)
+    }).state
+    expect(gone.operatives[w]!.status).toBe('removed')
+  })
+
   it('TEAM-WYR-016 Divert and Disappear: a Cult Agent uses two of the three slots and its Fall Back costs it 1 APL', () => {
     const g0 = toGambit()
     const k = opOf(g0, 'A', 'wyr.kelermorph')
@@ -509,6 +557,20 @@ describe('wyrmblade', () => {
     expect(names(rulesOf(base, hg, 'wyr.w.mining-laser', 'shoot', k))).not.toContain('piercing')
     expect(stealthyLevel(base, base.operatives[k]!)).toBe(1)
     expect(stealthyLevel(base, base.operatives[w]!)).toBe(0)
+    // not cumulative with Vantage (T-WYR.28): the core's Stealthy step adds nothing once the improvement was taken
+    const coverSaves = (coverMode: string): number => {
+      const st = edit(base, (x) => {
+        x.attack = { kind: 'shoot', operativeId: b, seq: { targetId: k, improvedCover: true, coverMode } } as never
+      })
+      const dice = [
+        { value: null, kind: 'normal', tag: 'cover' },
+        { value: 2, kind: 'fail' },
+      ]
+      runHook('afterDefenceRoll', { seat: 'A', state: st, operativeId: k, data: { kind: 'shoot', dice } })
+      return dice.filter((d) => d.tag === 'cover').length
+    }
+    expect(coverSaves('retainTwo')).toBe(1)
+    expect(coverSaves('retain')).toBe(2)
   })
 
   it('TEAM-WYR-019 obscured: Hypersense, Soulsight and Spotlights remove it, One With The Shadows adds it', () => {

@@ -31,7 +31,7 @@ import { markerControl } from '../query'
 import type { Ctx } from '../registry'
 import { usableRangedWeapons } from '../shoot'
 import { activeOps, effectiveMove, enemiesOf, isInjured } from '../state'
-import { resumeGambit } from '../strategy'
+import { readyChoiceDone } from '../strategy'
 import { registerTeamRules, type ReactionOffer } from '../team-rules'
 import { distToPolygon } from '../geometry'
 import { terrainOf } from '../terrain'
@@ -311,6 +311,14 @@ registerTeamRules({
     return out
   },
 
+  // FARSTALKER (T-FK.27): the Ready-step order change, once per turning point while an operative can be flipped
+  readyStepChoices(state, seat) {
+    if (usedThisTp(state, seat, READY_TP)) return []
+    const first = fkOps(state, seat).find((o) => !inEnemyCr(state, o))
+    if (!first) return []
+    return [{ hook: 'fkReadyStep', operativeId: first.id, option: 'start', labelKey: `ability.${A('farstalker')}`, data: { name: 'FARSTALKER: change the orders of up to three operatives' } }]
+  },
+
   // Bad-tempered force (T-FK.15) and Savage Assault's same-enemy Fight (T-FK.13)
   fightTargets(state, attacker, foes) {
     const only = opEffect(state, SA_ONLY, attacker.id)
@@ -328,9 +336,12 @@ registerTeamRules({
     const actor = state.operatives[info.actorId]
     if (!live(actor) || actor.seat === seat) return []
     const out: ReactionOffer[] = []
+    // a Hound that already answered this Charge moved after it ended: it is not the friend that triggers another Hound
+    // (a Hound can only answer from outside every enemy control range, so it never was that friend)
+    const reacted = state.firefight.activation?.reacted?.ids ?? []
     for (const h of fkOps(state, seat)) {
       if (!hasAbility(state, h, TEMPER)) continue
-      const friendNear = fkOps(state, seat).some((f) => f.id !== h.id && within(h, f, 3) && inControlRange(state, bodyOf(f), bodyOf(actor)))
+      const friendNear = fkOps(state, seat).some((f) => f.id !== h.id && !reacted.includes(f.id) && within(h, f, 3) && inControlRange(state, bodyOf(f), bodyOf(actor)))
       const o = friendNear ? houndOffer(state, h, actor) : null
       if (o) out.push(o)
     }
@@ -406,65 +417,36 @@ function readyOptions(state: GameState, seat: Seat, picked: string[]) {
   ]
 }
 
-const READY = P('farstalker-orders')
-const OPP_PASSED = (gambitsUsed: number) => `fk.oppPassed:${gambitsUsed}`
+/** The Ready-step order change was offered and taken this turning point (T-FK.27). */
+const READY_TP = 'fk.readyStep'
 
-/** Gambits used so far this step, the Ready-step record left out (it is not a gambit). */
-function gambitsUsed(state: GameState): number {
-  return (state.strategy.gambit.order ?? []).filter((g) => g.gambitId !== READY).length
+/** Ask for the next order flip of the Ready step (or Done). */
+function raiseReadyPick(ctx: Ctx, seat: Seat, chooserId: string, picked: string[]): void {
+  ctx.raise({
+    kind: 'ability.choice',
+    seat,
+    window: 'turningPoint.start',
+    context: { hook: 'fkReadyStep', operativeId: chooserId, picked },
+    options: readyOptions(ctx.state, seat, picked),
+  })
 }
 
-/**
- * The Ready-step order change is not a gambit (T-FK.27): the seat keeps its gambit turn, and an opponent's pass just
- * before it still counts towards the two passes in succession that end the step (R-2.3).
- */
-function endReadyStep(ctx: Ctx, seat: Seat): void {
-  const g = ctx.state.strategy.gambit
-  g.turn = seat
-  g.passes = usedThisTp(ctx.state, seat, OPP_PASSED(gambitsUsed(ctx.state))) ? 1 : 0
-  resumeGambit(ctx)
-}
-
-// Remember an opponent's pass for endReadyStep (the gambit handler resets the pass count before the record applies)
-registerHook(
-  'gambit.passed',
-  (c) => {
-    const s = c.state
-    if (!s || !c.seat) return null
-    const fkSeat: Seat = c.seat === 'A' ? 'B' : 'A'
-    if (s.players[fkSeat].teamId === TEAM_ID) markUsedTp(s, fkSeat, OPP_PASSED(gambitsUsed(s)))
-    return null
-  },
-  'fk.gambit.passed',
-)
-
+// FARSTALKER (T-FK.27): in the Ready step, through the shared Ready-step choice (readyStepChoices): one offer starts the
+// flips; the loop of up to three operatives ends with Done, then strategy.readyChoiceDone (the offer is gone for the TP)
 registerCodeHook({
   name: 'fkReadyStep',
-  ploy: {
-    offers(state, seat): PloyOfferSeed[] {
-      // the first gambit turn of the seat only: once it has used any gambit this step the chance is gone
-      if ((state.strategy.gambit.order ?? []).some((g) => g.seat === seat)) return []
-      return fkOps(state, seat).some((o) => !inEnemyCr(state, o)) ? [{}] : []
-    },
-    apply(ctx, seat) {
-      const s = ctx.state
-      const first = fkOps(s, seat)[0]
-      if (!first) {
-        endReadyStep(ctx, seat)
-        return
-      }
-      ctx.raise({
-        kind: 'ability.choice',
-        seat,
-        window: 'strategy.gambit',
-        context: { hook: 'fkReadyStep', operativeId: first.id, picked: [] },
-        options: readyOptions(s, seat, []),
-      })
-    },
-  },
   choice(ctx, op, option, context) {
     const s = ctx.state
     const seat = op.seat
+    if (context.readyStep === true) {
+      markUsedTp(s, seat, READY_TP)
+      if (readyOptions(s, seat, []).length <= 1) {
+        readyChoiceDone(ctx)
+        return
+      }
+      raiseReadyPick(ctx, seat, op.id, [])
+      return
+    }
     const picked = [...((context.picked as string[] | undefined) ?? [])]
     if (option !== 'done') {
       const target = s.operatives[option]
@@ -474,18 +456,11 @@ registerCodeHook({
         ctx.emit({ type: 'AbilityUsed', operativeId: target.id, abilityId: A('farstalker'), detail: target.order }, seat)
       }
     }
-    const more = readyOptions(s, seat, picked)
-    if (option === 'done' || picked.length >= 3 || more.length <= 1) {
-      endReadyStep(ctx, seat)
+    if (option === 'done' || picked.length >= 3 || readyOptions(s, seat, picked).length <= 1) {
+      readyChoiceDone(ctx)
       return
     }
-    ctx.raise({
-      kind: 'ability.choice',
-      seat,
-      window: 'strategy.gambit',
-      context: { hook: 'fkReadyStep', operativeId: op.id, picked },
-      options: more,
-    })
+    raiseReadyPick(ctx, seat, op.id, picked)
   },
 })
 
@@ -811,7 +786,10 @@ registerFrameResume('fk.stealth2', (ctx, outcome, data) => {
 // Bad-tempered free Charge (reaction) and Quick Draw's interrupt
 // ---------------------------------------------------------------------------
 
-/** The Hound's free Charge offer against `actor`, if the Hound is free of enemy control ranges and can reach it. */
+/**
+ * The Hound's free Charge offer against `actor`, if the Hound is free of enemy control ranges and can reach it. Marked
+ * `repeat`: once one Hound's free Charge is over, every other Hound the Charge triggered is offered again (T-FK.16).
+ */
 function houndOffer(state: GameState, h: Operative, actor: Operative): ReactionOffer | null {
   if (!live(h) || !live(actor) || inEnemyCr(state, h) || !canChargeInto(state, h, actor, effectiveMove(h, state) + 2)) return null
   return {
@@ -820,50 +798,26 @@ function houndOffer(state: GameState, h: Operative, actor: Operative): ReactionO
     option: actor.id,
     labelKey: `ability.${TEMPER}`,
     data: { name: `Bad-tempered: ${h.name} charges ${actor.name}`, targetId: actor.id },
+    repeat: true,
   }
-}
-
-/**
- * Each Hound the enemy's Charge triggered may answer it (T-FK.16): once one has charged (or could not), the others still
- * eligible are offered again as a reaction; with none left the reaction point closes.
- */
-function nextHound(ctx: Ctx, actorId: string, hounds: string[], done: string[]): void {
-  const s = ctx.state
-  const actor = s.operatives[actorId]
-  const offers = actor ? hounds.filter((id) => !done.includes(id)).map((id) => houndOffer(s, s.operatives[id]!, actor)).filter((o): o is ReactionOffer => !!o) : []
-  if (offers.length === 0) {
-    reactionDone(ctx)
-    return
-  }
-  ctx.raise({
-    kind: 'ability.choice',
-    seat: s.operatives[offers[0]!.operativeId]!.seat,
-    window: 'firefight.actionEnded',
-    context: { hook: 'reaction', reaction: true, actorId, action: 'charge', offers, fkHounds: hounds, fkDone: done },
-    options: offers.map((r, i) => ({ id: `react:${i}`, labelKey: r.labelKey, type: 'ability.choice' as const, payload: { option: String(i) }, data: { hook: r.hook, operativeId: r.operativeId, ...(r.data ?? {}) } })),
-    canPass: true,
-  })
 }
 
 registerCodeHook({
   name: 'fkBadTempered',
-  choice(ctx, op, option, context) {
-    const offers = (context.offers as ReactionOffer[] | undefined) ?? []
-    const hounds = (context.fkHounds as string[] | undefined) ?? offers.filter((r) => r.hook === 'fkBadTempered').map((r) => r.operativeId)
-    const done = [...((context.fkDone as string[] | undefined) ?? []), op.id]
+  choice(ctx, op, option) {
     const foe = ctx.state.operatives[option]
     if (!live(foe) || !live(op)) {
-      nextHound(ctx, option, hounds, done)
+      reactionDone(ctx)
       return
     }
     const previous = op.order
     // RULING: a Conceal Hound switches to Engage to take the Charge
     if (op.order === 'conceal') setOrder(ctx, op, 'engage')
     ctx.emit({ type: 'AbilityUsed', operativeId: op.id, abilityId: TEMPER, detail: foe.id }, op.seat)
-    const started = startFreeAction(ctx, { operativeId: op.id, action: 'charge', endWithinCrOf: foe.id, resume: 'fk.badTempered', data: { opId: op.id, previous, actorId: foe.id, hounds, done } })
+    const started = startFreeAction(ctx, { operativeId: op.id, action: 'charge', endWithinCrOf: foe.id, resume: 'fk.badTempered', data: { opId: op.id, previous } })
     if (!started) {
       if (op.order !== previous) setOrder(ctx, op, previous)
-      nextHound(ctx, foe.id, hounds, done)
+      reactionDone(ctx)
     }
   },
 })
@@ -873,7 +827,8 @@ registerFrameResume('fk.badTempered', (ctx, outcome, data) => {
     const op = ctx.state.operatives[String(data.opId)]
     if (op && op.order !== data.previous) setOrder(ctx, op, data.previous as 'engage' | 'conceal')
   }
-  nextHound(ctx, String(data.actorId ?? ''), (data.hounds as string[] | undefined) ?? [], (data.done as string[] | undefined) ?? [])
+  // the shared reaction round offers the other Hounds again (ReactionOffer.repeat)
+  reactionDone(ctx)
 })
 
 registerFrameResume('fk.quickDraw', (ctx, outcome, data) => {
@@ -1095,8 +1050,10 @@ registerHook(
     const s = c.state
     const op = s && c.operativeId ? s.operatives[c.operativeId] : undefined
     if (!s || !op || !opEffect(s, LONG_SIGHT, op.id)) return null
+    // the weapon the status is worked out for (also the odds before a weapon is picked), else the attack's own
     const a = s.attack
-    if (!a || a.operativeId !== op.id || !a.weaponId || s.data.weapons[a.weaponId]?.profileGroup !== RIFLE_GROUP) return null
+    const weaponId = c.weaponId ?? (a && a.operativeId === op.id ? a.weaponId : null)
+    if (!weaponId || s.data.weapons[weaponId]?.profileGroup !== RIFLE_GROUP) return null
     const data = c.data as { obscured: boolean }
     if (data.obscured) markFired('fkLongSight')
     data.obscured = false

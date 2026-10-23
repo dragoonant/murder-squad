@@ -217,10 +217,22 @@ describe('TEAM-HC Hunter Clade', () => {
     expect(providerStealthy(s0, s0.operatives[rust]!)).toBe(1)
     expect(providerStealthy(s0, s0.operatives[princeps]!)).toBe(1)
     expect(providerStealthy(s0, s0.operatives[A(s0, 'skitarii-ranger-alpha')]!)).toBe(0)
-    const improved = edit(s0, (st) => {
-      st.attack = { kind: 'shoot', operativeId: boy, seq: { targetId: rust, improvedCover: true } } as never
-    })
-    expect(providerStealthy(improved, improved.operatives[rust]!)).toBe(0)
+    // the core's Stealthy step: no extra cover save once the Vantage improvement was taken (two cover saves, or one
+    // as a crit); a defender who retained a single cover save under Vantage still gets it (shared RULING)
+    const coverSaves = (coverMode: string): number => {
+      const st = edit(s0, (x) => {
+        x.attack = { kind: 'shoot', operativeId: boy, seq: { targetId: rust, improvedCover: true, coverMode } } as never
+      })
+      const dice = [
+        { value: null, kind: 'normal', tag: 'cover' },
+        { value: 2, kind: 'fail' },
+      ]
+      runHook('afterDefenceRoll', { seat: 'A', state: st, operativeId: rust, data: { kind: 'shoot', dice } })
+      return dice.filter((d) => d.tag === 'cover').length
+    }
+    expect(coverSaves('retainTwo')).toBe(1)
+    expect(coverSaves('retainCrit')).toBe(1)
+    expect(coverSaves('retain')).toBe(2)
     // Canticle of Elimination: Punishing on a Ranger's ranged weapons within 3" of the Ranger Alpha
     const alpha = A(s0, 'skitarii-ranger-alpha')
     const warrior = A(s0, 'skitarii-ranger-warrior')
@@ -653,6 +665,12 @@ describe('TEAM-HC Hunter Clade', () => {
     // a Reposition opens no window for it
     const moved = take(activateOp(s, inf), 'reposition').state
     expect(moved.pending!.kind).not.toBe('ploy.firefight')
+    // the wider declaration window (batch C/D shared: Fall Back, Charge, Reposition, free actions) adds no offer for
+    // moves; a free mission action is still a mission action
+    const declared = (action: string, free = false) =>
+      offersFor(s, 'A', 'firefight.actionDeclared', { window: 'firefight.actionDeclared', subjectId: inf, action, ...(free ? { free: true } : {}) } as never).some((o) => o.ployId === P.scrapcode)
+    for (const action of ['fallBack', 'charge', 'reposition', 'dash']) expect(declared(action), action).toBe(false)
+    expect(declared('ability:core.a.secure', true)).toBe(true)
     // in a counteraction: A's only operative is expended, a Kommando activates, the Infiltrator counteracts into Secure
     let c = take(activateOp(s, inf), 'end').state
     c = take(activateOp(c, B(c, 'boss-nob')), 'end').state

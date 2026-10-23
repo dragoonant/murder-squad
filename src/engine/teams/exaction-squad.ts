@@ -18,7 +18,7 @@
 //    handler that adds back the targets core dropped for exactly those reasons.
 //  - Ploys and equipment: flag ploys read by the weapon-rule and defence handlers; the firefight ploys with their windows;
 //    0 CP offers (Handler, Medic! Dash, Special Issue Shells, the Execution Order strike) through the ploy rule.
-import { applyAplEffect, hasRule, ruleKey, ruleSetFor, targetInfo, torrentCandidates, validTargets } from '../attack-common'
+import { applyAplEffect, continueRemovals, hasRule, ruleKey, ruleSetFor, saveFromRemoval, targetInfo, torrentCandidates, validTargets } from '../attack-common'
 import { markFired, registerCodeHook, type OfferSeed, type PloyOfferSeed } from '../code-hooks'
 import { allowedOrders } from '../abilities'
 import { hasAbility, hasKeyword, inEnemyCr } from '../conditions'
@@ -415,8 +415,17 @@ function medicFor(s: GameState, victim: Operative): Operative | null {
 
 registerCodeHook({
   name: 'exMedic',
-  /** the free Dash after the action: the saved operative moves into the Chirurgant's control range */
-  choice(ctx, op, _option, _context) {
+  /** the save asked in the deferred removal queue, or the free Dash after the action into the Chirurgant's control range */
+  choice(ctx, op, option, context) {
+    if (context.stage === 'save') {
+      const s = ctx.state
+      const medic = s.operatives[String(context.medicId)]
+      if (option === 'use' && medic && op.status === 'active' && saveFromRemoval(ctx, op.id, 1)) applyMedic(ctx, medic, op)
+      // declined: the first time this turning point has passed, so the chance is gone
+      else if (medic) markUsedTp(s, medic.seat, `ex.medic:${medic.id}`)
+      continueRemovals(ctx)
+      return
+    }
     const fx = ctx.state.effects.find((e) => e.kind === FX.medicDash && e.operativeId === op.id)
     if (!fx) {
       reactionDone(ctx)
@@ -428,33 +437,63 @@ registerCodeHook({
   },
 })
 
+/** Medic!'s effect on the saved `victim` (T-EX.10): the floor for the rest of the action, the Dash after it, APL -1 for both. */
+function applyMedic(ctx: Ctx, medic: Operative, victim: Operative): void {
+  const s = ctx.state
+  markUsedTp(s, medic.seat, `ex.medic:${medic.id}`)
+  markUsedTp(s, medic.seat, `ex.medic.saved:${victim.id}`)
+  addEffect(ctx, { source: ID.medic, seat: victim.seat, kind: FX.medicFloor, operativeId: victim.id, expires: 'action' })
+  // the activation the rule was used in: the one under a frame (an enemy Guard interrupt, a free action) counts
+  const under = baseOf(s)
+  const own = !!under && !under.counteract && under.operativeId === victim.id
+  if (own) under.endsAfterAction = true
+  addEffect(ctx, { source: ID.medic, seat: victim.seat, kind: FX.medicDash, operativeId: victim.id, expires: 'activation', data: { medicId: medic.id } })
+  addToken(ctx, victim.id, { kind: T.medic, owner: victim.seat, cap: 1, expires: ['turningPointEnd'] }, 'ex.medic')
+  applyAplEffect(ctx, victim.id, -1, ID.medic)
+  applyAplEffect(ctx, medic.id, -1, ID.medic)
+  ctx.emit({ type: 'AbilityUsed', operativeId: medic.id, abilityId: ID.medic, detail: victim.id }, medic.seat)
+  markFired('exMedic')
+}
+
+// Inside an attack the damage pipeline cannot pause: Medic! is used automatically when the damage would incapacitate.
+// Outside attacks (rule damage, mines) the removal waits for the deferred queue (pausableRemoval) and the owner is asked.
 registerHook(
   'beforeIncapacitated',
   (c) => {
     const s = c.state
     const ctx = c.engine
     const victim = s && c.operativeId ? s.operatives[c.operativeId] : undefined
-    if (!s || !ctx || !victim) return null
+    if (!s || !ctx || !victim || (!s.attack && !s.removal)) return null
     const medic = medicFor(s, victim)
     if (!medic) return null
     const data = c.data as { wounds: number }
     data.wounds = 1
-    markUsedTp(s, medic.seat, `ex.medic:${medic.id}`)
-    markUsedTp(s, medic.seat, `ex.medic.saved:${victim.id}`)
-    addEffect(ctx, { source: ID.medic, seat: victim.seat, kind: FX.medicFloor, operativeId: victim.id, expires: 'action' })
-    // the activation the rule was used in: the one under a frame (an enemy Guard interrupt, a free action) counts
-    const under = baseOf(s)
-    const own = !!under && !under.counteract && under.operativeId === victim.id
-    if (own) under.endsAfterAction = true
-    addEffect(ctx, { source: ID.medic, seat: victim.seat, kind: FX.medicDash, operativeId: victim.id, expires: 'activation', data: { medicId: medic.id } })
-    addToken(ctx, victim.id, { kind: T.medic, owner: victim.seat, cap: 1, expires: ['turningPointEnd'] }, 'ex.medic')
-    applyAplEffect(ctx, victim.id, -1, ID.medic)
-    applyAplEffect(ctx, medic.id, -1, ID.medic)
-    ctx.emit({ type: 'AbilityUsed', operativeId: medic.id, abilityId: ID.medic, detail: victim.id }, medic.seat)
-    markFired('exMedic')
+    applyMedic(ctx, medic, victim)
     return null
   },
   'ex.beforeIncapacitated',
+)
+
+// Outside attacks: the falling friend waits in the deferred removal queue, where its owner may use Medic! or decline it
+registerHook(
+  'operative.incapacitated',
+  (c) => {
+    const ctx = c.engine
+    const s = c.state
+    const victim = s && c.operativeId ? s.operatives[c.operativeId] : undefined
+    if (!ctx || !s || !victim || !s.removal?.deferred || s.pending || victim.wounds > 0) return null
+    const medic = medicFor(s, victim)
+    if (!medic) return null
+    ctx.raise({
+      kind: 'ability.choice',
+      seat: victim.seat,
+      window: 'operative.incapacitated',
+      context: { hook: 'exMedic', stage: 'save', operativeId: victim.id, medicId: medic.id },
+      options: [opt('use', X('medicUse'), { name: `Medic!: ${medic.name} keeps ${victim.name} in the fight on 1 wound` }), opt('decline', X('medicDecline'), { name: `Let ${victim.name} fall` })],
+    })
+    return null
+  },
+  'ex.operative.incapacitated',
 )
 
 /** Friendly Exaction operatives in `op`'s control range, itself included (MEDIKIT). */
@@ -1492,6 +1531,12 @@ function exactOffers(state: GameState, seat: Seat, info: ReactionInfo): Reaction
 
 registerTeamRules({
   id: TEAM_ID,
+
+  // MEDIC! (T-EX.10): outside an attack a falling friend the Chirurgant could save waits for the deferred removal queue,
+  // where its owner chooses
+  pausableRemoval(state, op) {
+    return !state.attack && !!medicFor(state, op)
+  },
 
   actionForbidden(state, op, actionId) {
     // BEAST: only the listed actions (T-EX.15)

@@ -13,7 +13,7 @@ import { updateControl } from '@/engine/markers'
 import { offersFor } from '@/engine/ploys'
 import { effectiveApl, effectiveMove, markerRadius } from '@/engine/state'
 import { runHook } from '@/engine/hooks'
-import { isScanned, markerSpots } from '@/engine/teams/scout-squad'
+import { defaultMarkerSpot, isScanned, markerProblem, markerSpots, redeployProblem } from '@/engine/teams/scout-squad'
 import { tokensOnActivationStart, tokensOnTurningPointEnd } from '@/engine/tokens'
 import { terrainOf } from '@/engine/terrain'
 import { hasToken } from '@/engine/tokens'
@@ -35,6 +35,11 @@ import { activateOp, hasOption, optionIds, passIt, realBundle, take, withCtx } f
 import { A, B, bTurn, dice, edit, fsOffered, fsPick, goVia, open, shootAgain, shootAt, takePloy, toGambit, toPreBattle, usePlayed, withCp, withFx, withMarker, withToken } from './scout-squad.hooks'
 
 const data = loadBundle()
+
+/** Answer a free-point decision (marker.place with a point handler) at (x, z). */
+const pointAt = (s: GameState, x: number, z: number) => step(s, { type: 'marker.place', seat: s.pending!.seat, decisionId: s.pending!.id, payload: { x, z } })
+/** The sampled hint spots of a free-point decision. */
+const hintSpots = (s: GameState) => (s.pending!.context.spots as { x: number; z: number }[]) ?? []
 
 describe('TEAM-SS Scout Squad', () => {
   it('TEAM-SS-000 TEAM-SS-001 TEAM-SS-002 TEAM-SS-034 playable team, roster rules, printed loadouts and weapons, keywords on every card', () => {
@@ -98,10 +103,13 @@ describe('TEAM-SS Scout Squad', () => {
     expect(usesOf(s1, 'A', 'ss.fs')).toBe(1)
     expect(view(s1, 'B').ledger.A.uses['ss.fs:devisePlan']).toBe(1)
     let s = fsPick(s1, 'tripAlarm')
-    s = take(s, s.pending!.options![0]!.id).state
+    // a pass sets it up at the default spot (the sampled spot nearest an objective)
+    const def = defaultMarkerSpot(s, 'A', 'tripAlarm')!
+    s = passIt(s).state
+    expect(s.markers.find((m) => m.equipmentId === 'ss.tripAlarm')!.pos).toEqual(def)
     expect(fsOffered(s)).toContain('tripAlarm')
     s = fsPick(s, 'tripAlarm')
-    s = take(s, s.pending!.options![0]!.id).state
+    s = expectOk(pointAt(s, hintSpots(s)[1]!.x, hintSpots(s)[1]!.z)).state
     expect(fsOffered(s)).not.toContain('tripAlarm')
     expect(s.markers.filter((m) => m.equipmentId === 'ss.tripAlarm')).toHaveLength(2)
     // six picks: three more (Tactical Manoeuvre, Diversion, Designate Target) end the step
@@ -136,11 +144,11 @@ describe('TEAM-SS Scout Squad', () => {
       s = fsPick(s, 'diversion')
       expect(s.pending!.seat).toBe(first)
       s = fsPick(s, 'tripAlarm')
-      s = take(s, s.pending!.options![0]!.id).state
+      s = passIt(s).state
       expect(s.pending!.seat).toBe(first)
       // the first player runs to six picks: the step ends
       s = fsPick(s, 'tripAlarm')
-      s = take(s, s.pending!.options![0]!.id).state
+      s = passIt(s).state
       expect(usesOf(s, first, 'ss.fs')).toBe(5)
       s = fsPick(s, 'designateTarget')
       s = take(s, s.pending!.options![0]!.id).state
@@ -160,18 +168,22 @@ describe('TEAM-SS Scout Squad', () => {
       const op = s.pending!.options!.find((o) => o.id !== 'done' && !moved.includes(o.id))!
       moved.push(op.id)
       s = take(s, op.id).state
-      expect(s.pending!.context.step).toBe('redeploy.spot')
-      const spots = s.pending!.options!.filter((o) => o.id !== 'keep')
+      // a free-point decision: any legal point of the drop zone, the sampled spots are only hints
+      expect(s.pending).toMatchObject({ kind: 'marker.place', canPass: true, context: { pointHook: 'ss.redeploy', operativeId: op.id } })
+      const spots = hintSpots(s)
       expect(spots.length).toBeGreaterThan(1)
-      for (const o of spots) {
-        expect(footprintInsidePolygon(footprintOf(s.operatives[op.id]!, { x: o.data!.x as number, z: o.data!.z as number }), zone)).toBe(true)
-      }
+      for (const p of spots) expect(footprintInsidePolygon(footprintOf(s.operatives[op.id]!, p), zone)).toBe(true)
       const here = s.operatives[op.id]!.pos
-      const spot = spots.find((o) => o.data!.x !== here.x || o.data!.z !== here.z)!
-      s = take(s, spot.id).state
+      const hint = spots.find((p) => p.x !== here.x || p.z !== here.z)!
+      // off the sampler grid: a quarter inch over, when that is legal too
+      const off = { x: hint.x + 0.25, z: hint.z }
+      const spot = redeployProblem(s, s.operatives[op.id]!, off) ? hint : off
+      // outside the drop zone (the killzone centre) is refused with the reason
+      expect(pointAt(s, 0, 0).rejection?.reason).toMatch(/drop zone/)
+      s = expectOk(pointAt(s, spot.x, spot.z)).state
       const o = s.operatives[op.id]!
-      expect(o.pos.x).toBe(spot.data!.x)
-      expect(o.pos.z).toBe(spot.data!.z)
+      expect(o.pos.x).toBe(spot.x)
+      expect(o.pos.z).toBe(spot.z)
       expect(o.order).toBe('conceal')
       if (i < 2) {
         // those already moved are not offered again
@@ -231,11 +243,17 @@ describe('TEAM-SS Scout Squad', () => {
     let p = toPreBattle()
     const zoneB = p.map.dropZones.find((z) => z.id === p.players.B.dropZoneId)!.polygon
     p = fsPick(p, 'tripAlarm')
-    const spots = p.pending!.options!
+    expect(p.pending).toMatchObject({ kind: 'marker.place', context: { pointHook: 'ss.marker', kind: 'tripAlarm' } })
+    const spots = hintSpots(p)
     expect(spots.length).toBeGreaterThan(4)
-    for (const o of spots) expect(distToPolygon({ x: o.data!.x as number, z: o.data!.z as number }, zoneB)).toBeGreaterThan(6)
-    p = take(p, spots[0]!.id).state
-    expect(p.markers.find((m) => m.equipmentId === 'ss.tripAlarm')).toMatchObject({ owner: 'A', pos: { x: spots[0]!.data!.x, z: spots[0]!.data!.z } })
+    for (const o of spots) expect(distToPolygon(o, zoneB)).toBeGreaterThan(6)
+    // inside the opponent's drop zone: refused with the reason
+    const inB = { x: zoneB.reduce((n, v) => n + v.x, 0) / zoneB.length, z: zoneB.reduce((n, v) => n + v.z, 0) / zoneB.length }
+    expect(pointAt(p, inB.x, inB.z).rejection?.reason).toMatch(/6 inches/)
+    // any legal point, off the sampler grid
+    const free = [0.3, -0.3, 0.7].map((d) => ({ x: spots[0]!.x + d, z: spots[0]!.z })).find((q) => !markerProblem(p, 'A', 'tripAlarm', q)) ?? spots[0]!
+    p = expectOk(pointAt(p, free.x, free.z)).state
+    expect(p.markers.find((m) => m.equipmentId === 'ss.tripAlarm')).toMatchObject({ owner: 'A', pos: { x: free.x, z: free.z } })
     // Seek on a Conceal enemy behind a Light wall
     const w = feature('ss-wall', part('ss-wall.a', rect(3, 3.4, -2, 2), 1, ['light']))
     const base = edit(open(), (st) => {
@@ -265,13 +283,17 @@ describe('TEAM-SS Scout Squad', () => {
     const zoneB = p.map.dropZones.find((z) => z.id === p.players.B.dropZoneId)!.polygon
     p = fsPick(p, 'boobyTrap')
     const accessible = terrainOf(p.map).solids.filter((sd) => sd.accessible || sd.partId.includes('door'))
-    for (const o of p.pending!.options!) {
-      const pt = { x: o.data!.x as number, z: o.data!.z as number }
+    for (const pt of hintSpots(p)) {
       expect(distToPolygon(pt, zoneB)).toBeGreaterThan(6)
       for (const m of p.markers) expect(Math.hypot(m.pos.x - pt.x, m.pos.z - pt.z) - markerRadius(m)).toBeGreaterThan(2)
       for (const sd of accessible) expect(distToPolygon(pt, sd.polygon)).toBeGreaterThan(2)
     }
-    p = take(p, p.pending!.options![0]!.id).state
+    // within 2" of an objective marker: refused with the reason
+    const obj = p.markers.find((m) => m.kind === 'objective')!
+    expect(pointAt(p, obj.pos.x + markerRadius(obj) + 1.5, obj.pos.z).rejection?.reason).toMatch(/2 inches|6 inches|terrain|killzone/)
+    expect(markerProblem(p, 'A', 'boobyTrap', { x: obj.pos.x + markerRadius(obj) + 1.5, z: obj.pos.z })).not.toBeNull()
+    // the bot passes: the trap goes to the default spot
+    p = passIt(p).state
     expect(p.markers.filter((m) => m.equipmentId === 'ss.boobyTrap')).toHaveLength(1)
     expect(fsOffered(p)).not.toContain('boobyTrap')
     // the trap at (5, 0); the Boy walks west in two legs and is set off by the first

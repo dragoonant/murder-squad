@@ -6,8 +6,8 @@
 //  - GORE TANKS (T-GM.22): token `gm.gore` on each Goremonger (count 0 = empty, 1 = half, 2 = full), set to half in the
 //    turning point 1 Ready step; raised by kills (`operative.removed`), lowered by SANGUAVITAE and the three actions.
 //  - SANGUAVITAE (T-GM.23 to T-GM.29): 0 CP offers (ploy rule extraOffers, the Auspex pattern) in the activation and
-//    action windows. The per-activation ledger is a `gm.sv` effect per use. Surge has no declaration window of its own
-//    for Charge and Reposition, so it is armed between actions and spent when the move is declared (action.declared).
+//    action windows. The per-activation ledger is a `gm.sv` effect per use. Surge is offered in the declaration window
+//    of a Charge or Reposition (`firefight.actionDeclared`, free frames included).
 //  - Weapon rules: Ritual, Drag (shoot.beforeResolve), Wrist Chains twins (ownGrenades records), Gore-fuel and the
 //    ploys' rule changes all live in the one `modifyWeaponRules` handler so their order is fixed.
 //  - Damage: Brutish, Gory Tenacity and Runes of Khorne are one `onDamageInflicted` handler (in that order).
@@ -25,7 +25,7 @@ import { applyForcedMove, forcedMoveSpots, planMove } from '../movement'
 import { registerPloyRule, type PloyOffer, type PloyRule } from '../ploy-rules'
 import { markerControl } from '../query'
 import type { Ctx } from '../registry'
-import { activeOps, effectiveApl, enemiesOf } from '../state'
+import { activeOps, enemiesOf } from '../state'
 import { readyChoiceDone } from '../strategy'
 import { registerTeamRules, type ReactionOffer } from '../team-rules'
 import { standingSolid, terrainOf } from '../terrain'
@@ -50,7 +50,6 @@ const FUEL = 'gm.gore-fuel'
 const CLAIM = 'gm.claim-skull'
 
 const FX_SV = 'gm.sv'
-const FX_ARMED = 'gm.surgeArmed'
 const FX_SURGE = 'gm.surge'
 const FX_RAGE = 'gm.rage'
 const FX_FURY = 'gm.fury'
@@ -288,20 +287,15 @@ function svUsed(state: GameState, opId: string): Sv[] {
   return state.effects.filter((e) => e.kind === FX_SV && e.operativeId === opId).map((e) => e.data?.rule as Sv)
 }
 
-function surgeArmed(state: GameState, opId: string): boolean {
-  return state.effects.some((e) => e.kind === FX_ARMED && e.operativeId === opId)
-}
-
 /** Why `rule` cannot be used by `op` now (the ledger and the tank), or null when it can. */
 function svBlock(state: GameState, op: Operative, rule: Sv, counteracting: boolean): string | null {
   if (!live(op) || !isGm(state, op)) return 'not a Goremonger'
-  const armed = surgeArmed(state, op.id)
-  const used: Sv[] = [...svUsed(state, op.id), ...(armed ? (['surge'] as Sv[]) : [])]
+  const used = svUsed(state, op.id)
   if (used.includes(rule)) return 'already used this activation'
   if (used.length >= 2) return 'two Sanguavitae rules already used'
   if ((rule === 'mania' && used.includes('fury')) || (rule === 'fury' && used.includes('mania'))) return 'Mania and Fury never share an activation'
   if ((rule === 'mania' || rule === 'fury' || rule === 'rake') && counteracting) return `${SV_NAME[rule]} is for activations only`
-  if (goreLevel(state, op.id) - (armed && rule !== 'surge' ? 1 : 0) <= 0) return 'the gore tank is empty'
+  if (goreLevel(state, op.id) <= 0) return 'the gore tank is empty'
   return null
 }
 
@@ -333,7 +327,7 @@ registerHook(
 )
 
 // ---------------------------------------------------------------------------
-// Action hooks: Surge (declared), Lacerate Flesh (ended), charges and drops (ended)
+// Action hooks: drops (declared), charges and drops (ended), Lacerate Flesh (activation and counteraction end)
 // ---------------------------------------------------------------------------
 
 registerHook(
@@ -349,14 +343,6 @@ registerHook(
       removeEffects(ctx, (e) => e.kind === FX_FROM && e.operativeId === op.id)
       addEffect(ctx, { source: A('rooftop-stalker'), seat: op.seat, kind: FX_FROM, operativeId: op.id, expires: 'action', data: { y: op.pos.y, vantage: onVantage(s, op.pos) } })
     }
-    if (d.cancel || (d.action !== 'charge' && d.action !== 'reposition')) return null
-    // SURGE (T-GM.28): the armed use is spent as the Charge or Reposition is declared
-    const armed = fx(s, FX_ARMED, op.id)
-    if (!armed) return null
-    removeEffects(ctx, (e) => e.id === armed.id)
-    if (goreLevel(s, op.id) <= 0) return null
-    spendSv(ctx, op, 'surge', d.action)
-    addEffect(ctx, { source: A('surge'), seat: op.seat, kind: FX_SURGE, operativeId: op.id, expires: 'action' })
     return null
   },
   'gm.action.declared',
@@ -396,11 +382,23 @@ registerHook(
     if (own && from && MOVE_ACTIONS.includes(d.action) && !fx(s, FX_DROPPED, op.id) && from.data?.vantage === true && Number(from.data.y) >= 2 - EPS && op.pos.y < Number(from.data.y) - 0.5) {
       addEffect(ctx, { source: A('rooftop-stalker'), seat: op.seat, kind: FX_DROPPED, operativeId: op.id, expires: 'activation' })
     }
-    // a counteraction has no end hook: Lacerate Flesh settles when its (single) action is over
-    if (d.counteract && base && base.counteract && (base.bonus ?? 0) <= 0) settleLacerate(ctx, op)
     return null
   },
   'gm.action.ended',
+)
+
+// LACERATE FLESH in a counteraction (T-GM.37): it settles when the counteraction ends
+registerHook(
+  'counteraction.end',
+  (c) => {
+    const ctx = c.engine
+    const s = c.state
+    const op = s && c.operativeId ? s.operatives[c.operativeId] : undefined
+    if (!ctx || !s || !op) return null
+    if (fx(s, FX_LACERATE, op.id)) settleLacerate(ctx, op)
+    return null
+  },
+  'gm.counteraction.end',
 )
 
 registerHook(
@@ -739,7 +737,8 @@ function sprayPart(ctx: Ctx, opId: string, order: string[], i: number): void {
     sprayDone(ctx, opId)
     return
   }
-  const started = startFreeAction(ctx, { operativeId: opId, action: part as 'dash' | 'shoot', resume: 'gm.spray', data: { gmSpray: part === 'shoot', opId, order, i } })
+  // the card grants no "even if": the free Dash and Shoot keep R-3.7 and the move bars of the activation
+  const started = startFreeAction(ctx, { operativeId: opId, action: part as 'dash' | 'shoot', resume: 'gm.spray', checkPerformed: true, data: { gmSpray: part === 'shoot', opId, order, i } })
   if (!started) sprayPart(ctx, opId, order, i + 1)
 }
 
@@ -1108,10 +1107,9 @@ const gmRule: PloyRule = {
     const counteracting = info.counteracting === true
     const a = state.attack
 
-    // ---- between actions: Rejuvenate, Mania, Fury, Surge (armed), Khorne's Favour, Bleeding
+    // ---- between actions: Rejuvenate, Mania, Fury, Khorne's Favour, Bleeding
     if (window === 'firefight.activationStart' || window === 'firefight.actionEnded') {
       if (subject.wounds < subject.maxWounds && !svBlock(state, subject, 'rejuvenate', counteracting)) out.push(offer('gm.x.rejuvenate', 'Rejuvenate: regain D3+1 wounds', 'gm.rejuvenate', subject))
-      const act = baseActivation(state)
       if (!counteracting && ownActivation(state, subject)) {
         if (!svBlock(state, subject, 'mania', false)) out.push(offer('gm.x.mania', 'Mania: +1 APL until its next activation', 'gm.mania', subject))
         if (!svBlock(state, subject, 'fury', false)) out.push(offer('gm.x.fury', 'Fury: Fight twice, the second Fight free', 'gm.fury', subject))
@@ -1119,9 +1117,13 @@ const gmRule: PloyRule = {
           out.push(offer('gm.x.favour', "Khorne's Favour: raise the gore tank", 'gm.favour', subject))
         }
       }
-      const apLeft = act && !act.counteract ? effectiveApl(subject) - act.apSpent : 1
-      if (apLeft >= 1 && !svBlock(state, subject, 'surge', counteracting)) out.push(offer('gm.x.surge', 'Surge: +1" Move on the next Charge or Reposition', 'gm.surgeArm', subject))
       if (goreLevel(state, subject.id) < 2) for (const e of bleeders(state, subject)) out.push(offer('gm.x.bleeding', `Bleeding: spend the token on ${e.name} to raise the gore tank`, 'gm.bleeding', subject, e.id))
+    }
+
+    // ---- SURGE, when a Charge or Reposition is declared (free ones included) in the operative's activation or
+    // counteraction; never on a free Charge outside them (Hunt for Blood in the Strategy phase)
+    if (window === 'firefight.actionDeclared' && (info.action === 'charge' || info.action === 'reposition') && baseActivation(state)?.operativeId === subject.id && !svBlock(state, subject, 'surge', counteracting)) {
+      out.push(offer('gm.x.surge', `Surge: +1" Move for this ${info.action === 'charge' ? 'Charge' : 'Reposition'}`, 'gm.surge', subject, String(info.action)))
     }
 
     // ---- RAGE, when a Fight is declared
@@ -1204,8 +1206,9 @@ const gmRule: PloyRule = {
         addEffect(ctx, { source: A('fury'), seat, kind: FX_FURY, operativeId: op.id, expires: 'activation' })
         return
       }
-      case 'gm.surgeArm': {
-        addEffect(ctx, { source: A('surge'), seat, kind: FX_ARMED, operativeId: op.id, expires: 'activation' })
+      case 'gm.surge': {
+        spendSv(ctx, op, 'surge', o.param)
+        addEffect(ctx, { source: A('surge'), seat, kind: FX_SURGE, operativeId: op.id, expires: 'action' })
         return
       }
       case 'gm.rage': {

@@ -8,22 +8,24 @@
 //    Your Veins, For Cadia!) are small handlers on the shared hook points.
 //  - RAPID FIRE (T-KS.25): providers maxRepeats, weaponForbidden and actionForbidden plus a per-activation `ks.moved`
 //    effect, because a free move made inside the activation is not in `Activation.performed`.
-//  - Medic! (T-KS.9) is the Pathfinders implementation under `ks.` names; MEDIKIT is a 0 AP unique action.
-//  - Melta Mine and Proximity Mine (T-KS.11, T-KS.12): a team marker created carried at set-up, its own Place action
-//    (the shared Place Marker cannot refuse a spot inside an enemy control range) and a team-local mine check after
-//    every action (gap `teamMine`).
+//  - Medic! (T-KS.9): the qualifying moment is noted in `beforeIncapacitated`; the removal then waits in the queue
+//    (provider pausableRemoval) where the player accepts or declines (attack-common saveFromRemoval / continueRemovals).
+//    MEDIKIT is a 0 AP unique action.
+//  - Melta Mine and Proximity Mine (T-KS.11, T-KS.12): a team marker created carried at set-up, placed with the shared
+//    Place Marker (provider placeMarkerProblem keeps it out of enemy control range) followed by a 0 CP free Dash offer,
+//    and set off by the provider checkMines (after every step, forced moves included).
 //  - Weapon-rule changes (Light 'Em Up, Foregrip, Long-Range Scope, Clearance Sweep, Elimination Pattern, Camo Cloak)
 //    all live in the one `modifyWeaponRules` handler so their order is fixed.
 //  - Ploys: strategy flags and markers, Relocate (a choice loop of free Dashes), the firefight ploys with their own
-//    windows. Cover Retreat is offered right after the Fall Back (no shared window exists in the middle of it).
-import { applyAplEffect, hasRule, heavyBlocksMove, parseRules, ruleKey, ruleSetFor, targetInfo } from '../attack-common'
+//    windows. Cover Retreat is offered in the firefight.fallBackMoved window, between the move and the end of the action.
+import { applyAplEffect, continueRemovals, hasRule, heavyBlocksMove, parseRules, ruleKey, ruleSetFor, saveFromRemoval, targetInfo } from '../attack-common'
 import { markFired, registerCodeHook, type OfferSeed, type PloyOfferSeed } from '../code-hooks'
 import { hasAbility, hasKeyword, inEnemyCr } from '../conditions'
-import { addEffect, directDamage, markUsedBattle, markUsedTp, regainWounds, removeEffects, usedThisBattle, usedThisTp } from '../effects'
-import { canStartFreeAction, cancelAction, finishAction, REACTION_DONE, reactionDone, startDelegatedAction, startFreeAction } from '../firefight'
+import { addEffect, aplChangeNextActivation, directDamage, markUsedBattle, markUsedTp, regainWounds, removeEffects, usedThisBattle, usedThisTp } from '../effects'
+import { canStartFreeAction, cancelAction, finishAction, raiseAction, REACTION_DONE, reactionDone, startDelegatedAction, startFreeAction } from '../firefight'
 import { registerFrameResume, registerHook, type ActionDeclaredData } from '../hooks'
 import { bodyOf, visible } from '../los'
-import { newMarkerId, removeMarker, tracksControl } from '../markers'
+import { dropCarried, newMarkerId, removeMarker, tracksControl } from '../markers'
 import { distanceBetween, gapToMarker, markerInControlRange } from '../measure'
 import { registerPloyRule, type PloyOffer, type PloyRule } from '../ploy-rules'
 import { continueWindow } from '../ploys'
@@ -63,8 +65,9 @@ const SKILL_CODE: Record<Skill, string> = { 'light-em-up': 'ksLightEmUp', 'strik
 const FX_TEAM_SKILL = 'ks.skill'
 const FX_OP_SKILL = 'ks.skillOp'
 const FX_MOVED = 'ks.moved'
-const FX_MEDIC_FLOOR = 'ks.medicFloor'
+const FX_MEDIC_ASK = 'ks.medicAsk'
 const FX_MEDIC_DASH = 'ks.medicDash'
+const FX_MINE_DASH = 'ks.mineDash'
 const FX_FROM = 'ks.fbFrom'
 const FX_GNG = 'ks.gng'
 const FX_ICE = 'ks.ice'
@@ -290,10 +293,53 @@ function medicFor(s: GameState, victim: Operative): Operative | null {
   return null
 }
 
+function medicAsk(s: GameState, victimId: string) {
+  return s.effects.find((e) => e.kind === FX_MEDIC_ASK && e.operativeId === victimId)
+}
+
+/**
+ * Medic! answered while the casualty waits in the removal queue: accepted, it keeps 1 wound (saveFromRemoval) and the
+ * rule's costs apply; declined, the removal goes on (a dying Demo-Trooper still drops its Melta Mine).
+ */
+function medicAnswer(ctx: Ctx, victim: Operative, accept: boolean): void {
+  const s = ctx.state
+  const ask = medicAsk(s, victim.id)
+  const medic = ask ? s.operatives[String(ask.data?.medicId ?? '')] : undefined
+  if (ask) removeEffects(ctx, (e) => e.id === ask.id)
+  let endNow = false
+  if (accept && medic && saveFromRemoval(ctx, victim.id, 1)) {
+    markUsedTp(s, medic.seat, `ks.medic.saved:${victim.id}`)
+    // the activation the rule was used in: the one under a frame (an enemy Guard interrupt, a free action) counts
+    const under = baseActivation(s)
+    if (under && !under.counteract && under.operativeId === victim.id) {
+      under.endsAfterAction = true
+      endNow = true
+    }
+    // the free Dash after the action: a reaction when the other player is active, a 0 CP offer when the Kasrkin player is
+    addEffect(ctx, { source: A('medic'), seat: victim.seat, kind: FX_MEDIC_DASH, operativeId: victim.id, expires: 'activation', data: { medicId: medic.id } })
+    // "until the end of their next activations": held over when taken in the operative's own activation
+    aplChangeNextActivation(ctx, victim.id, -1, A('medic'))
+    aplChangeNextActivation(ctx, medic.id, -1, A('medic'))
+    ctx.emit({ type: 'AbilityUsed', operativeId: medic.id, abilityId: A('medic'), detail: victim.id }, medic.seat)
+    markFired('ksMedic')
+  } else dropDyingMine(ctx, victim)
+  continueRemovals(ctx)
+  // a removal deferred to the end of a step gives back the casualty's next action decision: its activation ends now
+  const act = s.firefight.activation
+  if (endNow && act && !act.frame && !act.declared && act.endsAfterAction && act.operativeId === victim.id && s.pending?.kind === 'firefight.action') {
+    s.pending = null
+    raiseAction(ctx)
+  }
+}
+
 registerCodeHook({
   name: 'ksMedic',
-  /** the free Dash after the action: the saved operative moves into the medic's control range */
-  choice(ctx, op, _option, _context) {
+  /** `save` / `decline` while the casualty waits in the removal queue; `dash`: the free Dash after the action */
+  choice(ctx, op, option, _context) {
+    if (option === 'save' || option === 'decline') {
+      medicAnswer(ctx, op, option === 'save')
+      return
+    }
     const fx = ctx.state.effects.find((e) => e.kind === FX_MEDIC_DASH && e.operativeId === op.id)
     if (!fx) {
       reactionDone(ctx)
@@ -305,6 +351,8 @@ registerCodeHook({
   },
 })
 
+// The qualifying moment ("would be incapacitated"), judged where everyone stands then: the first one each turning point
+// spends the rule's use whether or not the player takes it. The decision itself waits for the removal queue.
 registerHook(
   'beforeIncapacitated',
   (c) => {
@@ -314,21 +362,9 @@ registerHook(
     if (!s || !ctx || !victim) return null
     const medic = medicFor(s, victim)
     if (!medic) return null
-    const data = c.data as { wounds: number }
-    data.wounds = 1
     markUsedTp(s, medic.seat, `ks.medic:${medic.id}`)
-    markUsedTp(s, medic.seat, `ks.medic.saved:${victim.id}`)
-    addEffect(ctx, { source: A('medic'), seat: victim.seat, kind: FX_MEDIC_FLOOR, operativeId: victim.id, expires: 'action' })
-    // the activation the rule was used in: the one under a frame (an enemy Guard interrupt, a free action) counts
-    const under = baseActivation(s)
-    const own = !!under && !under.counteract && under.operativeId === victim.id
-    if (own) under.endsAfterAction = true
-    // the free Dash after the action: a reaction when the other player is active, a 0 CP offer when the Kasrkin player is
-    addEffect(ctx, { source: A('medic'), seat: victim.seat, kind: FX_MEDIC_DASH, operativeId: victim.id, expires: 'activation', data: { medicId: medic.id } })
-    applyAplEffect(ctx, victim.id, -1, A('medic'))
-    applyAplEffect(ctx, medic.id, -1, A('medic'))
-    ctx.emit({ type: 'AbilityUsed', operativeId: medic.id, abilityId: A('medic'), detail: victim.id }, medic.seat)
-    markFired('ksMedic')
+    removeEffects(ctx, (e) => e.kind === FX_MEDIC_ASK && e.operativeId === victim.id)
+    addEffect(ctx, { source: A('medic'), seat: victim.seat, kind: FX_MEDIC_ASK, operativeId: victim.id, expires: 'turningPoint', data: { medicId: medic.id } })
     return null
   },
   'ks.beforeIncapacitated',
@@ -541,10 +577,9 @@ registerCodeHook({
   },
 })
 
-/** Spots for Place Melta Mine: within the operative's control range, outside every enemy control range. */
-function mineSpots(state: GameState, op: Operative): Vec2[] {
+/** Spots for the dying carrier's forced Place Marker: within its control range, outside every enemy control range. */
+function mineSpots(state: GameState, op: Operative, mine: Marker): Vec2[] {
   const ring = op.baseRadius
-  const foes = activeOps(state).filter((o) => o.seat !== op.seat && live(o))
   return placementSpots(state, op, {
     around: { x: op.pos.x, z: op.pos.z },
     radius: ring + 1,
@@ -552,63 +587,53 @@ function mineSpots(state: GameState, op: Operative): Vec2[] {
     max: 12,
     test: (p) => {
       if (Math.hypot(p.x - op.pos.x, p.z - op.pos.z) < ring - EPS) return false
-      const probe: Marker = { id: 'ks-probe', kind: 'equipment', pos: { x: p.x, z: p.z }, owner: op.seat, carriedBy: null, controller: null }
-      return !foes.some((e) => markerInControlRange(state, bodyOf(e), probe))
+      return minePlaceProblem(state, op, mine, p) === null
     },
   }).map((p) => ({ x: p.x, z: p.z }))
 }
 
-registerCodeHook({
-  name: 'ksPlaceMine',
-  action: {
-    offers(state, op): OfferSeed[] {
-      if (!carriedMine(state, op)) return []
-      // it is the Place Marker action (R-4.6): never in the activation the marker was picked up in
-      if (ownActivation(state, op)?.performed.includes(PICK_UP)) return []
-      return mineSpots(state, op).length > 0 ? [{ key: '', params: {} }] : []
-    },
-    perform(ctx, op, def) {
-      const spots = mineSpots(ctx.state, op)
-      if (!carriedMine(ctx.state, op) || spots.length === 0) {
-        cancelAction(ctx)
-        return
-      }
-      ctx.raise({
-        kind: 'ability.choice',
-        seat: op.seat,
-        window: 'firefight.actionDeclared',
-        context: { hook: 'ksPlaceMine', operativeId: op.id, abilityId: def.id },
-        options: spots.map((p) => opt(`${p.x},${p.z}`, 'ks.mine.place', { x: p.x, z: p.z })),
-        canPass: true,
-      })
-    },
-  },
-  choice(ctx, op, option, context) {
-    const s = ctx.state
-    const mine = carriedMine(s, op)
-    const [x, z] = option.split(',').map(Number) as [number, number]
-    if (!mine || !Number.isFinite(x) || !Number.isFinite(z)) {
-      cancelAction(ctx)
-      return
-    }
-    mine.carriedBy = null
-    mine.pos = { x, z }
-    op.flags.carrying = null
-    ctx.emit({ type: 'MarkerPlaced', markerId: mine.id, operativeId: op.id, pos: { ...mine.pos } }, op.seat)
-    ctx.emit({ type: 'AbilityUsed', operativeId: op.id, abilityId: String(context.abilityId) }, op.seat)
-    // then an optional free Dash, unless two Rapid Fire Shoots are done or a Heavy weapon was used, or the Place is a
-    // free action that may not move (Seize the Initiative)
-    const own = ownActivation(s, op)
-    const delegated = s.firefight.activation?.frame?.data?.delegated as { deny?: string[] } | undefined
-    const barred =
-      !!delegated?.deny?.includes('dash') ||
-      (!!own && (own.performed.filter((a) => a === 'shoot').length >= 2 || heavyBlocksMove(s, own.weaponsUsed, 'dash') !== null || own.performed.includes('charge')))
-    if (barred || !live(s.operatives[op.id]) || !startFreeAction(ctx, { operativeId: op.id, action: 'dash', resume: 'ks.mineDash' })) finishAction(ctx)
-  },
-})
+/** Place Marker of the Melta Mine cannot put it here (T-KS.11): the reason, or null. */
+function minePlaceProblem(state: GameState, op: Operative, mine: Marker, pos: Vec2): string | null {
+  const probe: Marker = { ...mine, carriedBy: null, pos: { x: pos.x, z: pos.z } }
+  const foe = activeOps(state).find((o) => o.seat !== op.seat && live(o) && markerInControlRange(state, bodyOf(o), probe))
+  return foe ? `the Melta Mine cannot be placed within ${foe.name}'s control range` : null
+}
 
-// the free Dash is over (or declined): Place Melta Mine itself was performed either way
-registerFrameResume('ks.mineDash', (ctx) => finishAction(ctx))
+/**
+ * The free Dash after Place Marker on the Melta Mine (T-KS.11): offered at 0 CP in the actionEnded window, unless two
+ * Rapid Fire Shoots are done, a Heavy weapon or a Charge bars moving (the Dash rules, R-4.2). A Place that is itself a
+ * free action (Seize the Initiative may not move) opens no window, so no Dash follows it.
+ */
+function mineDashOk(state: GameState, op: Operative): boolean {
+  const act = state.firefight.activation
+  if (!act || act.frame || act.operativeId !== op.id || !state.effects.some((e) => e.kind === FX_MINE_DASH && e.operativeId === op.id)) return false
+  if (!act.counteract && (act.performed.filter((a) => a === 'shoot').length >= 2 || heavyBlocksMove(state, act.weaponsUsed, 'dash') !== null)) return false
+  return canStartFreeAction(state, { operativeId: op.id, action: 'dash', resume: '', checkPerformed: true })
+}
+
+/**
+ * The incapacitated carrier performs a forced Place Marker first (R-4.6): a spot in its control range outside every
+ * enemy control range, else the marker leaves with it. Runs whether or not the core hook already dropped the marker.
+ */
+function dropDyingMine(ctx: Ctx, op: Operative): void {
+  const s = ctx.state
+  const mine = s.markers.find((m) => m.equipmentId === MINE && (m.carriedBy === op.id || (m.carriedBy === null && m.placedBy === op.id && Math.hypot(m.pos.x - op.pos.x, m.pos.z - op.pos.z) < EPS)))
+  if (!mine) {
+    dropCarried(ctx, op)
+    return
+  }
+  const spots = mineSpots(s, op, mine)
+  if (spots.length === 0) {
+    op.flags.carrying = null
+    removeMarker(ctx, mine.id, 'ks.meltaMine.lost')
+    return
+  }
+  const p = spots[0]!
+  mine.carriedBy = null
+  mine.pos = { x: p.x, z: p.z }
+  op.flags.carrying = null
+  ctx.emit({ type: 'MarkerPlaced', markerId: mine.id, operativeId: op.id, pos: { ...mine.pos } }, op.seat)
+}
 
 type MovedEvent = Extract<GameEvent, { type: 'OperativeMoved' }>
 interface MinePoint {
@@ -683,8 +708,7 @@ function stopMove(ctx: Ctx, op: Operative, ev: MovedEvent, seg: number): void {
   ev.cost = cost
 }
 
-// The incapacitated carrier performs a forced Place Marker first (R-4.6): a spot in its control range outside every
-// enemy control range, else the marker leaves with it. Runs whether or not the core hook already dropped the marker.
+// Before removal: Medic! asks its question (the removal queue waits for it), else a dying Demo-Trooper drops its mine.
 registerHook(
   'operative.incapacitated',
   (c) => {
@@ -692,19 +716,30 @@ registerHook(
     const s = c.state
     const op = s && c.operativeId ? s.operatives[c.operativeId] : undefined
     if (!ctx || !s || !op) return null
-    const mine = s.markers.find((m) => m.equipmentId === MINE && (m.carriedBy === op.id || (m.carriedBy === null && m.placedBy === op.id && Math.hypot(m.pos.x - op.pos.x, m.pos.z - op.pos.z) < EPS)))
-    if (!mine) return null
-    const spots = mineSpots(s, op)
-    if (spots.length === 0) {
-      op.flags.carrying = null
-      removeMarker(ctx, mine.id, 'ks.meltaMine.lost')
-      return null
+    const ask = medicAsk(s, op.id)
+    if (ask) {
+      const medic = s.operatives[String(ask.data?.medicId ?? '')]
+      if (s.removal && s.removal.ids.includes(op.id) && !s.pending && medic && medic.status === 'active' && medic.wounds > 0) {
+        // the core "before removal" drop already put a carried marker down: it stays with the casualty meanwhile
+        const placed = new Set(ctx.events.filter((e) => e.type === 'MarkerPlaced' && e.operativeId === op.id).map((e) => (e as { markerId: string }).markerId))
+        for (const m of s.markers.filter((k) => placed.has(k.id) && !k.carriedBy && Math.hypot(k.pos.x - op.pos.x, k.pos.z - op.pos.z) < EPS)) {
+          m.carriedBy = op.id
+          op.flags.carrying = m.id
+          ctx.emit({ type: 'MarkerPickedUp', markerId: m.id, operativeId: op.id }, op.seat)
+        }
+        ctx.raise({
+          kind: 'ability.choice',
+          seat: op.seat,
+          window: 'operative.incapacitated',
+          context: { hook: 'ksMedic', operativeId: op.id, step: 'save', medicId: medic.id },
+          options: [opt('save', 'ks.medic.save', { medicId: medic.id }), opt('decline', 'ks.medic.decline', { medicId: medic.id })],
+        })
+        return null
+      }
+      // the Combat Medic fell too (or nothing can ask now): the rule cannot be used
+      removeEffects(ctx, (e) => e.id === ask.id)
     }
-    const p = spots[0]!
-    mine.carriedBy = null
-    mine.pos = { x: p.x, z: p.z }
-    op.flags.carrying = null
-    ctx.emit({ type: 'MarkerPlaced', markerId: mine.id, operativeId: op.id, pos: { ...mine.pos } }, op.seat)
+    dropDyingMine(ctx, op)
     return null
   },
   'ks.operative.incapacitated',
@@ -722,7 +757,10 @@ registerHook(
     const op = s && c.operativeId ? s.operatives[c.operativeId] : undefined
     if (!ctx || !s || !op || !isKs(s, op)) return null
     const d = c.data as unknown as ActionDeclaredData
-    if (d.action !== 'fallBack' || d.cancel) return null
+    if (d.cancel) return null
+    // the Melta Mine's free Dash is offered only right after the Place Marker
+    if (s.effects.some((e) => e.kind === FX_MINE_DASH && e.operativeId === op.id)) removeEffects(ctx, (e) => e.kind === FX_MINE_DASH && e.operativeId === op.id)
+    if (d.action !== 'fallBack') return null
     // Cover Retreat is judged from where the Fall Back began
     removeEffects(ctx, (e) => e.kind === FX_FROM && e.operativeId === op.id)
     addEffect(ctx, { source: P('cover-retreat'), seat: op.seat, kind: FX_FROM, operativeId: op.id, expires: 'activation', data: { x: op.pos.x, y: op.pos.y, z: op.pos.z } })
@@ -746,6 +784,12 @@ registerHook(
         addEffect(ctx, { source: FX_MOVED, seat: op.seat, kind: 'ployFlag', operativeId: op.id, expires: 'activation' })
       }
     }
+    // MELTA MINE: Place Marker on it (not inside a free action) earns a free Dash, offered in the actionEnded window
+    if (op && d.action === PLACE && !s.firefight.activation?.frame && hasAbility(s, op, A('melta-mine'))) {
+      const placed = ctx.events.some((e) => e.type === 'MarkerPlaced' && e.operativeId === op.id && s.markers.some((m) => m.id === e.markerId && m.equipmentId === MINE))
+      if (placed) addEffect(ctx, { source: A('melta-mine'), seat: op.seat, kind: FX_MINE_DASH, operativeId: op.id, expires: 'activation' })
+    }
+    // PROXIMITY MINE during the action that just ended; the provider checkMines covers every other move
     triggerMelta(ctx, op?.id)
     return null
   },
@@ -879,7 +923,7 @@ registerHook(
 )
 
 // ---------------------------------------------------------------------------
-// Damage taken: Medic! floor, Blast Padding (b), Ice In Your Veins
+// Damage taken: Blast Padding (b), Ice In Your Veins
 // ---------------------------------------------------------------------------
 
 registerHook(
@@ -890,8 +934,6 @@ registerHook(
     const op = s && c.operativeId ? s.operatives[c.operativeId] : undefined
     if (!s || !ctx || !op) return null
     const d = c.data as { source: string; amount: number; splash?: boolean }
-    // Medic!: cannot be incapacitated for the remainder of the action (T-KS.9)
-    if (d.amount > 0 && s.effects.some((e) => e.kind === FX_MEDIC_FLOOR && e.operativeId === op.id)) d.amount = Math.max(0, Math.min(d.amount, op.wounds - 1))
     // Blast Padding (b): x" Devastating damage never reaches the Demo-Trooper unless it is the target (T-KS.13)
     if (d.splash && d.amount > 0 && hasAbility(s, op, A('blast-padding'))) {
       d.amount = 0
@@ -989,10 +1031,22 @@ registerTeamRules({
     if (base && base.performed.filter((a) => a === 'shoot').length >= 2 && (MOVE_ACTIONS.includes(actionId) || actionId === 'guard')) {
       return 'after two Rapid Fire Shoots the operative cannot move or Guard'
     }
-    // the shared Place Marker cannot refuse a spot inside an enemy control range: the Melta Mine has its own action
-    if (actionId === PLACE && carriedMine(state, op)) return 'the Melta Mine is placed with Place Melta Mine'
-    if (actionId === PICK_UP && base?.performed.includes(ABILITY(A('place-melta-mine')))) return 'a marker cannot be picked up after placing one in the same activation'
     return null
+  },
+
+  // MELTA MINE: never placed within an enemy operative's control range (T-KS.11)
+  placeMarkerProblem(state, op, marker, pos) {
+    return marker.equipmentId === MINE ? minePlaceProblem(state, op, marker, pos) : null
+  },
+
+  // PROXIMITY MINE after every step, forced moves outside actions included (T-KS.12)
+  checkMines(ctx) {
+    triggerMelta(ctx)
+  },
+
+  // Medic!: a casualty it may save waits in the removal queue, where the player is asked (T-KS.9)
+  pausableRemoval(state, op) {
+    return !!medicAsk(state, op.id)
   },
 
   // STRIKE FAST: +1" to Reposition (T-KS.22)
@@ -1297,7 +1351,8 @@ registerCodeHook({
 })
 
 // ---------------------------------------------------------------------------
-// Ploy rules: Reconnoitre Killzone, the free offers (Medic! Dash, Relics of Cadia), end-of-phase Give No Ground
+// Ploy rules: Reconnoitre Killzone, the free offers (Medic! Dash, Melta Mine Dash, Relics of Cadia), end-of-phase Give
+// No Ground
 // ---------------------------------------------------------------------------
 
 function free(id: string, name: string, via: string, op: Operative, param?: string): PloyOffer {
@@ -1315,6 +1370,11 @@ const ksPloyRule: PloyRule = {
           if (e.kind !== FX_MEDIC_DASH || e.seat !== seat || !e.operativeId || state.operatives[e.operativeId]?.status !== 'active') continue
           out.push({ id: `ks.medicDash@${e.operativeId}`, ployId: 'ks.medicDash', name: 'Medic! free Dash', cost: 0, via: 'ks.medicDash', seed: { param: e.operativeId }, operativeId: e.operativeId })
         }
+      }
+      // MELTA MINE: a free Dash right after Place Marker on it (T-KS.11)
+      const subject = info.subjectId ? state.operatives[info.subjectId] : undefined
+      if (subject && subject.seat === seat && info.action === PLACE && live(subject) && mineDashOk(state, subject)) {
+        out.push(free(`ks.mineDash:${subject.id}`, 'Melta Mine: free Dash', 'ks.mineDash', subject))
       }
     }
     // RELICS OF CADIA: once per turning point, two or more fails on a Kasrkin's roll (T-KS.36)
@@ -1348,6 +1408,14 @@ const ksPloyRule: PloyRule = {
       if (!id || !fx) return
       removeEffects(ctx, (e) => e.id === fx.id)
       startFreeAction(ctx, { operativeId: id, action: 'dash', endWithinCrOf: fx.data?.medicId as string, resume: 'ploy.freeAction' })
+      return
+    }
+    if (offer.via === 'ks.mineDash') {
+      const op = offer.operativeId ? s.operatives[offer.operativeId] : undefined
+      if (!op) return
+      removeEffects(ctx, (e) => e.kind === FX_MINE_DASH && e.operativeId === op.id)
+      const counter = s.firefight.activation?.counteract === true
+      startFreeAction(ctx, { operativeId: op.id, action: 'dash', checkPerformed: true, ...(counter ? { maxMove: 2 } : {}), resume: 'ploy.freeAction' })
       return
     }
     if (offer.via === 'ks.relics') {

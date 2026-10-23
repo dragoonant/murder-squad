@@ -11,7 +11,7 @@ import { ScriptedRng } from '@/engine/rng'
 import { shootableWeapons } from '@/engine/shoot'
 import { effectiveApl } from '@/engine/state'
 import { planMove } from '@/engine/movement'
-import { providerCounteractAlternatives, providerMoveSurcharge, providerReactions, providerStealthy, providerWeaponForbidden } from '@/engine/team-rules'
+import { providerCounteractAlternatives, providerMoveSurcharge, providerReactions, providerReadyStepChoices, providerStealthy, providerWeaponForbidden } from '@/engine/team-rules'
 import { TEAM_ID, markOf } from '@/engine/teams/farstalker-kinband'
 import { hasToken } from '@/engine/tokens'
 import { step } from '@/engine'
@@ -22,7 +22,7 @@ import { play, ranged, withWeapons } from '../../fixtures/attack'
 import { place } from '../../fixtures/helpers'
 import { feature, part, rect } from '../../fixtures/maps'
 import { activateOp, edit, optionIds, passIt, realBundle, roster, take, withCtx } from '../../fixtures/real'
-import { A, B, altState, bTurn, dice, engaged, inWindow, moveBy, open, playUntil, strikes, takePloy, toGambit, withTerrain } from './farstalker-kinband.hooks'
+import { A, B, altState, bTurn, dice, engaged, inWindow, moveBy, open, playUntil, strikes, takePloy, toGambit, toReady, withTerrain } from './farstalker-kinband.hooks'
 
 const data = loadBundle()
 const SINGLES = ['fk.bow-hunter', 'fk.cold-blood', 'fk.cut-skin', 'fk.heavy-gunner', 'fk.long-sight', 'fk.pistolier', 'fk.stalker', 'fk.tracker']
@@ -74,34 +74,42 @@ describe('TEAM-FK Farstalker Kinband', () => {
     void roster
   })
 
-  it('TEAM-FK-003 TEAM-FK-004 FARSTALKER: the Ready-step order change (a free offer on the first gambit turn) and the order change instead of a counteraction', () => {
-    // ---- the Ready-step order change: a free offer on the first gambit turn flips up to three Farstalker operatives not
+  it('TEAM-FK-003 TEAM-FK-004 FARSTALKER: the Ready-step order change (the shared Ready-step choice) and the order change instead of a counteraction', () => {
+    // ---- the Ready-step order change: in the Ready step, after readying and before any gambit, up to three Farstalker
+    // operatives not in an enemy control range flip their orders
     {
-      const g0 = toGambit()
-      const hound = A(g0, 'hound')
-      const boy = B(g0, 'boy')
-      const g = place(place(g0, hound, 0, 0), boy, 1.4, 0)
+      const r0 = toReady()
+      expect(r0.strategy.step).toBe('ready')
+      expect(r0.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', window: 'turningPoint.start', canPass: true, context: { readyStep: true } })
+      expect(Object.values(r0.operatives).filter((o) => o.seat === 'A').every((o) => o.ready)).toBe(true)
+      const hound = A(r0, 'hound')
+      const boy = B(r0, 'boy')
+      const g = place(place(r0, hound, 0, 0), boy, 1.4, 0)
       const orders = (st: GameState, ids: string[]) => ids.map((id) => st.operatives[id]!.order)
       const warriors = [A(g, 'cut-skin'), A(g, 'bow-hunter'), A(g, 'tracker'), A(g, 'stalker')]
       const before = orders(g, warriors)
-      const c = take(g, 'fk.p.farstalker-orders').state
-      expect(c.pending!.kind).toBe('ability.choice')
+      const c = take(g, 'ready:0').state
+      expect(c.pending).toMatchObject({ kind: 'ability.choice', context: { hook: 'fkReadyStep' } })
       // the Hound stands in an enemy control range: it is not on the list
       expect(optionIds(c)).not.toContain(hound)
       expect(optionIds(c)).toContain('done')
       let t = c
       for (const id of warriors.slice(0, 3)) t = take(t, id).state
-      // three picks end the choice and the gambit step carries on
+      // three picks end the choice and the Gambit step starts: no gambit was used, nobody has passed
       expect(t.pending!.kind).toBe('strategy.gambit')
+      expect(t.strategy.gambit.order ?? []).toEqual([])
+      expect(t.strategy.gambit.passes).toBe(0)
       const after = orders(t, warriors)
       expect(after.slice(0, 3).every((o, i) => o !== before[i])).toBe(true)
       expect(after[3]).toBe(before[3])
-      // used for the turning point: it is not offered again
-      expect(optionIds(t)).not.toContain('fk.p.farstalker-orders')
       // "done" ends the choice early
-      const d = take(take(take(g, 'fk.p.farstalker-orders').state, warriors[0]!).state, 'done').state
+      const d = take(take(take(g, 'ready:0').state, warriors[0]!).state, 'done').state
       expect(d.pending!.kind).toBe('strategy.gambit')
       expect(orders(d, warriors).filter((o, i) => o !== before[i])).toHaveLength(1)
+      // a pass keeps every order
+      const p = passIt(g).state
+      expect(p.pending!.kind).toBe('strategy.gambit')
+      expect(orders(p, warriors)).toEqual(before)
     }
     // ---- FARSTALKER counteract alternative: an order change passes the turn, spends no counteract and leaves Guard
     {
@@ -138,28 +146,20 @@ describe('TEAM-FK Farstalker Kinband', () => {
     }
   })
 
-  it('TEAM-FK-003 the Ready-step order change is not a gambit: the Farstalker player keeps its turn and an opponent pass just before it still counts', () => {
-    // B holds initiative and passes; A changes orders, keeps the turn, and its pass then ends the step (two in succession)
-    const g0 = toGambit({}, [1, 6, 1, 6])
-    const g = g0.pending!.seat === 'B' ? passIt(g0).state : g0
-    expect(g.pending!.kind).toBe('strategy.gambit')
-    expect(g.pending!.seat).toBe('A')
-    expect(g.strategy.gambit.passes).toBe(1)
-    const cs = A(g, 'cut-skin')
-    const flipped = take(take(take(g, 'fk.p.farstalker-orders').state, cs).state, 'done').state
-    expect(flipped.operatives[cs]!.order).not.toBe(g.operatives[cs]!.order)
-    expect(flipped.pending!.kind).toBe('strategy.gambit')
-    expect(flipped.pending!.seat).toBe('A')
-    expect(flipped.strategy.gambit.passes).toBe(1)
-    expect(optionIds(flipped)).not.toContain('fk.p.farstalker-orders')
-    const ended = passIt(flipped).state
-    expect(ended.strategy.step).toBe('done')
-    // with A holding initiative the change keeps A's first turn, and no pass is owed
-    const h = toGambit()
-    expect(h.pending!.seat).toBe('A')
-    const own = take(take(h, 'fk.p.farstalker-orders').state, 'done').state
-    expect(own.pending!.seat).toBe('A')
-    expect(own.strategy.gambit.passes).toBe(0)
+  it('TEAM-FK-003 the Ready-step order change comes before the Gambit step whoever holds initiative, once per turning point, and is not a gambit', () => {
+    // B holds initiative: the Kommandos have no Ready-step choice, so A is asked, and the Gambit step then opens on B's turn
+    const r = toReady({}, [1, 6, 1, 6])
+    expect(r.initiative).toBe('B')
+    expect(r.strategy.step).toBe('ready')
+    expect(r.strategy.gambit.order ?? []).toEqual([])
+    const cs = A(r, 'cut-skin')
+    const flipped = take(take(take(r, 'ready:0').state, cs).state, 'done').state
+    expect(flipped.operatives[cs]!.order).not.toBe(r.operatives[cs]!.order)
+    expect(flipped.pending).toMatchObject({ kind: 'strategy.gambit', seat: 'B' })
+    expect(flipped.strategy.gambit.passes).toBe(0)
+    // once used, the turning point has no second offer; the gambit list has no stand-in record
+    expect(providerReadyStepChoices(flipped, 'A')).toEqual([])
+    expect(optionIds(flipped).some((id) => id.includes('farstalker'))).toBe(false)
   })
 
   it('TEAM-FK-005 TEAM-FK-006 TEAM-FK-007 Call the Kill: a free gambit while the Kill-Broker lives, Balanced against the mark, a new mark after a Blast kill or at the next window, Victory Shriek once per operative', () => {
@@ -534,7 +534,7 @@ describe('TEAM-FK Farstalker Kinband', () => {
     }
   })
 
-  it('TEAM-FK-016 Bad-tempered with two Hounds: each Hound the enemy Charge triggered may make its own free Charge', () => {
+  it('TEAM-FK-015 TEAM-FK-016 Bad-tempered with two Hounds: each Hound the enemy Charge triggered may make its own free Charge (the shared reaction round re-offers repeat offers)', () => {
     const s = open({ rosterA: roster(['fk.kill-broker', ...SINGLES, 'fk.hound', 'fk.hound', 'fk.warrior']) })
     const [h1, h2] = Object.values(s.operatives).filter((o) => o.seat === 'A' && o.datacardId === 'fk.hound').map((o) => o.id).sort() as [string, string]
     const w = A(s, 'warrior')
@@ -553,6 +553,9 @@ describe('TEAM-FK Farstalker Kinband', () => {
     const again = play(first, dice(), { 'move.path': around }, ['ability.choice', 'firefight.action', 'firefight.activate']).state
     expect(again.pending!.kind).toBe('ability.choice')
     expect(again.pending!.options!.map((o) => (o.data as { operativeId: string }).operativeId)).toEqual([h2])
+    // the shared reaction round asks again: a repeat offer, with the first Hound noted as having reacted
+    expect(again.pending!.context).toMatchObject({ hook: 'reaction', offers: [{ hook: 'fkBadTempered', operativeId: h2, repeat: true }] })
+    expect(again.firefight.activation!.reacted!.ids).toEqual([h1])
     const second = take(again, pick(again, h2)).state
     expect(second.pending!.kind).toBe('move.path')
     const to = (p: PendingDecision) => ({ type: 'move.path' as const, seat: p.seat, decisionId: p.id, payload: { waypoints: [{ x: 3.3, z: 1.5 }] } })
@@ -651,6 +654,23 @@ describe('TEAM-FK Farstalker Kinband', () => {
     expect(obscured(lsOn, 'fk.w.kroot-hunting-rifle-mobile')).toBe(false)
     expect(obscured(eng, 'fk.w.kroot-hunting-rifle-mobile')).toBe(true)
     expect(obscured(lsOn, 'fk.w.blade')).toBe(true)
+    // the odds before a weapon is picked: no attack in progress, the status hook is told the weapon (HookContext.weaponId)
+    const oddsObscured = (st: GameState, weaponId: string) => {
+      const data = { obscured: true, inCover: false }
+      expect(st.attack).toBeFalsy()
+      runHook('target.status', { seat: 'A', state: st, operativeId: ls, targetId: boy, weaponId, data })
+      return data.obscured
+    }
+    expect(oddsObscured(lsOn, 'fk.w.kroot-hunting-rifle-stationary')).toBe(false)
+    expect(oddsObscured(lsOn, 'fk.w.blade')).toBe(true)
+    expect(oddsObscured(eng, 'fk.w.kroot-hunting-rifle-stationary')).toBe(true)
+    // the weapon named wins over an attack in progress with another weapon
+    const withBlade = edit(lsOn, (x) => {
+      x.attack = { kind: 'shoot', stage: 'weapon', operativeId: ls, seat: 'A', weaponId: 'fk.w.blade', pointBlank: false, targets: [], candidates: [], index: 0, seq: null, incapacitated: [], stunned: [], inherit: null, windows: [] }
+    })
+    const named = { obscured: true, inCover: false }
+    runHook('target.status', { seat: 'A', state: withBlade, operativeId: ls, targetId: boy, weaponId: 'fk.w.kroot-hunting-rifle-mobile', data: named })
+    expect(named.obscured).toBe(false)
     // ... and it ends when the Long-Sight is next activated
     expect(lsOn.effects.find((x) => x.source === 'fk.longSight')!.expires).toBe(`startOfActivation:${ls}`)
 

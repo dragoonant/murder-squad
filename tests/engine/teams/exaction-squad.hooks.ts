@@ -4,7 +4,8 @@
 import { createGame } from '@/engine'
 import { act } from '@/engine/actions'
 import { actionForbidden } from '@/engine/abilities'
-import { applyAplEffect, attackStats, effectiveRules, inflict, validTargets } from '@/engine/attack-common'
+import { applyAplEffect, attackStats, effectiveRules, inflict, runDeferredRemovals, validTargets } from '@/engine/attack-common'
+import { directDamage } from '@/engine/effects'
 import { providerCostDelta } from '@/engine/team-rules'
 import { usableRangedWeapons } from '@/engine/shoot'
 import { usePloy, type PloyOffer } from '@/engine/ploys'
@@ -152,7 +153,12 @@ export const scenarios: Record<string, () => void> = {
     const med = A(s, 'chirurgant')
     const vig = A(s, 'vigilant')
     const t = edit(place(place(s, med, 0, 0), vig, 2, 0), (st) => void (st.operatives[vig]!.wounds = 2))
-    withCtx(t, (ctx) => void inflict(ctx, { targetId: vig, attackerId: B(s, 'boy'), weaponId: 'kom.w.choppa', amount: 5, source: 'normal' }))
+    // rule damage outside an attack: the removal waits and the owner uses Medic!
+    const asked = withCtx(t, (ctx) => {
+      directDamage(ctx, vig, 5, B(s, 'boy'), 'test.rule')
+      runDeferredRemovals(ctx)
+    }).state
+    take(asked, 'use')
   },
   exMedikit() {
     const s = open()

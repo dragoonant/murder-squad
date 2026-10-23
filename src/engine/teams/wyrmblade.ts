@@ -11,7 +11,8 @@
 //  - Expert Swordsman and Creeping Shadow follow-ups (T-WYR.12, 20): pseudo ploys in the firefight.actionEnded window
 //    (registerPloyRule extraOffers) that start a free action; Shadow Vector (T-WYR.8) is a ploy cost rule.
 //  - Before-removal free actions (T-WYR.17, 37): the operative.incapacitated hook raises the Overthrow choice, then
-//    the shared operative.incapacitated ploy window offers A Plan Generations in the Making.
+//    the shared operative.incapacitated ploy window offers A Plan Generations in the Making; removals outside an attack
+//    wait for that queue (provider pausableRemoval).
 //  - Slink Into Darkness (T-WYR.34): the shared firefight.activationEnded ploy window.
 import { abilityOffers } from '../abilities'
 import { applyAplEffect, redirectAttack, ruleKey, ruleSetFor, continueRemovals } from '../attack-common'
@@ -186,6 +187,17 @@ export function emergeSpots(state: GameState, op: Operative): Vec3[] {
 registerTeamRules({
   id: TEAM_ID,
 
+  // ---- before-removal free actions (T-WYR.17, 37) ----
+  // a Neophyte incapacitated outside an attack (a mine, rule damage) waits for the before-removal queue whenever
+  // Overthrow the Oppressors or A Plan Generations in the Making could answer it, so its owner is asked there
+  pausableRemoval(s, op) {
+    if (!isWyr(s, op) || !isNeophyte(s, op)) return false
+    const plan = missionFeasible(s, op)
+    const ploy = s.data.ploys?.[PLAN]
+    if (plan && ploy && !usedThisTp(s, op.seat, PLAN) && s.players[op.seat].cp >= ploy.cost) return true
+    return overthrowAvailable(s, op) && (plan || freeShootPossible(s, op))
+  },
+
   // ---- HIDING at set-up (T-WYR.24) ----
   setAsideAtSetup: (s, op) => op.status === 'reserve' && op.offboard === undefined && isWyr(s, op) && isNeophyte(s, op) && !isCultAgent(s, op),
   setAsideCap(s, seat) {
@@ -213,13 +225,9 @@ registerTeamRules({
 
   // ---- markers, cover, mines ----
   controlApl: (s, op, _m, apl) => (hasAbility(s, op, ICON) ? apl + 1 : null),
-  stealthyCover(s, op) {
-    if (!isCultAgent(s, op)) return 0
-    // not cumulative with the improved cover save from Vantage terrain (T-WYR.28)
-    const seq = s.attack?.seq
-    if (seq && seq.targetId === op.id && seq.improvedCover) return 0
-    return 1
-  },
+  // not cumulative with the improved cover save from Vantage terrain (T-WYR.28): the core adds no Stealthy-style
+  // improvement once the defender took the Vantage one (handlers.vantageImprovementTaken)
+  stealthyCover: (s, op) => (isCultAgent(s, op) ? 1 : 0),
   ignoresMine: (s, op, mine) => mine.equipmentId === TRAPS && mine.owner === op.seat && isWyr(s, op),
 
   // ---- Quicksilver Strike (T-WYR.14) ----
@@ -860,7 +868,7 @@ registerHook(
     const s = c.state
     const ctx = c.engine
     const victim = s && c.operativeId ? s.operatives[c.operativeId] : undefined
-    // only inside a removal queue, which can wait for the answer (mines and direct damage remove at once; RULING)
+    // only inside a removal queue, which can wait for the answer (mines and direct damage wait for one: pausableRemoval)
     if (!s || !ctx || !victim || !s.removal || victim.status !== 'active' || !isWyr(s, victim) || !isNeophyte(s, victim)) return null
     const seat = victim.seat
     // Overthrow the Oppressors is a rule, asked here; A Plan Generations in the Making at its printed cost is a ploy,

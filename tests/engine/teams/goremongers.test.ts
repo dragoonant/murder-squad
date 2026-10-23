@@ -7,7 +7,9 @@ import { actionForbidden } from '@/engine/abilities'
 import { defenceStats, effectiveRules, inflict, parseRules } from '@/engine/attack-common'
 import { hasKeyword } from '@/engine/conditions'
 import { expireEffects, usedThisBattle, usedThisTp } from '@/engine/effects'
+import { placementIssue } from '@/engine/equipment'
 import { fightAvailability } from '@/engine/fight'
+import { REACTION_DONE, startFreeAction } from '@/engine/firefight'
 import { runHook } from '@/engine/hooks'
 import { markerOffers } from '@/engine/markers'
 import { planMove } from '@/engine/movement'
@@ -118,7 +120,9 @@ describe('TEAM-GM Goremongers', () => {
     const a = A(s0, 'aspirant')
     const hurt = edit(withGore(s0, a, 2), (st) => void (st.operatives[a]!.wounds = 4))
     let t = activateStop(hurt, a)
-    expect(ids(t)).toEqual(expect.arrayContaining(['gm.x.rejuvenate', 'gm.x.mania', 'gm.x.fury', 'gm.x.surge']))
+    expect(ids(t)).toEqual(expect.arrayContaining(['gm.x.rejuvenate', 'gm.x.mania', 'gm.x.fury']))
+    // Surge is offered at a Charge or Reposition declaration only, never between actions
+    expect(ids(t)).not.toContain('gm.x.surge')
     // Rejuvenate: a 6 is a 3 on the D3, plus 1
     t = take(t, 'gm.x.rejuvenate', dice(6)).state
     expect(t.operatives[a]!.wounds).toBe(8)
@@ -184,7 +188,7 @@ describe('TEAM-GM Goremongers', () => {
     const a = A(s0, 'aspirant')
     const boy = B(s0, 'boy')
     const far = edit(place(place(s0, a, 0, 0), boy, 4, 0), (st) => void (st.operatives[boy]!.wounds = st.operatives[boy]!.maxWounds = 40))
-    let t = take(toAction(activateStop(far, a)), 'charge').state
+    let t = toAction(take(toAction(activateStop(far, a)), 'charge').state)
     expect(t.pending!.constraints!.maxInches).toBe(9)
     t = expectMove(t, 2.2)
     expect(t.pending).toMatchObject({ kind: 'ploy.firefight', window: 'firefight.chargeMoved' })
@@ -195,18 +199,37 @@ describe('TEAM-GM Goremongers', () => {
     // not offered on a counteraction's Charge
     const counter = offersFor(edit(t, (st) => void (st.firefight.activation!.counteract = true)), 'A', 'firefight.chargeMoved', { window: 'firefight.chargeMoved', subjectId: a, counteracting: true })
     expect(counter.map((o) => o.ployId)).not.toContain('gm.x.rake')
-    // Surge: armed before the action, spent as the Reposition is declared
-    let r = useOffer(activateStop(place(s0, a, 0, 0), a), 'gm.x.surge')
+    // Surge: offered in the Reposition's declaration window and spent there
+    let r = take(toAction(activateStop(place(s0, a, 0, 0), a)), 'reposition').state
+    expect(r.pending).toMatchObject({ kind: 'ploy.firefight', window: 'firefight.actionDeclared' })
     expect(goreLevel(r, a)).toBe(1)
-    r = take(r, 'reposition').state
+    r = useOffer(r, 'gm.x.surge:reposition')
     expect(goreLevel(r, a)).toBe(0)
     expect(r.pending!.constraints!.maxInches).toBe(8)
     // ... a Charge gets 10 inches
-    let c = useOffer(activateStop(far, a), 'gm.x.surge')
-    c = take(c, 'charge').state
+    const c = useOffer(take(toAction(activateStop(far, a)), 'charge').state, 'gm.x.surge:charge')
     expect(c.pending!.constraints!.maxInches).toBe(10)
-    // no Surge on an empty tank
-    expect(activateStop(withGore(s0, a, 0), a).pending?.kind).toBe('firefight.action')
+    // passed at the declaration: the tank stays and the move is the plain one
+    const plain = toAction(take(toAction(activateStop(place(s0, a, 0, 0), a)), 'reposition').state)
+    expect(goreLevel(plain, a)).toBe(1)
+    expect(plain.pending!.constraints!.maxInches).toBe(7)
+    // no Surge on an empty tank, nor on a Dash
+    expect(take(toAction(activateStop(withGore(place(s0, a, 0, 0), a, 0), a)), 'reposition').state.pending?.kind).toBe('move.path')
+    expect(ids(take(toAction(activateStop(place(s0, a, 0, 0), a)), 'dash').state)).not.toContain('gm.x.surge:dash')
+  })
+
+  it('TEAM-GM-010 Surge in a free frame: offered at the declaration of a free Charge inside the activation (info free), never on the Strategy-phase Charge of Hunt for Blood', () => {
+    const s0 = open()
+    const a = A(s0, 'aspirant')
+    const boy = B(s0, 'boy')
+    const near = edit(place(place(s0, a, 0, 0), boy, 4, 0), (st) => void (st.operatives[boy]!.wounds = st.operatives[boy]!.maxWounds = 40))
+    // a free Charge started inside the Aspirant's activation (the Obsessive Bloodlust shape) opens the declaration window
+    const inAct = withCtx(toAction(activateStop(near, a)), (ctx) => void startFreeAction(ctx, { operativeId: a, action: 'charge', maxMove: 2, resume: REACTION_DONE })).state
+    expect(inAct.pending).toMatchObject({ kind: 'ploy.firefight', window: 'firefight.actionDeclared' })
+    expect(inAct.window?.info).toMatchObject({ action: 'charge', free: true })
+    expect(ids(inAct)).toContain('gm.x.surge:charge')
+    // outside any activation (a Strategy-phase free Charge) the Sanguavitae limits have nothing to count against: no offer
+    expect(offersFor(near, 'A', 'firefight.actionDeclared', { window: 'firefight.actionDeclared', subjectId: a, action: 'charge', free: true }).map((o) => o.ployId)).not.toContain('gm.x.surge')
   })
 
   it('TEAM-GM-011 TEAM-GM-026 Rage (+1 Atk for that Fight only) and Enhanced Violence (Balanced at half, Relentless at full, read after the Rage lowering; ranged weapons and an empty tank unchanged)', () => {
@@ -312,6 +335,10 @@ describe('TEAM-GM Goremongers', () => {
     expect(done.state.pending).toMatchObject({ kind: 'ability.choice', seat: 'A' })
     expect(done.state.operatives[boy]!.status).toBe('removed')
     let c = take(done.state, 'react:0').state
+    // the free Charge opens its declaration window (info free): Surge is offered there, and the 2 inch cap still wins
+    expect(c.window?.info).toMatchObject({ action: 'charge', free: true })
+    expect(ids(c)).toContain('gm.x.surge:charge')
+    c = toAction(c)
     expect(c.pending!.constraints!.maxInches).toBe(2)
     c = expectMove(c, 1.7)
     // Rake is on offer after the free Charge's move too (it is a Charge in its activation)
@@ -528,7 +555,7 @@ describe('TEAM-GM Goremongers', () => {
       ).map((r) => r.rule.replace('core.wr.', ''))
     expect(rules(land, st, boy)).toEqual(['rending'])
     const down = edit(place(place(land, st, -3.5, 0, 3), boy, 0.6, 0), (x) => void (x.operatives[boy]!.wounds = x.operatives[boy]!.maxWounds = 40))
-    let t = take(toAction(activateStop(down, st)), 'charge').state
+    let t = toAction(take(toAction(activateStop(down, st)), 'charge').state)
     t = expectOk(step(t, act.path(t.pending!, [{ x: -1, z: 0, y: 0 }]))).state
     t = toAction(t)
     expect(t.effects.some((e) => e.kind === 'gm.dropped' && e.operativeId === st)).toBe(true)
@@ -550,7 +577,7 @@ describe('TEAM-GM Goremongers', () => {
       x.players.A.cp = 1
       x.operatives[boy]!.wounds = x.operatives[boy]!.maxWounds = 40
     })
-    let c = take(toAction(activateStop(far, a)), 'charge').state
+    let c = toAction(take(toAction(activateStop(far, a)), 'charge').state)
     c = toAction(expectMove(c, 2.2))
     const charged = fightWith(c, boy, dice(3, 3, 2, 2), takePloy('gm.p.unbridled-aggression'))
     expect(evs(charged.events, 'AttackRetained')[0]).toMatchObject({ operativeId: a, normal: 1, crit: 1 })
@@ -607,7 +634,8 @@ describe('TEAM-GM Goremongers', () => {
     expect(ids(dryCounter)).toEqual(['gm.p.gorethirst'])
     expect(ids(take(dryCounter, 'gm.p.gorethirst').state)).toContain('gm.p.lacerate-flesh')
     t = take(t, 'gm.p.gorethirst').state
-    expect(ids(t)).toContain('gm.x.surge')
+    // paid: Surge is offered when the counteraction's Charge is declared
+    expect(ids(take(t, 'charge').state)).toContain('gm.x.surge:charge')
     expect(t.operatives[a]!.order).toBe('engage')
     expect(t.players.A.cp).toBe(0)
     expect(usedThisTp(t, 'A', 'gm.p.gorethirst')).toBe(true)
@@ -650,7 +678,22 @@ describe('TEAM-GM Goremongers', () => {
     const cad = g.markers.find((m) => m.equipmentId === 'gm.e.bloody-cadaver')!
     const tot = g.markers.find((m) => m.equipmentId === 'gm.e.gory-totem')!
     expect([cad.owner, tot.owner]).toEqual(['A', 'A'])
-    expect(Math.hypot(cad.pos.x - tot.pos.x, cad.pos.z - tot.pos.z)).toBeGreaterThan(2)
+    // (the pair may stand within 2 inches of each other: each ignores the other, TEAM-GM-034 set-up below)
+    expect(Math.hypot(cad.pos.x - tot.pos.x, cad.pos.z - tot.pos.z)).toBeGreaterThan(0)
+    // set-up spacing: the Totem ignores the Cadaver (and the Cadaver the Totem), never another marker
+    {
+      const spot = { x: tot.pos.x, z: tot.pos.z }
+      const near = (equipmentId: string, kind = 'equipment') =>
+        edit(g, (x) => {
+          x.markers = x.markers.filter((m) => m.id !== tot.id && m.id !== cad.id)
+          x.markers.push({ id: 'pair', kind, pos: { x: spot.x + 1, z: spot.z }, owner: 'A', carriedBy: null, controller: null, equipmentId } as never)
+        })
+      const totemAt = (st: GameState) => placementIssue(st, 'A', { key: 'k', equipmentId: 'gm.e.gory-totem', kind: 'marker' }, spot, 0)?.reason ?? null
+      const cadaverAt = (st: GameState) => placementIssue(st, 'A', { key: 'k', equipmentId: 'gm.e.bloody-cadaver', kind: 'marker' }, spot, 0)?.reason ?? null
+      expect(totemAt(near('gm.e.bloody-cadaver'))).toBeNull()
+      expect(cadaverAt(near('gm.e.gory-totem'))).toBeNull()
+      expect(totemAt(near('gm.e.other'))).toMatch(/more than 2/)
+    }
     const asp = A(g, 'aspirant')
     const boy = B(g, 'boy')
     // the Aspirant stands at the Cadaver when the first Ready step comes: it is offered a level, once
@@ -716,5 +759,43 @@ describe('TEAM-GM Goremongers', () => {
     expect(effectiveRules(full, full.operatives[a2[0]!.id]!, full.data.weapons['gm.w.chainglaive-thrown']!, 'shoot', boy).map((r) => r.rule)).toContain('relentless')
     // the Chaos Sigil and the Cadaver are in the printed data too: ritual blade and fleshskewer carry the team weapon rules
     expect(data.byId['gm.w.ritual-blade']).toMatchObject({ rules: [{ rule: 'gm.a.wr-ritual' }] })
+  })
+
+  it('TEAM-GM-032 TEAM-GM-033 Lacerate Flesh settles when a counteraction ends (counteraction.end); Destructive Demise is offered for a removal outside an attack (Lacerate Flesh damage)', () => {
+    const s0 = open()
+    const a = A(s0, 'aspirant')
+    const h = A(s0, 'blood-herald')
+    const boy = B(s0, 'boy')
+    const counterSetup = edit(withGore(s0, a, 0), (st) => {
+      st.players.A.cp = 3
+      st.operatives[a]!.order = 'engage'
+      for (const o of Object.values(st.operatives)) if (o.seat === 'A' && o.id !== h) o.ready = false
+    })
+    let t = take(toAction(activateStop(counterSetup, h)), 'end').state
+    t = take(toAction(activateStop(t, boy)), 'end').state
+    t = take(t, `counteract:${a}`).state
+    t = take(t, 'gm.p.lacerate-flesh').state
+    expect(goreLevel(t, a)).toBe(1)
+    // the counteraction ends with no action: the level goes back at its end
+    const calm = take(toAction(t), 'end').state
+    expect(goreLevel(calm, a)).toBe(0)
+    expect(calm.operatives[a]!.wounds).toBe(s0.operatives[a]!.wounds)
+    expect(calm.effects.some((e) => e.kind === 'gm.lacerate')).toBe(false)
+    // emptied meanwhile: D3 damage at the counteraction's end (a 4 is a 2)
+    const drained = take(withGore(toAction(t), a, 0), 'end', dice(4)).state
+    expect(drained.operatives[a]!.wounds).toBe(s0.operatives[a]!.wounds - 2)
+    // the D3 takes it down with an enemy in its control range: the removal waits and Destructive Demise is offered
+    const brink = edit(withGore(place(place(toAction(t), a, 0, 0), boy, 1.4, 0), a, 0), (st) => {
+      st.operatives[a]!.wounds = 1
+      st.operatives[boy]!.wounds = st.operatives[boy]!.maxWounds = 20
+    })
+    const asked = take(brink, 'end', dice(4)).state
+    expect(asked.operatives[a]!.status).toBe('active')
+    expect(asked.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'A', window: 'operative.incapacitated' })
+    expect(ids(asked)).toContain(`gm.p.destructive-demise:${boy}`)
+    const paid = take(asked, `gm.p.destructive-demise:${boy}`, dice(6)).state
+    expect(paid.operatives[boy]!.wounds).toBe(20 - 3)
+    const after = paid.pending?.kind === 'ploy.firefight' && paid.pending.window === 'operative.incapacitated' ? passIt(paid).state : paid
+    expect(after.operatives[a]!.status).toBe('removed')
   })
 })

@@ -5,15 +5,17 @@ import { step } from '@/engine'
 import { ScriptedRng } from '@/engine/rng'
 import { act } from '@/engine/actions'
 import { abilityOffers, actionForbidden, canCounteractWithOrder, maxRepeats, refreshFlags } from '@/engine/abilities'
-import { attackStats, effectiveRules, inflict, ruleKey } from '@/engine/attack-common'
+import { attackStats, commandRerollCost, effectiveRules, inflict, ruleKey, runDeferredRemovals } from '@/engine/attack-common'
 import { hasKeyword } from '@/engine/conditions'
 import { hookFireCount } from '@/engine/code-hooks'
 import { grenadeSource } from '@/engine/core-hooks'
 import { selectionProblem } from '@/engine/equipment'
-import { usedThisBattle, usedThisTp } from '@/engine/effects'
+import { directDamage, usedThisBattle, usedThisTp } from '@/engine/effects'
 import { runHook } from '@/engine/hooks'
 import { findGambit, offersFor, usePloy } from '@/engine/ploys'
 import { markerControl } from '@/engine/query'
+import { markerInControlRange } from '@/engine/measure'
+import { bodyOf } from '@/engine/los'
 import { resolvePicks } from '@/engine/operative-picks'
 import { shootableWeapons } from '@/engine/shoot'
 import { effectiveApl, effectiveMove } from '@/engine/state'
@@ -268,10 +270,20 @@ describe('TEAM-PH Phobos Strike Team', () => {
       const rng = dice(1, 1, 1, 1, 6)
       t = take(t, boy, rng).state
       expect(t.pending!.kind).toBe('dice.commandReroll')
+      // the Command Re-roll on the Sergeant's dice is priced at 0 CP, so it is on offer even with no CP at all
+      expect(t.pending!.options!.find((o) => o.id === 'command:0')!.data!.cost).toBe(0)
+      const broke = edit(t, (st) => void (st.players.A.cp = 0))
+      expect(optionIds(broke)).toContain('command:0')
+      const paid = take(broke, 'command:0', rng)
+      expect(paid.state.players.A.cp).toBe(0)
+      expect(paid.events.some((e) => e.type === 'CpChanged')).toBe(false)
       t = take(t, 'command:0', rng).state
       const r = play(t, rng, noPloys)
       expect(r.state.players.A.cp).toBe(cp0)
       expect(usedThisBattle(r.state, 'A', 'ph.ta.ploy')).toBe(true)
+      // once the use is spent it costs 1 CP again
+      const spent = edit(t, (st) => st.ledger.A.battle.push('ph.ta.ploy'))
+      expect(commandRerollCost(spent, spent.attack!.seq!.atk)).toBe(1)
     }
   })
 
@@ -327,40 +339,53 @@ describe('TEAM-PH Phobos Strike Team', () => {
       const com = A(s0, 'infiltrator-commsman')
       const boy = B(s0, 'boy')
       const stage = (sgX: number) => place(place(place(s0, hx, 0, 0), sg, sgX, 0), com, 0, 2)
-      const hit = (state: GameState, id: string, rng = dice(5)) =>
-        withCtx(state, (ctx) => inflict(ctx, { targetId: id, attackerId: boy, weaponId: 'kom.w.slugga', amount: 99, source: 'normal' }), rng).state
-      const r = hit(stage(2), sg)
+      // damage outside an attack: the removal waits for the end of the step, where the Phobos player is asked
+      const fall = (state: GameState, id: string) =>
+        withCtx(state, (ctx) => {
+          directDamage(ctx, id, 99, boy, 'test')
+          runDeferredRemovals(ctx)
+        }).state
+      const asked = fall(stage(2), sg)
+      expect(asked.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { hook: 'phMedic', operativeId: sg } })
+      expect(optionIds(asked)).toEqual(['save', 'decline'])
+      // saved: D3 wounds (a 5: 3), APL -1 for both, the use spent
+      const r = take(asked, 'save', dice(5)).state
       expect(r.operatives[sg]!.wounds).toBe(3)
       expect(r.operatives[sg]!.status).toBe('active')
       expect(effectiveApl(r.operatives[sg]!)).toBe(2)
       expect(effectiveApl(r.operatives[hx]!)).toBe(2)
       expect(usedThisTp(r, 'A', `ph.medic:${hx}`)).toBe(true)
-      // it cannot be incapacitated for the rest of the action
-      expect(hit(r, sg).operatives[sg]!.wounds).toBe(1)
-      // the first casualty only: a second operative falls
-      expect(hit(r, com).operatives[com]!.wounds).toBe(0)
+      expect(r.pending!.id).toBe(stage(2).pending!.id)
+      // declined: removed, and the use is spent all the same
+      const no = take(asked, 'decline').state
+      expect(no.operatives[sg]!.status).toBe('removed')
+      expect(effectiveApl(no.operatives[hx]!)).toBe(3)
+      expect(usedThisTp(no, 'A', `ph.medic:${hx}`)).toBe(true)
+      // the first casualty only: a second operative falls without a question
+      const second = fall(r, com)
+      expect(second.operatives[com]!.status).toBe('removed')
+      expect(second.pending!.kind).not.toBe('ability.choice')
       // the free Dash follows: a reaction while the enemy acts, a 0 CP offer while Phobos acts
       expect(providerReactions(r, 'A', { actorId: boy, action: 'shoot', activeSeat: 'B', moved: false }).map((o) => o.hook)).toEqual(['phMedic'])
       const own = edit(r, (st) => {
         st.firefight.activation = { operativeId: com, seat: 'A', counteract: false, stage: 'action', apSpent: 1, performed: ['shoot'], declared: null }
       })
       expect(offersFor(own, 'A', 'firefight.actionEnded', { window: 'firefight.actionEnded', subjectId: com }).some((o) => o.via === 'ph.medicDash')).toBe(true)
-      // used in the saved operative's own activation: that activation ends once the action is done
-      const inOwn = hit(
-        edit(stage(2), (st) => {
-          st.firefight.activation = { operativeId: sg, seat: 'A', counteract: false, stage: 'action', apSpent: 1, performed: [], declared: null }
-        }),
-        sg,
-      )
-      expect(inOwn.firefight.activation!.endsAfterAction).toBe(true)
-      // out of reach: beyond 3", in an enemy control range (either of them), or the Helix Adept is a Shoot target
-      expect(hit(stage(4.8), sg).operatives[sg]!.wounds).toBe(0)
-      expect(hit(place(stage(2), boy, 3.5, 0), sg).operatives[sg]!.wounds).toBe(0)
-      expect(hit(place(stage(2), boy, -1.4, 0), sg).operatives[sg]!.wounds).toBe(0)
+      // used in the saved operative's own activation: that activation ends at once
+      const inOwn = take(fall(activateOp(stage(2), sg), sg), 'save', dice(5)).state
+      expect(inOwn.operatives[sg]!.wounds).toBe(3)
+      expect(inOwn.firefight.activation?.operativeId).not.toBe(sg)
+      // no question: beyond 3", in an enemy control range (either of them), or the Helix Adept is a Shoot target
+      const ask = (state: GameState) =>
+        withCtx(state, (ctx) => inflict(ctx, { targetId: sg, attackerId: boy, weaponId: 'kom.w.slugga', amount: 99, source: 'normal' })).state.effects.some((e) => e.kind === 'ph.medicAsk')
+      expect(ask(stage(2))).toBe(true)
+      expect(ask(stage(4.8))).toBe(false)
+      expect(ask(place(stage(2), boy, 3.5, 0))).toBe(false)
+      expect(ask(place(stage(2), boy, -1.4, 0))).toBe(false)
       const targeted = edit(stage(2), (st) => {
         st.attack = { kind: 'shoot', targets: [hx], incapacitated: [] } as never
       })
-      expect(hit(targeted, sg).operatives[sg]!.wounds).toBe(0)
+      expect(ask(targeted)).toBe(false)
     }
     {
       const s0 = open()
@@ -635,13 +660,16 @@ describe('TEAM-PH Phobos Strike Team', () => {
       const boy = B(s, 'boy')
       const mine = s.markers.find((m) => m.equipmentId === HAYWIRE)!
       expect(mine.carriedBy).toBe(ml)
-      // Place Marker is refused while an enemy is within 2" plus the marker radius of the Minelayer
-      const refused = (x: number) => {
-        const t = place(place(s, ml, 0, 0), boy, x, 0)
-        return actionForbidden(t, t.operatives[ml]!, 'marker:place')
-      }
-      expect(refused(3.2)).not.toBeNull()
-      expect(refused(4.5)).toBeNull()
+      // Place Marker offers only spots outside every enemy control range, and refuses the others
+      const near = activateOp(place(place(s, ml, 0, 0), boy, 2.2, 0), ml)
+      const placing = take(near, `marker:place:${mine.id}`).state
+      const p = placing.pending!
+      expect(p.kind).toBe('marker.place')
+      const spots = p.context.spots as { x: number; z: number }[]
+      expect(spots.length).toBeGreaterThan(0)
+      for (const o of spots) expect(markerInControlRange(placing, bodyOf(placing.operatives[boy]!), { ...mine, carriedBy: null, pos: o }), `${o.x},${o.z}`).toBe(false)
+      expect(step(placing, { type: 'marker.place', seat: 'A', decisionId: p.id, payload: { x: 1, z: 0 } }).rejection?.code).toBe('E_ACTION_RESTRICTED')
+      expect(expectOk(step(placing, { type: 'marker.place', seat: 'A', decisionId: p.id, payload: spots[0]! })).state.markers.find((m) => m.id === mine.id)!.carriedBy).toBeNull()
       // only the Minelayer picks it up
       const down = edit(place(s, ml, 0, 0), (st) => {
         const m = st.markers.find((k) => k.equipmentId === HAYWIRE)!
@@ -652,7 +680,7 @@ describe('TEAM-PH Phobos Strike Team', () => {
       expect(actionForbidden(down, down.operatives[A(s, 'infiltrator-sergeant')]!, 'marker:pickUp')).toBeNull()
       expect(optionIds(activateOp(down, ml)).some((o) => o.startsWith('marker:pickUp'))).toBe(true)
       // a dying Minelayer drops the mine at the legal spot farthest from enemies, or loses it
-      const kill = (state: GameState) => withCtx(state, (ctx) => inflict(ctx, { targetId: ml, attackerId: boy, weaponId: 'kom.w.slugga', amount: 99, source: 'normal' }), dice(1)).state
+      const kill = (state: GameState) => withCtx(state, (ctx) => void directDamage(ctx, ml, 99, boy, 'test'), dice(1)).state
       const open1 = kill(place(place(s, ml, 0, 0), boy, 6, 0))
       const dropped = open1.markers.find((m) => m.equipmentId === HAYWIRE)!
       expect(dropped.carriedBy).toBeNull()
@@ -960,7 +988,11 @@ describe('TEAM-PH Phobos Strike Team', () => {
       const staged = edit(place(place(s0, hx, 0, 0), sg, 2, 0), (st) => {
         st.firefight.activation = { operativeId: sg, seat: 'A', counteract: false, stage: 'action', apSpent: 1, performed: [], declared: null }
       })
-      const r = withCtx(staged, (ctx) => inflict(ctx, { targetId: sg, attackerId: boy, weaponId: 'kom.w.slugga', amount: 99, source: 'normal' }), dice(5)).state
+      const asked = withCtx(staged, (ctx) => {
+        directDamage(ctx, sg, 99, boy, 'test')
+        runDeferredRemovals(ctx)
+      }).state
+      const r = take(asked, 'save', dice(5)).state
       expect(r.operatives[sg]!.wounds).toBe(3)
       expect(effectiveApl(r.operatives[sg]!)).toBe(3)
       expect(r.effects.some((e) => e.kind === 'ph.aplNext' && e.operativeId === sg)).toBe(true)

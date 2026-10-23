@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest'
 import { step } from '@/engine'
 import { act } from '@/engine/actions'
 import { abilityOffers, actionForbidden, maxRepeats, refreshFlags } from '@/engine/abilities'
-import { applyAplEffect, attackStats, defenceStats, effectiveRules, parseRules, validTargets, weaponDamage } from '@/engine/attack-common'
+import { applyAplEffect, attackStats, runDeferredRemovals, defenceStats, effectiveRules, parseRules, validTargets, weaponDamage } from '@/engine/attack-common'
 import { grenadeSource } from '@/engine/core-hooks'
 import { hasKeyword } from '@/engine/conditions'
-import { hookFireCount } from '@/engine/code-hooks'
+import { getCodeHook, hookFireCount } from '@/engine/code-hooks'
 import { expireEffects, usedThisBattle, usedThisTp } from '@/engine/effects'
 import { actionCost } from '@/engine/firefight'
 import { interruptActions } from '@/engine/guard'
@@ -18,7 +18,7 @@ import { isPsychicWeapon } from '@/engine/psychic'
 import { effectiveApl, effectiveMove } from '@/engine/state'
 import { TEAM_ID, isFrenzied, shotBy } from '@/engine/teams/fellgor-ravagers'
 import type { Rng } from '@/engine/rng'
-import { providerControlApl, providerCostDelta } from '@/engine/team-rules'
+import { providerControlApl, providerCostDelta, providerOwnReactions } from '@/engine/team-rules'
 import { tokenCount, tokensOnActivationStart } from '@/engine/tokens'
 import type { GameState } from '@/engine/types'
 import { enumerateLoadouts, loadBundle, validateRoster, type DatacardData } from '../../../src/data'
@@ -227,11 +227,21 @@ describe('TEAM-FG Fellgor Ravagers', () => {
       expect(t.kills).toHaveLength(1)
       expect(t.kills![0]!.removedLater).toBe(true)
       expect(calls).toHaveLength(1)
-      // the end of a counteraction kills it too (as its action ends), and the last turning point's end (not an earlier one)
+      // the end of a counteraction kills it too (counteraction.end, once it performed an action), and the last turning
+      // point's end (not an earlier one)
       const frenzied = frenzy(place(s0, wr, 0, 0), wr)
       const counter = edit(frenzied, (st) => void (st.firefight.activation = { operativeId: wr, seat: 'A', counteract: true, stage: 'action', apSpent: 0, performed: [], declared: null }))
-      const ended = withCtx(counter, (ctx) => void runHook('action.ended', { seat: 'A', state: ctx.state, engine: ctx, operativeId: wr, data: { action: 'reposition', counteract: true, free: false, activeSeat: 'A' } })).state
-      expect(ended.operatives[wr]!.status).toBe('removed')
+      const counterEnd = (performed: string[]) =>
+        withCtx(counter, (ctx) => {
+          runHook('counteraction.end', { seat: 'A', state: ctx.state, engine: ctx, operativeId: wr, data: { performed, removed: false } })
+          runDeferredRemovals(ctx)
+        }).state
+      expect(counterEnd(['reposition']).operatives[wr]!.status).toBe('removed')
+      // a counteraction ended without an action was declined: the operative lives on
+      expect(counterEnd([]).operatives[wr]!.status).toBe('active')
+      // the action's end alone no longer kills it (the counteraction may go on: a bonus action)
+      const midway = withCtx(counter, (ctx) => void runHook('action.ended', { seat: 'A', state: ctx.state, engine: ctx, operativeId: wr, data: { action: 'reposition', counteract: true, free: false, activeSeat: 'A' } })).state
+      expect(midway.operatives[wr]!.status).toBe('active')
       const endOf = (n: number) => withCtx(frenzied, (ctx) => void runHook('turningPoint.end', { seat: 'A', state: ctx.state, engine: ctx, data: { turningPoint: n } })).state.operatives[wr]!.status
       expect([endOf(2), endOf(4)]).toEqual(['active', 'removed'])
     } finally {
@@ -803,6 +813,9 @@ describe('TEAM-FG Fellgor Ravagers', () => {
     const r3 = dice(6, 6, 6, 6, 1, 1, 1, 1)
     const kd = take(take(activateOp(buddy, wr, 'engage', r3), 'fight', r3).state, boy, r3).state
     const bs = advanceTo(kd, `fg.p.bloodsense:${A(kill, 'herd-goad')}`, r3)
+    // the offer comes from the kill log, written when the Boy was removed (no damage-time note any more)
+    expect(bs.kills!.filter((k) => k.removedId === boy)).toMatchObject([{ killerId: wr, cause: 'attack' }])
+    expect(bs.effects.some((e) => e.kind === 'fg.killedInAction')).toBe(false)
     const picked = take(bs, `fg.p.bloodsense:${A(kill, 'herd-goad')}`, r3).state
     let end = picked
     while (end.pending!.kind === 'ploy.firefight') end = passIt(end, r3).state
@@ -945,5 +958,29 @@ describe('TEAM-FG Fellgor Ravagers', () => {
     const at = (used: string[]) => edit(t, (st) => void (st.firefight.activation = { operativeId: mg, seat: 'A', counteract: false, stage: 'action', apSpent: 1, performed: ['fight'], declared: null, used }))
     expect(offersFor(at([]), 'A', 'firefight.actionEnded', info).some((o) => o.ployId === 'fg.x.savage')).toBe(true)
     expect(offersFor(at(['fg.x.rampageUsed']), 'A', 'firefight.actionEnded', info).some((o) => o.ployId === 'fg.x.savage')).toBe(false)
+  })
+
+  it('TEAM-FG-036 RUTHLESS RAMPAGE after a Guard interrupt Fight: offered at the frame reaction point (own reaction, printed cost), not after in-activation free Fights, paid when taken', () => {
+    const s0 = open({ rosterA: fgRoster(WITH_WARRIORS) })
+    const wr = A(s0, 'warrior')
+    const boy = B(s0, 'boy')
+    // a Grot 4.2 inches off is in reach of a 3 inch Charge; the Boy stands far away
+    const clear = edit(bTurn(place(place(place(s0, wr, 0, 0), boy, 9, 0), B(s0, 'grot'), 4.2, 0), A(s0, 'gorehorn')), (st) => {
+      st.players.A.cp = 2
+      st.operatives[wr]!.order = 'engage'
+    })
+    const info = (extra: Record<string, boolean>) => ({ actorId: wr, action: 'fight', activeSeat: 'A' as const, moved: false, ...extra })
+    const offers = providerOwnReactions(clear, 'A', info({ interrupt: true }))
+    expect(offers).toMatchObject([{ hook: 'fgRuthlessRampage', operativeId: wr, freeActions: true, option: 'rampage:1' }])
+    // an in-activation free Fight returns to a ploy window that offers it already; no CP, or an enemy still close: nothing
+    expect(providerOwnReactions(clear, 'A', info({ freeAction: true }))).toEqual([])
+    expect(providerOwnReactions(edit(clear, (st) => void (st.players.A.cp = 0)), 'A', info({ interrupt: true }))).toEqual([])
+    expect(providerOwnReactions(place(clear, boy, 1.4, 0), 'A', info({ interrupt: true }))).toEqual([])
+    // taken: 1 CP, the turning point's use, and a free Charge of up to 3 inches
+    const r = withCtx(clear, (ctx) => getCodeHook('fgRuthlessRampage')!.choice!(ctx, ctx.state.operatives[wr]!, 'rampage:1', {})).state
+    expect(r.players.A.cp).toBe(1)
+    expect(usedThisTp(r, 'A', 'fg.p.ruthless-rampage')).toBe(true)
+    expect(r.pending).toMatchObject({ kind: 'move.path', seat: 'A' })
+    expect(r.pending!.context.maxInches).toBeLessThanOrEqual(3)
   })
 })

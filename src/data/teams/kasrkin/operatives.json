@@ -138,9 +138,7 @@
       "ks.a.proximity-mine",
       "ks.a.blast-padding"
     ],
-    "uniqueActions": [
-      "ks.a.place-melta-mine"
-    ],
+    "uniqueActions": [],
     "figure": {
       "archetype": "ks-demo-trooper"
     },

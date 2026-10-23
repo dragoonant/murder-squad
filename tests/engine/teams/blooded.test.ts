@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { createGame, view } from '@/engine'
 import { act } from '@/engine/actions'
 import { actionCostDelta, chargeUnderConceal, refreshFlags } from '@/engine/abilities'
-import { applyAplEffect, attackStats, defenceStats, effectiveRules, inflict, parseRules, targetInfo, validTargets, weaponDamage } from '@/engine/attack-common'
-import { markUsedBattle, removeNow, usedThisBattle } from '@/engine/effects'
+import { applyAplEffect, attackStats, runDeferredRemovals, defenceStats, effectiveRules, inflict, parseRules, targetInfo, validTargets, weaponDamage } from '@/engine/attack-common'
+import { directDamage, markUsedBattle, removeNow, usedThisBattle } from '@/engine/effects'
 import { expectedDamage } from '@/engine/query'
 import { runHook } from '@/engine/hooks'
 import { offersFor } from '@/engine/ploys'
@@ -277,23 +277,32 @@ describe('TEAM-BL Blooded', () => {
     const small = shot(used, [6, 6, 6, 1])
     expect(small.state.operatives[tr]!.wounds).toBe(7 - 5)
     expect(small.state.operatives[grot]!.wounds).toBe(20 - 3)
-    // a Grenadier in an enemy control range rolls one die only (a rule takes it down: nobody can be asked, so the heuristic uses it)
-    const close = edit(place(base, grot, 0.9, 0), (st) => void (st.operatives[grot]!.order = 'engage'))
-    const one = withCtx(close, (ctx) => {
-      ctx.state.operatives[bg]!.wounds = 0
-      removeNow(ctx, bg)
-    }, dice(6, 6, 6, 6))
-    const triggers = one.events.filter((e) => e.type === 'DiceRolled' && (e as { purpose: string }).purpose === 'bl.explosive.trigger') as { dice: number[] }[]
-    expect(triggers).toHaveLength(1)
-    expect(triggers[0]!.dice).toHaveLength(1)
-    // outside an attack: Explosive Demise is used when it catches an enemy and no more friends than enemies
-    const fall = (st: GameState) =>
+    // outside an attack the removal waits for the end-of-step queue, where the owner is asked too (M10 batch D shared)
+    const fallAsked = (st: GameState) =>
       withCtx(st, (ctx) => {
         ctx.state.operatives[bg]!.wounds = 0
         removeNow(ctx, bg)
-      }, dice(6, 6, 6, 6)).state
-    expect(fall(base).operatives[grot]!.wounds).toBeLessThan(20)
-    expect(fall(place(base, grot, 9, 9)).operatives[tr]!.wounds).toBe(7)
+        expect(ctx.state.operatives[bg]!.status).toBe('active')
+        runDeferredRemovals(ctx)
+      }).state
+    // a Grenadier in an enemy control range rolls one die only
+    const close = edit(place(base, grot, 0.9, 0), (st) => void (st.operatives[grot]!.order = 'engage'))
+    const askedClose = fallAsked(close)
+    expect(askedClose.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { hook: 'blDemise', stage: 'explosive' } })
+    const one = take(askedClose, 'use', dice(6, 6, 6, 6))
+    const triggers = one.events.filter((e) => e.type === 'DiceRolled' && (e as { purpose: string }).purpose === 'bl.explosive.trigger') as { dice: number[] }[]
+    expect(triggers).toHaveLength(1)
+    expect(triggers[0]!.dice).toHaveLength(1)
+    expect(one.state.operatives[bg]!.status).toBe('removed')
+    expect(one.state.pending?.id).toBe(close.pending!.id)
+    // declined outside an attack: nothing happens, even where the enemy would be caught
+    const quiet = take(fallAsked(base), 'decline', dice(6, 6, 6, 6)).state
+    expect(quiet.operatives[bg]!.status).toBe('removed')
+    expect(quiet.operatives[grot]!.wounds).toBe(20)
+    expect(quiet.operatives[tr]!.wounds).toBe(7)
+    // used where it catches only a friend: the choice is the owner's, not a heuristic's
+    const unwise = take(fallAsked(place(base, grot, 9, 9)), 'use', dice(6, 6, 3, 3)).state
+    expect(unwise.operatives[tr]!.wounds).toBe(7 - 5)
   })
 
   it('TEAM-BL-010 TEAM-BL-011 Blood Offering (the first crit strike of a sequence adds one token, retaliating too) and Unholy Sustenance (D3 wounds back on an incapacitation, plus 1 from Symbols of Bloody Worship)', () => {
@@ -751,6 +760,7 @@ describe('TEAM-BL Blooded', () => {
       withCtx(st, (ctx) => {
         ctx.state.operatives[tr]!.wounds = 0
         removeNow(ctx, tr)
+        runDeferredRemovals(ctx)
       }, dice(d)).state
     expect(bitter.effects.some((e) => e.source === 'bl.p.bitter-demise')).toBe(true)
     expect(fall(marked(bitter, [tr]), 4).operatives[boy]!.wounds).toBe(bitter.operatives[boy]!.wounds - 2)
@@ -892,6 +902,45 @@ describe('TEAM-BL Blooded', () => {
     expect(dmg('bl.w.chainsword')).toEqual({ normal: 4, crit: 5 })
     const bare = engaged(open())
     expect(dmg('bl.w.bayonet', bare)).toEqual({ normal: 2, crit: 3 })
+  })
+
+  it('TEAM-BL-034 Reward Earned is offered exactly once per kill, in the operative.killed window, for rule kills too and in the opponent activation', () => {
+    const s0 = engaged(open())
+    const tr = A(s0, 'trooper')
+    const og = A(s0, 'ogryn')
+    const boy = B(s0, 'boy')
+    // an Avalanche of Muscle kill in the holder's own activation: one offer, in operative.killed, none at the action's end
+    const rush = marked(edit(place(place(s0, og, 0, 0), boy, 5, 0), (st) => {
+      st.players.A.cp = 3
+      st.operatives[boy]!.wounds = 1
+    }), [og])
+    const seen: string[] = []
+    const declined = play(take(activateOp(rush, og), 'charge').state, dice(6), {
+      ...goTo(3.4, 0),
+      'ploy.firefight': (p) => {
+        if (p.options?.some((o) => o.id === 'bl.p.reward-earned')) seen.push(p.window ?? '')
+        return p.options!.find((o) => o.id === `bl.avalanche@${boy}`)?.action ?? act.pass(p)
+      },
+    }, ['firefight.action', 'firefight.activate'])
+    expect(declined.state.operatives[boy]!.status).toBe('removed')
+    expect(seen).toEqual(['operative.killed'])
+    expect(poolOf(declined.state, 'A', 'bl.blooded')).toBe(2)
+    // a rule kill by a holder in the opponent's activation: the killer's seat is asked once, then the parked decision returns
+    const theirs = marked(edit(bTurn(place(place(s0, tr, 0, 0), boy, 1.9, 0), og), (st) => void (st.players.A.cp = 3)), [tr])
+    const parked = theirs.pending!
+    const asked = withCtx(theirs, (ctx) => {
+      directDamage(ctx, boy, 99, tr, 'test.rule')
+      runDeferredRemovals(ctx)
+    }).state
+    expect(asked.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'A', window: 'operative.killed' })
+    expect(optionIds(asked)).toContain('bl.p.reward-earned')
+    const got = take(asked, 'bl.p.reward-earned').state
+    // (the first enemy down this turning point gives 1, Reward Earned 1 more)
+    expect(poolOf(got, 'A', 'bl.blooded')).toBe(poolOf(theirs, 'A', 'bl.blooded') + 2)
+    expect(got.players.A.cp).toBe(2)
+    expect(got.pending?.id).toBe(parked.id)
+    // the end-of-action window no longer names Reward Earned
+    expect(offersFor(got, 'A', 'firefight.actionEnded', { window: 'firefight.actionEnded', subjectId: tr }).some((o) => o.ployId === 'bl.p.reward-earned')).toBe(false)
   })
 })
 

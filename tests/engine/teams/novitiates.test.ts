@@ -517,6 +517,28 @@ describe('TEAM-NV Novitiates', () => {
     expect(psychicSelectable(dead, op(dead, acolyte))).toBe(true)
   })
 
+  it('TEAM-NV-016 Null Rod and Siphon Life: a Fell dagger fight within 6" of the Condemnor has no Siphon Life pick (its rules are gone); away from it the pick is offered', () => {
+    const s0 = open({ teams: ['novitiates', 'legionaries'], rosterB: lgPsyker() })
+    const rod = A(s0, 'condemnor')
+    const mil = A(s0, 'militant')
+    const acolyte = opOf(s0, 'B', 'lg.balefire-acolyte')
+    const fight = (rodAt: number) => {
+      const t = brawl(place(s0, rod, rodAt, 4), acolyte, mil, dice(6, 6, 6, 1, 1, 1), 'B')
+      const armed = t.pending?.kind === 'fight.weapon' ? take(t, 'lg.w.fell-dagger').state : t
+      expect(armed.attack!.fight!.weaponA).toBe('lg.w.fell-dagger')
+      return walk(armed, dice(), {}, DONE, (st) => st.pending?.kind === 'ploy.firefight' && st.pending.window === 'fight.rolled' && st.pending.seat === 'B')
+    }
+    const siphon = (w: Walked) => w.seen.concat(w.state.pending ? [{ kind: w.state.pending.kind, window: w.state.pending.window, seat: w.state.pending.seat, options: (w.state.pending.options ?? []).map((o) => o.id) }] : []).some((x) => x.seat === 'B' && x.options.some((o) => o.startsWith('lg.a.wr-siphon-life')))
+    // the Condemnor 4" from the fight: the dagger has no weapon rules, so no Siphon Life
+    const near = fight(0)
+    expect(effectiveRules(near.state, near.state.operatives[acolyte]!, near.state.data.weapons['lg.w.fell-dagger']!, 'fight', mil)).toEqual([])
+    expect(siphon(near)).toBe(false)
+    // far away: the dagger keeps Siphon Life and the pick is offered at the start of the Resolve Attack Dice step
+    const far = fight(-14)
+    expect(far.state.pending).toMatchObject({ kind: 'ploy.firefight', window: 'fight.rolled', seat: 'B' })
+    expect(siphon(far)).toBe(true)
+  })
+
   it('TEAM-NV-016 Null Rod: a PSYCHIC melee weapon near the Condemnor has no weapon rules and never exceeds Dmg 3/4, even after another team\'s bonus', () => {
     const s0 = open({ teams: ['novitiates', 'legionaries'], rosterB: lgPsyker() })
     const rod = A(s0, 'condemnor')

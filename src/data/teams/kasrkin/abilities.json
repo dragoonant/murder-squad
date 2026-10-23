@@ -82,19 +82,7 @@
     "effect": {
       "code": "ksMeltaMine"
     },
-    "text": "The Demo-Trooper starts the battle carrying your Melta Mine marker, and only it can pick the marker up again. It sets the mine down with Place Melta Mine (never within an enemy control range) and may then take a free Dash. If it falls while carrying the mine and there is no legal spot for it, the marker goes with it.",
-    "source": "team-kasrkin.pdf (Apr '26); docs/spec/13-teams.md T-KS.11"
-  },
-  {
-    "id": "ks.a.place-melta-mine",
-    "kind": "uniqueAction",
-    "name": "PLACE MELTA MINE",
-    "team": "kasrkin",
-    "ap": 1,
-    "effect": {
-      "code": "ksPlaceMine"
-    },
-    "text": "Place the carried Melta Mine within this operative's control range, outside every enemy control range (Place Marker for this marker), then it may take a free Dash.",
+    "text": "The Demo-Trooper starts the battle carrying your Melta Mine marker, and only it can pick the marker up again. It sets the mine down with the Place Marker action (never within an enemy control range) and may then take a free Dash. If it falls while carrying the mine and there is no legal spot for it, the marker goes with it.",
     "source": "team-kasrkin.pdf (Apr '26); docs/spec/13-teams.md T-KS.11"
   },
   {

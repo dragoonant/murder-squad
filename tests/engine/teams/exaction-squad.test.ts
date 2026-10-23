@@ -3,12 +3,12 @@
 import { describe, expect, it } from 'vitest'
 import { view } from '@/engine'
 import { abilityOffers, actionForbidden } from '@/engine/abilities'
-import { applyAplEffect, attackStats, defenceStats, effectiveRules, inflict, parseRules, torrentCandidates, validTargets } from '@/engine/attack-common'
+import { applyAplEffect, attackStats, defenceStats, effectiveRules, inflict, parseRules, runDeferredRemovals, torrentCandidates, validTargets } from '@/engine/attack-common'
 import { bodyOf } from '@/engine/los'
 import { inControlRange } from '@/engine/measure'
 import { getCodeHook } from '@/engine/code-hooks'
 import { hasKeyword } from '@/engine/conditions'
-import { removeNow, tpUsesOf } from '@/engine/effects'
+import { directDamage, removeNow, tpUsesOf, usedThisTp } from '@/engine/effects'
 import { updateControl } from '@/engine/markers'
 import { usableRangedWeapons } from '@/engine/shoot'
 import { providerAny, providerCostDelta, providerRerollBannedValues } from '@/engine/team-rules'
@@ -448,7 +448,13 @@ describe('TEAM-EX Exaction Squad', () => {
       st.operatives[vig]!.wounds = 2
       st.firefight.activation = { operativeId: vig, seat: 'A', counteract: false, stage: 'action', apSpent: 1, performed: [], declared: null }
     })
-    const hit = (st: GameState, amount: number) => withCtx(st, (ctx) => void inflict(ctx, { targetId: vig, attackerId: boy, weaponId: 'kom.w.choppa', amount, source: 'normal' })).state
+    // attack damage (a fight by the Boy): inside an attack Medic! is used automatically
+    const fightBy = { kind: 'fight', stage: 'resolve', operativeId: boy, seat: 'B', weaponId: 'kom.w.choppa', pointBlank: false, targets: [vig], candidates: [], index: 0, seq: null, incapacitated: [], stunned: [], inherit: null, windows: [] }
+    const hit = (st: GameState, amount: number) =>
+      withCtx(st, (ctx) => {
+        ctx.state.attack ??= structuredClone(fightBy) as never
+        inflict(ctx, { targetId: vig, attackerId: boy, weaponId: 'kom.w.choppa', amount, source: 'normal' })
+      }).state
     const saved = hit(near, 5)
     expect(saved.operatives[vig]!.wounds).toBe(1)
     expect(saved.operatives[vig]!.aplMods).toBe(-1)
@@ -1170,4 +1176,53 @@ describe('TEAM-EX Exaction Squad', () => {
   })
 
   // @@TESTS@@
+
+  it('TEAM-EX-013 Medic! outside an attack (rule damage): the removal waits and its owner may use it or decline it (declined, the turning point chance is gone)', () => {
+    const s = open()
+    const med = A(s, 'chirurgant')
+    const vig = A(s, 'vigilant')
+    const boy = B(s, 'boy')
+    const near = edit(place(place(place(s, med, 0, 0), vig, 2, 0), boy, 9, 0), (st) => void (st.operatives[vig]!.wounds = 2))
+    const parked = near.pending!
+    const asked = withCtx(near, (ctx) => {
+      directDamage(ctx, vig, 5, boy, 'test.rule')
+      expect(ctx.state.operatives[vig]!.status).toBe('active')
+      runDeferredRemovals(ctx)
+    }).state
+    expect(asked.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { hook: 'exMedic', stage: 'save', operativeId: vig, medicId: med } })
+    // used: back on 1 wound, both at APL -1, the free Dash waits for the next reaction point, the parked decision returns
+    const used = take(asked, 'use').state
+    expect(used.operatives[vig]).toMatchObject({ status: 'active', wounds: 1 })
+    expect(used.operatives[vig]!.aplMods).toBe(-1)
+    expect(used.operatives[med]!.aplMods).toBe(-1)
+    expect(used.effects.some((e) => e.kind === 'ex.medicDash' && e.operativeId === vig)).toBe(true)
+    expect(used.kills ?? []).toEqual([])
+    expect(used.pending?.id).toBe(parked.id)
+    // declined: removed, logged as a kill, and no second chance this turning point
+    const declined = take(asked, 'decline').state
+    expect(declined.operatives[vig]!.status).toBe('removed')
+    expect(declined.kills).toMatchObject([{ removedId: vig, cause: 'direct' }])
+    expect(usedThisTp(declined, 'A', `ex.medic:${med}`)).toBe(true)
+    expect(declined.pending?.id).toBe(parked.id)
+    // with an enemy in its control range there is nothing to ask: removed at once
+    const plain = withCtx(place(near, boy, 3, 0), (ctx) => directDamage(ctx, vig, 5, boy, 'test.rule')).state
+    expect(plain.operatives[vig]!.status).toBe('removed')
+  })
+
+  it('TEAM-EX-003 MARKED FOR JUSTICE re-pick after a rule kill: the mark removed (and logged) at removal time in the Exaction operative\'s action is re-picked in that action\'s reaction round', () => {
+    const s = open()
+    const vig = A(s, 'vigilant')
+    const foe = B(s, 'boy')
+    const marked = withFx(place(place(s, vig, 0, 0), foe, 12, 0), { source: 'ex.p.marked-for-justice', kind: 'ex.mark', data: { markId: foe } })
+    // the Vigilant dashes; the mark falls to rule damage during the Dash (a mine, say) and is logged at once
+    let t = take(activateOp(marked, vig), 'dash').state
+    t = withCtx(t, (ctx) => void directDamage(ctx, foe, 99, vig, 'test.rule')).state
+    expect(t.operatives[foe]!.status).toBe('removed')
+    expect(t.kills).toMatchObject([{ removedId: foe, killerId: vig, cause: 'direct' }])
+    const dashed = play(t, dice(), goTo(2, 0), WITH_CHOICES).state
+    expect(dashed.pending!.kind).toBe('ability.choice')
+    const picks = dashed.pending!.options!.filter((o) => o.id.startsWith('react:'))
+    expect(picks.length).toBeGreaterThan(0)
+    expect(markOf(take(dashed, picks[0]!.id).state, 'A')!.id).toBe(picks[0]!.data!.targetId)
+  })
 })

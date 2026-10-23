@@ -20,7 +20,7 @@ import { territoryOf } from '../equipment'
 import { cancelAction, finishAction, startDelegatedAction } from '../firefight'
 import { circleOverlapsPolygon, dist2, distPointSegment, round3, segmentPolygonIntervals } from '../geometry'
 import { registerFrameResume, registerHook } from '../hooks'
-import { bodyOf, targetVerdict, visible } from '../los'
+import { bodyOf, targetVerdict, visible, type Body } from '../los'
 import { controlledBy, newMarkerId } from '../markers'
 import { distanceBetween, enemiesInControlRange, gapToMarker } from '../measure'
 import { registerPloyRule, type PloyOffer } from '../ploy-rules'
@@ -142,23 +142,26 @@ function within(a: Operative, b: Operative, inches: number): boolean {
 }
 
 /**
- * What `a` can see. The C.A.T. Unit's wide view (T-NB.16) draws the line from any part of the miniature: besides the
- * usual head point, eye points sampled around its body at head and mid height are tried.
+ * The C.A.T. Unit's wide view (T-NB.16) draws visibility from any part of the miniature: eye points sampled around the
+ * body (`body`: where it stands, or a ghost on a planned path) at head and mid height. Answered through the `viewpoints`
+ * provider, so core `visible` and control range use them everywhere.
  */
-function sees(state: GameState, a: Operative, b: Operative): boolean {
-  const body = bodyOf(a)
-  const target = bodyOf(b)
-  if (visible(state, body, target)) return true
-  if (!isCat(state, a) || !hasAbility(state, a, A('wide-view'))) return false
-  const r = a.baseRadius * 0.95
+function wideViewEyes(state: GameState, op: Operative, body: Body): Body[] | null {
+  if (!isCat(state, op) || !hasAbility(state, op, A('wide-view'))) return null
+  const r = op.baseRadius * 0.95
+  const out: Body[] = []
   for (const frac of [0.9, 0.5]) {
     for (let i = 0; i < 8; i++) {
       const ang = (Math.PI * i) / 4
-      const eye = { ...body, pos: { x: a.pos.x + Math.cos(ang) * r, y: a.pos.y, z: a.pos.z + Math.sin(ang) * r }, height: (a.height * frac) / 0.9 }
-      if (visible(state, eye, target)) return true
+      out.push({ ...body, pos: { x: body.pos.x + Math.cos(ang) * r, y: body.pos.y, z: body.pos.z + Math.sin(ang) * r }, height: (body.height * frac) / 0.9 })
     }
   }
-  return false
+  return out
+}
+
+/** What `a` can see (core visibility; the C.A.T. Unit's wide view comes in through `viewpoints`). */
+function sees(state: GameState, a: Operative, b: Operative): boolean {
+  return visible(state, bodyOf(a), bodyOf(b))
 }
 
 function equipped(state: GameState, seat: Seat, id: string): boolean {
@@ -369,6 +372,11 @@ function touching(a: Operative, b: Operative): boolean {
 registerTeamRules({
   id: TEAM_ID,
 
+  // Machine: wide view (T-NB.16): extra eye points for core visibility and control range
+  viewpoints(state, op, body) {
+    return wideViewEyes(state, op, body)
+  },
+
   // GROUP ACTIVATION (T-NB.9) and BREACH AND CLEAR (T-NB.32)
   chainActivation(state, expended, wasChained) {
     if (!isNb(state, expended)) return null
@@ -456,7 +464,9 @@ registerTeamRules({
   // DECK HAND (T-NB.40): one Accessible crossing is free in the activation (never an Obstructing one)
   moveSurcharge(state, op, _kind, points, breakdown) {
     if (breakdown.accessible <= 0 || !opEffect(state, DECK_FX, op.id)) return 0
-    const free = Math.min(1, breakdown.accessible, accessibleCrossings(state, op, [op.pos, ...points]))
+    // the breakdown's Obstructing share (Razor Wire) is not Accessible terrain; a direct cost query has no share
+    const plain = breakdown.obstructing !== undefined ? breakdown.accessible - breakdown.obstructing : accessibleCrossings(state, op, [op.pos, ...points])
+    const free = Math.min(1, plain)
     if (free <= 0) return 0
     markFired('nbDeckHand')
     return -free

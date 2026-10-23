@@ -30,12 +30,7 @@
       "side": "friendly",
       "keyword": "FARSTALKER KINBAND"
     },
-    "effect": {
-      "code": "fkFarstalker",
-      "params": {
-        "readyStepMax": 3
-      }
-    },
+    "effect": [{ "code": "fkFarstalker", "params": { "readyStepMax": 3 } }, { "code": "fkReadyStep" }],
     "text": "Two small gifts of stance. In the Ready step of each Strategy phase the player may change the order of up to three friendly Farstalker operatives that are not in an enemy control range. And on any turn to counteract, instead of counteracting the player may change the order of one such operative; that uses up the turn but not the operative's own counteraction.",
     "source": "team-farstalker-kinband.pdf (Jun '26); docs/spec/13-teams.md T-FK.27"
   },

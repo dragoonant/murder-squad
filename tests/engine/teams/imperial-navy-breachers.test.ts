@@ -9,7 +9,7 @@ import { attackStats, inflict, ruleSetFor, validTargets, weaponDamage, weaponUnu
 import { inEnemyCr, killOpIgnored } from '@/engine/conditions'
 import { usedThisTp } from '@/engine/effects'
 import { runHook } from '@/engine/hooks'
-import { moveLimit } from '@/engine/movement'
+import { moveLimit, planMove } from '@/engine/movement'
 import { gambitOffers, offersFor } from '@/engine/ploys'
 import { shootableWeapons } from '@/engine/shoot'
 import { effectiveApl, effectiveMove } from '@/engine/state'
@@ -607,17 +607,63 @@ describe('TEAM-NB rules verification fixes', () => {
     const s = open({ rosterA: FULL })
     const cat = A(s, 'cat-unit')
     const boy = B(s, 'boy')
+    const g = A(s, 'armsman')
     // a tall wall ends at z 0.3: every line from the centre of the C.A.T. Unit to the enemy crosses it, lines from its flank do not
-    const t = edit(place(place(s, cat, 0, 0), boy, 6, 0), (st) => {
+    const t = edit(place(place(place(s, cat, 0, 0), boy, 6, 0), g, -6, 6), (st) => {
       st.map = { ...st.map, features: [feature('blk', part('blk.a', rect(2, 3, -3, 0.3), 4, ['blocking']))] }
     })
-    expect(visible(t, bodyOf(t.operatives[cat]!), bodyOf(t.operatives[boy]!))).toBe(false)
+    // the head point alone (an Armsman standing where the C.A.T. Unit is) does not see the enemy
+    expect(visible(t, { ...bodyOf(t.operatives[g]!), pos: t.operatives[cat]!.pos }, bodyOf(t.operatives[boy]!))).toBe(false)
     expect(abilityOffers(t, t.operatives[cat]!, null).filter((o) => o.abilityId === 'nb.a.spot').map((o) => o.params.targetId)).toContain(boy)
     // a wall that hides the enemy from every part of the C.A.T. Unit still stops it
     const hidden = edit(t, (st) => {
       st.map = { ...st.map, features: [feature('blk', part('blk.a', rect(2, 3, -3, 3), 4, ['blocking']))] }
     })
     expect(abilityOffers(hidden, hidden.operatives[cat]!, null).some((o) => o.abilityId === 'nb.a.spot' && o.params.targetId === boy)).toBe(false)
+  })
+
+  it('TEAM-NB-017 TEAM-NB-012 wide view through the shared viewpoints provider: core visibility (so control range and every target test) draws lines from any part of the C.A.T. Unit, also from a ghost on a planned path', () => {
+    const s = open({ rosterA: FULL })
+    const cat = A(s, 'cat-unit')
+    const boy = B(s, 'boy')
+    const t = edit(place(place(s, cat, 0, 0), boy, 6, 0), (st) => {
+      st.map = { ...st.map, features: [feature('blk', part('blk.a', rect(2, 3, -3, 0.3), 4, ['blocking']))] }
+    })
+    const catBody = bodyOf(t.operatives[cat]!)
+    const boyBody = bodyOf(t.operatives[boy]!)
+    // core visible: the head point is blocked, a flank eye is not
+    expect(visible(t, catBody, boyBody)).toBe(true)
+    // the eyes are built around the body asked about: a ghost of the C.A.T. Unit moved behind the full wall sees nothing
+    const wide = edit(t, (st) => {
+      st.map = { ...st.map, features: [feature('blk', part('blk.a', rect(2, 3, -3, 3), 4, ['blocking']))] }
+    })
+    expect(visible(wide, { ...catBody, pos: { x: 0, y: 0, z: 0 } }, boyBody)).toBe(false)
+    // and a ghost stepped to the open side sees the enemy from its flank
+    expect(visible(t, { ...catBody, pos: { x: 0, y: 0, z: 0.1 } }, boyBody)).toBe(true)
+    // only the C.A.T. Unit has it: the enemy's own view of the C.A.T. Unit is the plain head-point test
+    expect(visible(t, boyBody, catBody)).toBe(visible(edit(t, (st) => void (st.operatives[cat]!.datacardId = st.operatives[A(s, 'armsman')]!.datacardId)), boyBody, catBody))
+  })
+
+  it('TEAM-NB-032 Deck Hand reads the move breakdown: one Accessible crossing is free, an Obstructing one (Razor Wire) never is, in a real planned move', () => {
+    const s = edit(open({ rosterA: FULL }), (st) => void (st.players.A.cp = 4))
+    const g = A(s, 'armsman')
+    // a wire the base can cross (insignificant, so it blocks nothing) that is Obstructing
+    const wire = feature('wire', part('wire.a', rect(-3, -2.5, -3, 3), 1, ['insignificant'], { tags: ['obstructing'] }))
+    const both = edit(place(s, g, -6, 0), (st) => void (st.map = { ...st.map, features: [ACCESSIBLE_WALL, wire] }))
+    const deck = (st: GameState) => useOffer(activating(st, g), 'firefight.activationStart', { subjectId: g }, (o) => o.ployId === 'nb.p.deck-hand')
+    const cost = (st: GameState) => {
+      const plan = planMove(st, st.operatives[g]!, 'reposition', [{ x: -2, z: 0 }])
+      return plan.ok ? { cost: plan.cost, acc: plan.breakdown.accessible, obs: plan.breakdown.obstructing } : plan.rejection.reason
+    }
+    // without the ploy: 4" + 1" (Accessible) + 1" (Obstructing)
+    expect(cost(activating(both, g))).toMatchObject({ cost: 6, acc: 2, obs: 1 })
+    // with it the Accessible inch is free, the Razor Wire inch is not
+    expect(cost(deck(both))).toMatchObject({ cost: 5 })
+    expect(providerMoveSurcharge(deck(both), deck(both).operatives[g]!, 'reposition', [{ x: -2, y: 0, z: 0 }], { horizontal: 4, accessible: 2, climb: 0, drop: 0, obstructing: 1 })).toBe(-1)
+    // Razor Wire alone (the ploy in force): nothing to refund
+    const onlyWire = edit(deck(both), (st) => void (st.map = { ...st.map, features: [wire] }))
+    expect(cost(onlyWire)).toMatchObject({ cost: 5, acc: 1, obs: 1 })
+    expect(providerMoveSurcharge(onlyWire, onlyWire.operatives[g]!, 'reposition', [{ x: -2, y: 0, z: 0 }], { horizontal: 4, accessible: 1, climb: 0, drop: 0, obstructing: 1 })).toBe(0)
   })
 
   it('TEAM-NB-026 INTERFERENCE PULSE: an enemy with a friendly operative in its control range is still a valid target for the +1', () => {

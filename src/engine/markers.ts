@@ -16,6 +16,7 @@ import { noteRemoval } from './kills'
 import { markerControl } from './query'
 import { reject, type Ctx, type Handled, type ModuleDef } from './registry'
 import { activeOps, getOp } from './state'
+import { pointHandler } from './point-handlers'
 import type { Activation, Marker, Operative, GameState, PendingDecision, Seat, TimingWindowId, Vec2, Vec3 } from './types'
 
 /** Markers whose control matters and is tracked with ControlChanged events. */
@@ -211,19 +212,8 @@ function handlePlace(state: GameState, action: { type: string; payload?: unknown
 // M10 batch D shared: free-point decisions (any legal point, not sampled options): pre-battle Redeploy, Trip Alarm
 // ---------------------------------------------------------------------------
 
-/** What a free-point decision checks and does; registered by name (registerPointHandler). */
-export interface PointHandler {
-  /** why `p` is not a legal answer, or null */
-  problem(state: GameState, seat: Seat, p: Vec2, context: Record<string, unknown>): string | null
-  /** the answer: a legal point, or null for a pass (the rule's own default or skip); must raise the next decision */
-  done(ctx: Ctx, seat: Seat, p: Vec2 | null, context: Record<string, unknown>): void
-}
-
-const pointHandlers = new Map<string, PointHandler>()
-
-export function registerPointHandler(name: string, h: PointHandler): void {
-  pointHandlers.set(name, h)
-}
+// Handlers live in the leaf module point-handlers.ts so team files can register at import time without a TDZ cycle.
+export { registerPointHandler, type PointHandler } from './point-handlers'
 
 /**
  * Raise a free-point decision: kind `marker.place` (the client's free placement), payload `{ x, z }`, answered
@@ -251,7 +241,7 @@ export function raisePointChoice(
 
 function handlePoint(state: GameState, action: { type: string; seat: Seat; payload?: unknown }, pending: PendingDecision): Handled {
   const name = String(pending.context.pointHook)
-  const h = pointHandlers.get(name)
+  const h = pointHandler(name)
   if (!h) return reject('E_TODO', `no point handler ${name}`)
   const context = pending.context
   if (action.type === 'pass') return { run: (ctx) => h.done(ctx, pending.seat, null, context) }

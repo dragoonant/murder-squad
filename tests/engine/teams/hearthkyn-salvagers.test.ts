@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { step, view } from '@/engine'
 import { act } from '@/engine/actions'
 import { abilityOffers } from '@/engine/abilities'
-import { attackStats, defenceStats, effectiveRules, inflict, parseRules, validTargets } from '@/engine/attack-common'
+import { attackStats, defenceStats, effectiveRules, inflict, parseRules, runDeferredRemovals, validTargets } from '@/engine/attack-common'
 import { APL_NEXT_FX, applyDeferredApl, queueRemoval, usedThisTp, markUsedTp } from '@/engine/effects'
 import { equipmentLimitFor } from '@/engine/equipment'
 import { runHook } from '@/engine/hooks'
@@ -33,6 +33,7 @@ import {
   go,
   hkOpen,
   lastRetained,
+  ruleKill,
   shootAt,
   sturdyShot,
   toGambit,
@@ -105,16 +106,22 @@ describe('TEAM-HK Hearthkyn Salvagers: Grudge', () => {
     // direct damage outside an enemy action (a mine) and the victim's own Hot give none
     expect(tokenCount(kill(s, A(s, 'hk.warrior'), boy, 'direct'), boy, GRUDGE, 'A')).toBe(0)
     expect(tokenCount(kill(s, A(s, 'hk.warrior'), A(s, 'hk.warrior'), 'hot'), boy, GRUDGE, 'A')).toBe(0)
-    // a Medic! save is not an incapacitation
+    // a Medic! save is not an incapacitation; declined, the operative falls and the Grudge follows
     const m = A(s, 'hk.field-medic')
     const w = A(s, 'hk.warrior')
-    const saved = withCtx(place(place(place(s, w, 0, 0), m, 2, 0), boy, 8, 0), (ctx) => {
+    const asked = withCtx(place(place(place(s, w, 0, 0), m, 2, 0), boy, 8, 0), (ctx) => {
       ctx.state.operatives[w]!.wounds = 1
       inflict(ctx, { targetId: w, attackerId: boy, weaponId: 'kom.w.slugga', amount: 3, source: 'normal' })
       queueRemoval(ctx, w)
+      runDeferredRemovals(ctx)
     }).state
+    expect(asked.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { hook: 'hkMedic', operativeId: w } })
+    const saved = take(asked, 'save').state
     expect(saved.operatives[w]!.status).toBe('active')
     expect(tokenCount(saved, boy, GRUDGE, 'A')).toBe(0)
+    const fell = take(asked, 'none').state
+    expect(fell.operatives[w]!.status).toBe('removed')
+    expect(tokenCount(fell, boy, GRUDGE, 'A')).toBe(1)
   })
 
   it('TEAM-HK-004 two Grudge tokens turn two normals (the Accurate one too) into crits, tokens stay, an obscured target converts nothing, and a Grudge crit lets Rending trigger', () => {
@@ -259,23 +266,24 @@ describe('TEAM-HK Hearthkyn Salvagers: Dôzr, Field Medic, Grenadier', () => {
     const m = A(s, 'hk.field-medic')
     const boy = B(s, 'kom.boy')
     const lay = place(place(place(place(s, v, 0, 0), v2, 0, 2.5), m, 2, 1), boy, 8, 0)
-    const r = withCtx(lay, (ctx) => {
+    const asked = withCtx(lay, (ctx) => {
       inflict(ctx, { targetId: v, attackerId: boy, weaponId: null, amount: 99, source: 'direct' })
-      // nothing can take it down for the rest of the action
-      inflict(ctx, { targetId: v, attackerId: boy, weaponId: null, amount: 99, source: 'direct' })
-      // a second casualty the same turning point: the medic has used its rule
+      queueRemoval(ctx, v)
+      // a second casualty the same turning point: the medic has used its rule, so it falls at once
       inflict(ctx, { targetId: v2, attackerId: boy, weaponId: null, amount: 99, source: 'direct' })
-    })
-    expect(r.state.operatives[v]!.wounds).toBe(1)
-    expect(r.state.operatives[v2]!.wounds).toBe(0)
+      queueRemoval(ctx, v2)
+      runDeferredRemovals(ctx)
+    }).state
+    expect(asked.operatives[v2]!.status).toBe('removed')
+    expect(asked.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { hook: 'hkMedic', operativeId: v, medicId: m } })
+    const r = { state: take(asked, 'save').state }
+    expect(r.state.operatives[v]).toMatchObject({ status: 'active', wounds: 1 })
     expect([r.state.operatives[v]!.aplMods, r.state.operatives[m]!.aplMods]).toEqual([-1, -1])
     expect(r.state.effects.some((e) => e.kind === 'hk.medicDash' && e.operativeId === v)).toBe(true)
     expect(providerReactions(r.state, 'A', { actorId: boy, action: 'shoot', activeSeat: 'B', moved: false }).map((o) => o.operativeId)).toEqual([v])
     // an enemy in the casualty's control range, or the medic's, stops it
-    const engaged = withCtx(place(lay, boy, 1.3, 0), (ctx) => void inflict(ctx, { targetId: v, attackerId: boy, weaponId: null, amount: 99, source: 'direct' }))
-    expect(engaged.state.operatives[v]!.wounds).toBe(0)
-    const medicEngaged = withCtx(place(lay, boy, 2.8, 1), (ctx) => void inflict(ctx, { targetId: v, attackerId: boy, weaponId: null, amount: 99, source: 'direct' }))
-    expect(medicEngaged.state.operatives[v]!.wounds).toBe(0)
+    expect(ruleKill(place(lay, boy, 1.3, 0), v, boy).operatives[v]!.status).toBe('removed')
+    expect(ruleKill(place(lay, boy, 2.8, 1), v, boy).operatives[v]!.status).toBe('removed')
     // Medikit
     const hurt = edit(lay, (st) => {
       st.operatives[m]!.wounds = 2
@@ -296,8 +304,11 @@ describe('TEAM-HK Hearthkyn Salvagers: Dôzr, Field Medic, Grenadier', () => {
     const m = A(s, 'hk.field-medic')
     const boy = B(s, 'kom.boy')
     const lay = activateOp(place(place(place(s, v, 0, 0), m, 2, 1), boy, 8, 0), v)
-    const r = withCtx(lay, (ctx) => void inflict(ctx, { targetId: v, attackerId: boy, weaponId: null, amount: 99, source: 'direct' })).state
+    const r = take(ruleKill(lay, v, boy), 'save').state
     expect(r.operatives[v]!.wounds).toBe(1)
+    // the removal ran after the step: the activation's waiting action choice now offers only End
+    expect(r.firefight.activation!.endsAfterAction).toBe(true)
+    expect(optionIds(r)).toEqual(['end'])
     expect([r.operatives[v]!.aplMods, r.operatives[m]!.aplMods]).toEqual([0, -1])
     expect(r.effects.find((e) => e.kind === APL_NEXT_FX && e.operativeId === v)?.data).toMatchObject({ delta: -1, source: 'hk.a.medic' })
     // its next activation starts with the penalty

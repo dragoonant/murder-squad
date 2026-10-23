@@ -4,7 +4,8 @@
 import { createGame, step } from '@/engine'
 import { act } from '@/engine/actions'
 import { maxRepeats } from '@/engine/abilities'
-import { defenceStats, effectiveRules, inflict, parseRules } from '@/engine/attack-common'
+import { defenceStats, effectiveRules, inflict, parseRules, runDeferredRemovals } from '@/engine/attack-common'
+import { directDamage } from '@/engine/effects'
 import { runHook } from '@/engine/hooks'
 import { offersFor, usePloy, type PloyOffer } from '@/engine/ploys'
 import { ScriptedRng } from '@/engine/rng'
@@ -152,9 +153,12 @@ export const scenarios: Record<string, () => void> = {
     const t = edit(place(place(s, medic, 0, 0), tr, 2, 0), (st) => {
       st.operatives[tr]!.wounds = 2
     })
-    withCtx(t, (ctx) => {
-      inflict(ctx, { targetId: tr, attackerId: B(s, 'boy'), weaponId: 'kom.w.choppa', amount: 5, source: 'normal' })
-    })
+    // the casualty waits in the deferred removal queue; the Kasrkin player takes the save
+    const asked = withCtx(t, (ctx) => {
+      directDamage(ctx, tr, 5, B(s, 'boy'), 'test')
+      runDeferredRemovals(ctx)
+    }).state
+    take(asked, 'save')
   },
   ksMedikit() {
     const s = open()
@@ -167,13 +171,6 @@ export const scenarios: Record<string, () => void> = {
   },
   ksMeltaMine() {
     open()
-  },
-  ksPlaceMine() {
-    const s = open()
-    const demo = A(s, 'demo-trooper')
-    const t = activateOp(place(s, demo, 0, 0), demo)
-    const c = take(t, 'ability:ks.a.place-melta-mine').state
-    take(c, c.pending!.options![0]!.id)
   },
   ksProximityMine() {
     const s = open()

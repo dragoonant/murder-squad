@@ -2,7 +2,7 @@
 // planner's currency (wounds of expected damage). Each is a cheap heuristic over the view: the engine decides legality
 // (the offers come from `abilityOffers`), this only says how much an offered action is worth next to Shoot or Fight, so
 // the planner will spend an AP on it when it pays off. Unknown abilities are worth nothing and are never planned.
-import type { GameState, Operative } from '@/engine'
+import type { Action, GameState, Operative } from '@/engine'
 import type { AbilityOffer } from '@/engine/abilities'
 import { bodyOf, visible } from '@/engine/los'
 import { distanceBetween } from '@/engine/measure'
@@ -11,6 +11,8 @@ import { tokenCount } from '@/engine/tokens'
 import type { AiCtx } from './tiers'
 
 const ML = 'pf.markerlight'
+/** Team mines laid with the shared Place Marker (batch C: the spot filter replaced their own actions). */
+const MINES = ['ks.meltaMine', 'ph.haywire-mine']
 const POISON = 'pm.poison'
 const SOULSIGHT = 'wyr.soulsight'
 
@@ -128,6 +130,16 @@ function value(ctx: AiCtx, v: GameState, op: Operative, offer: AbilityOffer): nu
       return enemiesOf(v, op).some((e) => e.status === 'active' && distanceBetween(bodyOf(e), bodyOf(op)) <= 8) ? 0.9 : 0
     case 'ks.a.battle-comms':
       return target && target.seat === op.seat && target.ready ? 1.2 : 0
+    // ---- Place Marker (shared action): only the team mines are worth planning; other carried markers stay put
+    case 'marker:place': {
+      const m = v.markers.find((k) => k.id === offer.params.markerId)
+      if (!m || !m.equipmentId || !MINES.includes(m.equipmentId)) return 0
+      // the Melta Mine (2D6+3) and the Haywire Mine hit whoever walks into them: lay one while enemies are close enough,
+      // or beside an objective the enemy has to come to
+      // (a triggered Melta Mine is 2D6+3 damage, so a well-laid one is worth more than most single shots)
+      if (enemiesOf(v, op).some((e) => e.status === 'active' && distanceBetween(bodyOf(e), bodyOf(op)) <= 10)) return 1.8
+      return v.markers.some((k) => k.kind === 'objective' && Math.hypot(k.pos.x - op.pos.x, k.pos.z - op.pos.z) <= 4) ? 1.2 : 0.4
+    }
     case 'ks.a.place-melta-mine':
       // 2D6+3 to whoever walks into it: worth placing while enemies are close enough to come to it
       return enemiesOf(v, op).some((e) => e.status === 'active' && distanceBetween(bodyOf(e), bodyOf(op)) <= 10) ? 1.2 : 0.4
@@ -504,4 +516,33 @@ export function teamActionCandidates(ctx: AiCtx, v: GameState, op: Operative, of
   }
   out.sort((a, b) => b.value - a.value)
   return out.slice(0, max)
+}
+
+/**
+ * The position of a Place Marker (`marker.place` without a pointHook): a team mine goes on the offered spot nearest an
+ * enemy (the spot filter already keeps it legal), any other marker where the operative stands. Free-point decisions
+ * (context.pointHook) are left to their own policies (null).
+ */
+export function placeMarker(ctx: AiCtx): Action | null {
+  const p = ctx.pending
+  const v = ctx.view
+  if (typeof p.context.pointHook === 'string') return null
+  const op = v.operatives[String(p.context.operativeId ?? '')]
+  if (!op) return null
+  const spots = (p.context.spots as { x: number; z: number }[] | undefined) ?? [{ x: op.pos.x, z: op.pos.z }]
+  if (spots.length === 0) return null
+  const m = v.markers.find((k) => k.id === p.context.markerId)
+  const foes = enemiesOf(v, op).filter((e) => e.status === 'active')
+  let pick = spots[0]!
+  if (m?.equipmentId && MINES.includes(m.equipmentId) && foes.length > 0) {
+    let best = Infinity
+    for (const s of spots) {
+      const d = Math.min(...foes.map((e) => Math.hypot(e.pos.x - s.x, e.pos.z - s.z)))
+      if (d < best) {
+        best = d
+        pick = s
+      }
+    }
+  }
+  return { type: 'marker.place', seat: p.seat, decisionId: p.id, payload: { x: pick.x, z: pick.z } } as Action
 }

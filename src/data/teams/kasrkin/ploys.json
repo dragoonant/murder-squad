@@ -113,7 +113,7 @@
     "team": "kasrkin",
     "type": "firefight",
     "cost": 1,
-    "window": "firefight.actionEnded",
+    "window": "firefight.fallBackMoved",
     "effect": {
       "code": "ksCoverRetreat",
       "scope": {
@@ -121,7 +121,7 @@
         "keyword": "KASRKIN"
       }
     },
-    "text": "When a friendly Kasrkin has performed Fall Back while it was visible to and within 6 inches of another ready friendly Kasrkin that is not in an enemy control range, that other operative may perform a free Shoot (changing its order to Engage if it must).",
+    "text": "When a friendly Kasrkin performs Fall Back while visible to and within 6 inches of another ready friendly Kasrkin that is not in an enemy control range, that other operative may perform a free Shoot once the move is done and before the Fall Back ends (changing its order to Engage if it must).",
     "source": "team-kasrkin.pdf (Apr '26); docs/spec/13-teams.md T-KS.31"
   },
   {

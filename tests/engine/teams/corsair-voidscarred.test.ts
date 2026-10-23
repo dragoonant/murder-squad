@@ -15,6 +15,8 @@ import { realSetup } from '@/engine/bundle'
 import { markerControl } from '@/engine/query'
 import { ScriptedRng } from '@/engine/rng'
 import { shootableWeapons } from '@/engine/shoot'
+import { afterActionStages, startFreeAction } from '@/engine/firefight'
+import { registerFrameResume } from '@/engine/hooks'
 import { effectiveApl } from '@/engine/state'
 import { providerCanFly, providerCostDelta, providerFightStart, providerStealthy, registerTeamRules, unregisterTeamRules } from '@/engine/team-rules'
 import { TEAM_ID, ERUDITE_TOKEN, FAOLCHU_TOKEN, OSA_TOKEN, SHIELD_TOKEN, slicingReach, slicingRoute } from '@/engine/teams/corsair-voidscarred'
@@ -308,6 +310,32 @@ describe('TEAM-CV Corsair Voidscarred', () => {
     expect(optionIds(reraise(spent)).some((id) => id.startsWith('ability:cv.a.blademaster'))).toBe(false)
   })
 
+  it('TEAM-CV-008 TEAM-CV-013 One Step Ahead and Erudite Hunter also follow an enemy free action taken inside its own activation (offers marked freeActions)', () => {
+    registerFrameResume('test.cv.freeDash', (ctx) => afterActionStages(ctx, 'continue'))
+    const s = open()
+    const f = A(s, 'felarch')
+    const kh = A(s, 'kurnite-hunter')
+    const boy = B(s, 'boy')
+    const base = edit(place(place(place(s, f, 0, 0), kh, 0, 4), boy, 8.5, 3), (st) => {
+      st.operatives[f]!.order = 'engage'
+    })
+    const marked = usePlayed(base, 'cv.p.erudite-hunter', { window: 'strategy.gambit' }, boy)
+    const bAct = activateOp(bTurn(marked, A(s, 'warrior')), boy)
+    expect(bAct.pending).toMatchObject({ kind: 'firefight.action', seat: 'B' })
+    // the Boy takes a free Dash inside its own activation (as a ploy or rule of its team would)
+    const dashing = withCtx(bAct, (ctx) => {
+      expect(startFreeAction(ctx, { operativeId: boy, action: 'dash', resume: 'test.cv.freeDash' })).toBe(true)
+    }).state
+    expect(dashing.pending!.kind).toBe('move.path')
+    const t = moveTo(dashing, 6.5, 3)
+    expect(t.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { hook: 'reaction', actorId: boy } })
+    const hooks = t.pending!.options!.map((o) => o.data?.hook)
+    expect(hooks).toContain('oneStepAhead')
+    expect(hooks).toContain('eruditeHunter')
+    // declining hands the Boy's activation back
+    expect(passIt(t).state.pending).toMatchObject({ kind: 'firefight.action', seat: 'B' })
+  })
+
   it('TEAM-CV-013 Erudite Hunter: the gambit marks an enemy within 9"; after it moves the Kurnite Hunter takes a free Charge (even from Conceal) or a Reposition that ends no farther away, once a turning point', () => {
     const s = open()
     const kh = A(s, 'kurnite-hunter')
@@ -337,7 +365,8 @@ describe('TEAM-CV Corsair Voidscarred', () => {
     expect(hasToken(hit, boy, ERUDITE_TOKEN, 'A')).toBe(false)
     // the Reposition may not end farther from the Boy than it started (a path away is refused)
     const repo = take(t, 'react:1').state
-    expect(step(repo, act.path(repo.pending!, [{ x: -4, z: 0 }])).rejection).toBeDefined()
+    // a path away is refused with Erudite Hunter's own reason (moveProblem), not as an over-long move
+    expect(step(repo, act.path(repo.pending!, [{ x: -4, z: 0 }])).rejection).toMatchObject({ code: 'E_ACTION_RESTRICTED', reason: expect.stringContaining('Erudite Hunter') })
     const closer = moveTo(repo, 3, 0)
     expect(closer.operatives[kh]!.pos.x).toBeCloseTo(3)
     expect(usedThisTp(closer, 'A', 'cv.erudite.react')).toBe(true)
@@ -553,11 +582,13 @@ describe('TEAM-CV Corsair Voidscarred', () => {
     const interrupt = toGuardInterrupt(take(activateOp(guard, boy), 'fight').state)
     expect(interrupt.pending!.kind).toBe('guard.interrupt')
     const shot = take(interrupt, `${d}:shoot`).state
-    expect(shot.firefight.activation!.frame!.data!.pointBlank).toBe(true)
+    // freeShootInControlRange: an ordinary Shoot, not a point-blank one, so nothing stops the Duellist retaliating
+    expect(shot.firefight.activation!.frame!.data!.pointBlank).toBeFalsy()
     const w = take(shot, optionStartingWith(shot, 'cv.w.')).state
     const hitRoll = take(w, boy, dice(6, 6, 1, 1, 1, 1, 1, 1)).state
+    expect(hitRoll.attack!.pointBlank).toBe(false)
     expect(hitRoll.attack!.seq!.atk.need).toBe(3)
-    expect(hitRoll.operatives[d]!.flags.cannotRetaliate).toBe(true) // set by the transport, cleared when the Shoot is over
+    expect(hitRoll.operatives[d]!.flags.cannotRetaliate).toBeFalsy()
     const over = playOut(hitRoll)
     expect(over.operatives[d]!.flags.cannotRetaliate).toBeFalsy()
 
@@ -586,9 +617,10 @@ describe('TEAM-CV Corsair Voidscarred', () => {
     // not under a Conceal order
     const conceal = edit(ready, (st) => (st.operatives[d]!.order = 'conceal'))
     expect(optionIds(take(take(conceal, d).state, 'conceal').state).some((id) => id.startsWith('ability:cv.a.pistol-barrage'))).toBe(false)
-    // in an enemy control range both Shoots ride the point-blank transport without its penalty
+    // in an enemy control range both free Shoots are ordinary Quick on the Trigger Shoots (no point-blank)
     const close = activateOp(stuck, d)
     const cb = take(close, 'ability:cv.a.pistol-barrage:fusion')
+    expect(cb.state.firefight.activation!.frame!.data!.pointBlank).toBeFalsy()
     const cp = play(cb.state, dice(), { 'ploy.firefight': (p) => act.pass(p) }, ['firefight.action', 'firefight.activate', 'ability.choice'])
     expect([...used(cb), ...used(cp)]).toEqual(['cv.w.fusion-pistol', 'cv.w.shuriken-pistol'])
     expect(cp.state.operatives[d]!.flags.cannotRetaliate).toBeFalsy()

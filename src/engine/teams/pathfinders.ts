@@ -6,14 +6,17 @@
 //    the target by modifyWeaponRules / modifyAttackDice / target.status / beforeShootTargetSelect, decay from the
 //    action.ended hook.
 //  - Drones: team-rules providers (action whitelist, control APL, Move), Remote Pilot through startDelegatedAction.
-//  - Medic!: beforeIncapacitated + onDamageInflicted + a reaction for the free Dash.
+//  - Medic!: beforeIncapacitated (conditions) + the operative.incapacitated hook (the owner's choice, saveFromRemoval)
+//    + pausableRemoval + onDamageInflicted + a reaction for the free Dash.
 //  - Ploys, equipment and unique actions are code hooks (code-hooks.ts); passive rules call markFired where they bite.
 import {
   applyAplEffect,
+  continueRemovals,
   effectiveRules,
   parseRules,
   redirectAttack,
   ruleSetFor,
+  saveFromRemoval,
   targetInfo,
   validTargets,
 } from '../attack-common'
@@ -29,7 +32,7 @@ import { missionActionIds } from '../missions'
 import { registerPloyRule, type PloyOffer } from '../ploy-rules'
 import { continueWindow } from '../ploys'
 import type { Ctx } from '../registry'
-import { activeOps, enemiesOf, friendsOf, hasInjuredPenalty, otherSeat } from '../state'
+import { activeOps, enemiesOf, friendsOf, hasInjuredPenalty, isInjured, otherSeat } from '../state'
 import { resumeGambit } from '../strategy'
 import { registerTeamRules, type ReactionOffer } from '../team-rules'
 import { addToken, hasToken, removeToken, tokenCount } from '../tokens'
@@ -484,10 +487,20 @@ registerCodeHook({
 // Medic! (T-PF.14)
 // ---------------------------------------------------------------------------
 
+// The operative "would be incapacitated": beforeIncapacitated checks the conditions at that moment and records the
+// medic (MEDIC_ASK, which spends the turning point's use: declining spends it). The owner answers in the before-removal
+// queue (the operative.incapacitated hook below); taking it keeps the operative (attack-common.saveFromRemoval).
+// Removals outside an attack (mines, direct damage) wait for that queue through the provider's pausableRemoval.
+const MEDIC_ASK = 'pf.medicAsk'
+
 registerCodeHook({
   name: 'medic',
-  /** the free Dash after the action: the saved operative moves into the medic's control range */
-  choice(ctx, op, _option, _context) {
+  /** 'save' / 'none': the owner's answer in the removal queue; 'dash': the free Dash after the action */
+  choice(ctx, op, option, _context) {
+    if (option === 'save' || option === 'none') {
+      medicAnswer(ctx, op, option === 'save')
+      return
+    }
     const fx = effectFor(ctx.state, 'pf.medicDash', op.id)
     if (!fx) {
       reactionDone(ctx)
@@ -524,28 +537,95 @@ registerHook(
     if (!s || !ctx || !victim) return null
     const medic = medicFor(s, victim)
     if (!medic) return null
-    const data = c.data as { wounds: number }
-    data.wounds = 1
+    // the first time each turning point: this moment is the one, whatever the owner answers
     markUsedTp(s, medic.seat, `pf.medic:${medic.id}`)
-    markUsedTp(s, medic.seat, `pf.medic.saved:${victim.id}`)
-    addEffect(ctx, { source: 'pf.a.medic', seat: victim.seat, kind: 'pf.medicFloor', operativeId: victim.id, expires: 'action' })
-    // the activation the rule was used in: the one under a frame (an enemy Guard interrupt, a free action) counts
-    const under = activeActivationOf(s)
-    const own = !!under && !under.counteract && under.operativeId === victim.id
-    // used in its own activation: that activation ends once the action is done (no AP left to spend)
-    if (own) under.endsAfterAction = true
-    // the free Dash after the action: a reaction when the other player is active, a 0 CP offer in the
-    // action-ended window when the Pathfinder player is (pfPloyRule.extraOffers)
-    addEffect(ctx, { source: 'pf.a.medic', seat: victim.seat, kind: 'pf.medicDash', operativeId: victim.id, expires: 'activation', data: { medicId: medic.id } })
-    // "until the end of its next activation": held over when used in the operative's own activation
-    aplChangeNextActivation(ctx, victim.id, -1, 'pf.a.medic')
-    aplChangeNextActivation(ctx, medic.id, -1, 'pf.a.medic')
-    ctx.emit({ type: 'AbilityUsed', operativeId: medic.id, abilityId: 'pf.a.medic', detail: victim.id }, medic.seat)
-    markFired('medic')
+    const carrying = victim.flags.carrying
+    addEffect(ctx, { source: 'pf.a.medic', seat: victim.seat, kind: MEDIC_ASK, operativeId: victim.id, expires: 'turningPoint', data: { medicId: medic.id, ...(carrying ? { carrying } : {}) } })
     return null
   },
   'pf.beforeIncapacitated',
 )
+
+// the owner's decision, before removal (R-5.18)
+registerHook(
+  'operative.incapacitated',
+  (c) => {
+    const s = c.state
+    const ctx = c.engine
+    const victim = s && c.operativeId ? s.operatives[c.operativeId] : undefined
+    if (!s || !ctx || !victim) return null
+    const ask = effectFor(s, MEDIC_ASK, victim.id)
+    if (!ask) return null
+    const medic = s.operatives[String(ask.data?.medicId)]
+    // only a queue can wait for the answer, and the medic must still be in the killzone
+    if (!s.removal || !s.removal.ids.includes(victim.id) || s.pending || !medic || medic.status !== 'active') {
+      removeEffects(ctx, (e) => e.id === ask.id)
+      return null
+    }
+    ctx.raise({
+      kind: 'ability.choice',
+      seat: victim.seat,
+      window: 'operative.incapacitated',
+      context: { hook: 'medic', operativeId: victim.id, medicId: medic.id },
+      options: [
+        { id: 'save', labelKey: 'removal.free', type: 'ability.choice' as const, payload: { option: 'save' }, data: { name: `Medic! (${medic.name}): keep it in the fight on 1 wound`, medicId: medic.id } },
+        { id: 'none', labelKey: 'removal.free', type: 'ability.choice' as const, payload: { option: 'none' }, data: { name: 'Let it fall' } },
+      ],
+    })
+    return null
+  },
+  'pf.medicAsk',
+)
+
+function medicAnswer(ctx: Ctx, victim: Operative, use: boolean): void {
+  const s = ctx.state
+  const ask = effectFor(s, MEDIC_ASK, victim.id)
+  const medic = ask ? s.operatives[String(ask.data?.medicId)] : undefined
+  if (ask) removeEffects(ctx, (e) => e.id === ask.id)
+  if (use && ask && medic && medic.status === 'active' && saveFromRemoval(ctx, victim.id, 1)) medicSaved(ctx, victim, medic, ask.data?.carrying as string | undefined)
+  continueRemovals(ctx)
+}
+
+/** Medic! taken: 1 wound, the rest of the action safe, a free Dash after it, -1 APL for both (T-PF.14). */
+function medicSaved(ctx: Ctx, victim: Operative, medic: Operative, carrying: string | undefined): void {
+  const s = ctx.state
+  markUsedTp(s, medic.seat, `pf.medic.saved:${victim.id}`)
+  if (!victim.flags.injured && isInjured(victim)) {
+    victim.flags.injured = true
+    ctx.emit({ type: 'OperativeInjured', operativeId: victim.id })
+  }
+  // it was never incapacitated: a marker it carried (dropped by the shared before-removal step) is still its own
+  const m = carrying ? s.markers.find((x) => x.id === carrying) : undefined
+  if (m && !m.carriedBy && !victim.flags.carrying) {
+    m.carriedBy = victim.id
+    m.pos = { x: victim.pos.x, z: victim.pos.z }
+    victim.flags.carrying = m.id
+    ctx.emit({ type: 'MarkerPickedUp', markerId: m.id, operativeId: victim.id }, victim.seat)
+  }
+  const deferred = !!s.removal?.deferred
+  // an attack's queue is still inside the action: nothing can incapacitate it for the rest of it
+  if (!deferred) addEffect(ctx, { source: 'pf.a.medic', seat: victim.seat, kind: 'pf.medicFloor', operativeId: victim.id, expires: 'action' })
+  // the activation the rule was used in: the one under a frame (an enemy Guard interrupt, a free action) counts
+  const under = activeActivationOf(s)
+  const own = !!under && !under.counteract && under.operativeId === victim.id
+  if (own) {
+    // used in its own activation: that activation ends once the action is done (no AP left to spend); a removal
+    // outside an attack runs after the step, so the activation's waiting action choice keeps only End
+    under.endsAfterAction = true
+    const parked = s.removal?.parked
+    if (deferred && parked?.kind === 'firefight.action' && s.firefight.activation === under && parked.options?.some((o) => o.id === 'end')) {
+      s.removal!.parked = { ...parked, options: parked.options.filter((o) => o.id === 'end') }
+    }
+  }
+  // the free Dash after the action: a reaction when the other player is active, a 0 CP offer in the
+  // action-ended window when the Pathfinder player is (pfPloyRule.extraOffers)
+  addEffect(ctx, { source: 'pf.a.medic', seat: victim.seat, kind: 'pf.medicDash', operativeId: victim.id, expires: 'activation', data: { medicId: medic.id } })
+  // "until the end of its next activation": held over when used in the operative's own activation
+  aplChangeNextActivation(ctx, victim.id, -1, 'pf.a.medic')
+  aplChangeNextActivation(ctx, medic.id, -1, 'pf.a.medic')
+  ctx.emit({ type: 'AbilityUsed', operativeId: medic.id, abilityId: 'pf.a.medic', detail: victim.id }, medic.seat)
+  markFired('medic')
+}
 
 // ---------------------------------------------------------------------------
 // Ploys
@@ -1250,6 +1330,9 @@ registerTeamRules({
     if (ret.ready && ret.order === 'engage' && isPulseWeapon(state, weaponId)) out.first = ret.seat
     return out
   },
+
+  // Medic!: a removal outside an attack waits for the before-removal queue, where the owner may take it
+  pausableRemoval: (state, op) => state.effects.some((e) => e.kind === MEDIC_ASK && e.operativeId === op.id),
 
   reactions(state, seat) {
     const out: ReactionOffer[] = []

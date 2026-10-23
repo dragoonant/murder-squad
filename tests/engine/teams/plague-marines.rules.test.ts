@@ -152,6 +152,36 @@ describe('TEAM-PM rules verification', () => {
     expect(kept.operatives[warrior]!.status).toBe('removed')
   })
 
+  it('TEAM-PM-022 POISONOUS DEMISE after a FLAIL kills a friendly Plague Marine: the removal waits for the end of the step, and the owner plays the ploy or keeps the CP', () => {
+    let s = open()
+    const fighter = A(s, 'fighter')
+    const warrior = A(s, 'warrior')
+    const nob = B(s, 'boss-nob')
+    s = edit(place(place(place(s, fighter, 1.5, 0), warrior, 0, 0), nob, -2.6, 0), (st) => {
+      st.operatives[warrior]!.wounds = 1
+    })
+    // the FLAIL's D3+2 takes the Warrior down; it waits at 0 wounds for the operative.incapacitated ploy window
+    const g = take(activateOp(s, fighter), 'ability:pm.a.flail', new ScriptedRng([1, 1, 1, 1])).state
+    expect(g.operatives[warrior]).toMatchObject({ status: 'active', wounds: 0 })
+    // the FLAIL's own action-ended ploy window is open, so the owner is asked by the rule's own choice (same cost)
+    expect(g.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', window: 'operative.incapacitated', context: { hook: 'poisonousDemise', operativeId: warrior } })
+    expect(g.pending!.options!.map((o) => o.id)).toEqual(['use', 'none'])
+    const cp = g.players.A.cp
+    const used = take(g, 'use').state
+    expect(used.operatives[warrior]!.status).toBe('removed')
+    expect(tokenCount(used, nob, POISON, 'A')).toBe(1)
+    expect(used.players.A.cp).toBe(cp - 1)
+    const kept = take(g, 'none').state
+    expect(kept.operatives[warrior]!.status).toBe('removed')
+    expect(tokenCount(kept, nob, POISON)).toBe(0)
+    expect(kept.players.A.cp).toBe(cp)
+    // either way the FLAIL's parked action-ended window comes back, with no second Poisonous Demise offer
+    for (const t of [used, kept]) {
+      expect(t.pending).toMatchObject({ kind: 'ploy.firefight', seat: 'A', window: 'firefight.actionEnded' })
+      expect(t.pending!.options!.some((o) => o.id === 'pm.p.poisonous-demise')).toBe(false)
+    }
+  })
+
   it('TEAM-PM-012 Icon of Contagion counts the Icon Bearer as in the territory when any part of its base is inside', () => {
     const square = [
       { x: -1, z: -1 },

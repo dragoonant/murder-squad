@@ -531,6 +531,12 @@ function verify(ctx: AiCtx, n: Node, counteract: boolean, start: Start): boolean
         performed = [...performed, s.action.split(':').slice(0, 2).join(':')]
         continue
       }
+      // a marker action option (`marker:place:<markerId>`) is performed as `marker:place`; the offer already checked it
+      if (s.action.startsWith('marker:')) {
+        ap += 1
+        performed = [...performed, markerActionOf(s.action)]
+        continue
+      }
       if (actionAvailability(cur, op, s.action, hyp)) return false
       ap += actionCost(cur, op, s.action, hyp)
       performed = [...performed, s.action]
@@ -555,6 +561,11 @@ function stepIndex(plan: ActivationPlan, performed: string[]): number {
   return performed.length - plan.base
 }
 
+/** The action a marker option id names: `marker:place:<markerId>` is performed as `marker:place`. */
+function markerActionOf(optionId: string): string {
+  return optionId.split(':').slice(0, 2).join(':')
+}
+
 /** Does the activation so far follow the plan? (the actions performed match the plan's first steps) */
 function onPlan(plan: ActivationPlan, performed: string[]): boolean {
   const idx = stepIndex(plan, performed)
@@ -564,6 +575,8 @@ function onPlan(plan: ActivationPlan, performed: string[]): boolean {
     const got = performed[plan.base + i]
     if (want.startsWith('ability:')) {
       if (!got || !got.startsWith('ability:')) return false
+    } else if (want.startsWith('marker:')) {
+      if (got !== markerActionOf(want)) return false
     } else if (got !== want) return false
   }
   return true

@@ -1,16 +1,17 @@
 // kasrkin engine tests, named by checklist id (docs/spec/12-rules-test-checklist.md, TEAM-KS-nnn).
 // Kasrkin are seat A against the default Kommandos; the map is open ground unless a test says otherwise.
 import { describe, expect, it } from 'vitest'
-import { view } from '@/engine'
+import { step, view } from '@/engine'
 import { abilityOffers, actionForbidden, maxRepeats } from '@/engine/abilities'
-import { attackStats, defenceStats, effectiveRules, inflict, newSide, parseRules, pushRolled, retainAttack } from '@/engine/attack-common'
+import { attackStats, defenceStats, effectiveRules, inflict, newSide, parseRules, pushRolled, retainAttack, runDeferredRemovals } from '@/engine/attack-common'
 import { hasKeyword } from '@/engine/conditions'
-import { removeNow, tpUsesOf, usedThisTp, usesOf } from '@/engine/effects'
+import { directDamage, removeNow, tpUsesOf, usedThisTp, usesOf } from '@/engine/effects'
 import { hasOption, optionIds } from '../../fixtures/real'
 import { runHook } from '@/engine/hooks'
 import { markerInControlRange } from '@/engine/measure'
 import { offersFor } from '@/engine/ploys'
 import { markerControl } from '@/engine/query'
+import { updateControl } from '@/engine/markers'
 import { shootableWeapons, usableRangedWeapons } from '@/engine/shoot'
 import { beginTurningPoint } from '@/engine/strategy'
 import { effectiveApl } from '@/engine/state'
@@ -21,10 +22,10 @@ import type { GameState, PendingDecision } from '@/engine/types'
 import { bodyOf } from '@/engine/los'
 import { enumerateLoadouts, loadBundle, loadoutCapProblems, validateRoster, type DatacardData } from '../../../src/data'
 import { play } from '../../fixtures/attack'
-import { place } from '../../fixtures/helpers'
+import { expectOk, place } from '../../fixtures/helpers'
 import { activateOp, edit, passIt, realBundle, realGame, take, withCtx } from '../../fixtures/real'
 import { feature, part, rect } from '../../fixtures/maps'
-import { A, B, dice, facing, goTo, MATCH, open, shootAgain, shootAt, strikes, takePloy, toGambit, toSeize, usePlayed, withFx, withSkills } from './kasrkin.hooks'
+import { A, B, bTurn, dice, facing, goTo, MATCH, open, shootAgain, shootAt, strikes, takePloy, toGambit, toSeize, usePlayed, withFx, withSkills } from './kasrkin.hooks'
 
 const data = loadBundle()
 const SKILL_PLOY = 'ks.p.skill-at-arms'
@@ -254,33 +255,54 @@ describe('TEAM-KS Kasrkin', () => {
     expect(next.markers.some((m) => m.equipmentId === 'ks.p.clearance-sweep')).toBe(false)
   })
 
-  it('TEAM-KS-010 TEAM-KS-011 Medic! saves a falling friend once per turning point (floor at 1, APL -1 for both, activation ends); MEDIKIT heals 2D3 for free, itself included, never the Medic! target', () => {
+  it('TEAM-KS-010 TEAM-KS-011 Medic! is the player\'s choice while the casualty waits for removal (save: 1 wound, APL -1 for both, its own activation ends; decline: removed, the use spent); MEDIKIT heals 2D3 for free, itself included, never the Medic! target', () => {
     const s = open()
     const medic = A(s, 'combat-medic')
     const tr = A(s, 'trooper')
     const boy = B(s, 'boy')
-    const near = edit(place(place(s, medic, 0, 0), tr, 2, 0), (st) => {
-      st.operatives[tr]!.wounds = 2
-      st.firefight.activation = { operativeId: tr, seat: 'A', counteract: false, stage: 'action', apSpent: 1, performed: [], declared: null }
-    })
-    const hit = (st: GameState, amount: number) => withCtx(st, (ctx) => void inflict(ctx, { targetId: tr, attackerId: boy, weaponId: 'kom.w.choppa', amount, source: 'normal' })).state
-    const saved = hit(near, 5)
-    expect(saved.operatives[tr]!.wounds).toBe(1)
+    const ask = (st: GameState) => st.effects.some((e) => e.kind === 'ks.medicAsk' && e.operativeId === tr)
+    // an enemy Shoot: the removal queue stops on the Kasrkin player's question
+    const lane = edit(place(place(place(s, medic, -2, 0), tr, 0, 0), boy, 6, 0), (st) => void (st.operatives[tr]!.wounds = 2))
+    const rng = dice(6, 6, 6, 6)
+    let t = take(activateOp(bTurn(lane, A(s, 'sergeant')), boy), 'shoot', rng).state
+    t = take(take(t, 'kom.w.slugga', rng).state, tr, rng).state
+    const asked = play(t, rng, {}, ['ability.choice', 'firefight.action', 'firefight.activate']).state
+    expect(asked.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { hook: 'ksMedic', operativeId: tr } })
+    expect(optionIds(asked)).toEqual(['save', 'decline'])
+    expect(asked.operatives[tr]!.status).toBe('active')
+    const saved = take(asked, 'save').state
+    expect(saved.operatives[tr]).toMatchObject({ status: 'active', wounds: 1 })
     expect(saved.operatives[tr]!.aplMods).toBe(-1)
     expect(saved.operatives[medic]!.aplMods).toBe(-1)
-    expect(saved.firefight.activation!.endsAfterAction).toBe(true)
     expect(saved.effects.some((e) => e.kind === 'ks.medicDash' && e.operativeId === tr)).toBe(true)
-    // nothing takes it down for the rest of the action, and a second save this turning point is not offered
-    expect(hit(saved, 9).operatives[tr]!.wounds).toBe(1)
-    const later = edit(saved, (st) => void (st.effects = st.effects.filter((e) => e.kind !== 'ks.medicFloor')))
-    expect(hit(later, 9).operatives[tr]!.wounds).toBe(0)
-    // not saved: out of 3", an enemy in control range, the Medic a Blast secondary target
-    const far = edit(place(near, tr, 5, 0), (st) => void (st.operatives[tr]!.wounds = 2))
-    expect(hit(far, 5).operatives[tr]!.wounds).toBe(0)
-    const pinned = place(near, boy, 3, 0)
-    expect(hit(pinned, 5).operatives[tr]!.wounds).toBe(0)
+    expect(usedThisTp(saved, 'A', `ks.medic.saved:${tr}`)).toBe(true)
+    const declined = take(asked, 'decline').state
+    expect(declined.operatives[tr]!.status).toBe('removed')
+    expect(declined.operatives[medic]!.aplMods).toBe(0)
+    expect(usedThisTp(declined, 'A', `ks.medic:${medic}`)).toBe(true)
+    // damage outside an attack in the casualty's own activation: the removal waits for the step's end, then the
+    // activation ends at once and the casualty's APL -1 waits for its next activation
+    const near = edit(place(place(s, medic, 0, 0), tr, 2, 0), (st) => void (st.operatives[tr]!.wounds = 2))
+    const own = activateOp(near, tr)
+    const asked2 = withCtx(own, (ctx) => {
+      directDamage(ctx, tr, 5, boy, 'test')
+      runDeferredRemovals(ctx)
+    }).state
+    expect(asked2.pending).toMatchObject({ kind: 'ability.choice', context: { hook: 'ksMedic' } })
+    const saved2 = take(asked2, 'save').state
+    expect(saved2.operatives[tr]).toMatchObject({ status: 'active', wounds: 1 })
+    expect(saved2.firefight.activation?.operativeId).not.toBe(tr)
+    expect(saved2.operatives[tr]!.aplMods).toBe(0)
+    expect(saved2.effects.some((e) => e.kind === 'core.aplNext' && e.operativeId === tr)).toBe(true)
+    // spent for the turning point: the next casualty is not asked about
+    const hit = (st: GameState, amount: number) => withCtx(st, (ctx) => void inflict(ctx, { targetId: tr, attackerId: boy, weaponId: 'kom.w.choppa', amount, source: 'normal' })).state
+    expect(ask(hit(edit(near, (st) => void st.ledger.A.tp.push(`ks.medic:${medic}`)), 5))).toBe(false)
+    expect(ask(hit(near, 5))).toBe(true)
+    // no question: out of 3", an enemy in control range, the Medic a Blast secondary target
+    expect(ask(hit(place(near, tr, 5, 0), 5))).toBe(false)
+    expect(ask(hit(place(near, boy, 3, 0), 5))).toBe(false)
     const secondary = edit(near, (st) => void (st.attack = { kind: 'shoot', stage: 'resolve', operativeId: boy, seat: 'B', weaponId: 'kom.w.slugga', pointBlank: false, targets: [tr, medic], candidates: [], index: 0, seq: null, incapacitated: [], stunned: [], inherit: null, windows: [] }))
-    expect(hit(secondary, 5).operatives[tr]!.wounds).toBe(0)
+    expect(ask(hit(secondary, 5))).toBe(false)
     // MEDIKIT: 0 AP, 2D3 (here 1 + 1), never above the starting wounds
     const sg = A(s, 'sergeant')
     const hurt = edit(place(place(s, medic, 0, 0), sg, 1.3, 0), (st) => {
@@ -307,26 +329,36 @@ describe('TEAM-KS Kasrkin', () => {
     const s = open()
     const demo = A(s, 'demo-trooper')
     const boy = B(s, 'boy')
-    // placement: every offered spot is outside the enemy control range
+    // placement is the shared Place Marker: every offered spot is outside the enemy control range, others are refused
+    const mineId = s.markers.find((m) => m.equipmentId === 'ks.meltaMine')!.id
     const t = activateOp(place(place(s, demo, 0, 0), boy, 2.2, 0), demo)
-    const spots = take(t, 'ability:ks.a.place-melta-mine').state
-    expect(spots.pending!.options!.length).toBeGreaterThan(2)
-    for (const o of spots.pending!.options!) {
-      const probe = { ...spots.markers.find((m) => m.equipmentId === 'ks.meltaMine')!, pos: { x: o.data!.x as number, z: o.data!.z as number } }
-      expect(markerInControlRange(spots, bodyOf(spots.operatives[boy]!), probe), o.id).toBe(false)
+    const placing = take(t, `marker:place:${mineId}`).state
+    const p = placing.pending!
+    expect(p.kind).toBe('marker.place')
+    const spots = p.context.spots as { x: number; z: number }[]
+    expect(spots.length).toBeGreaterThan(2)
+    for (const o of spots) {
+      const probe = { ...placing.markers.find((m) => m.id === mineId)!, carriedBy: null, pos: o }
+      expect(markerInControlRange(placing, bodyOf(placing.operatives[boy]!), probe), `${o.x},${o.z}`).toBe(false)
     }
-    expect(optionIds(t).some((i) => i.startsWith('marker:place'))).toBe(false)
-    // the free Dash follows and may be declined; Place Melta Mine itself costs 1 AP
-    const placed = take(spots, spots.pending!.options![0]!.id).state
-    expect(placed.pending!.kind).toBe('move.path')
-    // (the boy and the Demo-Trooper both hold the centre objective at APL 2: Give No Ground is on offer, declined)
-    let done = passIt(placed).state
+    expect(step(placing, { type: 'marker.place', seat: p.seat, decisionId: p.id, payload: { x: 1, z: 0 } }).rejection?.code).toBe('E_ACTION_RESTRICTED')
+    expect(optionIds(t).some((i) => i.startsWith('ability:ks.a.place'))).toBe(false)
+    // the free Dash is a 0 CP offer right after the action, and may be declined; Place Marker itself costs 1 AP
+    const placed = expectOk(step(placing, { type: 'marker.place', seat: p.seat, decisionId: p.id, payload: spots[0]! })).state
+    expect(placed.pending).toMatchObject({ kind: 'ploy.firefight', window: 'firefight.actionEnded' })
+    expect(optionIds(placed)).toContain(`ks.mineDash:${demo}`)
+    expect(take(placed, `ks.mineDash:${demo}`).state.pending!.kind).toBe('move.path')
+    let done = placed
     while (done.pending!.kind === 'ploy.firefight') done = passIt(done).state
     expect(done.pending!.kind).toBe('firefight.action')
     expect(done.firefight.activation!.apSpent).toBe(1)
     expect(done.operatives[demo]!.flags.carrying).toBeNull()
     expect(done.markers.find((m) => m.equipmentId === 'ks.meltaMine')!.carriedBy).toBeNull()
     expect(optionIds(done).some((i) => i.startsWith('marker:pickUp'))).toBe(false)
+    // after another action the Dash is no longer on offer
+    expect(done.effects.some((e) => e.kind === 'ks.mineDash')).toBe(true)
+    const guarded = take(done, 'guard').state
+    expect(guarded.effects.some((e) => e.kind === 'ks.mineDash')).toBe(false)
     // later it can pick the marker up again
     const standing = edit(s, (st) => {
       const m = st.markers.find((k) => k.equipmentId === 'ks.meltaMine')!
@@ -623,14 +655,22 @@ describe('TEAM-KS Kasrkin', () => {
     const setup = place(place(place(s, t1, 0, 0), boy, 1.4, 0), sg, -3, 0)
     const fall = (st: GameState) => play(take(activateOp(st, t1), 'fallBack').state, dice(), goTo(-3, 3), ['ploy.firefight', 'firefight.action']).state
     const offered = fall(setup)
-    expect(offered.pending).toMatchObject({ kind: 'ploy.firefight', window: 'firefight.actionEnded' })
+    // between the Fall Back's move and the end of that action
+    expect(offered.pending).toMatchObject({ kind: 'ploy.firefight', window: 'firefight.fallBackMoved' })
+    expect(offered.firefight.activation!.declared?.action).toBe('fallBack')
     expect(optionIds(offered)).toContain(`ks.p.cover-retreat:${sg}`)
     const retreat = take(offered, `ks.p.cover-retreat:${sg}`).state
     expect(retreat.pending!.kind).toBe('shoot.weapon')
     expect(retreat.firefight.activation!.operativeId).toBe(sg)
-    const afterShoot = play(take(take(retreat, retreat.pending!.options![0]!.id).state, boy, dice(1, 1, 1, 1, 1, 1, 1)).state, dice(), {}, ['ploy.firefight', 'firefight.action']).state
+    const aimed = take(take(retreat, retreat.pending!.options![0]!.id).state, boy, dice(1, 1, 1, 1, 1, 1, 1))
+    const played = play(aimed.state, dice(), {}, ['firefight.action', 'firefight.activate'])
+    const afterShoot = played.state
     expect(afterShoot.operatives[sg]!.ready).toBe(true)
     expect(afterShoot.operatives[sg]!.flags.guard).toBe(false)
+    // the free Shoot resolves first, then the Fall Back ends
+    const resolved = [...aimed.events, ...played.events].filter((e) => e.type === 'ActionResolved').map((e) => (e as { action: string }).action)
+    expect(resolved.indexOf('shoot')).toBeGreaterThanOrEqual(0)
+    expect(resolved.indexOf('shoot')).toBeLessThan(resolved.indexOf('fallBack'))
     // an expended or distant friend is not offered, and a Conceal friend changes to Engage
     expect(optionIds(fall(edit(setup, (st) => void (st.operatives[sg]!.ready = false))))).not.toContain(`ks.p.cover-retreat:${sg}`)
     expect(optionIds(fall(place(setup, sg, -9, 0)))).not.toContain(`ks.p.cover-retreat:${sg}`)
@@ -701,7 +741,24 @@ describe('TEAM-KS Kasrkin', () => {
     while (t.pending!.kind === 'ploy.firefight') t = passIt(t).state
     expect(t.pending!.kind).toBe('firefight.action')
     expect(t.operatives[demo]!.flags.carrying).toBeTruthy()
-    expect(optionIds(t)).not.toContain('ability:ks.a.place-melta-mine')
+    expect(optionIds(t).some((i) => i.startsWith('marker:place'))).toBe(false)
+  })
+
+  it('TEAM-KS-013 Proximity Mine goes off after a forced move outside any action too (provider checkMines), without stopping it', () => {
+    const s = open()
+    const boy = B(s, 'boy')
+    const armed = edit(mineAt(place(s, boy, 9, 0), 5, 0), (st) => void (st.operatives[boy]!.wounds = st.operatives[boy]!.maxWounds = 40))
+    const pushed = withCtx(
+      armed,
+      (ctx) => {
+        ctx.state.operatives[boy]!.pos = { x: 6.2, y: 0, z: 0 }
+        updateControl(ctx)
+      },
+      dice(4, 4),
+    ).state
+    expect(pushed.operatives[boy]!.wounds).toBe(29)
+    expect(pushed.operatives[boy]!.pos.x).toBe(6.2)
+    expect(pushed.markers.some((m) => m.equipmentId === 'ks.meltaMine')).toBe(false)
   })
 
   it('TEAM-KS-024 Seize the Initiative with Place Melta Mine: the mine is placed but no free Dash follows (the action may not move)', () => {
@@ -710,11 +767,14 @@ describe('TEAM-KS Kasrkin', () => {
     const set = place(w, demo, 0, -6)
     expect(set.markers.find((m) => m.equipmentId === 'ks.meltaMine')!.carriedBy).toBe(demo)
     const free = take(set, `ks.p.seize-the-initiative:${demo}`).state
-    const spots = take(free, 'ability:ks.a.place-melta-mine').state
-    expect(spots.pending!.kind).toBe('ability.choice')
-    const placed = take(spots, spots.pending!.options![0]!.id).state
+    const mineId = set.markers.find((m) => m.equipmentId === 'ks.meltaMine')!.id
+    const placing = take(free, `marker:place:${mineId}`).state
+    const p = placing.pending!
+    expect(p.kind).toBe('marker.place')
+    const placed = expectOk(step(placing, { type: 'marker.place', seat: p.seat, decisionId: p.id, payload: (p.context.spots as { x: number; z: number }[])[0]! })).state
     expect(placed.markers.find((m) => m.equipmentId === 'ks.meltaMine')!.carriedBy).toBeNull()
     expect(placed.pending!.kind).not.toBe('move.path')
+    expect(optionIds(placed).some((i) => i.startsWith('ks.mineDash'))).toBe(false)
   })
 
   it('TEAM-KS-014 Blast Padding against a friendly shooter too: a Kasrkin flamer catching the Demo-Trooper still allows the re-roll', () => {

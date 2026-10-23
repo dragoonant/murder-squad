@@ -248,11 +248,10 @@ registerTeamRules({
     return 0
   },
 
-  /** Wasteland Stalker: one more cover save, but not on top of Vantage's improved cover save. */
+  /** Wasteland Stalker: one more cover save. Not on top of Vantage's improved cover save: the core adds no
+   * Stealthy-style improvement once the defender took the Vantage one (handlers.vantageImprovementTaken). */
   stealthyCover(state, op) {
     if (!isHc(state, op) || !hasAbility(state, op, A.stalker)) return 0
-    const seq = state.attack?.seq
-    if (seq && seq.targetId === op.id && seq.improvedCover) return 0
     markFired('hcWastelandStalker')
     return 1
   },

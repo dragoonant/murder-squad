@@ -6,11 +6,14 @@
 //    action.declared / action.ended hooks keep the Felarch's per-activation ledger. CAPRICIOUS FLIGHT (T-CV.31) is a cost
 //    change read by the same provider. LIGHT FINGERS is the provider markerActionRelief.
 //  - RIFLES, CAMO CLOAK, PIRATICAL PROFITEERS, OUTCASTS, CONTEMPTUOUS ADVENTURER, MISTFIELD: the modifyWeaponRules hook.
-//  - ONE STEP AHEAD (T-CV.8) and ERUDITE HUNTER (T-CV.13): the provider `reactions`, answered by the code hooks' choice.
+//  - ONE STEP AHEAD (T-CV.8) and ERUDITE HUNTER (T-CV.13): the provider `reactions`, answered by the code hooks' choice;
+//    the offers are marked `freeActions`, so they also follow an enemy's free action (in its own activation or a
+//    Strategy-phase free action). Erudite Hunter's Reposition is held near the enemy by the provider moveProblem.
 //  - BLINK PACK (T-CV.14): providers canFly / flyLimit; SLICING ATTACK (T-CV.15): the afterMove of a Reposition plus a 0 CP
 //    pseudo ploy in the firefight.actionEnded window; BLADEMASTER (T-CV.10): a unique action that starts a free Dash.
-//  - QUICK ON THE TRIGGER (T-CV.18) and PISTOL BARRAGE (T-CV.19): the provider shootInControlRange, the target hook, and
-//    the point-blank transport for free Shoots made in an enemy's control range.
+//  - QUICK ON THE TRIGGER (T-CV.18) and PISTOL BARRAGE (T-CV.19): the providers shootInControlRange and
+//    freeShootInControlRange (free and Guard interrupt Shoots in an enemy's control range are ordinary Shoots), and the
+//    target hook.
 //  - The PSYCHIC actions (T-CV.16, 17, 21, 22): unique actions that ask psychicSelectable for every pick; the shield is
 //    a token that goes at the Way Seeker's next activation or its incapacitation.
 //  - The ploys and equipment: strategy flags read by the hooks, code-hook ploys, and 0 CP pseudo ploys.
@@ -499,8 +502,9 @@ registerTeamRules({
     return null
   },
 
-  // QUICK ON THE TRIGGER (T-CV.18)
+  // QUICK ON THE TRIGGER (T-CV.18): every Shoot of the Duellist, free and Guard interrupt ones included
   shootInControlRange: (state, op) => qott(state, op),
+  freeShootInControlRange: (state, op) => qott(state, op),
 
   // BLINK PACK (T-CV.14)
   canFly(state, op, kind) {
@@ -564,6 +568,7 @@ registerTeamRules({
             operativeId: f.id,
             option: action,
             labelKey: `ability.${IDS.osa}`,
+            freeActions: true,
             data: { name: `One Step Ahead: ${f.name} ${action === 'shoot' ? 'shoots' : 'fights'} ${actor.name}`, actorId: actor.id },
           })
         }
@@ -579,6 +584,7 @@ registerTeamRules({
             operativeId: k.id,
             option,
             labelKey: `ability.${IDS.erudite}`,
+            freeActions: true,
             data: { name: `Erudite Hunter: ${k.name} ${label} ${actor.name}`, actorId: actor.id },
           })
         }
@@ -595,16 +601,16 @@ registerTeamRules({
     return foes.includes(id) ? [id] : null
   },
 
-  // ERUDITE HUNTER's free Reposition may not end farther from the marked enemy than it started (fallback veto)
-  moveSurcharge(state, op, kind, points) {
+  // ERUDITE HUNTER's free Reposition may not end further away from the marked enemy than it started
+  moveProblem(state, op, kind, points) {
     const a = state.firefight.activation
-    if (kind !== 'reposition' || !a || a.operativeId !== op.id || a.frame?.resume !== ERUDITE_FRAME || points.length === 0) return 0
+    if (kind !== 'reposition' || !a || a.operativeId !== op.id || a.frame?.resume !== ERUDITE_FRAME || points.length === 0) return null
     const enemy = state.operatives[String(a.frame.data?.enemyId ?? '')]
-    if (!enemy) return 0
+    if (!enemy) return null
     const end = points[points.length - 1]!
     const before = distanceBetween(bodyOf(op), bodyOf(enemy))
     const after = distanceBetween(bodyOf({ ...op, pos: { x: end.x, y: end.y, z: end.z } }), bodyOf(enemy))
-    return after > before + EPS ? 999 : 0
+    return after > before + EPS ? `Erudite Hunter: ${op.name} cannot end this Reposition further away from ${enemy.name}` : null
   },
 })
 
@@ -726,36 +732,8 @@ registerHook(
 )
 
 // ---------------------------------------------------------------------------
-// Dice: Quick on the Trigger (no point-blank penalty), Mobile Engagement, Diuturnal Mantles
+// Dice: Mobile Engagement, Diuturnal Mantles
 // ---------------------------------------------------------------------------
-
-registerHook(
-  'modifyAttackDice',
-  (c) => {
-    const s = c.state
-    const op = s && c.operativeId ? s.operatives[c.operativeId] : undefined
-    if (!s || !c.engine || !op || !qott(s, op)) return null
-    const a = s.attack
-    // the shared point-blank transport worsens Hit by 1; Quick on the Trigger shoots normally
-    if (a?.kind === 'shoot' && a.pointBlank && a.operativeId === op.id) (c.data as { hitDelta: number }).hitDelta -= 1
-    return null
-  },
-  'cv.modifyAttackDice',
-)
-
-registerHook(
-  'afterShootResolved',
-  (c) => {
-    const s = c.state
-    const op = s && c.operativeId ? s.operatives[c.operativeId] : undefined
-    if (!s || !op || !qott(s, op) || !s.attack?.pointBlank) return null
-    // the transport also stopped it retaliating; a Quick on the Trigger Shoot does not
-    delete op.flags.cannotRetaliate
-    markFired('quickOnTheTrigger')
-    return null
-  },
-  'cv.afterShootResolved',
-)
 
 registerHook(
   'modifyDefenceDice',
@@ -1223,12 +1201,11 @@ function barrageStep(ctx: Ctx, opId: string, order: string[], i: number): void {
     return
   }
   const pistol = BARRAGE_PISTOLS[order[i]!]!
-  // in an enemy's control range the free Shoot rides the point-blank transport (Quick on the Trigger cancels its effects)
+  // in an enemy's control range the free Shoot is an ordinary Quick on the Trigger Shoot (freeShootInControlRange)
   const started = startFreeAction(ctx, {
     operativeId: opId,
     action: 'shoot',
     weaponNameContains: pistol.name,
-    ...(inEnemyCr(ctx.state, op) ? { pointBlank: true } : {}),
     resume: 'cv.pistolBarrage',
     data: { opId, order, i },
   })

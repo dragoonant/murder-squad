@@ -11,7 +11,10 @@
 //  - PSYCHIC (T-WC.6-12): five unique actions (psychic.ts psychicSelectable for who they pick, psychicAllowed for every
 //    lasting effect); tokens wc.protected / wc.ravaged / wc.alight / wc.mindburn live in tokens.ts.
 //  - Fate Itself is My Weapon: a ploy effect that reserves two public dice on an effect record; 0 CP pseudo ploys at
-//    shoot.beforeAttackRerolls and fight.beforeRerolls replace an attack die and tag it so no rule reclassifies it.
+//    shoot.beforeAttackRerolls (the shooter), shoot.defenderAttackRolled (the defender, on the opponent's fresh roll) and
+//    fight.beforeRerolls replace an attack die and tag it so no rule reclassifies it.
+//  - Savage Brutality: the provider ownReactions after the Champion's first Fight of its own activation; the code hook's
+//    choice starts the free Fight (resume REACTION_DONE).
 //  - Psychic Cabal: the lender's weapon is pushed onto the borrower for the activation (weaponForbidden bars the lender);
 //    a borrowed action is an extraActions answer.
 //  - Everything else is a hook handler or provider named in the Engine map of the spec section.
@@ -22,7 +25,7 @@ import { addEffect, markUsedBattle, markUsedTp, regainWounds, removeEffects, use
 import { allowedOrders } from '../abilities'
 import { territoryOf } from '../equipment'
 import { assistersOf } from '../fight'
-import { cancelAction, canStartFreeAction, finishAction, joinActivation, startFreeAction } from '../firefight'
+import { cancelAction, canStartFreeAction, finishAction, joinActivation, reactionDone, REACTION_DONE, startFreeAction } from '../firefight'
 import { registerHook, type ActionEndedData, type AfterRollData, type DamageInflictedData, type DiceRolledData } from '../hooks'
 import { bodyOf, visible } from '../los'
 import { newMarkerId, PICK_UP, PLACE, removeMarker } from '../markers'
@@ -33,7 +36,7 @@ import { registerPloyRule, type PloyOffer } from '../ploy-rules'
 import { isPsychicWeapon, psychicAllowed, psychicSelectable } from '../psychic'
 import type { Ctx } from '../registry'
 import { activeOps, effectiveMove, enemiesOf, hasInjuredPenalty, otherSeat } from '../state'
-import { providerAny, registerTeamRules } from '../team-rules'
+import { providerAny, registerTeamRules, type ReactionOffer } from '../team-rules'
 import { placementProblem } from '../terrain'
 import { addToken, hasToken, moveTokenTo, removeTokensWhere } from '../tokens'
 import type { Activation, DiceSide, GameState, Operative, RerollGrant, Seat, WeaponRuleRef } from '../types'
@@ -122,7 +125,7 @@ const DICE_SOURCES = ['normal', 'crit', 'strike-normal', 'strike-crit']
 
 // Passive rules register their name so the data may reference them; the handlers below mark them fired when they
 // actually apply in a game.
-for (const name of ['boonsOfTzeentch', 'wcSorcerousAutomata', 'wcIconBearer', 'slowAndPurposeful', 'herdBanner', 'wcMindburn', 'wcShield', 'daemonmawWeapons', 'arcaneRobes', 'sorcerousScrolls', 'savageBrutality']) {
+for (const name of ['boonsOfTzeentch', 'wcSorcerousAutomata', 'wcIconBearer', 'slowAndPurposeful', 'herdBanner', 'wcMindburn', 'wcShield', 'daemonmawWeapons', 'arcaneRobes', 'sorcerousScrolls']) {
   registerCodeHook({ name })
 }
 
@@ -242,6 +245,13 @@ function has(rules: WeaponRuleRef[], key: string): boolean {
 
 registerTeamRules({
   id: TEAM_ID,
+
+  // SAVAGE BRUTALITY (T-WC.16): offered to the Champion's own seat right after its first Fight of its own activation
+  ownReactions(state, seat, info): ReactionOffer[] {
+    if (info.action !== 'fight' || info.activeSeat !== seat || info.freeAction || info.interrupt || info.activationEnded || info.counteract || info.strategy) return []
+    const op = state.operatives[info.actorId]
+    return op && op.seat === seat && brutalityOpen(state, op) ? [{ hook: 'savageBrutality', operativeId: op.id, option: 'fight', labelKey: `ability.${BRUTALITY}`, data: { name: `Savage Brutality: ${op.name} fights again` } }] : []
+  },
 
   // ASTARTES (T-WC.31): no bolt-weapon condition; two Shoots or two Fights
   maxRepeats(state, op, actionId, performed) {
@@ -1157,8 +1167,37 @@ registerCodeHook({
 })
 
 // ---------------------------------------------------------------------------
-// 0 CP pseudo ploys: Echoes from the Warp, Sorcerous Scrolls, Astral Bombardment's Shoot choice, Savage Brutality,
-// the reserved dice of Fate Itself is My Weapon
+// SAVAGE BRUTALITY (T-WC.16): a reaction of the Champion's own seat, right after its first Fight of its own activation
+// ---------------------------------------------------------------------------
+
+/** Can the Champion take Savage Brutality's free Fight now (its own activation, after exactly one Fight, not yet used)? */
+function brutalityOpen(state: GameState, op: Operative): boolean {
+  if (!live(op) || !isWc(state, op) || !hasAbility(state, op, BRUTALITY)) return false
+  const act = state.firefight.activation
+  if (!act || act.frame || act.counteract || act.operativeId !== op.id) return false
+  if (act.performed.filter((p) => p === 'fight').length !== 1 || (act.used ?? []).includes(L_BRUTALITY)) return false
+  // the free Fight keeps every other Fight condition (an enemy in control range); it takes precedence over action limits
+  return canStartFreeAction(state, { operativeId: op.id, action: 'fight', resume: REACTION_DONE })
+}
+
+registerCodeHook({
+  name: 'savageBrutality',
+  choice(ctx, op) {
+    const act = ctx.state.firefight.activation
+    if (!act || !brutalityOpen(ctx.state, op)) {
+      reactionDone(ctx)
+      return
+    }
+    act.used = [...(act.used ?? []), L_BRUTALITY]
+    markFired('savageBrutality')
+    used(ctx, op, BRUTALITY)
+    if (!startFreeAction(ctx, { operativeId: op.id, action: 'fight', resume: REACTION_DONE })) reactionDone(ctx)
+  },
+})
+
+// ---------------------------------------------------------------------------
+// 0 CP pseudo ploys: Echoes from the Warp, Sorcerous Scrolls, Astral Bombardment's Shoot choice, the reserved dice of
+// Fate Itself is My Weapon
 // ---------------------------------------------------------------------------
 
 function offer(id: string, name: string, via: string, op: Operative | undefined, param?: string): PloyOffer {
@@ -1197,8 +1236,9 @@ registerPloyRule({
     const out: PloyOffer[] = []
     const subject = info.subjectId ? state.operatives[info.subjectId] : undefined
     const a = state.attack
-    // ---- Fate Itself is My Weapon: the reserved dice replace an attack die before re-rolls (T-WC.33)
-    if ((window === 'shoot.beforeAttackRerolls' || window === 'fight.beforeRerolls') && a?.seq) {
+    // ---- Fate Itself is My Weapon: the reserved dice replace an attack die before re-rolls (T-WC.33): the shooter's own
+    // dice in its window, the opponent's Shoot dice in the defender's window on the fresh roll, both sides' in a fight
+    if ((window === 'shoot.beforeAttackRerolls' || window === 'shoot.defenderAttackRolled' || window === 'fight.beforeRerolls') && a?.seq) {
       const f = fateFx(state, seat)
       if (f && !((f.fx.data?.spent as string[] | undefined) ?? []).includes(sequenceKey(state))) {
         for (const c of fateChoices(state, seat)) {
@@ -1225,13 +1265,6 @@ registerPloyRule({
       const w = bombardWeapon(state, subject)
       if ((w === FIRESTORM_W || w === MINDBURN_W) && !opEffect(state, FX_ASTRAL, subject.id)) {
         out.push(offer(`${B_ASTRAL}:devastating`, 'Astral Bombardment: Devastating 1 this Shoot instead of Seek Light', 'wc.astral', subject, 'devastating'))
-      }
-    }
-    // ---- Savage Brutality: a free Fight after the first Fight of the Champion's own activation (T-WC.16)
-    if (window === 'firefight.actionEnded' && info.action === 'fight' && hasAbility(state, subject, BRUTALITY) && !info.counteracting) {
-      const act = state.firefight.activation
-      if (act && !act.frame && !act.counteract && act.operativeId === subject.id && act.performed.filter((p) => p === 'fight').length === 1 && !(act.used ?? []).includes(L_BRUTALITY)) {
-        if (canStartFreeAction(state, { operativeId: subject.id, action: 'fight', resume: '' })) out.push(offer(`${BRUTALITY}`, 'Savage Brutality: a free Fight', 'wc.brutality', subject))
       }
     }
     return out
@@ -1291,16 +1324,6 @@ registerPloyRule({
         addEffect(ctx, { source: FX_ASTRAL, seat, kind: 'ployFlag', operativeId: op.id, expires: 'action' })
         markFired('boonsOfTzeentch')
         used(ctx, op, B_ASTRAL, 'devastating')
-        break
-      }
-      case 'wc.brutality': {
-        const act = s.firefight.activation
-        if (!op || !act) break
-        act.used = [...(act.used ?? []), L_BRUTALITY]
-        markFired('savageBrutality')
-        used(ctx, op, BRUTALITY)
-        // the free Fight keeps every other Fight condition; the window carries on once it is over
-        startFreeAction(ctx, { operativeId: op.id, action: 'fight', resume: 'ploy.freeAction' })
         break
       }
       default:

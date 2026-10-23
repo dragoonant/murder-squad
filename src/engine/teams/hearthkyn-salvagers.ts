@@ -5,12 +5,13 @@
 //  - Grudge: tokens.ts kind 'hk.grudge' (owned by the Hearthkyn player, no cap, kept all battle). The last enemy to hurt
 //    each Hearthkyn operative is remembered (damage.inflicted) and gets the token when that operative is incapacitated
 //    (operative.incapacitated); the tokens turn normal successes into crits on afterAttackRoll.
-//  - Medic!, Brawler's last strike, Weavefield Crest, Secure Salvage: beforeIncapacitated / onDamageInflicted.
+//  - Medic!, Brawler's last strike, Weavefield Crest, Secure Salvage: beforeIncapacitated / onDamageInflicted; Medic! is
+//    then the owner's choice in the before-removal queue (operative.incapacitated, saveFromRemoval, pausableRemoval).
 //  - Knux Smash, Jump Pack, Utility Grenade, markers (Attack, Defence, Pan Spectral Scan), System Jam, Spot: generic
 //    forced move, FLY, markers, tokens and provider capabilities.
 //  - Beam (team-local weapon rule): afterAttackRoll predicts the retained crits and deals the beam damage there.
 import { abilityOffers, maxRepeats } from '../abilities'
-import { applyAplEffect, continueRemovals, countKinds, hasRule, heavyBlocksMove, retainAttack, ruleSetFor, targetInfo, type RuleSet } from '../attack-common'
+import { applyAplEffect, continueRemovals, countKinds, hasRule, heavyBlocksMove, retainAttack, ruleSetFor, saveFromRemoval, targetInfo, type RuleSet } from '../attack-common'
 import { markFired, registerCodeHook, type OfferSeed, type PloyOfferSeed } from '../code-hooks'
 import { canBeTargetedBy, hasAbility, hasKeyword, inEnemyCr } from '../conditions'
 import { addEffect, aplChangeNextActivation, directDamage, gainCp, markUsedBattle, markUsedTp, regainWounds, removeEffects, usedThisBattle, usedThisTp } from '../effects'
@@ -27,7 +28,7 @@ import { registerPloyRule, type PloyOffer, type PloyRule } from '../ploy-rules'
 import { continueWindow } from '../ploys'
 import { markerControl } from '../query'
 import type { Ctx } from '../registry'
-import { activeOps, enemiesOf, hasInjuredPenalty, otherSeat, SEATS } from '../state'
+import { activeOps, enemiesOf, hasInjuredPenalty, isInjured, otherSeat, SEATS } from '../state'
 import { resumeGambit } from '../strategy'
 import { registerTeamRules, type ReactionOffer } from '../team-rules'
 import { addToken, hasToken, removeToken, tokenCount, tokensOn } from '../tokens'
@@ -40,6 +41,8 @@ export const JAM = 'hk.system-jam'
 export const SPOT = 'hk.spot'
 const HK = 'HEARTHKYN SALVAGER'
 const EPS = 1e-6
+/** Medic!: the moment an operative would be incapacitated, the medic that may save it (the owner answers before removal) */
+const MEDIC_ASK = 'hk.medicAsk'
 
 const M_UTILITY = 'hk.utility-grenade'
 const M_ATTACK = 'hk.attack-marker'
@@ -177,20 +180,28 @@ registerHook(
     const ctx = c.engine
     const victim = opOfHook(c)
     if (!s || !ctx || !victim || !isHk(s, victim)) return null
-    // Pan Spectral Scan goes with the Lokatr that placed it (T-HK.23)
-    for (const m of [...s.markers]) if (m.equipmentId === M_SCAN && m.placedBy === victim.id) removeMarker(ctx, m.id, 'hk.panSpectralScan')
-    const fx = s.effects.find((e) => e.kind === 'hk.lastHit' && e.operativeId === victim.id)
-    const attackerId = fx?.data?.attackerId as string | null | undefined
-    if (fx) removeEffects(ctx, (e) => e.id === fx.id)
-    const attacker = attackerId ? s.operatives[attackerId] : undefined
-    if (live(attacker) && attacker.seat !== victim.seat) {
-      addToken(ctx, attacker.id, { kind: GRUDGE, owner: victim.seat, expires: ['battle'] }, 'grudge')
-      markFired('hkGrudge')
-    }
+    // Medic! may still keep it in the fight: the medic hook below asks first and settles this afterwards
+    if (effectFor(s, MEDIC_ASK, victim.id)) return null
+    fallen(ctx, victim)
     return null
   },
   'hk.operative.incapacitated',
 )
+
+/** A Hearthkyn operative is really incapacitated: its Pan Spectral Scan goes, and the last enemy to hurt it gains a Grudge. */
+function fallen(ctx: Ctx, victim: Operative): void {
+  const s = ctx.state
+  // Pan Spectral Scan goes with the Lokatr that placed it (T-HK.23)
+  for (const m of [...s.markers]) if (m.equipmentId === M_SCAN && m.placedBy === victim.id) removeMarker(ctx, m.id, 'hk.panSpectralScan')
+  const fx = s.effects.find((e) => e.kind === 'hk.lastHit' && e.operativeId === victim.id)
+  const attackerId = fx?.data?.attackerId as string | null | undefined
+  if (fx) removeEffects(ctx, (e) => e.id === fx.id)
+  const attacker = attackerId ? s.operatives[attackerId] : undefined
+  if (live(attacker) && attacker.seat !== victim.seat) {
+    addToken(ctx, attacker.id, { kind: GRUDGE, owner: victim.seat, expires: ['battle'] }, 'grudge')
+    markFired('hkGrudge')
+  }
+}
 
 registerHook(
   'afterAttackRoll',
@@ -388,7 +399,7 @@ registerHook(
     const victim = opOfHook(c)
     if (!s || !ctx || !victim) return null
     if (hasAbility(s, victim, ID.brawler)) brawlerLastStrike(s, ctx, victim)
-    medicSave(s, ctx, victim, c.data as { wounds: number })
+    medicAsk(s, ctx, victim)
     return null
   },
   'hk.beforeIncapacitated',
@@ -435,18 +446,93 @@ function medicFor(s: GameState, victim: Operative): Operative | null {
   return null
 }
 
-function medicSave(s: GameState, ctx: Ctx, victim: Operative, data: { wounds: number }): void {
+/**
+ * The operative "would be incapacitated": the conditions are checked at that moment and the medic is recorded
+ * (MEDIC_ASK; the turning point's use is spent, so declining spends it). The owner answers in the before-removal queue
+ * (the operative.incapacitated hook below); taking it keeps the operative (attack-common.saveFromRemoval). Removals
+ * outside an attack (mines, direct damage) wait for that queue through the provider's pausableRemoval.
+ */
+function medicAsk(s: GameState, ctx: Ctx, victim: Operative): void {
   const medic = medicFor(s, victim)
   if (!medic) return
-  data.wounds = 1
   markUsedTp(s, medic.seat, `hk.medic:${medic.id}`)
+  const carrying = victim.flags.carrying
+  addEffect(ctx, { source: ID.medic, seat: victim.seat, kind: MEDIC_ASK, operativeId: victim.id, expires: 'turningPoint', data: { medicId: medic.id, ...(carrying ? { carrying } : {}) } })
+}
+
+// the owner's decision, before removal (R-5.18)
+registerHook(
+  'operative.incapacitated',
+  (c) => {
+    const s = c.state
+    const ctx = c.engine
+    const victim = opOfHook(c)
+    if (!s || !ctx || !victim) return null
+    const ask = effectFor(s, MEDIC_ASK, victim.id)
+    if (!ask) return null
+    const medic = s.operatives[String(ask.data?.medicId)]
+    // only a queue can wait for the answer, and the medic must still be in the killzone
+    if (!s.removal || !s.removal.ids.includes(victim.id) || s.pending || !medic || !live(medic)) {
+      removeEffects(ctx, (e) => e.id === ask.id)
+      fallen(ctx, victim)
+      return null
+    }
+    ctx.raise({
+      kind: 'ability.choice',
+      seat: victim.seat,
+      window: 'operative.incapacitated',
+      context: { hook: 'hkMedic', operativeId: victim.id, medicId: medic.id },
+      options: [
+        { id: 'save', labelKey: 'removal.free', type: 'ability.choice' as const, payload: { option: 'save' }, data: { name: `Medic! (${medic.name}): keep it in the fight on 1 wound`, medicId: medic.id } },
+        { id: 'none', labelKey: 'removal.free', type: 'ability.choice' as const, payload: { option: 'none' }, data: { name: 'Let it fall' } },
+      ],
+    })
+    return null
+  },
+  'hk.medicAsk',
+)
+
+function medicAnswer(ctx: Ctx, victim: Operative, use: boolean): void {
+  const s = ctx.state
+  const ask = effectFor(s, MEDIC_ASK, victim.id)
+  const medic = ask ? s.operatives[String(ask.data?.medicId)] : undefined
+  if (ask) removeEffects(ctx, (e) => e.id === ask.id)
+  if (use && ask && medic && live(medic) && saveFromRemoval(ctx, victim.id, 1)) medicSaved(ctx, victim, medic, ask.data?.carrying as string | undefined)
+  else fallen(ctx, victim)
+  continueRemovals(ctx)
+}
+
+/** Medic! taken: 1 wound, the rest of the action safe, a free Dash after it, -1 APL for both (T-HK.11). */
+function medicSaved(ctx: Ctx, victim: Operative, medic: Operative, carrying: string | undefined): void {
+  const s = ctx.state
   markUsedTp(s, medic.seat, `hk.medic.saved:${victim.id}`)
-  addEffect(ctx, { source: ID.medic, seat: victim.seat, kind: 'hk.medicFloor', operativeId: victim.id, expires: 'action' })
+  if (!victim.flags.injured && isInjured(victim)) {
+    victim.flags.injured = true
+    ctx.emit({ type: 'OperativeInjured', operativeId: victim.id })
+  }
+  // it was never incapacitated: a marker it carried (dropped by the shared before-removal step) is still its own
+  const m = carrying ? s.markers.find((x) => x.id === carrying) : undefined
+  if (m && !m.carriedBy && !victim.flags.carrying) {
+    m.carriedBy = victim.id
+    m.pos = { x: victim.pos.x, z: victim.pos.z }
+    victim.flags.carrying = m.id
+    ctx.emit({ type: 'MarkerPickedUp', markerId: m.id, operativeId: victim.id }, victim.seat)
+  }
+  const deferred = !!s.removal?.deferred
+  // an attack's queue is still inside the action: nothing can incapacitate it for the rest of it
+  if (!deferred) addEffect(ctx, { source: ID.medic, seat: victim.seat, kind: 'hk.medicFloor', operativeId: victim.id, expires: 'action' })
   // the activation the rule was used in: the one under a frame (an enemy Guard interrupt, a free action) counts
   const under = activeActivationOf(s)
   const own = !!under && !under.counteract && under.operativeId === victim.id
-  // used in its own activation: that activation ends once the action is done (no AP left to spend)
-  if (own) under.endsAfterAction = true
+  if (own) {
+    // used in its own activation: that activation ends once the action is done (no AP left to spend); a removal
+    // outside an attack runs after the step, so the activation's waiting action choice keeps only End
+    under.endsAfterAction = true
+    const parked = s.removal?.parked
+    if (deferred && parked?.kind === 'firefight.action' && s.firefight.activation === under && parked.options?.some((o) => o.id === 'end')) {
+      s.removal!.parked = { ...parked, options: parked.options.filter((o) => o.id === 'end') }
+    }
+  }
   // the free Dash after the action: a reaction when the other player is active, a 0 CP offer in the action-ended
   // window when the Hearthkyn player is (medicRule.extraOffers)
   addEffect(ctx, { source: ID.medic, seat: victim.seat, kind: 'hk.medicDash', operativeId: victim.id, expires: 'activation', data: { medicId: medic.id } })
@@ -459,8 +545,12 @@ function medicSave(s: GameState, ctx: Ctx, victim: Operative, data: { wounds: nu
 
 registerCodeHook({
   name: 'hkMedic',
-  /** the free Dash after the action: the saved operative moves into the medic's control range */
-  choice(ctx, op) {
+  /** 'save' / 'none': the owner's answer in the removal queue; 'dash': the free Dash after the action */
+  choice(ctx, op, option) {
+    if (option === 'save' || option === 'none') {
+      medicAnswer(ctx, op, option === 'save')
+      return
+    }
     const fx = effectFor(ctx.state, 'hk.medicDash', op.id)
     if (!fx) {
       reactionDone(ctx)
@@ -1386,6 +1476,9 @@ registerTeamRules({
     markUsedBattle(ctx.state, seat, ID.writ)
     markFired('hkWritOfClaim')
   },
+
+  /** Medic!: a removal outside an attack waits for the before-removal queue, where the owner may take it */
+  pausableRemoval: (state, op) => !!effectFor(state, MEDIC_ASK, op.id),
 
   /** Medic!'s free Dash while the other player is the active one (T-HK.11) */
   reactions(state, seat) {

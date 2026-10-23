@@ -9,7 +9,8 @@
 //    is a 0 CP strategy ploy that loops ability.choice. Holder tests go through `holdsToken` / `isHolder` / `underGaze`.
 //  - Token effects: modifyAttackDice (Accurate 1) and afterAttackRoll (the Gaze crit converts one Accurate die).
 //  - Before-removal rules (Blooded Icon, Explosive Demise, Bitter Demise): one `operative.incapacitated` handler that
-//    decides in order and, inside an attack's removal queue, asks with ability.choice and calls continueRemovals.
+//    decides in order and, inside a removal queue (an attack's, or the deferred one outside attacks that
+//    `pausableRemoval` asks for), asks with ability.choice and calls continueRemovals.
 //  - STIMMS, Regular Dosage, Signal, Sacrilegious Actuation, Enforce: unique actions and a pre-battle offer.
 //  - Weapon and stat rules (Stalk, Tough, Shield, Camo Cloak, Chem-enhanced, Brute, Wretched, Group Activation...): small
 //    handlers on the shared hook points and the team rule provider.
@@ -26,7 +27,6 @@ import { extraStrike } from '../fight'
 import { cancelAction, finishAction, startDelegatedAction } from '../firefight'
 import { distToPolygon } from '../geometry'
 import { registerFrameResume, registerHook, type AfterRollData, type BeforeIncapacitatedData, type ChoiceRequest } from '../hooks'
-import { killsSince } from '../kills'
 import { bodyOf, visible } from '../los'
 import { distanceBetween, enemiesInControlRange, isWithin, whollyWithinRegion } from '../measure'
 import { registerPloyRule, type PloyOffer, type PloyRule } from '../ploy-rules'
@@ -689,7 +689,11 @@ function crowdAround(s: GameState, v: Operative, foesOnly: boolean): Operative[]
   return activeOps(s).filter((o) => o.id !== v.id && live(o) && (!foesOnly || o.seat !== v.seat) && within(v, o, 2) && sees(s, v, o))
 }
 
-/** Outside an attack's removal queue no decision can be raised: Explosive Demise is used when it favours the owner. */
+/**
+ * With no removal queue at all (a removal nested in another rule's resolution) no decision can be raised: Explosive
+ * Demise is then used when it favours the owner. Outside attacks the removal normally waits for the deferred queue
+ * (pausableRemoval below), where the owner is asked.
+ */
 function explosiveWorthIt(s: GameState, g: Operative): boolean {
   const crowd = crowdAround(s, g, false)
   const foes = crowd.filter((o) => o.seat !== g.seat).length
@@ -1031,20 +1035,16 @@ registerCodeHook({
 })
 
 /**
- * Enemy kills of the seat's token holders: the holder within 2" of where the victim stood. An attack kill is offered in
- * its own `operative.killed` window, right after the removal; the end-of-action window only offers kills by rule damage
- * (cause `direct`, or `scored`), which open no window of their own, so a declined attack kill is never offered again.
+ * Enemy kills of the seat's token holders: the holder within 2" of where the victim stood. Every kill is offered once,
+ * in its own `operative.killed` window right after the removal: an attack kill through the attack's removal queue, a
+ * rule kill (cause `direct`: Avalanche of Muscle, a mine) through the deferred removal queue, in either seat's
+ * activation. Declined there, it is not offered again.
  */
 function rewardable(state: GameState, seat: Seat, info: { window: string; subjectId?: string; removedId?: unknown }): boolean {
-  const near = (killer: Operative | undefined, removed: Operative | undefined): boolean => !!killer && !!removed && live(killer) && killer.seat === seat && removed.seat !== seat && holdsToken(state, killer) && within(killer, removed, 2)
-  if (info.window === 'operative.killed') {
-    return near(info.subjectId ? state.operatives[info.subjectId] : undefined, typeof info.removedId === 'string' ? state.operatives[info.removedId] : undefined)
-  }
-  const since = state.firefight.activation?.declaredSeq ?? state.seq
-  const logged = state.kills ?? []
-  if (killsSince(state, since).some((k) => k.cause !== 'attack' && k.cause !== 'offboard' && k.killerId !== null && near(state.operatives[k.killerId], state.operatives[k.removedId]))) return true
-  // removed in this very step (rule damage such as Avalanche of Muscle): the kill log is written when the step ends, after this window opens
-  return Object.values(state.operatives).some((o) => o.status === 'removed' && !logged.some((k) => k.removedId === o.id) && o.incapacitatedBy?.source === 'direct' && near(state.operatives[o.incapacitatedBy.id], o))
+  if (info.window !== 'operative.killed') return false
+  const killer = info.subjectId ? state.operatives[info.subjectId] : undefined
+  const removed = typeof info.removedId === 'string' ? state.operatives[info.removedId] : undefined
+  return !!killer && !!removed && live(killer) && killer.seat === seat && removed.seat !== seat && holdsToken(state, killer) && within(killer, removed, 2)
 }
 
 registerCodeHook({
@@ -1152,6 +1152,12 @@ registerTeamRules({
   // REGULAR DOSAGE (T-BL.14)
   preBattleChoices(state, seat) {
     return dosageOffers(state, seat)
+  },
+  // M10 batch D shared: outside an attack, a falling Grenadier (Explosive Demise) or a Bitter Demise operative waits for
+  // the end-of-step removal queue, where its owner is asked like inside an attack
+  pausableRemoval(state, op) {
+    if (!isBl(op) || op.oncePerBattleUsed.includes('bl.beforeRemoval')) return false
+    return op.datacardId === CARD.grenadier || ployActive(state, op.seat, BITTER)
   },
 })
 

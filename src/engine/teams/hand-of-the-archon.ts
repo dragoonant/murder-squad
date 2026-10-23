@@ -23,7 +23,8 @@ import { distanceBetween, enemiesInControlRange, inControlRange, markerInControl
 import { registerPloyRule, type PloyOffer, type PloyRule } from '../ploy-rules'
 import type { Ctx } from '../registry'
 import { activeOps, effectiveApl, enemiesOf, hasInjuredPenalty, otherSeat, SEATS } from '../state'
-import { providerAny, providerControlApl, providerControlTotal, registerTeamRules } from '../team-rules'
+import { readyChoiceDone } from '../strategy'
+import { providerAny, providerControlApl, providerControlTotal, registerTeamRules, type ReactionOffer } from '../team-rules'
 import { addToken, hasToken, removeToken, tokenCount, tokensOn } from '../tokens'
 import type { Activation, DiceSide, GameState, Operative, RerollGrant, Seat } from '../types'
 
@@ -410,20 +411,21 @@ registerHook(
     const s = ctx.state
     for (const seat of SEATS) {
       for (const k of Object.keys(s.ledger[seat].uses)) if (k.startsWith('ha.pfp')) delete s.ledger[seat].uses[k]
-      if (s.players[seat].teamId !== TEAM_ID) continue
-      // Adrenalight (T-HA.17): one holder gains a Pain token; the one with the fewest, ties to the Archsybarite, then the lowest id
-      const holders = haOps(s, seat).filter((o) => drugOf(s, o.id) === 'adrenalight')
-      holders.sort((a, b) => painOf(s, a.id) - painOf(s, b.id) || Number(hasKeyword(s, b, 'ARCHSYBARITE')) - Number(hasKeyword(s, a, 'ARCHSYBARITE')) || byId(a, b))
-      const pick = holders[0]
-      if (pick) {
-        markFired('haAdrenalight')
-        gainPain(ctx, pick.id, 1, 'ha.adrenalight')
-      }
+      // Adrenalight (T-HA.17) is the owner's pick: the shared Ready-step choice (provider readyStepChoices)
     }
     return null
   },
   'ha.turningPoint.start',
 )
+
+const ADRENALIGHT_TP = 'ha.adrenalight'
+
+/** Adrenalight holders the owner may pick in this Ready step, listed fewest Pain first, the Archsybarite first on a tie. */
+function adrenalightHolders(s: GameState, seat: Seat): Operative[] {
+  if (s.players[seat].teamId !== TEAM_ID || s.phase !== 'strategy' || usedThisTp(s, seat, ADRENALIGHT_TP)) return []
+  const holders = haOps(s, seat).filter((o) => drugOf(s, o.id) === 'adrenalight')
+  return holders.sort((a, b) => painOf(s, a.id) - painOf(s, b.id) || Number(hasKeyword(s, b, 'ARCHSYBARITE')) - Number(hasKeyword(s, a, 'ARCHSYBARITE')) || byId(a, b))
+}
 
 // ---------------------------------------------------------------------------
 // Damage: Insensible to Pain and Refined Poison (modifyDamage), Painbringer
@@ -794,6 +796,10 @@ const MISSION_FORBIDDEN = 'Brutal Display: it cannot pick up markers or perform 
 
 registerTeamRules({
   id: TEAM_ID,
+  // Adrenalight (T-HA.17): "you may pick" one holder in the Ready step to gain a Pain token (passing picks none)
+  readyStepChoices(state, seat): ReactionOffer[] {
+    return adrenalightHolders(state, seat).map((o) => ({ hook: 'haCombatDrugs', operativeId: o.id, option: 'adrenalight', labelKey: 'ha.adrenalight', data: { name: `Adrenalight: ${o.name} gains a Pain token` } }))
+  },
   maxRepeats(state, op, actionId, performed) {
     if (!isHa(state, op)) return null
     // Crimson Duellist (T-HA.11): two Fight actions
@@ -968,6 +974,15 @@ registerCodeHook({
 // Combat Drugs (T-HA.15): named by the Elixicant's card, so it only runs when an Elixicant is in the roster
 registerCodeHook({
   name: 'haCombatDrugs',
+  // the Ready-step Adrenalight pick (provider readyStepChoices)
+  choice(ctx, op, option, context) {
+    if (context.readyStep === true && option === 'adrenalight' && !usedThisTp(ctx.state, op.seat, ADRENALIGHT_TP)) {
+      markUsedTp(ctx.state, op.seat, ADRENALIGHT_TP)
+      markFired('haAdrenalight')
+      gainPain(ctx, op.id, 1, 'ha.adrenalight')
+    }
+    readyChoiceDone(ctx)
+  },
   setup(ctx, seat) {
     const s = ctx.state
     const drug = DRUG_OF_ABILITY[s.config[seat].choices['combat-drug'] ?? '']

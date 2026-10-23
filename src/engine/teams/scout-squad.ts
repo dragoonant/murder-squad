@@ -5,7 +5,9 @@
 // Map of the rules to the code below:
 //  - FORWARD SCOUTING (T-SS.16 to 25): provider preBattleChoices (offer hook `ssForwardScouting`), the ledger `ss.fs`
 //    (picks and per-option counts), follow-up ability.choice decisions for the spots, and setup.preBattleChoiceDone.
-//    Redeploy and the two markers pick from sampled spots (gaps preBattleRedeploy, preBattleMarkerPlacement).
+//    Redeploy and the two markers are free-point decisions (markers.raisePointChoice, handlers `ss.redeploy` and
+//    `ss.marker`) checked by `redeployProblem` / `markerProblem`; the sampled spots are hints and a pass takes the default
+//    (Redeploy: stay; a marker: the suggested spot).
 //    Reposition is a real free Reposition whose end is limited by the provider moveProblem.
 //  - TRIP ALARM (19) and BOOBY TRAP (20): team markers `ss.tripAlarm`, `ss.boobyTrap`; Seek in modifyWeaponRules and
 //    beforeShootTargetSelect, the trap through the provider checkMines (put-back at the trigger, gap moveTruncation).
@@ -26,7 +28,8 @@ import { axisOf, discCentres, footprintInsidePolygon, footprintOf } from '../foo
 import { bearing, distToPolygon } from '../geometry'
 import { registerFrameResume, registerHook, type HookContext } from '../hooks'
 import { baseUnderVantage, bodyOf, targetVerdict, visible } from '../los'
-import { newMarkerId, removeMarker } from '../markers'
+import { newMarkerId, raisePointChoice, removeMarker } from '../markers'
+import { registerPointHandler } from '../point-handlers'
 import { distanceBetween, enemiesInControlRange, gapToMarker, isWithin, markerInControlRange } from '../measure'
 import { registerPloyRule, type PloyOffer, type PloyRule } from '../ploy-rules'
 import type { Ctx } from '../registry'
@@ -81,6 +84,8 @@ export const FS_OPTIONS = Object.keys(FS_MAX) as FsOption[]
 
 export const TRIP_ALARM = 'ss.tripAlarm'
 export const BOOBY_TRAP = 'ss.boobyTrap'
+const PT_REDEPLOY = 'ss.redeploy'
+const PT_MARKER = 'ss.marker'
 
 export const TOK = {
   optics: 'ss.optics',
@@ -339,32 +344,49 @@ function spread(points: Vec2[], n: number): Vec2[] {
 }
 
 /**
- * Sampled floor spots for a team marker (gap preBattleMarkerPlacement): a 2" grid on the killzone floor, clear of
- * terrain, more than 6" from the opponent's drop zone. Booby Trap also stays more than 2" from every other marker,
- * access point and Accessible terrain.
+ * Why a Trip Alarm or Booby Trap marker cannot be set up with its centre at `p` (T-SS.19, T-SS.20), or null: wholly in
+ * the killzone on its floor, clear of terrain, more than 6" from the opponent's drop zone (measured from the nearest
+ * point of the marker). Booby Trap also stays more than 2" from every other marker, access point and Accessible terrain.
  */
+export function markerProblem(state: GameState, seat: Seat, kind: 'tripAlarm' | 'boobyTrap', p: Vec2): string | null {
+  const hx = state.map.size.x / 2
+  const hz = state.map.size.z / 2
+  const r = markerRadius({ kind: 'equipment' })
+  if (Math.abs(p.x) + r > hx + EPS || Math.abs(p.z) + r > hz + EPS) return 'the marker must be wholly inside the killzone'
+  const foe = dropZone(state, otherSeat(seat))
+  if (foe && distToPolygon(p, foe) - r <= 6 + EPS) return 'the marker must be more than 6 inches from the opponent drop zone'
+  const idx = terrainOf(state.map)
+  if (idx.solids.some((sd) => distToPolygon(p, sd.polygon) <= r + EPS)) return 'the marker goes on the killzone floor, clear of terrain'
+  if (kind === 'boobyTrap') {
+    if (state.markers.some((m) => Math.hypot(m.pos.x - p.x, m.pos.z - p.z) - markerRadius(m) - r <= 2 + EPS)) return 'the Booby Trap must be more than 2 inches from every other marker'
+    const accessible = idx.solids.filter((sd) => sd.accessible || sd.partId.includes('door')).map((sd) => sd.polygon)
+    if (accessible.some((poly) => distToPolygon(p, poly) - r <= 2 + EPS)) return 'the Booby Trap must be more than 2 inches from access points and Accessible terrain'
+  }
+  return null
+}
+
+/** Sampled legal spots for a team marker on a 2" grid (hints for the free-point decision and the option's gate). */
 export function markerSpots(state: GameState, seat: Seat, kind: 'tripAlarm' | 'boobyTrap', max = 16): Vec2[] {
   const hx = state.map.size.x / 2
   const hz = state.map.size.z / 2
-  const foe = dropZone(state, otherSeat(seat))
-  const idx = terrainOf(state.map)
-  const r = markerRadius({ kind: 'equipment' })
-  const accessible = idx.solids.filter((sd) => sd.accessible || sd.partId.includes('door')).map((sd) => sd.polygon)
   const out: Vec2[] = []
   for (let x = -hx + 1; x <= hx - 1 + 1e-9; x += 2) {
     for (let z = -hz + 1; z <= hz - 1 + 1e-9; z += 2) {
       const p = { x: Math.round(x * 1000) / 1000, z: Math.round(z * 1000) / 1000 }
-      // "more than 6" from" is measured from the nearest point of the marker, not its centre
-      if (foe && distToPolygon(p, foe) - r <= 6 + EPS) continue
-      if (idx.solids.some((sd) => distToPolygon(p, sd.polygon) <= r + EPS)) continue
-      if (kind === 'boobyTrap') {
-        if (state.markers.some((m) => Math.hypot(m.pos.x - p.x, m.pos.z - p.z) - markerRadius(m) - r <= 2 + EPS)) continue
-        if (accessible.some((poly) => distToPolygon(p, poly) - r <= 2 + EPS)) continue
-      }
-      out.push(p)
+      if (!markerProblem(state, seat, kind, p)) out.push(p)
     }
   }
   return spread(out, max)
+}
+
+/** The spot a marker goes to when the player passes the free-point decision: the sampled spot nearest an objective. */
+export function defaultMarkerSpot(state: GameState, seat: Seat, kind: 'tripAlarm' | 'boobyTrap'): Vec2 | null {
+  const spots = markerSpots(state, seat, kind, 400)
+  const objectives = state.markers.filter((m) => m.kind === 'objective')
+  const score = (p: Vec2) => (objectives.length === 0 ? Math.hypot(p.x, p.z) : Math.min(...objectives.map((m) => Math.hypot(m.pos.x - p.x, m.pos.z - p.z))))
+  let best: Vec2 | null = null
+  for (const p of spots) if (!best || score(p) < score(best) - EPS) best = p
+  return best
 }
 
 /** The Scout operative a Forward Scouting offer is attached to (the leader when it is there). */
@@ -384,12 +406,23 @@ function repositionable(state: GameState, seat: Seat): Operative[] {
   return ssOps(state, seat).filter((o) => footprintInsidePolygon(footprintOf(o), zone) && canStartFreeAction(state, { operativeId: o.id, action: 'reposition', resume: '' }))
 }
 
-/** Spots inside the drop zone an operative could be set up at again (gap preBattleRedeploy). */
+/** Sampled spots inside the drop zone an operative could be set up at again (hints for the free-point decision). */
 function redeploySpots(state: GameState, op: Operative): Vec3[] {
   const zone = dropZone(state, op.seat)
   if (!zone) return []
   const facing = (p: Vec2) => bearing(p, { x: 0, z: 0 })
   return placementSpots(state, op, { step: 1, max: 10, test: (p) => footprintInsidePolygon(footprintOf(op, p, facing(p)), zone) })
+}
+
+/** Why `op` cannot be set up again at `p` (T-SS.17): its base, facing the centre, wholly within the drop zone and placeable. */
+export function redeployProblem(state: GameState, op: Operative, p: Vec2): string | null {
+  const zone = dropZone(state, op.seat)
+  if (!zone) return 'no drop zone'
+  const facing = bearing(p, { x: 0, z: 0 })
+  const pos: Vec3 = { x: p.x, y: 0, z: p.z }
+  if (!footprintInsidePolygon(footprintOf(op, pos, facing), zone)) return 'the operative must be set up wholly within your drop zone'
+  const why = placementProblem(state, { id: op.id, pos, radius: op.baseRadius, height: op.height, ...axisOf(op, facing) })
+  return why ? why.reason : null
 }
 
 function noteFs(ctx: Ctx, seat: Seat, slug: FsOption, op: Operative | undefined): void {
@@ -446,52 +479,21 @@ registerCodeHook({
         redeployPrompt(ctx, seat, op, left, done)
         return
       }
-      const spots = redeploySpots(s, mover)
-      raiseFs(
-        ctx,
+      // any legal point of the drop zone (the sampled spots are hints); a pass keeps it where it stands
+      raisePointChoice(ctx, {
+        handler: PT_REDEPLOY,
         seat,
-        op,
-        'redeploy.spot',
-        [...spots.map((p) => opt(`${p.x},${p.z}`, 'ss.fs.redeploySpot', { x: p.x, z: p.z })), opt('keep', 'ss.fs.redeployKeep', { name: `Keep ${mover.name} where it stands` })],
-        { left, done, moverId: mover.id },
-      )
-      return
-    }
-    if (step === 'redeploy.spot') {
-      const mover = s.operatives[String(context.moverId)]
-      const left = Number(context.left)
-      const done = [...((context.done as string[]) ?? [])]
-      if (live(mover)) {
-        if (option !== 'keep') {
-          const [x, z] = option.split(',').map(Number) as [number, number]
-          const legal = redeploySpots(s, mover).some((p) => Math.abs(p.x - x) < EPS && Math.abs(p.z - z) < EPS)
-          if (Number.isFinite(x) && Number.isFinite(z) && legal) {
-            const pos: Vec3 = { x, y: 0, z }
-            mover.pos = pos
-            mover.facing = bearing(pos, { x: 0, z: 0 })
-            ctx.emit({ type: 'OperativeDeployed', operativeId: mover.id, pos }, seat)
-          }
-        }
-        setOrder(ctx, mover, 'conceal')
-        done.push(mover.id)
-      }
-      redeployPrompt(ctx, seat, op, left - 1, done)
+        window: 'setup.*',
+        operativeId: mover.id,
+        spots: redeploySpots(s, mover).map((p) => ({ x: p.x, z: p.z })),
+        suggestion: { x: mover.pos.x, z: mover.pos.z },
+        context: { leaderId: op.id, left, done, moverId: mover.id },
+      })
       return
     }
     if (step === 'reposition.op') {
       const mover = s.operatives[option]
       if (!live(mover) || mover.seat !== seat || !startRepositioning(ctx, mover)) refundReposition(ctx, seat)
-      return
-    }
-    if (step === 'marker') {
-      const kind = String(context.kind) as 'tripAlarm' | 'boobyTrap'
-      const [x, z] = option.split(',').map(Number) as [number, number]
-      if (Number.isFinite(x) && Number.isFinite(z) && markerSpots(s, seat, kind).some((p) => Math.abs(p.x - x) < EPS && Math.abs(p.z - z) < EPS)) {
-        const marker: Marker = { id: newMarkerId(ctx, kind === 'tripAlarm' ? 'sstrip' : 'ssboob'), kind: 'equipment', pos: { x, z }, owner: seat, carriedBy: null, controller: null, equipmentId: kind === 'tripAlarm' ? TRIP_ALARM : BOOBY_TRAP, placedBy: op.id }
-        s.markers.push(marker)
-        ctx.emit({ type: 'MarkerPlaced', markerId: marker.id, operativeId: null, pos: { ...marker.pos } }, seat)
-      }
-      preBattleChoiceDone(ctx)
       return
     }
     if (step === 'designate') {
@@ -530,7 +532,8 @@ registerCodeHook({
           return
         }
         noteFs(ctx, seat, slug, op)
-        raiseFs(ctx, seat, op, 'marker', spots.map((p) => opt(`${p.x},${p.z}`, slug === 'tripAlarm' ? 'ss.fs.tripSpot' : 'ss.fs.boobySpot', { x: p.x, z: p.z })), { kind: slug })
+        // any legal point (the sampled spots are hints); a pass sets it up at the suggested spot
+        raisePointChoice(ctx, { handler: PT_MARKER, seat, window: 'setup.*', spots, suggestion: defaultMarkerSpot(s, seat, slug) ?? spots[0]!, context: { kind: slug, leaderId: op.id } })
         return
       }
       case 'designateTarget': {
@@ -555,6 +558,53 @@ registerCodeHook({
         preBattleChoiceDone(ctx)
         return
     }
+  },
+})
+
+// Free-point decisions of Redeploy and the two markers (markers.registerPointHandler)
+registerPointHandler(PT_REDEPLOY, {
+  problem(state, _seat, p, context) {
+    const mover = state.operatives[String(context.moverId)]
+    return live(mover) ? redeployProblem(state, mover, p) : 'that operative is gone'
+  },
+  done(ctx, seat, p, context) {
+    const s = ctx.state
+    const mover = s.operatives[String(context.moverId)]
+    const leader = s.operatives[String(context.leaderId)]
+    const left = Number(context.left)
+    const done = [...((context.done as string[]) ?? [])]
+    if (live(mover)) {
+      // a pass keeps it where it stands (it still counts as set up again, with a Conceal order)
+      if (p && !redeployProblem(s, mover, p)) {
+        const pos: Vec3 = { x: p.x, y: 0, z: p.z }
+        mover.pos = pos
+        mover.facing = bearing(pos, { x: 0, z: 0 })
+        ctx.emit({ type: 'OperativeDeployed', operativeId: mover.id, pos }, seat)
+      }
+      setOrder(ctx, mover, 'conceal')
+      done.push(mover.id)
+    }
+    if (leader) redeployPrompt(ctx, seat, leader, left - 1, done)
+    else preBattleChoiceDone(ctx)
+  },
+})
+
+registerPointHandler(PT_MARKER, {
+  problem(state, seat, p, context) {
+    return markerProblem(state, seat, String(context.kind) as 'tripAlarm' | 'boobyTrap', p)
+  },
+  done(ctx, seat, p, context) {
+    const s = ctx.state
+    const kind = String(context.kind) as 'tripAlarm' | 'boobyTrap'
+    // a pass sets the marker up at the default spot (the sampled spot nearest an objective)
+    const at = p && !markerProblem(s, seat, kind, p) ? p : defaultMarkerSpot(s, seat, kind)
+    if (at) {
+      const by = String(context.leaderId ?? '')
+      const marker: Marker = { id: newMarkerId(ctx, kind === 'tripAlarm' ? 'sstrip' : 'ssboob'), kind: 'equipment', pos: { x: at.x, z: at.z }, owner: seat, carriedBy: null, controller: null, equipmentId: kind === 'tripAlarm' ? TRIP_ALARM : BOOBY_TRAP, ...(by ? { placedBy: by } : {}) }
+      s.markers.push(marker)
+      ctx.emit({ type: 'MarkerPlaced', markerId: marker.id, operativeId: null, pos: { ...marker.pos } }, seat)
+    }
+    preBattleChoiceDone(ctx)
   },
 })
 

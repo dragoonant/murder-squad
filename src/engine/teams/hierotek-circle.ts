@@ -22,7 +22,7 @@ import {
   usesOf,
 } from '../effects'
 import { cancelAction, finishAction, startDelegatedAction, startFreeAction } from '../firefight'
-import { resumeGambit } from '../strategy'
+import { readyChoiceDone, resumeGambit } from '../strategy'
 import { dist2, baseGap2D, round3 } from '../geometry'
 import { registerFrameResume, registerHook, type BeforeShootTargetSelectData, type OnDamageInflictedData } from '../hooks'
 import { bodyOf, targetVerdict, visible } from '../los'
@@ -32,7 +32,7 @@ import type { Ctx } from '../registry'
 import { placementSpots, returnToKillzone } from '../reserve'
 import { activeOps, effectiveApl, effectiveMove, enemiesOf, friendsOf, otherSeat } from '../state'
 import { addToken, hasToken, moveTokenTo, removeToken, tokensOn } from '../tokens'
-import { registerTeamRules } from '../team-rules'
+import { registerTeamRules, type ReactionOffer } from '../team-rules'
 import { terrainOf } from '../terrain'
 import type { GameState, Marker, Operative, Order, Seat, Vec2, Vec3, WeaponRuleRef } from '../types'
 
@@ -225,6 +225,14 @@ export function reanimate(ctx: Ctx, markerId: string, o: { pos?: Vec3; order?: O
 // The Ready step (T-HIE.25, T-HIE.29, T-HIE.40): Living Metal, Reanimation Protocols, then the Tesseract Cube
 // ---------------------------------------------------------------------------
 
+// Living Metal and the Tesseract Cube need no decision and run in the turningPoint.start hook. The Reanimation roll is
+// the owner's: the provider's readyStepChoices offers each marker not yet tried this turning point (the shared Ready-step
+// choice), and a 3+ asks for the spot and the order (hieReanimate's choice with context.ready). The Cube is rolled
+// before those choices: its "not REANIMATED this TP" test gives the same answer there, because a Ready-step return only
+// brings back an operative that was not in the killzone, and the Cube needs its Cryptek in the killzone.
+const READY_DONE = 'hie.readyReanimated'
+const readyTried = (markerId: string): string => `hie.readyTried:${markerId}`
+
 registerHook(
   'turningPoint.start',
   (c) => {
@@ -234,7 +242,6 @@ registerHook(
     for (const seat of SEATS) {
       if (s.players[seat].teamId !== TEAM_ID) continue
       livingMetal(ctx, seat)
-      reanimationRolls(ctx, seat)
       tesseractCube(ctx, seat)
     }
     return null
@@ -249,27 +256,44 @@ function livingMetal(ctx: Ctx, seat: Seat): void {
   hurt.forEach((o, i) => regainWounds(ctx, o.id, d3(dice[i]!) + 1, 'hie.a.living-metal'))
 }
 
-/** How much the owner wants an operative back (the Ready step raises no decision): the Cryptek, then the Apprentek,
- * then the operative with the most starting wounds. */
+/** How much the owner is likely to want an operative back (the order the Ready-step offers are listed in, best first):
+ * the Cryptek, then the Apprentek, then the operative with the most starting wounds. */
 function returnPriority(state: GameState, opId: string | undefined): number {
   const op = opId ? state.operatives[opId] : undefined
   if (!op) return 0
   return (has(state, op, 'CRYPTEK') ? 1000 : 0) + (has(state, op, 'APPRENTEK') ? 500 : 0) + op.maxWounds
 }
 
-/** RULING: the engine tries the markers in the owner's likely order (returnPriority, oldest first on a tie); the roll
- * stops at the first 3+ that can be set up. */
-function reanimationRolls(ctx: Ctx, seat: Seat): void {
-  const all = markersOf(ctx.state, seat, M.reanimation)
-  const ordered = all
-    .map((m, i) => ({ m, i, p: returnPriority(ctx.state, m.placedBy ?? undefined) }))
+/** The Reanimation markers the owner may still pick in this Ready step (T-HIE.25): none once one operative returned. */
+function readyMarkers(state: GameState, seat: Seat): Marker[] {
+  if (state.players[seat].teamId !== TEAM_ID || state.phase !== 'strategy' || usedThisTp(state, seat, READY_DONE)) return []
+  return markersOf(state, seat, M.reanimation)
+    .map((m, i) => ({ m, i, p: returnPriority(state, m.placedBy ?? undefined) }))
+    .filter((x) => !!x.m.placedBy && !!state.operatives[x.m.placedBy] && !usedThisTp(state, seat, readyTried(x.m.id)))
     .sort((x, y) => y.p - x.p || x.i - y.i)
     .map((x) => x.m)
-  for (const m of ordered) {
-    const [r] = ctx.roll('hie.reanimation', 1)
-    if (r! < 3) continue
-    if (reanimate(ctx, m.id)) return
-  }
+}
+
+/** The picked marker's D6 (T-HIE.25): on a 3+ with room to set up, the owner picks the spot and the order (T-HIE.26). */
+function readyRoll(ctx: Ctx, tied: Operative, markerId: string): void {
+  const s = ctx.state
+  const seat = tied.seat
+  markUsedTp(s, seat, readyTried(markerId))
+  const marker = s.markers.find((m) => m.id === markerId && m.equipmentId === M.reanimation)
+  if (!marker) return readyChoiceDone(ctx)
+  const [r] = ctx.roll('hie.reanimation', 1)
+  // no legal set-up counts as a 1-2: the marker stays and another may be picked
+  const spots = r! >= 3 ? reanimationSpots(s, tied, marker, 8) : []
+  ctx.emit({ type: 'AbilityUsed', operativeId: tied.id, abilityId: 'hie.a.reanimation-protocols', detail: spots.length > 0 ? 'roll' : 'failed' }, seat)
+  if (spots.length === 0) return readyChoiceDone(ctx)
+  ctx.raise({
+    kind: 'ability.choice',
+    seat,
+    window: 'turningPoint.start',
+    context: { hook: 'hieReanimate', operativeId: tied.id, markerId: marker.id, step: 'spot', ready: true },
+    options: spots.map((p) => choiceOpt(`${p.x},${p.y},${p.z}`, 'reanimate.spot', { ...p })),
+    canPass: false,
+  })
 }
 
 function tesseractCube(ctx: Ctx, seat: Seat): void {
@@ -655,6 +679,14 @@ function despairNear(state: GameState, op: Operative): boolean {
 
 registerTeamRules({
   id: TEAM_ID,
+
+  // Reanimation Protocols (T-HIE.25): the owner picks the marker to roll for, one at a time, until one returns
+  readyStepChoices(state, seat): ReactionOffer[] {
+    return readyMarkers(state, seat).map((m) => {
+      const tied = state.operatives[m.placedBy!]!
+      return { hook: 'hieReanimate', operativeId: tied.id, option: m.id, labelKey: 'hie.reanimationRoll', data: { markerId: m.id, name: `Reanimation Protocols: roll for ${tied.name}` } }
+    })
+  },
 
   actionForbidden(state, op, actionId) {
     // Scuttler: only its own unique action (mission actions and markers are not unique actions)
@@ -1248,11 +1280,16 @@ registerCodeHook({
     },
   },
   choice(ctx, op, option, context) {
+    // the Ready-step Reanimation roll (provider readyStepChoices): `op` is the operative tied to the picked marker
+    if (context.readyStep === true) {
+      readyRoll(ctx, op, option)
+      return
+    }
     if (context.step === 'spot') {
       ctx.raise({
         kind: 'ability.choice',
         seat: op.seat,
-        window: 'firefight.actionDeclared',
+        window: context.ready === true ? 'turningPoint.start' : 'firefight.actionDeclared',
         context: { ...context, step: 'order', pos: option },
         options: [choiceOpt('engage', 'engage'), choiceOpt('conceal', 'conceal')],
         canPass: false,
@@ -1260,7 +1297,13 @@ registerCodeHook({
       return
     }
     const [x, y, z] = String(context.pos).split(',').map(Number) as [number, number, number]
-    reanimate(ctx, String(context.markerId), { pos: { x, y, z }, order: option === 'conceal' ? 'conceal' : 'engage' })
+    const back = reanimate(ctx, String(context.markerId), { pos: { x, y, z }, order: option === 'conceal' ? 'conceal' : 'engage' })
+    if (context.ready === true) {
+      // at most one Ready-step return each turning point; the Ready step's choices carry on
+      if (back) markUsedTp(ctx.state, op.seat, READY_DONE)
+      readyChoiceDone(ctx)
+      return
+    }
     ctx.emit({ type: 'AbilityUsed', operativeId: op.id, abilityId: String(context.abilityId), detail: String(context.markerId) }, op.seat)
     finishAction(ctx)
   },

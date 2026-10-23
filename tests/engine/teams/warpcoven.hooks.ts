@@ -117,7 +117,7 @@ export const scenarios: Record<string, () => void> = {
     const boy = B(s, 'boy')
     const t = engaged(s, champ, boy)
     const f = take(take(activateOp(t, champ), 'fight').state, boy, dice()).state
-    play(f, dice(), { ...strikes, ...takePloy('wc.a.savage-brutality') })
+    play(f, dice(), { ...strikes, 'ability.choice': (p) => p.options?.find((o) => o.data?.hook === 'savageBrutality')?.action ?? act.pass(p) })
   },
   herdBanner() {
     const s = open({ rosterA: wcRoster([...STD.slice(0, 3), { id: 'wc.tzaangor-icon-bearer' }, { id: 'wc.tzaangor-warrior' }]) })

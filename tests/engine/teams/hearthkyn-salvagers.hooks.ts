@@ -3,8 +3,8 @@
 // The helpers are exported for tests/engine/teams/hearthkyn-salvagers.test.ts.
 import { expect } from 'vitest'
 import { act } from '@/engine/actions'
-import { attackStats, inflict } from '@/engine/attack-common'
-import { removeNow } from '@/engine/effects'
+import { attackStats, inflict, runDeferredRemovals } from '@/engine/attack-common'
+import { queueRemoval, removeNow } from '@/engine/effects'
 import { markerControl } from '@/engine/query'
 import { ScriptedRng } from '@/engine/rng'
 import { providerCanFly, providerCostDelta, providerMoveSurcharge } from '@/engine/team-rules'
@@ -15,6 +15,18 @@ import { play } from '../../fixtures/attack'
 import { drive, place } from '../../fixtures/helpers'
 import { feature, part, rect } from '../../fixtures/maps'
 import { activateOp, edit, newRealGame, openReal, opOf, roster, take, withCtx, type RealOpts } from '../../fixtures/real'
+
+/**
+ * Rule damage that incapacitates `id` outside an attack (mines, direct damage): the removal waits for the end-of-step
+ * queue (attack-common.runDeferredRemovals), where a before-removal decision such as Medic! is asked.
+ */
+export function ruleKill(s: GameState, id: string, by: string, amount = 99, source = 'direct'): GameState {
+  return withCtx(s, (ctx) => {
+    inflict(ctx, { targetId: id, attackerId: by, weaponId: null, amount, source })
+    queueRemoval(ctx, id)
+    runDeferredRemovals(ctx)
+  }).state
+}
 
 export const ALL_HK = [
   'hk.theyn',
@@ -281,10 +293,10 @@ export const scenarios: Record<string, () => void> = {
     const v = A(s, 'hk.warrior')
     const m = A(s, 'hk.field-medic')
     const boy = B(s, 'kom.boy')
-    const r = withCtx(place(place(place(s, v, 0, 0), m, 2, 0), boy, 6, 0), (ctx) => {
-      inflict(ctx, { targetId: v, attackerId: boy, weaponId: null, amount: 99, source: 'direct' })
-    })
-    expect(r.state.operatives[v]!.wounds).toBe(1)
+    // the removal waits for the before-removal queue, where the owner takes Medic!
+    const asked = ruleKill(place(place(place(s, v, 0, 0), m, 2, 0), boy, 6, 0), v, boy)
+    expect(asked.pending).toMatchObject({ kind: 'ability.choice', context: { hook: 'hkMedic', operativeId: v } })
+    expect(take(asked, 'save').state.operatives[v]).toMatchObject({ status: 'active', wounds: 1 })
   },
   hkMedikit() {
     const s = edit(hkOpen(), (st) => {

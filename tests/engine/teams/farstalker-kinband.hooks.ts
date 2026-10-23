@@ -28,6 +28,16 @@ export function toGambit(o: Parameters<typeof openReal>[0] = {}, rolls: number[]
   return drive(createGame(realSetupWith({ ...MATCH, ...o }), 'fk-gambit', realBundle).state, (st) => st.pending?.kind === 'strategy.gambit', 800, new ScriptedRng(rolls))
 }
 
+/** The first Ready step: the Farstalker seat (A) is asked for its Ready-step choice (FARSTALKER order changes). */
+export function toReady(o: Parameters<typeof openReal>[0] = {}, rolls: number[] = [6, 1, 6, 1]): GameState {
+  return drive(
+    createGame(realSetupWith({ ...MATCH, ...o }), 'fk-gambit', realBundle).state,
+    (st) => st.pending?.kind === 'ability.choice' && st.pending.seat === 'A' && st.pending.context?.readyStep === true,
+    800,
+    new ScriptedRng(rolls),
+  )
+}
+
 /** Use a ploy through the engine with a hand-made offer (the window itself is not what the scenario is about). */
 export function usePlayed(s: GameState, ployId: string, info: Record<string, unknown>, param?: string): GameState {
   const ploy = s.data.ploys![ployId]!
@@ -115,8 +125,8 @@ export const scenarios: Record<string, () => void> = {
     take(s, alt.id)
   },
   fkReadyStep() {
-    const g = toGambit()
-    const t = take(g, 'fk.p.farstalker-orders').state
+    const r = toReady()
+    const t = take(r, 'ready:0').state
     take(t, t.pending!.options![0]!.id)
   },
   fkCallTheKill() {

@@ -7,8 +7,8 @@
 //    `fg.frenzy` token, discards the remaining dice (a fight's dice are marked used; a Shoot's later damage is cut by a
 //    per-action effect) and scores it as incapacitated (kills.scoreAsIncapacitated). While frenzied: providers (`orders`,
 //    `injuredEquivalent`, `actionForbidden`, `controlApl`, `flags`) and ONE `onDamageInflicted` handler that runs War Gong,
-//    then Toxic Blessings, then the Frenzy filter in that fixed order. Death: `activation.end`, the end of a counteraction
-//    (`action.ended`) and the last `turningPoint.end` kill it through a flagged `directDamage`.
+//    then Toxic Blessings, then the Frenzy filter in that fixed order. Death: `activation.end`, `counteraction.end` (when
+//    the counteraction performed an action) and the last `turningPoint.end` kill it through a flagged `directDamage`.
 //  - Weapon-rule changes (Pelting Firepower, Vicious Blows, Toxic Blessings' Shock, Chaos Sigil) all live in the one
 //    `modifyWeaponRules` handler so their order is fixed.
 //  - Cleaver Flurry rides the shared move.path decision as a Fall Back path (it may pass through enemy control ranges and
@@ -21,8 +21,8 @@ import { markFired, registerCodeHook, type OfferSeed, type PloyOfferSeed } from 
 import { allowedOrders } from '../abilities'
 import { hasAbility, hasKeyword, inEnemyCr } from '../conditions'
 import { grenadeSource, visibleEnemiesWithin } from '../core-hooks'
-import { addEffect, addTpUse, addUse, aplChangeNextActivation, directDamage, markUsedBattle, markUsedTp, regainWounds, removeEffects, usedThisBattle, usedThisTp, usesOf } from '../effects'
-import { canStartFreeAction, cancelAction, finishAction, startFreeAction } from '../firefight'
+import { addEffect, addTpUse, addUse, aplChangeNextActivation, directDamage, markUsedBattle, markUsedTp, regainWounds, removeEffects, spendCp, usedThisBattle, usedThisTp, usesOf } from '../effects'
+import { canStartFreeAction, cancelAction, finishAction, REACTION_DONE, reactionDone, startFreeAction } from '../firefight'
 import { fightAvailability } from '../fight'
 import { moveConstraints } from '../movement'
 import { registerFrameResume, registerHook, type BeforeIncapacitatedData } from '../hooks'
@@ -30,10 +30,11 @@ import { scoreAsIncapacitated, killsSince } from '../kills'
 import { bodyOf, targetVerdict, visible } from '../los'
 import { distanceBetween, enemiesInControlRange, inControlRange } from '../measure'
 import { registerPloyRule, type PloyOffer, type PloyRule } from '../ploy-rules'
+import { offersFor } from '../ploys'
 import type { Ctx } from '../registry'
 import { activeOps, enemiesOf, hasInjuredPenalty, otherSeat } from '../state'
 import { TURNING_POINTS, resumeGambit } from '../strategy'
-import { registerTeamRules } from '../team-rules'
+import { registerTeamRules, type ReactionInfo, type ReactionOffer } from '../team-rules'
 import { addToken, hasToken, tokensOn } from '../tokens'
 import { psychicAllowed } from '../psychic'
 import type { AttackDie, DiceSide, GameState, Operative, Order, Seat, WeaponRuleRef } from '../types'
@@ -63,7 +64,6 @@ const FX_FURY = 'fg.furyArmed'
 const FX_TACTUAL = 'fg.tactualUsed'
 const FX_TACTUAL_PENDING = 'fg.tactualPending'
 const FX_BLOOD = 'fg.bloodsense'
-const FX_KILLED = 'fg.killedInAction'
 const FX_SIGIL = 'fg.sigil'
 
 const VT = P('violent-temperament')
@@ -71,6 +71,7 @@ const AMBUSH = P('ambush')
 const PELTING = P('pelting-firepower')
 const RECKLESS = P('reckless-determination')
 const WILD_RAGE = P('wild-rage')
+const RAMPAGE = P('ruthless-rampage')
 const FURY = P('animalistic-fury')
 
 // pseudo ploy ids of the 0 CP offers (never ploy records, so a free use never touches the strategy ploy)
@@ -197,16 +198,6 @@ function setOrder(ctx: Ctx, op: Operative, order: Order): void {
 // FRENZY: gaining it (T-FG.29, T-FG.32)
 // ---------------------------------------------------------------------------
 
-/**
- * `attacker` has just incapacitated `victim` in the action in progress. The kill log is written at the end of the step,
- * after the ploy window that follows the action is raised, so Bloodsense reads this note instead (T-FG.40).
- */
-function noteKill(ctx: Ctx, attacker: Operative, victim: Operative): void {
-  const base = baseActivation(ctx.state)
-  if (!base || base.counteract || base.operativeId !== attacker.id) return
-  addEffect(ctx, { source: P('bloodsense'), seat: attacker.seat, kind: FX_KILLED, operativeId: attacker.id, expires: 'activation', data: { victimId: victim.id, seq: base.declaredSeq ?? -1 } })
-}
-
 /** An enemy fighter's kill in a fight (Apoplectic Rejuvenation's 6 wounds, Headtaker). */
 function fightKill(ctx: Ctx, attacker: Operative, weaponId: string | null): void {
   markUsedBattle(ctx.state, attacker.seat, `fg.fightKill:${attacker.id}`)
@@ -250,8 +241,8 @@ registerHook(
       }
     }
     const foe = attacker && attacker.seat !== op.seat ? attacker : undefined
-    // the enemy that struck it in a fight counts an incapacitation for its own rules (Apoplectic Rejuvenation, Headtaker)
-    if (foe && isFg(s, foe)) noteKill(ctx, foe, op)
+    // the enemy that struck it in a fight counts an incapacitation for its own rules (Apoplectic Rejuvenation, Headtaker);
+    // scoreAsIncapacitated below logs the kill (cause `scored`), which Bloodsense reads
     if (foe && isFg(s, foe) && data.source.startsWith('strike-')) fightKill(ctx, foe, data.weaponId)
     scoreAsIncapacitated(ctx, op.id, foe?.id)
     markFired('fgFrenzy')
@@ -272,7 +263,6 @@ registerHook(
     const d = c.data as unknown as { source: string; woundsBefore: number; woundsAfter: number; weaponId: string | null }
     // a frenzied Fellgor was counted when it gained the token
     if (d.woundsBefore <= 0 || d.woundsAfter > 0 || isFrenzied(s, victim)) return null
-    noteKill(ctx, attacker, victim)
     if (d.source.startsWith('strike-')) fightKill(ctx, attacker, d.weaponId)
     return null
   },
@@ -379,21 +369,20 @@ registerHook(
   'fg.activation.end',
 )
 
-// The end of a counteraction has no hook of its own: a frenzied operative dies as the action of its counteraction ends.
+// A frenzied operative dies when its counteraction ends (counteraction.end). A counteraction ended without any action
+// was declined (counteracting is the action itself), so the operative lives on.
 registerHook(
-  'action.ended',
+  'counteraction.end',
   (c) => {
     const ctx = c.engine
     const s = ctx?.state
     const op = s && c.operativeId ? s.operatives[c.operativeId] : undefined
-    const d = c.data as { counteract: boolean; free: boolean }
-    if (!ctx || !s || !op || !d.counteract || d.free || !isFg(s, op) || !isFrenzied(s, op)) return null
-    const base = baseActivation(s)
-    if (!base || base.operativeId !== op.id || (base.bonus ?? 0) > 0) return null
+    const d = c.data as { performed: string[]; removed: boolean }
+    if (!ctx || !s || !op || d.removed || d.performed.length === 0 || !isFg(s, op) || !isFrenzied(s, op)) return null
     killFrenzied(ctx, op)
     return null
   },
-  'fg.action.ended',
+  'fg.counteraction.end',
 )
 
 registerHook(
@@ -689,6 +678,10 @@ function injuredEq(s: GameState, op: Operative): boolean {
 
 registerTeamRules({
   id: TEAM_ID,
+
+  ownReactions(state, seat, info) {
+    return rampageInterruptOffers(state, seat, info)
+  },
 
   maxRepeats(state, op, actionId, performed) {
     // CHAMPION: two Fights in one activation
@@ -1182,7 +1175,38 @@ registerCodeHook({
       if (id) startFreeAction(ctx, { operativeId: id, action: 'charge', maxMove: 3, resume: 'ploy.freeAction' })
     },
   },
+  // the same ploy taken at a Guard interrupt Fight's reaction point (rampageInterruptOffers): paid here
+  choice(ctx, op, option) {
+    const s = ctx.state
+    const cost = Number(option.split(':')[1] ?? 1)
+    const opts = { operativeId: op.id, action: 'charge' as const, maxMove: 3, interrupt: true, resume: REACTION_DONE }
+    if (!live(op) || s.players[op.seat].cp < cost || usedThisTp(s, op.seat, RAMPAGE) || !canStartFreeAction(s, opts)) {
+      reactionDone(ctx)
+      return
+    }
+    spendCp(ctx, op.seat, cost, RAMPAGE)
+    markUsedTp(s, op.seat, RAMPAGE)
+    ctx.emit({ type: 'PloyUsed', ployId: RAMPAGE }, op.seat)
+    markFired('fgRuthlessRampage')
+    if (!startFreeAction(ctx, opts)) reactionDone(ctx)
+  },
 })
+
+/**
+ * RUTHLESS RAMPAGE after a Guard interrupt Fight (Gallowdark): the interrupt frame opens no ploy window, so the ploy is
+ * offered at the frame's reaction point (ownReactions marked freeActions) at its printed cost, paid when taken. Free
+ * Fights inside the operative's own activation (Savage, Uncompromising Attack) return to a `firefight.actionEnded`
+ * window that offers it already.
+ */
+function rampageInterruptOffers(state: GameState, seat: Seat, info: ReactionInfo): ReactionOffer[] {
+  if (!info.interrupt || info.action !== 'fight') return []
+  const op = state.operatives[info.actorId]
+  if (!live(op) || op.seat !== seat || !isFg(state, op)) return []
+  const winInfo = { window: 'firefight.actionEnded', subjectId: op.id, action: 'fight' }
+  const o = offersFor(state, seat, 'firefight.actionEnded', winInfo).find((x) => x.ployId === RAMPAGE)
+  if (!o) return []
+  return [{ hook: 'fgRuthlessRampage', operativeId: op.id, option: `rampage:${o.cost}`, labelKey: 'fg.rampage', freeActions: true, data: { name: `RUTHLESS RAMPAGE (${o.cost} CP): a free Charge of up to 3"` } }]
+}
 
 registerCodeHook({
   name: 'fgWildRage',
@@ -1227,8 +1251,8 @@ function bloodsenseVictims(state: GameState, op: Operative): Operative[] {
       out.push(v)
     }
   }
-  for (const e of state.effects) if (e.kind === FX_KILLED && e.operativeId === op.id && e.data?.seq === (act.declaredSeq ?? -1)) add(String(e.data.victimId))
-  // kills already in the log (a window raised in a later step)
+  // the kill log is written at removal time (and a Frenzy gain is logged as `scored` when it happens), before the
+  // window after the action opens
   for (const k of killsSince(state, act.declaredSeq ?? -1)) if (k.killerId === op.id && k.cause !== 'offboard' && k.victimSeat !== op.seat) add(k.removedId)
   return out
 }

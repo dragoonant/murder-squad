@@ -14,7 +14,10 @@
           "from": [
             "otherMarkers"
           ],
-          "moreThan": 2
+          "moreThan": 2,
+          "except": [
+            "gm.e.bloody-cadaver"
+          ]
         }
       ]
     },
@@ -39,7 +42,10 @@
           "from": [
             "otherMarkers"
           ],
-          "moreThan": 2
+          "moreThan": 2,
+          "except": [
+            "gm.e.gory-totem"
+          ]
         }
       ]
     },

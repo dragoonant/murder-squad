@@ -416,9 +416,10 @@ registerCodeHook({
 })
 
 /**
- * Mutation rights: a Devotee incapacitated an enemy within its control range (T-CC.19). Noted when the damage is dealt
- * (the kill log is written only at the end of the step, after the action's reaction round has been offered), so every
- * cause of kill (attack dice, strikes, Horned, Barbed) gives the right before the reaction point after the action.
+ * Mutation rights: a Devotee incapacitated an enemy within its control range (T-CC.19). Noted when the damage is dealt,
+ * for every cause of kill (attack dice, strikes, Horned, Barbed). The kill log (written at removal time since batch D
+ * shared) is not equivalent: a rule kill whose removal waits for the deferred end-of-step queue is logged after the
+ * action's reaction round is offered, and the log keeps no positions to check the control range at the kill.
  */
 registerHook(
   'damage.inflicted',

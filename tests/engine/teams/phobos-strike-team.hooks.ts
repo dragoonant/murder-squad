@@ -4,7 +4,8 @@
 import { step } from '@/engine'
 import { act } from '@/engine/actions'
 import { maxRepeats } from '@/engine/abilities'
-import { effectiveRules, inflict } from '@/engine/attack-common'
+import { effectiveRules, inflict, runDeferredRemovals } from '@/engine/attack-common'
+import { directDamage } from '@/engine/effects'
 import { runHook } from '@/engine/hooks'
 import { offersFor, usePloy, type PloyOffer } from '@/engine/ploys'
 import { ScriptedRng } from '@/engine/rng'
@@ -186,9 +187,12 @@ export const scenarios: Record<string, () => void> = {
     const hx = A(s, 'infiltrator-helix-adept')
     const sg = A(s, 'infiltrator-sergeant')
     const t = place(place(s, hx, 0, 0), sg, 2, 0)
-    withCtx(t, (ctx) => {
-      inflict(ctx, { targetId: sg, attackerId: B(s, 'boy'), weaponId: 'kom.w.slugga', amount: 99, source: 'normal' })
-    }, dice(5))
+    // the casualty waits in the deferred removal queue; the Phobos player takes the save
+    const asked = withCtx(t, (ctx) => {
+      directDamage(ctx, sg, 99, B(s, 'boy'), 'test')
+      runDeferredRemovals(ctx)
+    }).state
+    take(asked, 'save', dice(5))
   },
   phHelixGauntlet() {
     const s = open()

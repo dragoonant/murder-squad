@@ -145,8 +145,7 @@
     "type": "firefight",
     "cost": 1,
     "window": [
-      "operative.killed",
-      "firefight.actionEnded"
+      "operative.killed"
     ],
     "effect": {
       "code": "blRewardEarned",

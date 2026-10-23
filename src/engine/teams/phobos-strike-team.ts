@@ -6,33 +6,37 @@
 //  - ASTARTES (T-PH.25, 5): provider maxRepeats / counteract and the beforeShootTargetSelect bolt check.
 //  - MULTI-SPECTRUM ARRAY (26) and AUSPEX SCAN (17): target.status, modifyWeaponRules (Seek Light), beforeShootTargetSelect.
 //  - TERROR (24) and Vanguard (18): providers actionCostDelta / controlTotal; the action.declared ledger for Vanguard.
-//  - Tactical Advantage (7, 8): providers initiativeReroll / onInitiativeReroll and the ploy rule costAdjust.
+//  - Tactical Advantage (7, 8): providers initiativeReroll / onInitiativeReroll, commandRerollCost / onCommandReroll
+//    (a 0 CP Command Re-roll on the Sergeant's dice) and the ploy rule costAdjust.
 //  - Strategic Oversight (9), Plant Explosives (13), Haywire Mine (20): the turningPoint.start hook; the markers are
-//    team markers created already carried (ensureMarkers). Detonate (14): providers fixedTargets / weaponForbidden.
+//    team markers created already carried (ensureMarkers); provider placeMarkerProblem keeps the Haywire Mine out of
+//    enemy control range. Detonate (14): providers fixedTargets / weaponForbidden.
+//  - Medic! (11): the qualifying moment is noted in beforeIncapacitated; the removal then waits in the queue (provider
+//    pausableRemoval) for the player's save or decline (attack-common saveFromRemoval / continueRemovals).
 //  - Proximity Mine (21): the action.ended scan of the step's OperativeMoved segments.
 //  - Comms Array (10), Medic!'s free Dash (11), Plant Explosives' free Dash (13), Special Issue Ammunition (38),
 //    Purity Seals (35): 0 CP offers in the ploy rule's extraOffers / onUsed.
 //  - Omni-Scrambler (23): a strategic gambit ploy record; providers canActivate / counteract / actionForbidden.
 //  - Ploys (27 to 34): strategy flags read by the providers and hooks, and firefight ploys with their own code hooks.
 import { refreshFlags } from '../abilities'
-import { applyAplEffect, hasRule, ruleKey, ruleSetFor, targetInfo } from '../attack-common'
+import { applyAplEffect, continueRemovals, hasRule, ruleKey, ruleSetFor, saveFromRemoval, targetInfo } from '../attack-common'
 import { markFired, registerCodeHook, type OfferSeed, type PloyOfferSeed } from '../code-hooks'
 import { codeParams, hasAbility, hasKeyword, inEnemyCr } from '../conditions'
 import { addEffect, directDamage, gainCp, markUsedBattle, markUsedTp, regainWounds, removeEffects, usedThisBattle, usedThisTp } from '../effects'
-import { cancelAction, finishAction, REACTION_DONE, reactionDone, skipActivation, startFreeAction } from '../firefight'
-import { registerFrameResume, registerHook, type ActionDeclaredData, type DamageInflictedData, type HookContext } from '../hooks'
+import { cancelAction, finishAction, raiseAction, REACTION_DONE, reactionDone, skipActivation, startFreeAction } from '../firefight'
+import { registerFrameResume, registerHook, type ActionDeclaredData, type HookContext } from '../hooks'
 import { bodyOf, targetVerdict, visible } from '../los'
-import { newMarkerId, removeMarker } from '../markers'
+import { dropCarried, newMarkerId, removeMarker } from '../markers'
 import { distanceBetween, enemiesInControlRange, gapToMarker, inControlRange, isWithin, markerBody, markerInControlRange } from '../measure'
 import { registerPloyRule, type PloyOffer, type PloyRule } from '../ploy-rules'
 import { markerControl } from '../query'
 import { continueWindow } from '../ploys'
 import type { Ctx } from '../registry'
-import { activeOps, enemiesOf, markerRadius, otherSeat, SEATS } from '../state'
+import { activeOps, enemiesOf, otherSeat, SEATS } from '../state'
 import { terrainOf, walkableSolidAt } from '../terrain'
 import { registerTeamRules, type ReactionOffer } from '../team-rules'
 import { addToken, hasToken, removeToken, tokensOn } from '../tokens'
-import type { Activation, AttackDie, GameState, Marker, Operative, Seat, Vec3, WeaponRuleRef } from '../types'
+import type { Activation, AttackDie, GameState, Marker, Operative, Seat, Vec2, Vec3, WeaponRuleRef } from '../types'
 
 export const TEAM_ID = 'phobos-strike-team'
 
@@ -327,8 +331,15 @@ export function ensureMarkers(ctx: Ctx, force = false): void {
   }
 }
 
+/** Place Marker cannot put the Haywire Mine here: within an enemy operative's control range (T-PH.20). */
+function haywireProblem(s: GameState, op: Operative, marker: Marker, pos: Vec2): string | null {
+  const probe: Marker = { ...marker, carriedBy: null, pos: { x: pos.x, z: pos.z } }
+  const foe = enemiesOf(s, op).find((e) => live(e) && markerInControlRange(s, bodyOf(e), probe))
+  return foe ? `the Haywire Mine cannot be placed within ${foe.name}'s control range` : null
+}
+
 /** Legal spots (outside every enemy control range) within the Minelayer's control range, best first. */
-function mineSpots(s: GameState, op: Operative): { x: number; z: number; clear: number }[] {
+function mineSpots(s: GameState, op: Operative, marker: Marker): { x: number; z: number; clear: number }[] {
   const enemies = enemiesOf(s, op).filter((e) => live(e))
   const out: { x: number; z: number; clear: number }[] = []
   const ring = op.baseRadius + 0.9
@@ -336,9 +347,10 @@ function mineSpots(s: GameState, op: Operative): { x: number; z: number; clear: 
     const a = (i / 16) * Math.PI * 2
     const p = { x: Math.round((op.pos.x + Math.sin(a) * ring) * 1000) / 1000, z: Math.round((op.pos.z + Math.cos(a) * ring) * 1000) / 1000 }
     if (Math.abs(p.x) > s.map.size.x / 2 || Math.abs(p.z) > s.map.size.z / 2) continue
+    if (haywireProblem(s, op, marker, p)) continue
     let clear = Infinity
     for (const e of enemies) clear = Math.min(clear, gapToMarker(bodyOf(e), { kind: 'equipment', pos: p }))
-    if (clear > 1 + EPS) out.push({ ...p, clear })
+    out.push({ ...p, clear })
   }
   return out.sort((x, y) => y.clear - x.clear)
 }
@@ -413,15 +425,31 @@ registerTeamRules({
         return `${op.name} cannot pick up that marker`
       }
     }
-    // Haywire Mine: never placed so that a spot of its control range could be in an enemy control range (T-PH.20)
-    if (actionId === 'marker:place' && op.flags.carrying) {
-      const m = state.markers.find((k) => k.id === op.flags.carrying)
-      if (m?.equipmentId === HAYWIRE) {
-        const r = markerRadius(m)
-        if (enemiesOf(state, op).some((e) => live(e) && gap(op, e) <= 2 + r + EPS)) return 'the Haywire Mine cannot be placed this close to an enemy'
-      }
-    }
     return null
+  },
+
+  // Haywire Mine: Place Marker never puts it within an enemy operative's control range (T-PH.20)
+  placeMarkerProblem(state, op, marker, pos) {
+    return marker.equipmentId === HAYWIRE ? haywireProblem(state, op, marker, pos) : null
+  },
+
+  // Medic!: a casualty it may save waits in the removal queue, where the player is asked (T-PH.11)
+  pausableRemoval(state, op) {
+    return !!effectFor(state, 'ph.medicAsk', op.id)
+  },
+
+  // Tactical Advantage: once per battle a Command Re-roll on the Sergeant's own dice costs 0 CP (T-PH.8)
+  commandRerollCost(state, side) {
+    const op = state.operatives[side.operativeId]
+    if (!op || !isPh(state, op) || !hasAbility(state, op, ID.tactical) || usedThisBattle(state, op.seat, TA_PLOY)) return null
+    return 0
+  },
+  onCommandReroll(ctx, side, cost) {
+    const op = ctx.state.operatives[side.operativeId]
+    if (cost !== 0 || !op || !isPh(ctx.state, op) || !hasAbility(ctx.state, op, ID.tactical) || usedThisBattle(ctx.state, op.seat, TA_PLOY)) return
+    markUsedBattle(ctx.state, op.seat, TA_PLOY)
+    markFired('phTacticalAdvantage')
+    ctx.emit({ type: 'AbilityUsed', operativeId: op.id, abilityId: ID.tactical, detail: 'command re-roll' }, op.seat)
   },
 
   // TERROR and Vanguard (T-PH.24, T-PH.18)
@@ -563,27 +591,47 @@ function medicFor(s: GameState, victim: Operative): Operative | null {
   return null
 }
 
-function medicSave(s: GameState, ctx: Ctx, victim: Operative, data: { wounds: number }): void {
-  const medic = medicFor(s, victim)
-  if (!medic) return
-  data.wounds = d3(ctx, 'ph.medic.d3')
-  markUsedTp(s, medic.seat, `ph.medic:${medic.id}`)
-  markUsedTp(s, medic.seat, `ph.medic.saved:${victim.id}`)
-  addEffect(ctx, { source: ID.medic, seat: victim.seat, kind: 'ph.medicFloor', operativeId: victim.id, expires: 'action' })
-  // the activation the rule was used in: the one under a frame (an enemy Guard interrupt, a free action) counts
-  const under = baseActivation(s)
-  if (under && !under.counteract && under.operativeId === victim.id) under.endsAfterAction = true
-  addEffect(ctx, { source: ID.medic, seat: victim.seat, kind: 'ph.medicDash', operativeId: victim.id, expires: 'activation', data: { medicId: medic.id } })
-  aplUntilNextActivationEnd(ctx, victim.id, ID.medic)
-  aplUntilNextActivationEnd(ctx, medic.id, ID.medic)
-  ctx.emit({ type: 'AbilityUsed', operativeId: medic.id, abilityId: ID.medic, detail: victim.id }, medic.seat)
-  markFired('phMedic')
+/**
+ * Medic! answered while the casualty waits in the removal queue: accepted, it keeps D3 wounds (saveFromRemoval) and
+ * the rule's costs apply; declined, the removal goes on (a dying Minelayer still places or loses its mine).
+ */
+function medicAnswer(ctx: Ctx, victim: Operative, accept: boolean): void {
+  const s = ctx.state
+  const ask = effectFor(s, 'ph.medicAsk', victim.id)
+  const medic = ask ? s.operatives[String(ask.data?.medicId ?? '')] : undefined
+  if (ask) removeEffects(ctx, (e) => e.id === ask.id)
+  let endNow = false
+  if (accept && medic && saveFromRemoval(ctx, victim.id, d3(ctx, 'ph.medic.d3'))) {
+    markUsedTp(s, medic.seat, `ph.medic.saved:${victim.id}`)
+    // the activation the rule was used in: the one under a frame (an enemy Guard interrupt, a free action) counts
+    const under = baseActivation(s)
+    if (under && !under.counteract && under.operativeId === victim.id) {
+      under.endsAfterAction = true
+      endNow = true
+    }
+    addEffect(ctx, { source: ID.medic, seat: victim.seat, kind: 'ph.medicDash', operativeId: victim.id, expires: 'activation', data: { medicId: medic.id } })
+    aplUntilNextActivationEnd(ctx, victim.id, ID.medic)
+    aplUntilNextActivationEnd(ctx, medic.id, ID.medic)
+    ctx.emit({ type: 'AbilityUsed', operativeId: medic.id, abilityId: ID.medic, detail: victim.id }, medic.seat)
+    markFired('phMedic')
+  } else dropDying(ctx, victim)
+  continueRemovals(ctx)
+  // a removal deferred to the end of a step gives back the casualty's next action decision: its activation ends now
+  const act = s.firefight.activation
+  if (endNow && act && !act.frame && !act.declared && act.endsAfterAction && act.operativeId === victim.id && s.pending?.kind === 'firefight.action') {
+    s.pending = null
+    raiseAction(ctx)
+  }
 }
 
 registerCodeHook({
   name: 'phMedic',
-  /** the free Dash after the action: the saved operative moves into the medic's control range */
-  choice(ctx, op) {
+  /** `save` / `decline` while the casualty waits in the removal queue; `dash`: the free Dash after the action */
+  choice(ctx, op, option) {
+    if (option === 'save' || option === 'decline') {
+      medicAnswer(ctx, op, option === 'save')
+      return
+    }
     const fx = effectFor(ctx.state, 'ph.medicDash', op.id)
     if (!fx) {
       reactionDone(ctx)
@@ -594,6 +642,8 @@ registerCodeHook({
   },
 })
 
+// The qualifying moment ("would be incapacitated"), judged where everyone stands then: the first one each turning point
+// spends the rule's use whether or not the player takes it. The decision itself waits for the removal queue.
 registerHook(
   'beforeIncapacitated',
   (c) => {
@@ -601,14 +651,79 @@ registerHook(
     const ctx = c.engine
     const victim = opOfHook(c)
     if (!s || !ctx || !victim) return null
-    medicSave(s, ctx, victim, c.data as { wounds: number })
+    const medic = medicFor(s, victim)
+    if (!medic) return null
+    markUsedTp(s, medic.seat, `ph.medic:${medic.id}`)
+    removeEffects(ctx, (e) => e.kind === 'ph.medicAsk' && e.operativeId === victim.id)
+    addEffect(ctx, { source: ID.medic, seat: victim.seat, kind: 'ph.medicAsk', operativeId: victim.id, expires: 'turningPoint', data: { medicId: medic.id } })
     return null
   },
   'ph.beforeIncapacitated',
 )
 
+/** Markers the core "before removal" drop just put down where the casualty stands (it may yet be saved). */
+function droppedBy(ctx: Ctx, op: Operative): Marker[] {
+  const ids = new Set(ctx.events.filter((e) => e.type === 'MarkerPlaced' && e.operativeId === op.id).map((e) => (e as { markerId: string }).markerId))
+  return ctx.state.markers.filter((m) => ids.has(m.id) && !m.carriedBy && Math.hypot(m.pos.x - op.pos.x, m.pos.z - op.pos.z) < EPS)
+}
+
+/**
+ * A dying carrier places its marker (R-4.6): the Haywire Mine only where it is legal, else it is removed with the
+ * Minelayer (T-PH.20); anything else where the carrier stands (the core drop). Runs after the core drop too.
+ */
+function dropDying(ctx: Ctx, op: Operative): void {
+  const s = ctx.state
+  const m = s.markers.find((k) => k.equipmentId === HAYWIRE && (k.carriedBy === op.id || (!k.carriedBy && k.placedBy === op.id && Math.hypot(k.pos.x - op.pos.x, k.pos.z - op.pos.z) < EPS && droppedBy(ctx, op).includes(k))))
+  if (m) {
+    const spot = mineSpots(s, op, m)[0]
+    op.flags.carrying = null
+    if (spot) {
+      m.carriedBy = null
+      m.pos = { x: spot.x, z: spot.z }
+      ctx.emit({ type: 'MarkerPlaced', markerId: m.id, operativeId: op.id, pos: { ...m.pos } }, op.seat)
+    } else removeMarker(ctx, m.id, 'ph.haywireMine')
+  }
+  dropCarried(ctx, op)
+}
+
+// Before removal: Medic! asks its question (the removal queue waits; a marker the core dropped goes back to the
+// casualty meanwhile), else a dying Minelayer places or loses its mine.
+registerHook(
+  'operative.incapacitated',
+  (c) => {
+    const ctx = c.engine
+    const s = c.state
+    const op = opOfHook(c)
+    if (!ctx || !s || !op) return null
+    const ask = effectFor(s, 'ph.medicAsk', op.id)
+    if (ask) {
+      const medic = s.operatives[String(ask.data?.medicId ?? '')]
+      if (s.removal && s.removal.ids.includes(op.id) && !s.pending && medic && medic.status === 'active' && medic.wounds > 0) {
+        for (const m of droppedBy(ctx, op)) {
+          m.carriedBy = op.id
+          op.flags.carrying = m.id
+          ctx.emit({ type: 'MarkerPickedUp', markerId: m.id, operativeId: op.id }, op.seat)
+        }
+        ctx.raise({
+          kind: 'ability.choice',
+          seat: op.seat,
+          window: 'operative.incapacitated',
+          context: { hook: 'phMedic', operativeId: op.id, step: 'save', medicId: medic.id },
+          options: ['save', 'decline'].map((id) => ({ id, labelKey: `ph.medic.${id}`, type: 'ability.choice' as const, payload: { option: id }, data: { medicId: medic.id } })),
+        })
+        return null
+      }
+      // the Helix Adept fell too (or nothing can ask now): the rule cannot be used
+      removeEffects(ctx, (e) => e.id === ask.id)
+    }
+    dropDying(ctx, op)
+    return null
+  },
+  'ph.operative.incapacitated',
+)
+
 // ---------------------------------------------------------------------------
-// Damage: Medic!'s floor, Critical Shot's extra D3
+// Damage: Critical Shot's extra D3
 // ---------------------------------------------------------------------------
 
 registerHook(
@@ -620,8 +735,6 @@ registerHook(
     if (!s || !op) return null
     const d = c.data as { source: string; amount: number; attackerId: string }
     if (d.amount <= 0) return null
-    // Medic!: nothing can incapacitate the casualty for the rest of the action
-    if (s.effects.some((e) => e.kind === 'ph.medicFloor' && e.operativeId === op.id)) d.amount = Math.max(0, Math.min(d.amount, op.wounds - 1))
     // Critical Shot: the first crit that deals damage deals D3 more (T-PH.32)
     if (ctx && d.source === 'crit' && d.amount > 0) {
       const fx = effectFor(s, 'ph.critShot', d.attackerId)
@@ -633,48 +746,6 @@ registerHook(
     return null
   },
   'ph.onDamageInflicted',
-)
-
-// Tactical Advantage also makes a Command Re-roll on the Sergeant's own dice free (T-PH.8): the CP is given back once the
-// re-rolls are done, spending the same once-per-battle use as the free firefight ploy
-function commandRefund(c: HookContext): null {
-  const s = c.state
-  const ctx = c.engine
-  const op = opOfHook(c)
-  if (!s || !ctx || !op || !isPh(s, op) || !hasAbility(s, op, ID.tactical) || usedThisBattle(s, op.seat, TA_PLOY)) return null
-  const side = sideOf(s, op.id)
-  if (!side || !side.commandUsed) return null
-  markUsedBattle(s, op.seat, TA_PLOY)
-  markFired('phTacticalAdvantage')
-  gainCp(ctx, op.seat, 1, ID.tactical)
-  ctx.emit({ type: 'AbilityUsed', operativeId: op.id, abilityId: ID.tactical, detail: 'command re-roll' }, op.seat)
-  return null
-}
-registerHook('afterAttackRoll', commandRefund, 'ph.afterAttackRoll')
-registerHook('afterDefenceRoll', commandRefund, 'ph.afterDefenceRoll')
-
-// A dying Minelayer places its mine where it can, or loses it (T-PH.20)
-registerHook(
-  'damage.inflicted',
-  (c) => {
-    const ctx = c.engine
-    const s = c.state
-    const victim = opOfHook(c)
-    if (!ctx || !s || !victim || !isPh(s, victim) || !victim.flags.carrying) return null
-    const d = c.data as unknown as DamageInflictedData
-    if (d.woundsAfter > 0) return null
-    const m = s.markers.find((k) => k.id === victim.flags.carrying)
-    if (!m || m.equipmentId !== HAYWIRE) return null
-    const spot = mineSpots(s, victim)[0]
-    victim.flags.carrying = null
-    if (spot) {
-      m.carriedBy = null
-      m.pos = { x: spot.x, z: spot.z }
-      ctx.emit({ type: 'MarkerPlaced', markerId: m.id, operativeId: victim.id, pos: { ...m.pos } }, victim.seat)
-    } else removeMarker(ctx, m.id, 'ph.haywireMine')
-    return null
-  },
-  'ph.damage.inflicted',
 )
 
 // ---------------------------------------------------------------------------

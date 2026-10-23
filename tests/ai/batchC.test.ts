@@ -9,7 +9,10 @@ import { createAiDecider, makeCtx, type AiDecider } from '../../src/ai/decider'
 import { fixedShot } from '../../src/ai/eval'
 import { abilityChoice } from '../../src/ai/choices'
 import { newMemory } from '../../src/ai/tiers'
-import { edit, openReal } from '../fixtures/real'
+import { activateOp, edit, openReal, opOf } from '../fixtures/real'
+import { place } from '../fixtures/helpers'
+import { open as ksOpen } from '../engine/teams/kasrkin.hooks'
+import { open as phOpen, phRoster, withMarkers as phWithMarkers } from '../engine/teams/phobos-strike-team.hooks'
 import { realBundle, realSetupFor } from './fixtures'
 
 interface Tracked {
@@ -89,6 +92,40 @@ describe('AI on the batch C teams', () => {
       expect(t.fallbacksByKind).toEqual({})
     }, 180000)
   }
+
+  it('AI-C-mines: the bot lays the Kasrkin Melta Mine and the Phobos Haywire Mine with the shared Place Marker (planned, then placed on a spot the filter allows) when enemies are near', () => {
+    const cases = [
+      { mine: 'ks.meltaMine', state: ksOpen(), card: 'ks.demo-trooper' },
+      { mine: 'ph.haywire-mine', state: phWithMarkers(phOpen({ rosterA: phRoster(['infiltrator-sergeant', 'incursor-minelayer', 'infiltrator-commsman', 'infiltrator-helix-adept', 'infiltrator-saboteur', 'incursor-marksman']) })), card: 'ph.incursor-minelayer' },
+    ]
+    for (const c of cases) {
+      const layer = opOf(c.state, 'A', c.card)
+      const boy = opOf(c.state, 'B', 'kom.boy')
+      expect(c.state.markers.find((m) => m.equipmentId === c.mine)?.carriedBy).toBe(layer)
+      // an enemy 7 inches away: the mine is worth laying in its path
+      let s = activateOp(place(place(c.state, layer, 0, 0), boy, 7, 0), layer)
+      // a fixed clock: the planner's work cap alone bounds it, so the run is deterministic
+      const bot = createAiDecider('normal', { seed: `mine:${c.mine}`, budgetMs: 200, now: () => 0 })
+      const placed: { x: number; z: number }[] = []
+      let fallbacks = 0
+      for (let n = 0; n < 40 && s.pending && s.firefight.activation?.operativeId === layer; n++) {
+        const p = s.pending
+        const r = bot.decideSync(view(s, p.seat), p, legalActions(s, p))
+        if (r.fallback) fallbacks++
+        if (p.kind === 'marker.place') placed.push(r.action.payload as { x: number; z: number })
+        const res = step(s, r.action as Action)
+        expect(res.rejection, c.mine).toBeUndefined()
+        s = res.state
+      }
+      expect(fallbacks, c.mine).toBe(0)
+      expect(placed, c.mine).toHaveLength(1)
+      const m = s.markers.find((k) => k.equipmentId === c.mine)!
+      expect(m.carriedBy, c.mine).toBeNull()
+      expect(m.pos).toEqual({ x: placed[0]!.x, z: placed[0]!.z })
+      // the spot nearest the enemy among those the filter allows (never in its control range)
+      expect(m.pos.x, c.mine).toBeGreaterThan(0)
+    }
+  })
 
   it('AI-C-pairs batch C teams meet each other without a stall', () => {
     for (const [a, b, seed] of [

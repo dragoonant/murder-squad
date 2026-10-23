@@ -16,7 +16,9 @@ import { grenadeSource } from '@/engine/core-hooks'
 import { offersFor, usePloy } from '@/engine/ploys'
 import { ScriptedRng } from '@/engine/rng'
 import { usableRangedWeapons } from '@/engine/shoot'
-import { providerCommandRerollCost, teamRuleProviders } from '@/engine/team-rules'
+import { providerCommandRerollCost, providerOwnReactions, teamRuleProviders } from '@/engine/team-rules'
+import { continueActivation, startFreeAction } from '@/engine/firefight'
+import { registerFrameResume } from '@/engine/hooks'
 import { dropZoneOf, isAbove, landingSpots, landReach, TEAM_ID } from '@/engine/teams/tempestus-aquilons'
 import { circleInsidePolygon, distToPolygon } from '@/engine/geometry'
 import { baseUnderVantage, bodyOf, visible } from '@/engine/los'
@@ -35,6 +37,8 @@ const data = loadBundle()
 const dropMk = (state: GameState) => state.markers.find((m) => m.equipmentId === 'ta.drop')!
 const roster = (main: string[]) => ({ leader: ['ta.tempestor'], servo: ['ta.servo-sentry'], main })
 const T = (n: number) => Array<string>(n).fill('ta.trooper')
+
+registerFrameResume('ta.test.free', (ctx) => continueActivation(ctx))
 
 describe('TEAM-TA Tempestus Aquilons', () => {
   it('TEAM-TA-000 TEAM-TA-001 TEAM-TA-002 playable team, roster rules, printed loadouts, weapons and the name tests', () => {
@@ -974,5 +978,32 @@ describe('TEAM-TA Tempestus Aquilons', () => {
     u = take(activateOp(u, B(base, 'boy')), 'end').state
     u = take(take(u, second).state, 'engage').state
     expect(u.pending!.kind).toBe('firefight.action')
+  })
+
+  it('TEAM-TA-011 Dynamic after a free Shoot in the Precursor activation (frame ownReactions, info freeAction) and after a Guard interrupt Shoot (info interrupt)', () => {
+    const s = open()
+    const pr = A(s, 'precursor')
+    const boy = B(s, 'boy')
+    const STOP = ['ability.choice', 'firefight.action', 'firefight.activate'] as never
+    const shot = edit(place(place(s, pr, 0, 0), boy, 5, 0), (st) => {
+      st.operatives[boy]!.order = 'engage'
+      st.operatives[boy]!.wounds = st.operatives[boy]!.maxWounds = 40
+    })
+    // a free Shoot inside its own activation (a rule granting one): the frame's reaction point offers the Dash
+    const free = withCtx(activateOp(shot, pr), (ctx) => void expect(startFreeAction(ctx, { operativeId: pr, action: 'shoot', resume: 'ta.test.free' })).toBe(true)).state
+    let f = free
+    while (f.pending?.kind === 'ploy.firefight') f = expectOk(step(f, act.pass(f.pending))).state
+    f = take(take(f, 'ta.w.hot-shot-laspistol').state, boy, dice(1, 1, 1, 1)).state
+    const r = play(f, dice(1, 1, 1, 1), {}, STOP)
+    expect(r.state.pending).toMatchObject({ kind: 'ability.choice', seat: 'A' })
+    expect(r.state.pending!.options![0]!.data!.name).toMatch(/Dynamic/)
+    const dashing = take(r.state, 'react:0').state
+    expect(dashing.pending).toMatchObject({ kind: 'move.path', seat: 'A' })
+    // a Guard interrupt Shoot in the enemy's activation: the own reaction is offered too
+    const theirs = bTurn(shot, A(s, 'tempestor'))
+    const offers = providerOwnReactions(theirs, 'A', { actorId: pr, action: 'shoot', activeSeat: 'A', moved: false, interrupt: true })
+    expect(offers).toMatchObject([{ hook: 'taDynamic', operativeId: pr, freeActions: true }])
+    // never for another action
+    expect(providerOwnReactions(theirs, 'A', { actorId: pr, action: 'dash', activeSeat: 'A', moved: true, interrupt: true })).toEqual([])
   })
 })

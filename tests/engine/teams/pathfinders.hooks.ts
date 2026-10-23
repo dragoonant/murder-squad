@@ -5,7 +5,8 @@ import { expect } from 'vitest'
 import { step } from '@/engine'
 import { effectiveMove } from '@/engine/state'
 import { actionAvailability } from '@/engine/firefight'
-import { attackStats, defenceStats, effectiveRules, inflict, parseRules, validTargets } from '@/engine/attack-common'
+import { attackStats, defenceStats, effectiveRules, inflict, parseRules, runDeferredRemovals, validTargets } from '@/engine/attack-common'
+import { queueRemoval } from '@/engine/effects'
 import { runHook } from '@/engine/hooks'
 import { offersFor, usePloy } from '@/engine/ploys'
 import { ScriptedRng } from '@/engine/rng'
@@ -36,6 +37,18 @@ export const ALL_PF = [
 ]
 
 export const ML = 'pf.markerlight'
+
+/**
+ * Rule damage that incapacitates `id` outside an attack (mines, direct damage): the removal waits for the end-of-step
+ * queue (attack-common.runDeferredRemovals), where a before-removal decision such as Medic! is asked.
+ */
+export function ruleKill(s: GameState, id: string, by: string, amount = 99): GameState {
+  return withCtx(s, (ctx) => {
+    inflict(ctx, { targetId: id, attackerId: by, weaponId: null, amount, source: 'direct' })
+    queueRemoval(ctx, id)
+    runDeferredRemovals(ctx)
+  }).state
+}
 
 export function pfOpts(o: RealOpts = {}): RealOpts {
   return { teams: ['pathfinders', 'kommandos'], rosterA: roster(ALL_PF), ...o }
@@ -185,10 +198,10 @@ export const scenarios: Record<string, () => void> = {
     const v = A(s, 'pf.shasla')
     const m = A(s, 'pf.medical-technician')
     const boy = B(s, 'kom.boy')
-    const r = withCtx(place(place(place(s, v, 0, 0), m, 2, 0), boy, 6, 0), (ctx) => {
-      inflict(ctx, { targetId: v, attackerId: boy, weaponId: null, amount: 99, source: 'direct' })
-    })
-    expect(r.state.operatives[v]!.wounds).toBe(1)
+    // the removal waits for the before-removal queue, where the owner takes Medic!
+    const asked = ruleKill(place(place(place(s, v, 0, 0), m, 2, 0), boy, 6, 0), v, boy)
+    expect(asked.pending).toMatchObject({ kind: 'ability.choice', context: { hook: 'medic', operativeId: v } })
+    expect(take(asked, 'save').state.operatives[v]).toMatchObject({ status: 'active', wounds: 1 })
   },
   medikit() {
     const s = edit(pfOpen(), (st) => {

@@ -27,6 +27,7 @@ import { hookFireCount } from '@/engine/code-hooks'
 import { CODE_HOOKS } from '../../../src/data'
 import { a, act, at, b, FULL, HIE, hie, kill, magnifyArena, markerOf, raise, scenarios, underlingsGame, usePloyOn, WALL } from './hierotek-circle.hooks'
 import { gambitOffers } from '@/engine/ploys'
+import { readyChoiceDone } from '@/engine/strategy'
 
 const data = loadBundle()
 /** End the current activation, let the opponent activate and end one operative: back to seat A choosing. */
@@ -37,6 +38,26 @@ function passRound(t: GameState): GameState {
   return u
 }
 /** A copy of the state whose weapon has a different Atk. */
+/**
+ * The Strategy phase's Ready step for seat A: the turning point start hook (Living Metal, Tesseract Cube) rolls `dice`,
+ * then the shared Ready-step choices are asked (strategy.readyChoiceDone).
+ */
+function readyStepOf(s: GameState, dice: number[]): GameState {
+  const st = edit(s, (x) => {
+    x.phase = 'strategy'
+    x.initiative = 'A'
+    x.strategy = { step: 'ready', rolls: {}, gambit: { turn: 'A', passes: 0, used: { A: [], B: [] } }, readyChoices: ['A', 'B'] }
+  })
+  return withCtx(
+    st,
+    (ctx) => {
+      runHook('turningPoint.start', { seat: 'A', state: ctx.state, engine: ctx, data: { turningPoint: 2 } })
+      readyChoiceDone(ctx)
+    },
+    new ScriptedRng(dice),
+  ).state
+}
+
 function withWeapon(s: GameState, id: string, atk: number): GameState {
   const t = cloneState(s)
   t.data = { ...t.data, weapons: { ...t.data.weapons, [id]: { ...t.data.weapons[id]!, atk } } }
@@ -131,7 +152,7 @@ describe('hierotek-circle reanimation', () => {
     expect(markerOf(again, g)).toBeUndefined()
   })
 
-  it('TEAM-HIE-003 Ready step: Living Metal heals D3+1 first, then markers are rolled in order until a 3+', () => {
+  it('TEAM-HIE-003 Ready step: Living Metal heals D3+1 first; then the owner picks the marker to roll for, one at a time, until a 3+ returns its operative at the spot and order the owner picks', () => {
     let s = hie({}, FULL)
     const [g, d1, d2, accel] = [a(s, 'hie.immortal-guardian'), a(s, 'hie.deathmark'), s.operatives['A8']!.id, a(s, 'hie.plasmacyte-accelerator')]
     s = at(s, [g, 0, 0], [d1, 6, 0], [d2, 6, 3])
@@ -141,23 +162,34 @@ describe('hierotek-circle reanimation', () => {
       st.operatives[accel]!.wounds = 4
     })
     expect(Object.values(s.markers).filter((m) => m.equipmentId === M.reanimation)).toHaveLength(2)
-    // dice, in operative order: Living Metal for the Accelerator (6 -> D3 3, +1 = 4, capped at its 5 wounds) and the Guardian (1 -> D3 1, +1 = 2 on top of 2 = 4), then the first marker 2 (stays), the second 5 (returns)
-    const out = withCtx(
-      s,
-      (ctx) => {
-        runHook('turningPoint.start', { seat: 'A', state: ctx.state, engine: ctx, data: { turningPoint: 2 } })
-      },
-      new ScriptedRng([6, 1, 2, 5]),
-    )
-    const t = out.state
+    // dice, in operative order: Living Metal for the Accelerator (6 -> D3 3, +1 = 4, capped at its 5 wounds) and the Guardian (1 -> D3 1, +1 = 2 on top of 2 = 4)
+    let t = readyStepOf(s, [6, 1])
     expect(t.operatives[g]!.wounds).toBe(4)
     expect(t.operatives[accel]!.wounds).toBe(5)
-    // the first marker stayed, the second returned its operative at 1 wound; no further marker is tried
-    expect(t.operatives[d1]!.status).toBe('removed')
-    expect(markerOf(t, d1)).toBeDefined()
-    expect(t.operatives[d2]!.status).toBe('active')
-    expect(t.operatives[d2]!.wounds).toBe(1)
-    expect(out.events.filter((e) => e.type === 'OperativeReturned')).toHaveLength(1)
+    // the owner is asked which marker to roll for: both are offered (oldest first on equal priority)
+    expect(t.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { readyStep: true } })
+    expect(t.pending!.options!.map((o) => o.data?.operativeId)).toEqual([d1, d2])
+    // the owner picks the second one first: a 2, so it stays and is not offered again
+    t = take(t, 'ready:1', new ScriptedRng([2])).state
+    expect(t.operatives[d2]!.status).toBe('removed')
+    expect(t.pending!.options!.map((o) => o.data?.operativeId)).toEqual([d1])
+    // then the other: a 5, so the owner picks the spot and the order
+    t = take(t, 'ready:0', new ScriptedRng([5])).state
+    expect(t.pending).toMatchObject({ kind: 'ability.choice', seat: 'A', context: { hook: 'hieReanimate', step: 'spot', operativeId: d1 } })
+    const spot = t.pending!.options![0]!
+    t = take(t, spot.id).state
+    expect(t.pending!.options!.map((o) => o.id)).toEqual(['engage', 'conceal'])
+    t = take(t, 'conceal').state
+    expect(t.operatives[d1]).toMatchObject({ status: 'active', wounds: 1, order: 'conceal', ready: true })
+    expect(t.operatives[d1]!.pos.x).toBeCloseTo(spot.data!.x as number)
+    expect(markerOf(t, d2)).toBeDefined()
+    // at most one return each turning point: no more Ready-step offers, the Gambit step is next
+    expect(t.strategy.step).toBe('gambit')
+    // passing rolls for nothing
+    const passed = passIt(readyStepOf(s, [6, 1])).state
+    expect(passed.operatives[d1]!.status).toBe('removed')
+    expect(passed.operatives[d2]!.status).toBe('removed')
+    expect(passed.strategy.step).toBe('gambit')
   })
 })
 
@@ -998,21 +1030,20 @@ describe('hierotek-circle rules verification fixes', () => {
     expect(fire(usePloyOn(s, 'hie.p.undying-androids')).operatives[g]!.wounds).toBe(10 - 8)
   })
 
-  it('TEAM-HIE-003 Ready step: the markers are tried in the owner\'s likely order, the Cryptek before an earlier-fallen Deathmark', () => {
+  it('TEAM-HIE-003 Ready step: the Cryptek is listed before an earlier-fallen Deathmark (the AI takes the first), and a marker with no legal set-up counts as a failed roll', () => {
     let s = hie({}, FULL)
     const [cx, d1] = [a(s, 'hie.chronomancer'), a(s, 'hie.deathmark')]
     s = at(s, [d1, 6, 0], [cx, -6, 0])
     // the Deathmark fell first, so its marker is the older one
     s = kill(kill(s, d1), cx)
-    const out = withCtx(
-      s,
-      (ctx) => {
-        runHook('turningPoint.start', { seat: 'A', state: ctx.state, engine: ctx, data: { turningPoint: 2 } })
-      },
-      new ScriptedRng([5, 5, 5, 5]),
-    ).state
-    expect(out.operatives[cx]!.status).toBe('active')
-    expect(out.operatives[d1]!.status).toBe('removed')
-    expect(markerOf(out, d1)).toBeDefined()
+    const t = readyStepOf(s, [])
+    expect(t.pending!.options!.map((o) => o.data?.operativeId)).toEqual([cx, d1])
+    // the Cryptek's marker rolls a 5, but no legal spot lies within 3" of it: treated as a 1-2, the marker stays
+    const boxed = edit(t, (st) => {
+      st.markers.find((x) => x.equipmentId === M.reanimation && x.placedBy === cx)!.pos = { x: 40, z: 40 }
+    })
+    const failed = take(boxed, 'ready:0', new ScriptedRng([5])).state
+    expect(failed.operatives[cx]!.status).toBe('removed')
+    expect(failed.pending!.options!.map((o) => o.data?.operativeId)).toEqual([d1])
   })
 })

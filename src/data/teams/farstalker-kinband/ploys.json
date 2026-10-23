@@ -17,23 +17,6 @@
     "source": "team-farstalker-kinband.pdf (Jun '26); docs/spec/13-teams.md T-FK.7"
   },
   {
-    "id": "fk.p.farstalker-orders",
-    "name": "FARSTALKER: READY STEP",
-    "team": "farstalker-kinband",
-    "type": "strategy",
-    "cost": 0,
-    "window": "strategy.gambit",
-    "effect": {
-      "code": "fkReadyStep",
-      "scope": {
-        "side": "friendly",
-        "keyword": "FARSTALKER KINBAND"
-      }
-    },
-    "text": "Our stand-in for the Ready-step order change of the Farstalker rule: free of command points, taken on your first turn of the gambit step. Change the order of up to three friendly Farstalker operatives that are not in an enemy control range.",
-    "source": "team-farstalker-kinband.pdf (Jun '26); docs/spec/13-teams.md T-FK.27"
-  },
-  {
     "id": "fk.p.cut-throats",
     "name": "CUT-THROATS",
     "team": "farstalker-kinband",
