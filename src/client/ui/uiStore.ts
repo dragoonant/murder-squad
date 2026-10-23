@@ -18,6 +18,8 @@ interface UiState {
   /** an option id (re-roll dice highlight) or a spot id (objective / choice spot ring) hovered in the prompt or on the board */
   hoverOption: string | null
   hoverSpot: string | null
+  /** a board marker (objective / equipment / smoke / breach) under the pointer */
+  hoverMarker: string | null
   deployOp: string | null
   waypoints: Waypoint[]
   jumpNext: boolean
@@ -47,6 +49,7 @@ export const useUi = create<UiState>((set) => ({
   hoverZone: null,
   hoverOption: null,
   hoverSpot: null,
+  hoverMarker: null,
   deployOp: null,
   waypoints: [],
   jumpNext: false,

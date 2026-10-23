@@ -1,5 +1,5 @@
 // Drop zones, territories, centreline and objective markers drawn from engine state and mission data.
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { Line } from '@react-three/drei'
 import { DoubleSide, Shape } from 'three'
 import type { GameState, Polygon } from '@/engine'
@@ -7,8 +7,10 @@ import { markerRadius } from '@/engine/state'
 import { useFx } from '../presentation/fxStore'
 import { colors } from '../ui/theme'
 import { isTainted } from '@/engine/teams/legionaries'
-import { lookupTerm } from '../game/glossary'
+import { markerTip } from '../game/markerDescribe'
+import { useGame } from '../store/game'
 import { useBoardTip } from '../ui/markerInfo'
+import { useUi } from '../ui/uiStore'
 
 function PolyFill({ poly, color, opacity, y }: { poly: Polygon; color: string; opacity: number; y: number }) {
   const geo = useMemo(() => {
@@ -75,10 +77,9 @@ export function Zones({ state, deployRegion, hoverZone }: { state: GameState; de
   )
 }
 
-/** A tainted objective (Legionaries, Favoured of the Dark Gods): a violet spiked crown over the marker, with a hover tooltip. */
+/** A tainted objective (Legionaries, Favoured of the Dark Gods): a violet spiked crown over the marker. Its hover
+ * text is part of the marker's own tip (markerDescribe). */
 function TaintMark({ r }: { r: number }) {
-  const over = useRef(false)
-  const entry = lookupTerm('Tainted objective')
   return (
     <group data-tainted>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
@@ -89,29 +90,21 @@ function TaintMark({ r }: { r: number }) {
         <coneGeometry args={[0.16, 0.34, 5]} />
         <meshBasicMaterial color="#b44bff" />
       </mesh>
-      <mesh
-        position={[0, 0.3, 0]}
-        onPointerOver={(e) => {
-          if (e.pointerType === 'touch') return
-          over.current = true
-          useBoardTip.setState({ tip: { title: 'Tainted objective', body: entry?.body ?? 'Tainted by the Legionaries.', x: e.nativeEvent.clientX, y: e.nativeEvent.clientY } })
-        }}
-        onPointerOut={() => {
-          if (!over.current) return
-          over.current = false
-          useBoardTip.setState({ tip: null })
-        }}
-      >
-        <cylinderGeometry args={[r * 1.2, r * 1.2, 0.8, 12]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-      </mesh>
     </group>
   )
+}
+
+/** The human seat when exactly one seat is human, so marker tips can say you / the enemy. */
+function useYou() {
+  const seats = useGame((s) => s.seats)
+  return seats.A === 'human' && seats.B !== 'human' ? 'A' : seats.B === 'human' && seats.A !== 'human' ? 'B' : null
 }
 
 export function Markers({ state }: { state: GameState }) {
   // a control change shows at its beat, before the display state catches up
   const control = useFx((s) => s.control)
+  const hoverMarker = useUi((s) => s.hoverMarker)
+  const you = useYou()
   return (
     <group>
       {state.markers
@@ -120,8 +113,29 @@ export function Markers({ state }: { state: GameState }) {
           const r = markerRadius(m)
           const controller = m.id in control ? control[m.id] : m.controller
           const color = controller ? SEAT[controller] : '#e8e8f2'
+          const hot = hoverMarker === m.id
           return (
-            <group key={m.id} position={[m.pos.x, 0.06, m.pos.z]} data-marker={m.id}>
+            <group
+              key={m.id}
+              position={[m.pos.x, 0.06, m.pos.z]}
+              data-marker={m.id}
+              onPointerOver={(e) => {
+                e.stopPropagation()
+                if (e.pointerType === 'touch') return
+                useUi.setState({ hoverMarker: m.id })
+                useBoardTip.setState({ tip: { ...markerTip(state, m, you), x: e.nativeEvent.clientX, y: e.nativeEvent.clientY } })
+              }}
+              onPointerOut={() => {
+                if (useUi.getState().hoverMarker !== m.id) return
+                useUi.setState({ hoverMarker: null })
+                useBoardTip.setState({ tip: null })
+              }}
+            >
+              {/* invisible hit volume so the marker is easy to point at from any camera angle */}
+              <mesh position={[0, 0.3, 0]}>
+                <cylinderGeometry args={[r * 1.2, r * 1.2, 0.8, 12]} />
+                <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+              </mesh>
               <mesh rotation={[-Math.PI / 2, 0, 0]}>
                 <circleGeometry args={[r, 28]} />
                 <meshBasicMaterial color="#1b1d26" />
@@ -130,6 +144,12 @@ export function Markers({ state }: { state: GameState }) {
                 <ringGeometry args={[r * 0.78, r, 28]} />
                 <meshBasicMaterial color={color} />
               </mesh>
+              {hot && (
+                <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+                  <ringGeometry args={[r + 0.08, r + 0.2, 36]} />
+                  <meshBasicMaterial color="#ffffff" transparent opacity={0.9} />
+                </mesh>
+              )}
               <mesh position={[0, 0.25, 0]}>
                 <octahedronGeometry args={[0.22, 0]} />
                 <meshBasicMaterial color={m.kind === 'objective' ? '#ffe066' : '#6fe0ff'} />
