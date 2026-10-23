@@ -57,6 +57,7 @@
     },
     "expendable": { "type": "boolean", "description": "Ignored for the opponent's kill op, both as a casualty and in the starting count." },
     "nonOperativeForSelection": { "type": "boolean" },
+    "selectable": { "type": "boolean", "description": "batch D: false = never picked for a roster; the operative exists only by changing into it mid-battle (Chaos Cult Mutant, Torment). Snapshotted into every game with the team." },
     "text": { "$ref": "common.schema.json#/$defs/Text" },
     "source": { "$ref": "common.schema.json#/$defs/Source" }
   },

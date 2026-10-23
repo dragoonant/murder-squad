@@ -12,6 +12,7 @@ import { registerHook } from './hooks'
 import { markFired } from './code-hooks'
 import { noteWeaponUses } from './equipment'
 import { onOperativeRemoved } from './missions'
+import { noteRemoval } from './kills'
 import { markerControl } from './query'
 import { reject, type Ctx, type Handled, type ModuleDef } from './registry'
 import { activeOps, getOp } from './state'
@@ -99,6 +100,8 @@ export function markerOffers(state: GameState, op: Operative, act: Activation | 
   if ((inCr && !relief.ignoreEnemyControlRange) || performed.includes(PLACE) || performed.includes(PICK_UP)) return out
   for (const m of state.markers) {
     if (!m.pickable || m.carriedBy) continue
+    // batch D prep: a marker only one seat may pick up (Bloody Cadaver)
+    if (m.pickableBy && m.pickableBy !== op.seat) continue
     const c = markerControl(state, m)
     if (c.contesting[op.seat].includes(op.id) && (c.controller === op.seat || relief.contestSuffices)) {
       out.push({ id: `${PICK_UP}:${m.id}`, action: PICK_UP, markerId: m.id, cost: 1 })
@@ -289,6 +292,8 @@ function processRemovals(ctx: Ctx, seen: Set<string>): void {
     if (!op) continue
     dropCarried(ctx, op)
     onOperativeRemoved(ctx, op)
+    // batch D prep: the kill log and the operative.removed hook, any cause
+    noteRemoval(ctx, op)
     // M9 prep: tokens it held, and tokens it placed that end with it, go
     tokensOnRemoval(ctx, op.id)
   }

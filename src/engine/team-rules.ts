@@ -108,7 +108,7 @@ export interface TeamRuleProvider {
 
   // ---- stats ---------------------------------------------------------------------------------
   /** flags derived from team rules and effects, recomputed by refreshFlags (ORed with the core flags) */
-  flags?(state: GameState, op: Operative): { ignoreApl?: boolean; ignoreInjured?: boolean } | null
+  flags?(state: GameState, op: Operative): { ignoreApl?: boolean; ignoreInjured?: boolean; ignoreAplDecreases?: boolean } | null
   /** inches added to (or taken from) the operative's Move; summed; Move never drops below 4" (R-9.6) */
   moveDelta?(state: GameState, op: Operative): number
   /**
@@ -285,6 +285,42 @@ export interface TeamRuleProvider {
    * end points in order (a FLY set-up: just its end). Use instead of pricing a move out of reach with moveSurcharge.
    */
   moveProblem?(state: GameState, op: Operative, kind: string, points: Vec3[]): string | null
+
+  // ---- batch D prep (M10) ----------------------------------------------------------------------
+  /**
+   * Die results that cannot be re-rolled for this roll by anything (re-roll grants and the Command Re-roll): Sinister
+   * Trophies, Strobing Phosphor-lumen. `info.rollerId` rolls the dice against `info.opponentId`. Pure; the answers of
+   * every provider are united. Applied to the grants attackStats / defenceStats return, so the odds respect it.
+   */
+  rerollBannedValues?(state: GameState, info: RerollBanInfo): number[] | null
+  /**
+   * Choices the seat makes once every operative is set up and before turning point 1 (Forward Scouting). Offered as
+   * one ability.choice (context.preBattle); seats alternate one choice at a time, the setup initiative holder first,
+   * while both have offers; a pass drops that seat. The offer's code hook `choice` runs and must call
+   * setup.preBattleChoiceDone(ctx) once finished (a free action it starts calls it from its frame resume).
+   */
+  preBattleChoices?(state: GameState, seat: Seat): ReactionOffer[]
+  /**
+   * When `op` is shot and retains any cover save, it retains this many more (spare fails become cover saves), without
+   * the crit option of Stealthy (Camo Cloak, extra-only versions). Summed. The provider decides any non-stacking.
+   */
+  extraCoverSaves?(state: GameState, op: Operative): number
+  /**
+   * Set-aside at set-up works by whole batches for this seat (Drop Insertion): `skipFirst` keeps the seat's first batch
+   * on the table; any later batch is either all deployed or all set aside, decided by its first answer.
+   */
+  setAsideBatches?(state: GameState, seat: Seat): { skipFirst?: boolean } | null
+}
+
+/** batch D prep: who rolls the dice a rerollBannedValues answer is about. */
+export interface RerollBanInfo {
+  kind: 'shoot' | 'fight'
+  /** the operative rolling the dice */
+  rollerId: string
+  /** the operative it attacks, or (defence dice) the shooter */
+  opponentId: string
+  /** defence dice of a Shoot */
+  defence: boolean
 }
 
 /** M9 batch C: what `fixedTargets` answers. */
@@ -425,12 +461,13 @@ export function providerOffboardActions(state: GameState, op: Operative): string
   return collectIds((p) => p.offboardActions?.(state, op))
 }
 
-export function providerFlags(state: GameState, op: Operative): { ignoreApl: boolean; ignoreInjured: boolean } {
-  const out = { ignoreApl: false, ignoreInjured: false }
+export function providerFlags(state: GameState, op: Operative): { ignoreApl: boolean; ignoreInjured: boolean; ignoreAplDecreases: boolean } {
+  const out = { ignoreApl: false, ignoreInjured: false, ignoreAplDecreases: false }
   for (const p of providers.values()) {
     const f = p.flags?.(state, op)
     if (f?.ignoreApl) out.ignoreApl = true
     if (f?.ignoreInjured) out.ignoreInjured = true
+    if (f?.ignoreAplDecreases) out.ignoreAplDecreases = true
   }
   return out
 }
@@ -697,4 +734,37 @@ export function providerCanFly(state: GameState, op: Operative, kind: string): b
 export function providerIgnoresMine(state: GameState, op: Operative, mine: Marker): boolean {
   for (const p of providers.values()) if (p.ignoresMine?.(state, op, mine)) return true
   return false
+}
+
+// ---- batch D prep (M10) ------------------------------------------------------------------------
+
+/** batch D prep: the die results nothing may re-roll for this roll (every provider's answer united, sorted). */
+export function providerRerollBannedValues(state: GameState, info: RerollBanInfo): number[] {
+  const out = new Set<number>()
+  for (const p of providers.values()) for (const v of p.rerollBannedValues?.(state, info) ?? []) out.add(v)
+  return [...out].sort((a, b) => a - b)
+}
+
+export function providerPreBattleChoices(state: GameState, seat: Seat): ReactionOffer[] {
+  const out: ReactionOffer[] = []
+  for (const p of providers.values()) out.push(...(p.preBattleChoices?.(state, seat) ?? []))
+  return out
+}
+
+export function providerExtraCoverSaves(state: GameState, op: Operative): number {
+  let n = 0
+  for (const p of providers.values()) n += p.extraCoverSaves?.(state, op) ?? 0
+  return Math.max(0, n)
+}
+
+export function providerSetAsideBatches(state: GameState, seat: Seat): { skipFirst: boolean } | null {
+  let any = false
+  let skipFirst = false
+  for (const p of providers.values()) {
+    const b = p.setAsideBatches?.(state, seat)
+    if (!b) continue
+    any = true
+    if (b.skipFirst === true) skipFirst = true
+  }
+  return any ? { skipFirst } : null
 }

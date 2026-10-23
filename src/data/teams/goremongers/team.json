@@ -1,0 +1,45 @@
+{
+  "id": "goremongers",
+  "name": "Goremongers",
+  "factionKeyword": "GOREMONGER",
+  "archetypes": [
+    "recon",
+    "seek-and-destroy"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "gm.blood-herald"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "gm.blood-herald"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.0,
+      "s": 0.65,
+      "l": 0.32
+    },
+    "minor": {
+      "h": 0.08,
+      "s": 0.3,
+      "l": 0.55
+    }
+  },
+  "text": "Blood-mad human cultists of the war god who feed stolen gore into their back-mounted tanks and burn it for bursts of speed, fury and healing.",
+  "source": "team-goremongers.pdf (Aug '26); docs/spec/13-teams.md section 21"
+}

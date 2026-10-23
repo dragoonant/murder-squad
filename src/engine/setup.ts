@@ -13,7 +13,7 @@ import { placementProblem } from './terrain'
 import { allowedOrders, initTeamState } from './abilities'
 import { setAside } from './reserve'
 import { notePicks, resolvePicks } from './operative-picks'
-import { providerAny, providerSetAsideCap } from './team-rules'
+import { providerAny, providerPreBattleChoices, providerSetAsideBatches, providerSetAsideCap } from './team-rules'
 import { handleEquipMarker, nextPlacer, placeItem, selectionProblem, suggestEquipPlacement, territoryOf, DEFAULT_EQUIPMENT_LIMIT, equipmentLimitFor } from './equipment'
 import { chooseMission, missionDef, objectiveOptions, objectiveSeat, placeObjective } from './missions'
 import { OBJECTIVE_RADIUS } from './missions'
@@ -229,6 +229,12 @@ function reserveOf(s: GameState, seat: Seat): Operative[] {
 export function setAsideChoices(s: GameState, seat: Seat): string[] {
   const taken = Object.values(s.operatives).filter((o) => o.seat === seat && o.offboard !== undefined).length
   if (taken >= providerSetAsideCap(s, seat)) return []
+  // batch D prep (setAsideBatches): whole batches only, never the first one when the rule says so
+  const batches = providerSetAsideBatches(s, seat)
+  if (batches && s.setup.step === 'deploy' && s.setup.deploy.turn === seat) {
+    if (batches.skipFirst && (s.setup.batches?.[seat] ?? 1) <= 1) return []
+    if (s.setup.deploy.aside === false) return []
+  }
   return reserveOf(s, seat)
     .filter((o) => providerAny(s, o, 'setAsideAtSetup'))
     .map((o) => o.id)
@@ -239,13 +245,21 @@ function raiseDeploy(ctx: Ctx): void {
   const seat = s.setup.deploy.turn
   const reserve = reserveOf(s, seat)
   const zone = s.map.dropZones.find((z) => z.id === s.players[seat].dropZoneId)!
+  // batch D prep: a batch being set aside as a whole offers no deployment
+  const deployable = s.setup.deploy.aside === true ? [] : reserve.map((o) => o.id)
   ctx.raise({
     kind: 'setup.deploy',
     seat,
     window: 'setup.*',
-    context: { left: s.setup.deploy.left, reserveIds: reserve.map((o) => o.id), zoneId: zone.id, setAsideIds: setAsideChoices(s, seat) },
-    constraints: { kind: 'deploy', operativeIds: reserve.map((o) => o.id), region: zone.polygon },
+    context: { left: s.setup.deploy.left, reserveIds: reserve.map((o) => o.id), zoneId: zone.id, setAsideIds: setAsideChoices(s, seat), ...(s.setup.deploy.aside === true ? { wholeBatchAside: true } : {}) },
+    constraints: { kind: 'deploy', operativeIds: deployable, region: zone.polygon },
   })
+}
+
+/** batch D prep: a new deploy batch for `seat` (setAsideBatches counts them; `aside` is decided by its first answer). */
+function newBatch(s: GameState, seat: Seat, left: number): void {
+  s.setup.deploy = { turn: seat, left }
+  s.setup.batches = { ...(s.setup.batches ?? {}), [seat]: (s.setup.batches?.[seat] ?? 0) + 1 }
 }
 
 function rosterSize(s: GameState, seat: Seat): number {
@@ -256,7 +270,7 @@ function startDeploy(ctx: Ctx): void {
   const s = ctx.state
   s.setup.step = 'deploy'
   const first = s.setup.setupInitiative!
-  s.setup.deploy = { turn: first, left: batchSize(rosterSize(s, first), reserveOf(s, first).length) }
+  newBatch(s, first, batchSize(rosterSize(s, first), reserveOf(s, first).length))
   raiseDeploy(ctx)
 }
 
@@ -271,16 +285,73 @@ function advanceDeploy(ctx: Ctx, justPlaced: Seat): void {
   const other = otherSeat(justPlaced)
   const theirs = reserveOf(s, other).length
   if (theirs > 0) {
-    s.setup.deploy = { turn: other, left: batchSize(rosterSize(s, other), theirs) }
+    newBatch(s, other, batchSize(rosterSize(s, other), theirs))
   } else if (mine > 0) {
-    s.setup.deploy = { turn: justPlaced, left: batchSize(rosterSize(s, justPlaced), mine) }
+    newBatch(s, justPlaced, batchSize(rosterSize(s, justPlaced), mine))
   } else {
-    s.setup.step = 'done'
-    ctx.emit({ type: 'PhaseEnded', name: 'setup' }, null)
-    beginTurningPoint(ctx)
+    startPreBattle(ctx)
     return
   }
   raiseDeploy(ctx)
+}
+
+/**
+ * batch D prep (preBattleChoices): once everyone is set up, team rules may make choices before turning point 1
+ * (Forward Scouting): one ability.choice (context.preBattle) at a time, seats alternating from the setup initiative
+ * holder while both have offers; a pass or no offer finishes that seat. Then the battle begins.
+ */
+function startPreBattle(ctx: Ctx): void {
+  const s = ctx.state
+  s.setup.step = 'preBattle'
+  s.setup.preBattle = { turn: s.setup.setupInitiative ?? 'A', done: [] }
+  nextPreBattleChoice(ctx)
+}
+
+function nextPreBattleChoice(ctx: Ctx): void {
+  const s = ctx.state
+  const pb = s.setup.preBattle
+  for (let tries = 0; pb && tries < 2; tries++) {
+    const seat = pb.turn
+    if (!pb.done.includes(seat)) {
+      const offers = providerPreBattleChoices(s, seat)
+      if (offers.length > 0) {
+        ctx.raise({
+          kind: 'ability.choice',
+          seat,
+          window: 'setup.*',
+          context: { hook: 'preBattle', preBattle: true, offers },
+          options: offers.map((r, i) => ({
+            id: `prebattle:${i}`,
+            labelKey: r.labelKey,
+            type: 'ability.choice' as const,
+            payload: { option: String(i) },
+            data: { hook: r.hook, operativeId: r.operativeId, ...(r.data ?? {}) },
+          })),
+          canPass: true,
+        })
+        return
+      }
+      pb.done.push(seat)
+    }
+    pb.turn = otherSeat(seat)
+  }
+  delete s.setup.preBattle
+  s.setup.step = 'done'
+  ctx.emit({ type: 'PhaseEnded', name: 'setup' }, null)
+  beginTurningPoint(ctx)
+}
+
+/**
+ * batch D prep: a pre-battle choice is finished (`passed`: the seat declined and is not asked again). The other seat
+ * chooses next while it still has offers.
+ */
+export function preBattleChoiceDone(ctx: Ctx, passed = false): void {
+  const pb = ctx.state.setup.preBattle
+  if (!pb) return
+  const seat = pb.turn
+  if (passed && !pb.done.includes(seat)) pb.done.push(seat)
+  if (!pb.done.includes(otherSeat(seat))) pb.turn = otherSeat(seat)
+  nextPreBattleChoice(ctx)
 }
 
 function numeric(v: unknown): v is number {
@@ -297,11 +368,14 @@ function handleDeploy(state: GameState, action: Action): Handled {
     return {
       run(ctx) {
         setAside(ctx, id, 'setAside')
+        // batch D prep (setAsideBatches): the batch's first answer sets it aside as a whole
+        if (providerSetAsideBatches(ctx.state, action.seat)) ctx.state.setup.deploy.aside = true
         ctx.state.setup.deploy.left -= 1
         advanceDeploy(ctx, action.seat)
       },
     }
   }
+  if (state.setup.deploy.aside === true) return reject('E_NOT_AN_OPTION', 'this batch is being set aside as a whole')
   if (!p || typeof p.operativeId !== 'string' || !numeric(p.x) || !numeric(p.z) || (p.y !== undefined && !numeric(p.y))) {
     return reject('E_SCHEMA', 'deploy needs operativeId, x and z')
   }
@@ -328,6 +402,7 @@ function handleDeploy(state: GameState, action: Action): Handled {
       o.ready = false
       o.facing = facing
       ctx.emit({ type: 'OperativeDeployed', operativeId: o.id, pos })
+      if (providerSetAsideBatches(ctx.state, o.seat)) ctx.state.setup.deploy.aside = false
       ctx.state.setup.deploy.left -= 1
       advanceDeploy(ctx, o.seat)
     },

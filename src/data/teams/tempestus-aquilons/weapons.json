@@ -1,0 +1,111 @@
+[
+  {
+    "id": "ta.w.hot-shot-lascarbine",
+    "name": "Hot-shot lascarbine",
+    "team": "tempestus-aquilons",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [],
+    "text": "Hot-shot lascarbine carried by the Aquilon Tempestor.",
+    "source": "team-tempestus-aquilons.pdf (Aug '26); docs/spec/13-teams.md section 23.3"
+  },
+  {
+    "id": "ta.w.hot-shot-laspistol",
+    "name": "Hot-shot laspistol",
+    "team": "tempestus-aquilons",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      }
+    ],
+    "text": "Hot-shot laspistol carried by the Aquilon Tempestor.",
+    "source": "team-tempestus-aquilons.pdf (Aug '26); docs/spec/13-teams.md section 23.3"
+  },
+  {
+    "id": "ta.w.relic-bolt-pistol",
+    "name": "Relic bolt pistol",
+    "team": "tempestus-aquilons",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "Relic bolt pistol carried by the Aquilon Tempestor.",
+    "source": "team-tempestus-aquilons.pdf (Aug '26); docs/spec/13-teams.md section 23.3"
+  },
+  {
+    "id": "ta.w.chainsword",
+    "name": "Chainsword",
+    "team": "tempestus-aquilons",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [],
+    "text": "Chainsword carried by the Aquilon Tempestor.",
+    "source": "team-tempestus-aquilons.pdf (Aug '26); docs/spec/13-teams.md section 23.3"
+  },
+  {
+    "id": "ta.w.fists-tempestor",
+    "name": "Fists",
+    "team": "tempestus-aquilons",
+    "type": "melee",
+    "atk": 3,
+    "hit": "3+",
+    "dmg": {
+      "normal": 2,
+      "crit": 3
+    },
+    "rules": [],
+    "text": "Fists carried by the Aquilon Tempestor.",
+    "source": "team-tempestus-aquilons.pdf (Aug '26); docs/spec/13-teams.md section 23.3"
+  },
+  {
+    "id": "ta.w.power-weapon",
+    "name": "Power weapon",
+    "team": "tempestus-aquilons",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 6
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "Power weapon carried by the Aquilon Tempestor.",
+    "source": "team-tempestus-aquilons.pdf (Aug '26); docs/spec/13-teams.md section 23.3"
+  }
+]

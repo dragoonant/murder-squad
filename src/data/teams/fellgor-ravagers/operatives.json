@@ -1,0 +1,54 @@
+[
+  {
+    "id": "fg.ironhorn",
+    "name": "Fellgor Ironhorn",
+    "team": "fellgor-ravagers",
+    "stats": {
+      "apl": 2,
+      "move": 6,
+      "save": "5+",
+      "wounds": 11
+    },
+    "base": 32,
+    "keywords": [
+      "FELLGOR RAVAGER",
+      "CHAOS",
+      "LEADER",
+      "IRONHORN"
+    ],
+    "weapons": {
+      "fixed": [],
+      "options": [
+        {
+          "id": "loadout",
+          "label": "Loadout",
+          "sets": [
+            {
+              "id": "corrupted-pistol-corrupted-chainsword",
+              "name": "Corrupted pistol and corrupted chainsword",
+              "fixed": [
+                "fg.w.corrupted-pistol",
+                "fg.w.corrupted-chainsword"
+              ]
+            },
+            {
+              "id": "plasma-pistol-bludgeon",
+              "name": "Plasma pistol and bludgeon",
+              "fixed": [
+                "fg.wg.plasma-pistol",
+                "fg.w.bludgeon"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "fg-ironhorn"
+    },
+    "text": "The pack's chieftain: a brutal veteran who can bark the herd forward, sending a cluster of warriors loping ahead before the fighting starts.",
+    "source": "team-fellgor-ravagers.pdf (Aug '26); docs/spec/13-teams.md section 19.2"
+  }
+]

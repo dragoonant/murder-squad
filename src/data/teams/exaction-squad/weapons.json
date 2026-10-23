@@ -1,0 +1,99 @@
+[
+  {
+    "id": "ex.w.combat-shotgun-proctor-close",
+    "name": "Combat shotgun",
+    "team": "exaction-squad",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "2+",
+    "dmg": {
+      "normal": 4,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 6
+      }
+    ],
+    "profileGroup": "ex.wg.combat-shotgun-proctor",
+    "profile": "close range",
+    "text": "The Proctor's combat shotgun at close range: a full blast into the face of the accused.",
+    "source": "team-exaction-squad.pdf (Jun '26); docs/spec/13-teams.md section 24.3"
+  },
+  {
+    "id": "ex.w.combat-shotgun-proctor-long",
+    "name": "Combat shotgun",
+    "team": "exaction-squad",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 2,
+      "crit": 2
+    },
+    "rules": [],
+    "profileGroup": "ex.wg.combat-shotgun-proctor",
+    "profile": "long range",
+    "text": "The Proctor's combat shotgun at long range: the same shells spread thin over distance.",
+    "source": "team-exaction-squad.pdf (Jun '26); docs/spec/13-teams.md section 24.3"
+  },
+  {
+    "id": "ex.w.shotpistol-proctor",
+    "name": "Shotpistol",
+    "team": "exaction-squad",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 3
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      }
+    ],
+    "text": "A short-barrelled scattergun carried in the Proctor's off hand.",
+    "source": "team-exaction-squad.pdf (Jun '26); docs/spec/13-teams.md section 24.3"
+  },
+  {
+    "id": "ex.w.dominator-maul-assault-shield",
+    "name": "Dominator maul & assault shield",
+    "team": "exaction-squad",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      },
+      {
+        "rule": "core.wr.shock"
+      }
+    ],
+    "text": "A charged maul behind a heavy riot shield: every parry turns two blows aside.",
+    "source": "team-exaction-squad.pdf (Jun '26); docs/spec/13-teams.md section 24.3"
+  },
+  {
+    "id": "ex.w.repression-baton-proctor",
+    "name": "Repression baton",
+    "team": "exaction-squad",
+    "type": "melee",
+    "atk": 3,
+    "hit": "3+",
+    "dmg": {
+      "normal": 2,
+      "crit": 3
+    },
+    "rules": [],
+    "text": "The Proctor's weighted riot baton, swung with practised economy.",
+    "source": "team-exaction-squad.pdf (Jun '26); docs/spec/13-teams.md section 24.3"
+  }
+]

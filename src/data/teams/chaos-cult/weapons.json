@@ -1,0 +1,67 @@
+[
+  {
+    "id": "cc.w.diabolical-stave-ranged",
+    "name": "Diabolical stave (ranged)",
+    "team": "chaos-cult",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 3,
+      "crit": 6
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 2
+      },
+      {
+        "rule": "core.wr.stun"
+      }
+    ],
+    "text": "The Demagogue's warp-touched staff, loosing a crackle of dark power at arm's length.",
+    "source": "team-chaos-cult.pdf (Jul '25); docs/spec/13-teams.md section 20.3"
+  },
+  {
+    "id": "cc.w.pistol",
+    "name": "Pistol",
+    "team": "chaos-cult",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 2,
+      "crit": 3
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      }
+    ],
+    "text": "A battered sidearm of the kind every cultist scavenges; the Demagogue, Iconarch and Devotees share this profile.",
+    "source": "team-chaos-cult.pdf (Jul '25); docs/spec/13-teams.md section 20.3"
+  },
+  {
+    "id": "cc.w.diabolical-stave-melee",
+    "name": "Diabolical stave (melee)",
+    "team": "chaos-cult",
+    "type": "melee",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 3,
+      "crit": 6
+    },
+    "rules": [
+      {
+        "rule": "core.wr.shock"
+      },
+      {
+        "rule": "core.wr.stun"
+      }
+    ],
+    "text": "The same staff swung as a cudgel, its touch numbing the victim's mind.",
+    "source": "team-chaos-cult.pdf (Jul '25); docs/spec/13-teams.md section 20.3"
+  }
+]

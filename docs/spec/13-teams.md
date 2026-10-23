@@ -1,4 +1,4 @@
-# 13 - Kill teams: Angels of Death and Kommandos (v1); Pathfinders, Hierotek Circle, Plague Marines and Wyrmblade (M9 batch A); Legionaries, Hand of the Archon, Hunter Clade and Hearthkyn Salvagers (M9 batch B); Kasrkin, Novitiates, Phobos Strike Team, Corsair Voidscarred, Warpcoven, Farstalker Kinband and Imperial Navy Breachers (M9 batch C)
+# 13 - Kill teams: Angels of Death and Kommandos (v1); Pathfinders, Hierotek Circle, Plague Marines and Wyrmblade (M9 batch A); Legionaries, Hand of the Archon, Hunter Clade and Hearthkyn Salvagers (M9 batch B); Kasrkin, Novitiates, Phobos Strike Team, Corsair Voidscarred, Warpcoven, Farstalker Kinband and Imperial Navy Breachers (M9 batch C); Blooded, Fellgor Ravagers, Chaos Cult, Goremongers, Scout Squad, Tempestus Aquilons and Exaction Squad (M10 batch D)
 
 Rule IDs: `T-AOD.<n>` and `T-KOM.<n>`. Tables are written so each row becomes one JSON record. Sources: the two team PDF extracts (August 2026 errata state for Angels of Death, June 2026 commentary for Kommandos) cross-checked against the Wahapedia Kommandos copy and a visual check of the Angels of Death datacard pages. All rule text is restated in our own words; names of teams, operatives, weapons and ploys are used as printed. Core terms are defined in `10-rules-core.md` (cited R-x.y). `UNCLEAR:` lines flag extraction problems; each states how it was resolved.
 
@@ -4592,3 +4592,2280 @@ Every rule maps onto the batch A, B and C layers except these, each built team-l
 - Team-local fallbacks (17.9): negative-APL scrub for Rebreathers, operative-intervening geometry for Breachwall, head-point visibility for the C.A.T. Unit, `removeEffects` swap for Command Breach, partner pick as the Breach and Clear opt-in.
 - RULING lines expected: Gunner selection (Corrected), lone half selection, keyword spelling, Sergeant bolt pistol, meltagun Dmg, plasma gun range, Command Breach swap, Group Activation, Emboldened scope, C.A.T. Unit bar, C.A.T. Unit and Fall Back, Gheistskull flight, Machine target protection, C.A.T. Unit visibility, starting count, Spot use and end, Breachwall intervening and selection, Shield blocks, Boost timing, Grenadier allowance, Weld Shut, Breach Point, Wayfind and the Comms Device, Remote Control, Detonate shooting, Interference Pulse, Void Armour sweeping and Grenadier, Breach and Clear opt-in, order marker placement, Close Assault and retaliating, Brace for Counterattack, Overwhelm Target errata (Corrected) and partner, Blitz conditions, Lock It Down, Deck Hand errata (Corrected), Accessible and hatch, Rebreathers APL and Shock, Slugs heavy shotgun and count, Combat Stimms, System Override Device.
 - Gotchas: section 17.10. Eleven operatives (twelve with both Machines); the kill op count skips Expendable Machines. Group Activation is forced; Breach and Clear is optional and switches Group Activation off for its pair. The C.A.T. barred state must never leave the seat stuck (it counts as expended for counteracting and the TP may end with it ready).
+
+## Teams added in M10 batch D (Blooded, Fellgor Ravagers, Chaos Cult, Goremongers, Scout Squad, Tempestus Aquilons, Exaction Squad)
+
+Sections 18 to 24 use the layout of sections 11 to 17 (MECH and CLASS lines, survey, gotchas, Engine map, Implementer
+brief). The batch D engine prep built the shared capabilities below (`00-architecture.md` section 11, row M10 batch D
+prep, tests GEN-099 to GEN-110 in `tests/engine/generic-e.test.ts`); every team keeps using the batch A, B and C
+layers listed above. The implementer rules above apply unchanged, with id prefixes `bl.`, `fg.`, `cc.`, `gm.`, `ss.`,
+`ta.`, `ex.` and figure prefixes `bl-`, `fg-`, `cc-`, `gm-`, `ss-`, `ta-`, `ex-` (v2 concept slugs
+`<prefix><operative>[-<loadout or variant>]`, one body per loadout in the client file's `loadoutBodies`, every
+archetype in `standIns` until its GLB is in the manifest). Each team is scaffolded behind `"playable": false` with its
+leader datacard and the leader's weapons only.
+
+Survey result: of the guessed gaps, two needed a shared capability (Chaos Cult mutation, Tempestus Aquilons whole-batch
+deployment above the killzone) and the rest fit the existing layer. The Blooded token economy is a pool plus a token
+(`pools.ts`, `tokens.ts`) driven by a 0 CP gambit; Goremongers blood is a capped token; Fellgor frenzy is team hooks on
+top of the new kill log; the Exaction Cyber-mastiff is a joint activation (`joinActivation`) with team bans; Scout
+Squad infiltration is the new pre-battle step. What did need a shared capability:
+
+| Capability | Where | What it gives a team |
+|---|---|---|
+| Change of datacard (transformOperative) | `src/engine/transform.ts` (`transformOperative(ctx, opId, toCardId, { keepWoundsLost?, loadout? })`, `transformProblem`); event `OperativeTransformed`; datacard field `selectable: false` (data and runtime), snapshotted with its team (`bundle.snapshotData`), accepted by validate-data outside every slot; client feed line, the figure follows the new card | Chaos Cult Mutation: Devotee to Mutant to Torment mid-battle, keeping id, order, readiness, the activation in progress, APL effects, tokens, picks and equipment weapons; wounds lost carry over (never below 1); a bigger base that no longer fits moves to the nearest legal spot within 6" |
+| Kill log (killLog) | `src/engine/kills.ts` (`state.kills: KillRecord[]`, `killsSince`, `lastKillOf`, `scoreAsIncapacitated`); `Operative.incapacitatedBy` set in `inflict`; lifecycle hook `operative.removed` (`OperativeRemovedData { killerId, cause }`, cause `attack`, `direct`, `offboard` or `scored`), run once per removal from the per-step removal pass | kills of any cause with their killer (Reward Earned, Mutation after a kill, Marked for Justice, gore and token gains); Frenzy counts for the kill op while the operative stays (`scoreAsIncapacitated`; the later removal is not counted or logged again). Decisions after a kill go to the next reaction point; the `operative.killed` ploy window still covers attack kills only |
+| Re-roll value bans (rerollBannedValues) | provider `rerollBannedValues(state, { kind, rollerId, opponentId, defence })`; `attack-common.banGrantValues` narrows the grants `attackStats` / `defenceStats` return (odds and the default policy follow), `rerollBannedFor` filters the Command Re-roll and `parseReroll` refuses | Sinister Trophies, Strobing Phosphor-lumen: attack dice showing 1 cannot be re-rolled |
+| Pre-battle choices (preBattleChoices) | provider `preBattleChoices(state, seat)`; setup step `preBattle` after the last operative is set up and before TP1; one `ability.choice` with `context.preBattle` at a time, seats alternating from the setup initiative holder, a pass ends that seat; the offer's code hook calls `setup.preBattleChoiceDone(ctx)`; a free action started there (`startFreeAction`) calls it from its frame resume | Scout Squad Forward Scouting (free Reposition, picks), Tempestus Aquilons Drop markers, Blooded Regular Dosage |
+| APL decreases ignored, live flags | provider `flags` may return `ignoreAplDecreases` (`OperativeFlags.ignoreAplDecreases`, read by `effectiveApl`: only increases count); `refreshFlags` now runs after every accepted step (`apply.afterAction`), so position-based `flags` are current; the two local APL sums in `abilities.ts` now call `effectiveApl` | Mirror-visor, Engendered Focus, Toxic Blessings; Gruelling Disciplinarian's ignore-injury aura |
+| Extra cover saves only (extraCoverSaves) | provider `extraCoverSaves(state, op)` read in the shared `afterDefenceRoll` handler after Stealthy | Blooded and Scout Squad Camo Cloak (one more cover save, never a crit) |
+| One-seat markers | `Marker.pickableBy?: Seat` (`markers.markerOffers`) | Goremongers Bloody Cadaver |
+| Charge mid-action window | window `firefight.chargeMoved` (the mover's owner, between a Charge's move and the end of the action; resume `charge.moved`), the twin of `firefight.fallBackMoved` | Goremongers Rake, Blooded Avalanche of Muscle |
+| Before-damage shoot window | window `shoot.beforeResolve` (both seats, attacker first) after blocks and before any damage of the sequence; `AttackSequence.unblocked { normal, crit }` holds what will inflict damage and may be lowered; damage is now dealt in shoot step `resolve` | Goremongers Drag (pull, then discard unblocked successes), Impending Apotheosis |
+| Whole-batch set-aside (setAsideBatches) | provider `setAsideBatches(state, seat) -> { skipFirst? }`; `SetupState.batches`, `deploy.aside`; the batch's first answer decides; a batch going aside offers no deployment (`context.wholeBatchAside`, empty `constraints.operativeIds`) and refuses one; the shared AI sets aside the rest of such a batch | Tempestus Aquilons Drop Insertion (batches two and three may go above, never the first) |
+| Spots on raised floors | `SpotOpts.levels` (also sample terrain floors) and `SpotOpts.notUnderVantage` in `reserve.placementSpots` | Tempestus Aquilons landing on Vantage; transform re-placement |
+
+Not built (each section's survey names the team-local fallback and its RULING): an interrupting activation (Execution
+Order), a window after the weapon pick (`shoot.weaponSelected`: Long Arm, Special Issue Shells), reactions before
+removal for causes other than attacks (Gunfight, Destructive Demise, Explosive and Bitter Demise outside attacks),
+counteract ploys with a cost (Gorethirst), a move through enemy control range (Cleaver Flurry, done with a team path),
+a strike owed by an incapacitated fighter (Wretched), ending an attack sequence for both sides (Frenzy, done with team
+damage hooks), per-die defender choices (Vile Blessing, Impending Apotheosis in fights), a veto on ending an
+activation (forced landing), per-batch set-up decisions beyond the pre-battle step, move truncation on a team mine
+(Booby Trap), loadout stat changes (Assault Shield: set `op.save` at set-up), a stun-test hook (Pox Bomb), thrown melee
+weapons as Shoot weapons (Wrist Chains: `ownGrenades.weapons` twin records), and activation choices that are not
+actions (Guidance and Experience: a 0 AP unique action). None blocks a team. The shared AI still lands operatives only
+through `/emerge/` actions and sets aside per operative under a third cap (`src/ai/setup.ts`, `moves.ts`): the Tempestus
+Aquilons implementer extends both for `ta.a.land` and whole batches.
+
+## 18. Blooded
+
+Rule IDs `T-BL.<n>`, checklist IDs `TEAM-BL-<nnn>`. Sources: the Blooded team PDF (Kill Team 2024, Faction version 3, April '26, including its update log with the April '26 errata and the previous errata; the flow and layout extracts were read together) as the primary source, cross-checked against the Wahapedia Blooded page (faction version 3, April 2026; its FAQ panel is empty for this team), plus the core rules page for terms. Facts read from the PDF are Confirmed; our own calls are Unsourced. The two sources agree on every stat line, weapon profile and base size; in one place the PDF's update log says more than both card texts (Glory Kill, T-BL.36) and we apply the update log. All rule text is restated in our own words; team, operative, weapon, ploy and equipment names are used as printed. Core terms per `10-rules-core.md` (R-x.y), missions and universal equipment per `11-missions.md` (M-x.y). Ploys and equipment are one bullet per record so each can carry its MECH line.
+
+Weapon type column: R = ranged, M = melee. Dmg is `normal/crit`. Base is in mm.
+
+### 18.1 Team selection
+
+- T-BL.1 Roster: 1 TRAITOR CHIEFTAIN (leader), plus exactly 9 picks from the main list (T-BL.2), plus exactly 4 selections from the heavy list (T-BL.3). The ENFORCER and the OGRYN each count as two selections there, so the heavy list adds two to four operatives and the kill team has 12 to 14 operatives.
+  - MECH: roster validator: leader slot count 1 (`bl.chieftain`), main slot count 9, heavy slot count 4 with `weights: { "bl.enforcer": 2, "bl.ogryn": 2 }` | CLASS: data
+  - RULING: Blooded heavy list fill | the four heavy-list selections must be filled exactly (Enforcer plus Ogryn, Enforcer or Ogryn plus two Troopers, or four Troopers); never fewer | the selection list says "4 BLOODED operatives selected from", the same wording as the exact main-list count | Confirmed
+- T-BL.2 Main list: BRIMSTONE GRENADIER, BUTCHER, COMMSMAN, CORPSEMAN, FLENSER, GUNNER (four entries, one per special weapon: flamer, grenade launcher, meltagun, plasma gun; each with a bayonet), SHARPSHOOTER, THUG, TRENCH SWEEPER, TROOPER. TROOPER may be taken any number of times; every other entry at most once, so up to four GUNNER operatives, each with a different weapon. The four GUNNER entries and the SHARPSHOOTER together are capped at three operatives. The plasma-gun GUNNER and the Chieftain's plasma pistol option cannot both be taken (one plasma weapon per kill team).
+  - MECH: one Gunner datacard `bl.gunner` with a weapon pick (T-BL.4); main slot `repeatable: ["bl.trooper", "bl.gunner"]`; `selection.loadoutCaps: [{ label: "Gunner weapon", weapons: ["bl.w.flamer", "bl.wg.grenade-launcher", "bl.w.meltagun", "bl.wg.plasma-gun"], max: 1, each: true }, { label: "Plasma weapon", weapons: ["bl.wg.plasma-gun", "bl.wg.plasma-pistol"], max: 1 }]`; `selection.caps: [{ label: "Gunners and Sharpshooter", from: ["bl.gunner", "bl.sharpshooter"], max: 3 }]` | CLASS: data
+  - RULING: Blooded Gunner model | one GUNNER datacard taken up to three times, each of its four weapon options at most once (loadout cap `each`), rather than four Gunner cards | the PDF has a single Gunner datacard and lists each Gunner weapon as its own entry, which "each operative only once" turns into "each weapon only once" (the Kasrkin Gunner ruling) | Confirmed
+  - RULING: Blooded combined cap scope | the three-operative cap covers the four GUNNER entries and the SHARPSHOOTER only | both sources mark exactly those five entries with footnote 1 | Confirmed
+  - RULING: Blooded plasma exclusion | a roster with the plasma-gun Gunner cannot give the Chieftain the plasma pistol set, and the reverse | footnote 2 marks both options and says only one operative may carry a plasma weapon | Confirmed
+  - RULING: Blooded Corpseman entry | the CORPSEMAN is on the main list | the April '26 update log adds it to the second arrow list and both current sources print it | Confirmed
+- T-BL.3 Heavy list: ENFORCER (counts as two), OGRYN (counts as two), TROOPER. The "each operative only once, except TROOPER" limit covers this list as well, so at most one ENFORCER and one OGRYN. A TROOPER taken here is the same datacard as a main-list TROOPER (Group Activation links all of them).
+  - MECH: heavy slot `from: ["bl.enforcer", "bl.ogryn", "bl.trooper"]`, `repeatable: ["bl.trooper"]`, slot `weights` | CLASS: data
+  - RULING: Blooded once-only scope | "other than TROOPER operatives, each operative on this list only once" applies to both the main and the heavy list | the sentence follows the heavy list and names no single list; the Enforcer and Ogryn would otherwise be the only unrestricted specialists | Unsourced
+- T-BL.4 Loadouts:
+  - CHIEFTAIN: exactly one of seven sets: autopistol and chainsword; autopistol and power weapon; laspistol and chainsword; laspistol and power weapon; bolt pistol and chainsword; boltgun and bayonet; plasma pistol (both profiles) and improvised blade. (The card's "autopistol or laspistol; chainsword or power weapon" line is four sets.)
+  - GUNNER: bayonet plus one of flamer, grenade launcher (frag and krak), meltagun, plasma gun (standard and supercharge).
+  - BRIMSTONE GRENADIER: diabolyk bomb, lasgun, bayonet (fixed). CORPSEMAN: lasgun, bayonet, stimm needle (fixed). COMMSMAN, TROOPER: lasgun and bayonet (fixed). SHARPSHOOTER: long-las (both profiles) and bayonet (fixed). BUTCHER: power weapon & cleaver. ENFORCER: bolt pistol and power fist. FLENSER: skinning blades. OGRYN: power maul & mutant claw. THUG: heavy club. TRENCH SWEEPER: shotgun and bayonet & shield.
+  - MECH: datacard `weapons.options` (`sets` for the Chieftain, a `from` slot for the Gunner plus fixed bayonet); profile groups bring every profile | CLASS: data
+- T-BL.5 Archetypes: SEEK & DESTROY, INFILTRATION (tac ops out of scope for v1).
+  - MECH: team.json `archetypes: ["seek-and-destroy", "infiltration"]` | CLASS: data
+- T-BL.6 Keywords and terms: every operative carries BLOODED and CHAOS plus its role keyword (CHIEFTAIN also LEADER). A **token holder** is a friendly BLOODED operative that has one of your Blooded tokens (T-BL.33); the Sharpshooter counts as one while shooting its A Name Whispered In Blood target (T-BL.28). An operative is **under the Gaze** while it has your Gaze token (T-BL.34), and the Chieftain also while Lead With Strength says so (T-BL.9). **Wholly within your opponent's territory** uses the shared territory polygon (`equipment.territoryOf`) for the other seat and the wholly-within base test (R-8.3).
+  - MECH: keyword lists in operatives.json; team helpers `isHolder(state, op, targetId?)`, `underGaze(state, op, targetId?)`, `inEnemyTerritory(state, op)` in the team file | CLASS: data (helpers team-hook)
+  - RULING: Blooded PDF keyword spacing | the faction keyword is BLOODED | the PDF prints "BLOODED ," with a stray space, Wahapedia prints BLOODED | Confirmed
+- T-BL.7 Team-local weapon rules: **Blood Offering** (power weapon & cleaver, T-BL.12), **Stalk** (skinning blades, T-BL.21), **Shield** (bayonet & shield, T-BL.30). Every other weapon rule on the cards is core (R-10), including Heavy (Reposition only) on the diabolyk bomb and Heavy (Dash only) on the stationary long-las.
+  - MECH: weapon records carry `{ "rule": "bl.a.wr-blood-offering" }`, `{ "rule": "bl.a.wr-stalk" }`, `{ "rule": "bl.a.wr-shield" }` (ability records in abilities.json), resolved by the team file; Heavy variants as `{ "rule": "core.wr.heavy", "only": "reposition" | "dash" }` | CLASS: data (rules team-hook)
+
+### 18.2 Operative stats
+
+| Operative | APL | Move | Save | Wounds | Base | Keywords |
+|---|---|---|---|---|---|---|
+| TRAITOR CHIEFTAIN | 2 | 6" | 5+ | 8 | 25 | BLOODED, CHAOS, LEADER, CHIEFTAIN |
+| TRAITOR BRIMSTONE GRENADIER | 2 | 6" | 5+ | 7 | 25 | BLOODED, CHAOS, BRIMSTONE GRENADIER |
+| TRAITOR BUTCHER | 2 | 6" | 5+ | 8 | 25 | BLOODED, CHAOS, BUTCHER |
+| TRAITOR COMMSMAN | 2 | 6" | 5+ | 7 | 25 | BLOODED, CHAOS, COMMSMAN |
+| TRAITOR CORPSEMAN | 2 | 6" | 5+ | 7 | 25 | BLOODED, CHAOS, CORPSEMAN |
+| TRAITOR ENFORCER | 2 | 6" | 4+ | 9 | 32 | BLOODED, CHAOS, ENFORCER |
+| TRAITOR FLENSER | 2 | 6" | 5+ | 7 | 25 | BLOODED, CHAOS, FLENSER |
+| TRAITOR GUNNER | 2 | 6" | 5+ | 7 | 25 | BLOODED, CHAOS, GUNNER |
+| TRAITOR OGRYN | 2 | 6" | 5+ | 16 | 40 | BLOODED, CHAOS, OGRYN |
+| TRAITOR SHARPSHOOTER | 2 | 6" | 5+ | 7 | 25 | BLOODED, CHAOS, SHARPSHOOTER |
+| TRAITOR THUG | 2 | 6" | 4+ | 7 | 25 | BLOODED, CHAOS, THUG |
+| TRAITOR TRENCH SWEEPER | 2 | 6" | 4+ | 9 | 25 | BLOODED, CHAOS, TRENCH SWEEPER |
+| TRAITOR TROOPER | 2 | 6" | 5+ | 7 | 25 | BLOODED, CHAOS, TROOPER |
+
+Notes: every card is APL 2 and Move 6", the leader included. Only the Enforcer (32mm) and the Ogryn (40mm, round) have larger bases. Stats and bases agree between the PDF and Wahapedia for all thirteen cards. Datacard ids `bl.<operative>` (`bl.chieftain`, `bl.brimstone-grenadier`, `bl.butcher`, `bl.commsman`, `bl.corpseman`, `bl.enforcer`, `bl.flenser`, `bl.gunner`, `bl.ogryn`, `bl.sharpshooter`, `bl.thug`, `bl.trench-sweeper`, `bl.trooper`); display names keep "Traitor".
+
+### 18.3 Weapon profiles
+
+| Weapon | Type | Atk | Hit | Dmg | Rules | Held by |
+|---|---|---|---|---|---|---|
+| Autopistol | R | 4 | 3+ | 2/3 | Range 8" | Chieftain (option) |
+| Bolt pistol | R | 4 | 3+ | 3/4 | Range 8" | Chieftain (option), Enforcer |
+| Boltgun | R | 4 | 3+ | 3/4 | none | Chieftain (option) |
+| Laspistol | R | 4 | 3+ | 2/3 | Range 8" | Chieftain (option) |
+| Plasma pistol (standard) | R | 4 | 3+ | 3/5 | Range 8", Piercing 1 | Chieftain (option) |
+| Plasma pistol (supercharge) | R | 4 | 3+ | 4/5 | Range 8", Hot, Lethal 5+, Piercing 1 | Chieftain (option) |
+| Lasgun | R | 4 | 4+ | 2/3 | none | Brimstone Grenadier, Commsman, Corpseman, Trooper |
+| Diabolyk bomb | R | 4 | 3+ | 4/3 | Range 6", Blast 2", Devastating 2, Limited 1, Heavy (Reposition only), Piercing 1, Saturate | Brimstone Grenadier |
+| Flamer | R | 4 | 2+ | 3/3 | Range 8", Saturate, Torrent 2" | Gunner (option) |
+| Grenade launcher (frag) | R | 4 | 4+ | 2/4 | Blast 2" | Gunner (option) |
+| Grenade launcher (krak) | R | 4 | 4+ | 4/5 | Piercing 1 | Gunner (option) |
+| Meltagun | R | 4 | 4+ | 6/3 | Range 6", Devastating 4, Piercing 2 | Gunner (option) |
+| Plasma gun (standard) | R | 4 | 4+ | 4/6 | Piercing 1 | Gunner (option) |
+| Plasma gun (supercharge) | R | 4 | 4+ | 5/6 | Hot, Lethal 5+, Piercing 1 | Gunner (option) |
+| Long-las (mobile) | R | 4 | 3+ | 3/4 | none | Sharpshooter |
+| Long-las (stationary) | R | 4 | 2+ | 3/3 | Devastating 1, Heavy (Dash only), Silent | Sharpshooter |
+| Shotgun | R | 4 | 3+ | 3/3 | Range 6" | Trench Sweeper |
+| Bayonet (Chieftain) | M | 3 | 3+ | 2/3 | none | Chieftain (option) |
+| Chainsword | M | 4 | 3+ | 4/5 | none | Chieftain (option) |
+| Improvised blade | M | 4 | 3+ | 2/3 | none | Chieftain (option) |
+| Power weapon | M | 4 | 3+ | 4/6 | Lethal 5+ | Chieftain (option) |
+| Bayonet | M | 3 | 4+ | 2/3 | none | Brimstone Grenadier, Commsman, Corpseman, Gunner, Sharpshooter, Trooper |
+| Stimm needle | M | 3 | 5+ | 1/4 | Lethal 5+ | Corpseman |
+| Power weapon & cleaver | M | 4 | 3+ | 4/6 | Ceaseless, Lethal 5+, Blood Offering | Butcher |
+| Power fist | M | 4 | 4+ | 5/7 | Brutal | Enforcer |
+| Skinning blades | M | 4 | 3+ | 3/4 | Ceaseless, Stalk | Flenser |
+| Power maul & mutant claw | M | 4 | 3+ | 5/6 | Rending, Shock | Ogryn |
+| Heavy club | M | 4 | 3+ | 4/4 | Brutal | Thug |
+| Bayonet & shield | M | 3 | 3+ | 2/3 | Shield | Trench Sweeper |
+
+Notes: 29 profiles over 25 weapon records. Ids: `bl.w.autopistol`, `bl.w.bolt-pistol`, `bl.w.boltgun`, `bl.w.laspistol`, `bl.wg.plasma-pistol` (standard, supercharge), `bl.w.lasgun`, `bl.w.diabolyk-bomb`, `bl.w.flamer`, `bl.wg.grenade-launcher` (frag, krak), `bl.w.meltagun`, `bl.wg.plasma-gun` (standard, supercharge), `bl.wg.long-las` (mobile, stationary), `bl.w.shotgun`, `bl.w.bayonet-chieftain`, `bl.w.chainsword`, `bl.w.improvised-blade`, `bl.w.power-weapon`, `bl.w.bayonet`, `bl.w.stimm-needle`, `bl.w.power-weapon-cleaver`, `bl.w.power-fist`, `bl.w.skinning-blades`, `bl.w.power-maul-claw`, `bl.w.heavy-club`, `bl.w.bayonet-shield`. The Chieftain's bayonet (Hit 3+) is better than everyone else's (4+), so it is a separate record; the Enforcer's bolt pistol equals the Chieftain's and shares the record. Gunner weapons are Hit 4+ (the Kasrkin ones are 3+); do not copy the Kasrkin records. The Chieftain records already exist from the batch D scaffold.
+
+UNCLEAR (resolved): the diabolyk bomb prints Dmg 4/3 and the meltagun 6/3. Kept as printed. RULING: Blooded low crit Dmg | diabolyk bomb 4/3 and meltagun 6/3 as printed, Devastating on each retained crit as well | identical in the PDF and Wahapedia; never tune printed numbers | Confirmed
+UNCLEAR (resolved): the Chieftain's bayonet is Hit 3+ while every other card's is 4+, in both sources. RULING: Blooded Chieftain bayonet | Hit 3+, a separate record from the 4+ bayonet | both sources print 3+ on the Chieftain card and 4+ everywhere else | Confirmed
+
+### 18.4 Operative rules and unique actions
+
+- T-BL.8 **Blooded Icon** (Chieftain): once per TP, when a friendly token holder is incapacitated while the Chieftain is within 6" of it, the token goes back to your unassigned Blooded tokens instead of being lost. A Blooded Icon token marks the use.
+  - MECH: hook `operative.incapacitated` (before removal, any cause): holder has `bl.blooded`, `bl.chieftain` active and within 6", TP ledger `bl.icon` unused -> `gainPool(ctx, seat, 'bl.blooded', 1)`; the operative's token goes with it on removal | CLASS: team-hook
+  - RULING: Blooded Icon use | automatic (it has no downside); the Chieftain's own token counts (an operative is within any distance of itself); the regained token is unassigned until the next Blooded gambit | R-8.3; the card says "regain that token" and assignment happens only in the gambit | Unsourced
+- T-BL.9 **Lead With Strength** (Chieftain): while the Chieftain is a token holder or is wholly within your opponent's territory, it counts as under the Gaze.
+  - MECH: `underGaze(state, op)` returns true for `bl.chieftain` when it holds `bl.blooded` or `inEnemyTerritory` | CLASS: team-hook
+  - RULING: Lead With Strength without a token | a Chieftain under the Gaze only through territory gets no Gaze crit (that needs Accurate 1 from holding a token, T-BL.35) but qualifies for Moment of Repute (T-BL.41) | the Gaze crit is worded on "that" token holder; Moment of Repute asks only for the Gaze | Unsourced
+  - RULING: Lead With Strength errata | the territory clause is part of the rule | the previous errata in the update log, also in both card texts | Confirmed
+- T-BL.10 **Grenadier** (Brimstone Grenadier): may use frag and krak grenades (M-5.6) even when the team did not pick them, without spending the team's grenade uses; whenever it uses a frag or krak grenade (its own or the team's), that grenade's Hit improves by 1 (to 3+).
+  - MECH: provider `ownGrenades` returns `weapons: { frag: 1, krak: 1 }` for `bl.brimstone-grenadier`; `modifyAttackDice` hitDelta -1 for frag and krak weapons it shoots | CLASS: team-hook
+  - RULING: Blooded Brimstone Grenadier allowance | its own allowance is frag 1 and krak 1 per battle, kept apart from the team's picks | the card gives no number; the T-AOD.9, T-PF.9, T-HK.13 and T-NB.23 precedents use one each | Unsourced
+- T-BL.11 **Explosive Demise** (Brimstone Grenadier): when it is incapacitated, before it is removed, you may roll two D6 (one D6 if it is within an enemy's control range). If any die shows 4+, every other operative visible to and within 2" of it (friend or foe) takes D3+2 damage, rolled separately for each; D6+2 instead if it has not used its diabolyk bomb this battle.
+  - MECH: hook `operative.incapacitated`; inside an attack's removal queue it raises an `ability.choice` (use / decline) like Boom! (T-KOM.8) and the choice's code hook calls `continueRemovals`; outside an attack (mines, direct damage, `effects.removeNow`) it cannot pause, so the team decides; `directDamage` per operative; "unused" = the Limited 1 counter of `bl.w.diabolyk-bomb` is 0 | CLASS: team-hook
+  - RULING: Explosive Demise choice | inside an attack's removals the owner chooses; outside attacks (no decision point) it is used when at least one enemy and no more friendly than enemy operatives would be caught; the AI uses the same test | the rule is optional; lifecycle hooks outside attacks cannot raise decisions (00-architecture batch C shared) | Unsourced
+  - RULING: Explosive Demise errata | the rule triggers on incapacitation, before removal, by any cause | the previous errata in the update log; both card texts have it | Confirmed
+- T-BL.12 **Blood Offering** (Butcher, power weapon & cleaver): the first time in a sequence that the Butcher strikes with a crit while fighting or retaliating with this weapon, you gain one Blooded token (unassigned).
+  - MECH: attack hook `beforeStrike` (`BeforeStrikeData.die` kind crit), per-sequence ledger, `gainPool(ctx, seat, 'bl.blooded', 1)` | CLASS: team-hook
+- T-BL.13 **Unholy Sustenance** (Butcher): when the Butcher incapacitates the enemy operative in a sequence where it is fighting or retaliating, it regains up to D3 lost wounds. Symbols of Bloody Worship (T-BL.46) adds to this.
+  - MECH: attack hook `onFightResolved` (enemy fighter at 0 wounds, Butcher still active) -> `effects.regainWounds(D3)` | CLASS: team-hook
+- T-BL.14 **Regular Dosage** (Corpseman): before the battle, if the Corpseman is in the kill team, you may give one other friendly BLOODED operative one STIMM rule (Enraged or Fortified, not Rejuvenated) for the battle.
+  - MECH: provider `preBattleChoices(state, seat)` offers one `ability.choice` (operative, stimm) when `bl.corpseman` is on the roster and the choice is unused; the hook adds a stimm token (`bl.stimm.enraged` / `bl.stimm.fortified`, expiry battle) and records it in the per-operative stimm ledger, then calls `setup.preBattleChoiceDone` | CLASS: generic:preBattleChoices
+  - RULING: Regular Dosage timing | the pick is made in the pre-battle step after set-up and before TP1, not at the end of the Select Operatives step | every rostered operative is deployed in this engine, so "selected for deployment" is always true, and nothing between the two moments reads a stimm | Unsourced
+- T-BL.15 **STIMMS** (Corpseman, 1 AP): pick one friendly BLOODED operative in the Corpseman's control range (the Corpseman included) and give it one STIMM rule (T-BL.16): Rejuvenated takes effect at once; Enraged or Fortified lasts the battle. Each STIMM rule can be given to each operative at most once per battle (Regular Dosage counts). Not while in an enemy's control range.
+  - MECH: unique action with `ability.choice` over (operative, stimm) pairs not yet in the per-operative ledger `bl.stimms[opId]`; Rejuvenated -> `effects.regainWounds(2D3)`; Enraged / Fortified -> battle tokens `bl.stimm.enraged` / `bl.stimm.fortified` | CLASS: team-hook
+  - RULING: STIMMS self-target and limit | the Corpseman may pick itself; Rejuvenated is also once per operative per battle; a stimm given by Regular Dosage cannot be picked again for that operative | an operative is within any distance of itself (R-8.3); the card's limit names "each STIMM rule", Rejuvenated included | Unsourced
+- T-BL.16 **STIMM rules**: **Rejuvenated**: the operative regains up to 2D3 lost wounds. **Enraged**: its melee weapons have Relentless. **Fortified**: each time an attack die would deal it 3 or more damage, roll a D6; on 5+ that damage is 1 less.
+  - MECH: Enraged `modifyWeaponRules` adds `core.wr.relentless` to melee weapons; Fortified `onDamageInflicted` (sources `normal`, `crit`, `strike-normal`, `strike-crit`, `amount >= 3`) rolls a D6 | CLASS: team-hook
+  - RULING: Fortified scope | Devastating damage and damage from rules are never reduced; each attack die gets its own roll; the 3 is checked after earlier reductions (Tough, T-BL.29, does not apply to the same operative) | R-5.15 says Devastating damage is not damage from an attack die | Confirmed
+- T-BL.17 **SIGNAL** (Commsman, 1 AP, SUPPORT): pick another friendly BLOODED operative (not an OGRYN) visible to and within 6"; it gets APL +1 until the end of its next activation. Not while in an enemy's control range.
+  - MECH: unique action with friendly-target filter (other, not OGRYN, visible, within 6" plus `core-hooks.commsBonus(state, seat, user)`); `effects.aplChangeNextActivation(+1)` | CLASS: team-hook
+  - RULING: Signal and the Comms Device | Signal is a SUPPORT rule, so the 6" grows by 3" while the Commsman controls the Comms Device marker | the action carries the SUPPORT keyword (the batch C Comms Device ruling) | Confirmed
+- T-BL.18 **SACRILEGIOUS ACTUATION** (Commsman, 1 AP): you gain one Blooded token (unassigned). Only while the Commsman is a token holder and not in an enemy's control range.
+  - MECH: unique action gated on `hasToken(bl.blooded)`; `gainPool(ctx, seat, 'bl.blooded', 1)` | CLASS: data (gate team-hook)
+- T-BL.19 **Gruelling Disciplinarian** (Enforcer): (a) a friendly BLOODED operative within 6" of the Enforcer ignores every stat change from being injured (Move and its weapons' Hit); (b) a friendly BLOODED operative activated within 6" of the Enforcer keeps ignoring them until the end of that activation, wherever it goes.
+  - MECH: provider `flags` returns `ignoreInjured: true` while an active `bl.enforcer` is within 6" (live, batch D refreshes flags after every step) or the operative's current activation is in the ledger `bl.disciplined` (written in `activation.start` when within 6", cleared at `activation.end`) | CLASS: generic:liveFlags
+  - RULING: Gruelling Disciplinarian scope | the Enforcer benefits itself; the distance is checked live (an operative that moves away loses it unless (b) applies); counteractions are not activations | an operative is within any distance of itself (R-8.3); the errata's second bullet names activation only | Unsourced
+  - RULING: Gruelling Disciplinarian errata | bullet (b) applies | the previous errata in the update log adds it; both card texts have it | Confirmed
+- T-BL.20 **ENFORCE** (Enforcer, 1 AP): pick another friendly BLOODED operative visible to and within 3". It may at once perform one 1 AP action for free, moving no more than 2" in it. A COMMSMAN picked this way cannot perform SACRILEGIOUS ACTUATION or SIGNAL. Not while in an enemy's control range.
+  - MECH: unique action with friendly-target filter; `firefight.startDelegatedAction({ oneApOnly: true, maxMove: 2, deny: ['ability:bl.a.sacrilegious-actuation', 'ability:bl.a.signal'] })` | CLASS: team-hook
+  - RULING: Enforce action cost | the action's cost after modifiers must be exactly 1 AP (a Slow-witted Ogryn cannot Pick Up a marker this way); the free action is outside the operative's activation, so it may repeat that action when activated (R-3.9); a Charge or Reposition is capped at 2" | "a 1AP action" with the core free-action rule (the Seize the Initiative ruling, T-KS.30) | Unsourced
+- T-BL.21 **Stalk** (Flenser, skinning blades): while the Flenser fights or retaliates with this weapon and any part of a Light or Heavy terrain feature is within its control range, the weapon has Lethal 5+.
+  - MECH: `modifyWeaponRules` adds `core.wr.lethal` 5+ when a Light or Heavy terrain part lies within 1" of the Flenser's base | CLASS: team-hook
+  - RULING: Stalk terrain in control range | a terrain part is in the Flenser's control range when any of it is within 1" of the base; visibility is not tested for terrain | R-8.2's visibility test is written for operatives and markers; terrain within 1" is effectively touching | Unsourced
+- T-BL.22 **Wretched** (Flenser): (a) the Flenser may Charge while it has a Conceal order; (b) if it is incapacitated during a Fight action (fighting or retaliating), you may strike the enemy operative of that sequence with one of its unresolved successes before it is removed.
+  - MECH: (a) provider `chargeUnderConceal`; (b) attack hook `beforeIncapacitated` on the Flenser during a fight notes the best unresolved Flenser success (a crit if any) in a sequence ledger, and `onFightResolved` (sequence end, before removal) deals that success's Dmg (after `modifyDamage`) to the enemy fighter through `effects.directDamage` | CLASS: team-hook ((a) existing provider)
+  - RULING: Wretched last strike | automatic, using a crit if one is unresolved, otherwise a normal success; nothing when none is left; dealt at the end of the sequence, before any removal, so both fighters can fall | no shared `strikeOnIncapacitated` exists and `beforeIncapacitated` cannot raise decisions; the best die is always the owner's choice | Unsourced
+- T-BL.23 **Avalanche of Muscle** (Ogryn): when the Ogryn ends its move in a Charge action, you may deal D3 damage to one enemy operative within its control range.
+  - MECH: 0 CP offer (`ployRule.extraOffers`) in window `firefight.chargeMoved` for `bl.ogryn` (free Charges included) with an enemy pick among those in its control range; `effects.directDamage(D3)` with source `bl.a.avalanche-of-muscle` and killer the Ogryn | CLASS: generic:chargeMoved
+  - RULING: Avalanche of Muscle timing | offered between the Charge's move and the end of the action, so its damage belongs to the Charge (Symbols of Bloody Worship counts it); optional; the AI always uses it | "ends its move during the Charge action" | Unsourced
+- T-BL.24 **Chem-enhanced** (Ogryn): every change to the Ogryn's APL is ignored, and enemy Shock and Stun weapon rules do not affect it.
+  - MECH: provider `flags` returns `ignoreApl: true` for `bl.ogryn`; `modifyWeaponRules` removes `core.wr.shock` and `core.wr.stun` from an enemy weapon whose target or opponent is the Ogryn | CLASS: team-hook
+- T-BL.25 **Brute** (Ogryn): while the Ogryn has a Conceal order, Light terrain does not make it "in cover" for the opponent's choice of valid target (so it can be targeted while visible), but its cover save is unchanged.
+  - MECH: attack hook `beforeShootTargetSelect` re-adds a visible Conceal Ogryn whose selection cover comes only from Light parts (`coverForSelection` with Light parts filtered out returns false); `inCover` and the cover save are untouched | CLASS: team-hook
+- T-BL.26 **Slow-witted** (Ogryn): Pick Up Marker and mission actions (not Operate Hatch) cost the Ogryn 1 more AP.
+  - MECH: provider `actionCostDelta` +1 for `marker:pickUp` and `ability:<id>` whose ability keywords include MISSION, except the Operate Hatch action | CLASS: team-hook
+- T-BL.27 **Camo Cloak** (Sharpshooter): when an operative shoots the Sharpshooter and it can retain any cover saves, it retains one more. Not cumulative with the Vantage cover improvement.
+  - MECH: provider `extraCoverSaves(state, op)` returns 1 for `bl.sharpshooter`, 0 when the sequence's `improvedCover` (Vantage) is set | CLASS: generic:extraCoverSaves
+  - RULING: Blooded Camo Cloak | one extra cover save only, never a cover save as a crit, and Saturate still stops it | the Blooded card prints only the extra save (the Kasrkin card also offers the crit and ignores Saturate) | Confirmed
+- T-BL.28 **A Name Whispered In Blood** (Sharpshooter): STRATEGIC GAMBIT in the first TP: pick one enemy operative. For the rest of the battle, whenever the Sharpshooter shoots that enemy, it counts as a token holder under the Gaze.
+  - MECH: 0 CP strategy record `bl.p.name-whispered` in `strategy.gambit`, TP1 only, with the Sharpshooter in the killzone; enemy param (any enemy, no visibility); token `bl.nameWhispered` on the enemy (owner Blooded seat, battle); `isHolder` / `underGaze` with `targetId` true for the Sharpshooter shooting it | CLASS: team-hook
+  - RULING: A Name Whispered In Blood scope | the treatment applies only to the Sharpshooter's shooting at that enemy: Accurate 1 and the Gaze crit (T-BL.35), Glory Kill's Relentless, Reckless Aspirant's Punishing; it never counts towards the four holders of the Gaze test or for Moment of Repute | the rule is worded "whenever this operative is shooting that enemy operative" | Unsourced
+- T-BL.29 **Tough** (Thug): while the Thug fights, retaliates or is shot, an attack die with a Normal Dmg of 3 or more deals 1 less to it. Crits are not reduced.
+  - MECH: `onDamageInflicted` on the Thug for sources `normal` and `strike-normal` with the weapon's Normal Dmg >= 3 subtracts 1 | CLASS: team-hook
+- T-BL.30 **Shield** (Trench Sweeper, bayonet & shield): while it fights or retaliates with this weapon, each of its blocks can cancel two unresolved enemy successes instead of one.
+  - MECH: provider `blockCapacity` returns 2 for the Trench Sweeper's seat when its weapon is `bl.w.bayonet-shield` (Tangle pattern, option `block2:`) | CLASS: team-hook
+  - RULING: Shield pairing | a normal block cancels two normal successes, a crit block two successes of any kind; the two need not be blocked at once | the Tangle precedent for "block two unresolved successes" (R-6.5 kinds still apply) | Unsourced
+- T-BL.31 **Shielding** (Trench Sweeper): whenever it is activated you may use this rule: until the start of its next activation its Move is 2" less, and when an operative shoots it you may re-roll any of your defence dice. A Shielding token marks it.
+  - MECH: 0 CP offer in window `firefight.activationStart` (own activation of `bl.trench-sweeper`, after the order and before the first action); token `bl.shielding` (expiry `sourceNextActivation`, `sourceIncapacitated`); provider `moveDelta` -2; `modifyDefenceDice` adds `RerollGrant { mode: 'any' }` | CLASS: team-hook
+  - RULING: Shielding choice point | offered once per activation at its start, after the order; never in a counteraction; Move never below 4" (R-9.6), so an injured shielded Trench Sweeper moves 4"; the AI uses it when an enemy that could shoot it is visible and it does not plan to Charge | "whenever this operative is activated"; R-9.6 | Unsourced
+- T-BL.32 **Group Activation** (Trooper): when a Trooper is expended, your next activation must be another ready friendly BLOODED TROOPER, if you have one, before the opponent activates. When that second Trooper is expended, play passes to the opponent as normal (never more than two in a row). Counteracting is not an activation.
+  - MECH: provider `chainActivation` (Pathfinders and Wyrmblade pattern) | CLASS: team-hook
+
+### 18.5 Faction rules
+
+- T-BL.33 **BLOODED: gaining tokens**. Your Blooded tokens are a team resource. You gain one unassigned token (a) in the Ready step of each Strategy phase, (b) the first time each TP that an enemy operative is incapacitated (any cause), and (c) the first time each TP that a friendly operative is incapacitated while within 6" of an enemy operative. Gains from T-BL.12, T-BL.18 and T-BL.42 are also unassigned; T-BL.8 returns one.
+  - MECH: pool `bl.blooded` (`pools.gainPool`, HUD chip label "Blooded"); (a) hook `turningPoint.start`; (b) and (c) hook `operative.removed` (batch D killLog: every cause) with TP ledgers `bl.gain.enemy` / `bl.gain.friendly`; (c) measures from the removed operative's last position | CLASS: generic:killLog (pool existing)
+  - RULING: Blooded token gains | any cause counts (Hot, mines, Bitter Demise and Explosive Demise included); a friendly operative incapacitated within 6" of an enemy counts even if its own team did it; the token arrives when the operative is removed | the card names no cause; removal follows incapacitation within the same action (R-5.18) | Unsourced
+- T-BL.34 **BLOODED gambit**: once per Strategy phase, as a STRATEGIC GAMBIT (no CP), assign any number of your unassigned tokens to friendly BLOODED operatives that hold none (one token per operative at most). Then, if four or more friendly operatives in the killzone hold a token, you may pick one of them to be under the Gaze of the Gods until the end of the TP. An assigned token stays on its operative for the battle; it is lost when the operative is removed (unless T-BL.8).
+  - MECH: 0 CP strategy record `bl.p.blooded` in `strategy.gambit` (the Doctrina / Skill at Arms pattern); its code hook loops `ability.choice` (assign one token to an eligible operative, or stop) moving one from the pool (`spendPool`) to the operative (`tokens.addToken` kind `bl.blooded`, cap 1, expiry battle), then, with four or more holders, `ability.choice` for the Gaze (token `bl.gaze`, expiry `turningPointEnd`), then `resumeGambit` | CLASS: team-hook (pool and tokens existing)
+  - RULING: Blooded gambit use | usable with no unassigned tokens (to pick a Gaze only); tokens never leave an operative except at removal; the Gaze pick is optional, the AI always makes it (preferring the Chieftain or the best melee operative) and always assigns every token it can | the card gives tokens no expiry and makes both steps permissive ("can") | Unsourced
+- T-BL.35 **BLOODED: token effects**. A token holder's weapons have Accurate 1. If it is also under the Gaze, one of the normal successes it retains through that Accurate 1 is retained as a crit instead.
+  - MECH: `modifyAttackDice` pushes 1 to `accurate` for holders (shoot and fight, retaliating included); `afterAttackRoll` (also in queries) turns one die tagged `accurate` into a crit when `underGaze` holds (not for an obscured shoot sequence) | CLASS: team-hook
+  - RULING: Gaze crit and combined Accurate | when Accurate 1 combines with another instance into Accurate 2 (R-10.1), still only one retained die becomes a crit; against an obscured target it stays a normal success | the rule converts "one of your normal successes"; R-5.8 stops crits while obscured | Confirmed
+
+### 18.6 Ploys
+
+The source prints no costs: every ploy is 1 CP (R-2.4) unless a rule changes it (T-BL.44). Strategy ploys last until the end of the TP (R-2.5).
+
+- T-BL.36 **GLORY KILL** | Strategy | 1 CP | Gambit step | Pick one enemy operative visible to a friendly BLOODED operative. For the TP, a friendly BLOODED operative shooting, fighting or retaliating against it has Ceaseless on its weapons, or Relentless instead if it is a token holder.
+  - MECH: ploy with an enemy param (visible to any friendly BLOODED operative at use); effect `bl.gloryKill` for the TP; `modifyWeaponRules` with `targetId` | CLASS: team-hook
+  - RULING: Glory Kill errata | the pick must be visible to a friendly BLOODED operative | the April '26 update log changes the first sentence; both card texts still lack it (the Soul Gorge precedent, T-LG.10) | Corrected
+- T-BL.37 **RECKLESS ASPIRANT** | Strategy | 1 CP | Gambit step | A friendly BLOODED operative wholly within your opponent's territory that is not a token holder has Accurate 1 on its weapons while shooting or fighting; a token holder wholly within your opponent's territory has Punishing on its weapons.
+  - MECH: `modifyAttackDice` accurate 1 (attacker side only, not retaliating) / `modifyWeaponRules` adds `core.wr.punishing` (any use, retaliating included); territory via `equipment.territoryOf` | CLASS: team-hook
+  - RULING: Reckless Aspirant retaliating | the Accurate 1 half needs shooting or fighting, so not retaliating; the Punishing half applies whenever the weapons are used | 2024 rules separate "fighting" from "retaliating" (the For Cadia! ruling, T-KS.24) | Confirmed
+- T-BL.38 **MALEVOLENT GRIT** | Strategy | 1 CP | Gambit step | When an operative shoots a friendly BLOODED operative that is a token holder or wholly within your opponent's territory, you may re-roll one defence die.
+  - MECH: `modifyDefenceDice` adds `RerollGrant { mode: 'one' }` | CLASS: team-hook
+- T-BL.39 **BITTER DEMISE** | Strategy | 1 CP | Gambit step | For the TP, when a friendly BLOODED operative is incapacitated, before it is removed, roll a D3: on a 3 (2+ if it is a token holder) deal damage equal to the result to one enemy operative visible to and within 2" of it.
+  - MECH: hook `operative.incapacitated` while the effect is active; the D3 is rolled only when an enemy qualifies; in an attack's removal queue the enemy pick is an `ability.choice` (continueRemovals afterwards); outside attacks the team picks; `effects.directDamage` | CLASS: team-hook
+  - RULING: Bitter Demise target | rolled only when an eligible enemy exists; outside attacks (no decision point) the target is the enemy the damage would incapacitate, else the most wounded; with Explosive Demise on the same operative, Explosive Demise resolves first | the owner orders before-removal rules (R-5.18); lifecycle hooks outside attacks cannot raise decisions | Unsourced
+  - RULING: Bitter Demise errata | it triggers on incapacitation, before removal | the April '26 update log; both card texts have it | Confirmed
+- T-BL.40 **CALLOUS DISREGARD** | Firefight | 1 CP | A friendly BLOODED operative performs Shoot, as targets are chosen | For that action, friendly operatives in an enemy's control range do not stop that enemy being a valid target. Until the action ends, each attack die you discard as a fail deals damage equal to its result to one friendly operative of your choice within the target's control range.
+  - MECH: firefight ploy in `firefight.actionDeclared` (own Shoot); attack hook `beforeShootTargetSelect` re-adds enemies excluded only for being in a friendly operative's control range; `afterAttackRoll` (after re-rolls) counts fails and asks a `ChoiceRequest` per fail for a friendly operative in the sequence target's control range; `effects.directDamage` (removal at the end of the action) | CLASS: team-hook
+  - RULING: Callous Disregard fails | a fail is a rolled die below the Hit stat after re-rolls; each Blast or Torrent sequence counts its own fails against its own target's neighbours; with no friendly operative in that control range nothing happens | the discard step is per sequence (R-5.6, R-5.7) | Unsourced
+- T-BL.41 **MOMENT OF REPUTE** | Firefight | 1 CP | During a friendly BLOODED operative's activation while it is under the Gaze, before or after an action | Its APL is +1 until the end of that activation.
+  - MECH: firefight ploy in `firefight.activationStart` and `firefight.actionEnded` (own activation, operative `underGaze`); `applyAplEffect(+1)` until the activation ends (R-9.6 cap) | CLASS: team-hook
+- T-BL.42 **REWARD EARNED** | Firefight | 1 CP (0 CP with T-BL.44) | An enemy operative is incapacitated by a friendly BLOODED token holder within 2" of it | You gain one Blooded token.
+  - MECH: offered in `operative.killed` for attack kills, and for any other cause (Avalanche of Muscle, Bitter Demise, Explosive Demise, Callous Disregard spill) at the next reaction point (`ownReactions` / `reactions`) reading `killsSince(state, activation.declaredSeq)`; the `KillRecord.killerId` must be a holder within 2" of the removed operative's position | CLASS: generic:killLog
+  - RULING: Reward Earned any cause | any incapacitation whose killer is the token holder counts; distance from the killer to where the enemy stood | the card says "incapacitated by" with no cause; batch D records the killer for direct damage | Unsourced
+- T-BL.43 **DARK FAVOUR** | Firefight | 1 CP | A friendly token holder is chosen as the valid target of a Shoot or as the operative fought in a Fight | Pick another friendly BLOODED operative visible to and within 3" of it; it becomes the target or the operative fought instead, even if it would not normally qualify. In a Fight, treat it as within the fighter's control range for that action. In a Shoot, it is in cover or obscured only if the original target was. No effect against a weapon with Blast or Torrent.
+  - MECH: firefight ploy in `shoot.targetSelected` and `fight.weaponsSelected` (the Unquestioning Loyalty pattern, T-WYR.36); `attack-common.redirectAttack` with the original target's status | CLASS: team-hook
+  - RULING: Dark Favour errata | the substitute's cover and obscured status are copied from the original target, never computed | the April '26 update log adds the sentence; both card texts have it | Confirmed
+
+### 18.7 Faction equipment
+
+Universal equipment (M-5) can also be chosen; the four-option limit covers faction and universal options together (M-5.12).
+
+- T-BL.44 **CHAOS SIGIL** | Reward Earned costs 0 CP.
+  - MECH: ployRule `costAdjust` on `bl.p.reward-earned` while equipped | CLASS: team-hook
+- T-BL.45 **SINISTER TROPHIES** | When an enemy operative shoots, fights or retaliates against a friendly token holder within 2" of it, it cannot re-roll attack dice showing 1.
+  - MECH: provider `rerollBannedValues(state, side, attack)` returns `[1]` for the enemy attack side when the defender is a holder within 2" of the attacker | CLASS: generic:rerollBannedValues
+  - RULING: Sinister Trophies scope | covers every re-roll source (Balanced, Ceaseless, Relentless, Command Re-roll); dice showing other values re-roll normally | "cannot re-roll their attack dice results of 1" | Confirmed
+- T-BL.46 **SYMBOLS OF BLOODY WORSHIP** | When a friendly BLOODED operative ends an action without being incapacitated and it dealt damage to any enemy during that action, it regains 1 lost wound.
+  - MECH: hook `damage.inflicted` notes the attacker per action; hook `action.ended` regains 1 (`effects.regainWounds`) | CLASS: team-hook
+  - RULING: Symbols of Bloody Worship scope | any damage counts (Devastating, Blast secondaries, Avalanche of Muscle); retaliating is not an action, so it never triggers; a free action is an action | "ends an action" | Unsourced
+- T-BL.47 **WICKED BLADES** | The bayonet, the Chieftain's bayonet, the bayonet & shield and the improvised blade of friendly BLOODED operatives have +1 to both Dmg values for the battle.
+  - MECH: attack hook `modifyDamage` (+1 normal, +1 crit) for `bl.w.bayonet`, `bl.w.bayonet-chieftain`, `bl.w.bayonet-shield`, `bl.w.improvised-blade` | CLASS: team-hook
+
+Marker/token guide (UI): Blooded token, Under the Gaze of the Gods token, Blooded Icon token, A Name Whispered in Blood token, Enraged Stimm token, Fortified Stimm token, Shielding token, Diabolyk Bomb token (Limited use spent), Glory Kill token.
+
+### 18.8 Checklist
+
+Rows in `12-rules-test-checklist.md` section TEAM-BL: TEAM-BL-000 to TEAM-BL-035.
+
+### 18.9 Generic capabilities (survey; resolved in the Engine map below)
+
+- **Team resource pools** (batch C, `pools.ts`) and **operative tokens** (`tokens.ts`): the Blooded token economy: unassigned tokens in pool `bl.blooded`, assigned ones as a capped operative token. No new capability. Used by T-BL.8, T-BL.12, T-BL.18, T-BL.33 to T-BL.35.
+- **killLog / operative.removed** (batch D D2): token gains on any incapacitation and Reward Earned for any cause. Used by T-BL.33, T-BL.42.
+- **rerollBannedValues** (batch D D3): Sinister Trophies. Used by T-BL.45.
+- **preBattleChoices** (batch D D4): Regular Dosage. Used by T-BL.14.
+- **liveFlags** (batch D D5: `refreshFlags` after every step): Gruelling Disciplinarian's distance-based ignore-injury. Used by T-BL.19.
+- **extraCoverSaves** (batch D D6): Camo Cloak. Used by T-BL.27.
+- **chargeMoved** (batch D D8, window `firefight.chargeMoved`): Avalanche of Muscle. Used by T-BL.23.
+- Existing: strategy-gambit records at 0 CP (Doctrina / Skill at Arms pattern), `ownGrenades`, `chainActivation`, `startDelegatedAction`, `aplChangeNextActivation`, `commsBonus`, `blockCapacity`, `chargeUnderConceal`, `actionCostDelta`, `flags.ignoreApl`, `beforeShootTargetSelect`, `redirectAttack`, `operative.killed`, `operative.incapacitated` hook (Boom! pattern for decisions in attack removals), `territoryOf`, windows `firefight.activationStart`, `firefight.actionEnded`, `firefight.actionDeclared`, `shoot.targetSelected`, `fight.weaponsSelected`.
+- Gaps (not built; each has a team-local fallback):
+  - **strikeOnIncapacitated** (NICE, fallback): no fight hook gives an incapacitated fighter a last strike. Fallback: `beforeIncapacitated` notes the best unresolved success and `onFightResolved` deals its Dmg as direct damage before removal (T-BL.22 RULING).
+  - **pausable removeNow** (NICE, fallback): before-removal choices (Explosive Demise, Bitter Demise) cannot pause outside an attack's removal queue. Fallback: the team decides with a fixed heuristic there (T-BL.11, T-BL.39 RULINGs).
+
+### 18.10 Gotchas
+
+- Roster is 1 + 9 + 4 selections: 12 to 14 operatives, so the 12, 13 and 14 kill grade rows are used. Enforcer and Ogryn weigh 2 in the heavy slot and are each once only; Troopers may come from both lists. Gunners plus Sharpshooter at most three; each Gunner weapon once; only one plasma weapon in the whole kill team (plasma gun Gunner or Chieftain plasma pistol).
+- Every card is APL 2, the Chieftain included. The Chieftain's bayonet is Hit 3+, everyone else's 4+. Gunner weapons are Hit 4+ (not the Kasrkin 3+). Diabolyk bomb 4/3 and meltagun 6/3 as printed.
+- Two token places: the unassigned pool (HUD chip) and at most one token on each operative. Tokens are assigned only in the Blooded gambit; everything that gains a token mid-turn adds to the pool. Assigned tokens last the battle and vanish with their operative (Blooded Icon returns one per TP).
+- Gaze needs four or more holders in the killzone at gambit time and lasts the TP. The Gaze crit converts one Accurate-retained die; Lead With Strength gives the Chieftain the Gaze but not a token.
+- A Name Whispered In Blood treats the Sharpshooter as a holder under the Gaze only while it shoots its chosen enemy; it never counts for the four-holder test.
+- Reckless Aspirant: Accurate 1 for non-holders only when shooting or fighting (not retaliating); Punishing for holders whenever. Glory Kill: Ceaseless, or Relentless for holders; the pick must be visible to a friendly BLOODED operative (update log).
+- Group Activation is mandatory and links every BLOODED TROOPER (both lists), two in a row at most.
+- Gruelling Disciplinarian is live by distance (batch D flag refresh) plus a per-activation memory; Chem-enhanced ignores every APL change, so Signal cannot pick the Ogryn and Moment of Repute does nothing for it.
+- Explosive Demise hurts friends too and is optional; Bitter Demise rolls a D3 and needs an enemy within 2"; Callous Disregard spills each fail onto your own operatives near the target.
+- Camo Cloak here is one extra cover save only (no crit, no Saturate immunity), unlike the Kasrkin and Angels of Death cards.
+- Slow-witted makes Pick Up Marker and mission actions 2 AP for the Ogryn (Operate Hatch excepted), so ENFORCE cannot hand it one.
+- Edition leaks to reject: nothing from the 2021 Blooded or Traitor Guard cards (no Overwatch, no shape distances, no 2021 Chaos Blessings or Gift tables), nothing from 40k 10th Chaos or Astra Militarum (no Orders, no Leadership or battle-shock tests, no Dark Pacts, no wound rolls or AP); inches only, three defence dice, every printed number from the April '26 cards.
+
+### 18.11 Engine map
+
+| Rule or capability | Built as |
+|---|---|
+| Roster (Chieftain 1, main 9, heavy 4 with Enforcer/Ogryn weight 2, Trooper and Gunner repeatable, each Gunner weapon once, Gunner + Sharpshooter <= 3, one plasma weapon) | team.json slots, `repeatable`, `weights`, `selection.loadoutCaps` (`each`; cross-datacard plasma cap), `selection.caps` (ids) |
+| Loadouts | datacard `weapons.options` (`sets` for the Chieftain, `from` for the Gunner), profile groups |
+| Blooded tokens, gains | pool `bl.blooded` (`pools.ts`, HUD label); `turningPoint.start`; hook `operative.removed` + TP ledgers (killLog) |
+| Blooded gambit, Gaze | 0 CP strategy record `bl.p.blooded` in `strategy.gambit`; `ability.choice` loop; tokens `bl.blooded` (cap 1) and `bl.gaze` (`turningPointEnd`); `resumeGambit` |
+| Token effects (Accurate 1, Gaze crit) | `modifyAttackDice` accurate; `afterAttackRoll` converts one `accurate` die (query-safe) |
+| Blooded Icon | hook `operative.incapacitated`, TP ledger, `gainPool` |
+| Lead With Strength | `underGaze` helper |
+| Grenadier | provider `ownGrenades` `weapons { frag: 1, krak: 1 }`, `modifyAttackDice` hitDelta -1 |
+| Explosive Demise, Bitter Demise | hook `operative.incapacitated`; `ability.choice` + `continueRemovals` inside attack removals (Boom! pattern), team heuristic outside; `effects.directDamage` |
+| Blood Offering | attack hook `beforeStrike`, per-sequence ledger, `gainPool` |
+| Unholy Sustenance | attack hook `onFightResolved`, `effects.regainWounds(D3)` |
+| Regular Dosage | provider `preBattleChoices` (D4), stimm tokens and ledger |
+| STIMMS, STIMM rules | unique action + `ability.choice`; `regainWounds(2D3)`; `modifyWeaponRules` (Relentless); `onDamageInflicted` (Fortified) |
+| SIGNAL | unique action, `aplChangeNextActivation(+1)`, `commsBonus` |
+| SACRILEGIOUS ACTUATION | unique action gated on the token, `gainPool` |
+| Gruelling Disciplinarian | provider `flags.ignoreInjured` (live refresh, D5) + `activation.start` / `activation.end` ledger |
+| ENFORCE | unique action, `startDelegatedAction({ oneApOnly, maxMove: 2, deny })` |
+| Stalk | `modifyWeaponRules` (Lethal 5+) with a terrain-within-1" test |
+| Wretched | provider `chargeUnderConceal`; `beforeIncapacitated` + `onFightResolved` direct damage (gap `strikeOnIncapacitated`) |
+| Avalanche of Muscle | 0 CP `extraOffers` in `firefight.chargeMoved` (D8), `directDamage(D3)` |
+| Chem-enhanced | provider `flags.ignoreApl`; `modifyWeaponRules` strips enemy Shock and Stun |
+| Brute | attack hook `beforeShootTargetSelect`, `coverForSelection` without Light |
+| Slow-witted | provider `actionCostDelta` |
+| Camo Cloak | provider `extraCoverSaves` (D6) |
+| A Name Whispered In Blood | 0 CP strategy record `bl.p.name-whispered` (TP1), token `bl.nameWhispered` on the enemy |
+| Tough | `onDamageInflicted` (normal, Normal Dmg >= 3) |
+| Shield | provider `blockCapacity` |
+| Shielding | 0 CP offer in `firefight.activationStart`, token `bl.shielding`, `moveDelta` -2, defence grant `any` |
+| Group Activation | provider `chainActivation` |
+| Glory Kill | ploy with enemy param, `modifyWeaponRules` (Ceaseless / Relentless) |
+| Reckless Aspirant | `modifyAttackDice` accurate, `modifyWeaponRules` Punishing, `territoryOf` |
+| Malevolent Grit | `modifyDefenceDice` re-roll one |
+| Callous Disregard | window `firefight.actionDeclared`, `beforeShootTargetSelect`, `afterAttackRoll` `ChoiceRequest`, `directDamage` |
+| Moment of Repute | windows `firefight.activationStart` / `firefight.actionEnded`, `applyAplEffect(+1)` |
+| Reward Earned, Chaos Sigil | window `operative.killed` + reaction point reading `killsSince` (D2); ployRule `costAdjust` |
+| Dark Favour | windows `shoot.targetSelected` / `fight.weaponsSelected`, `redirectAttack` |
+| Sinister Trophies | provider `rerollBannedValues` (D3) |
+| Symbols of Bloody Worship | `damage.inflicted` ledger + `action.ended`, `regainWounds(1)` |
+| Wicked Blades | attack hook `modifyDamage` |
+
+### 18.12 Implementer brief
+
+- Files you own (nothing else):
+  - `src/data/teams/blooded/team.json`, `operatives.json`, `weapons.json`, `abilities.json`, `ploys.json`, `equipment.json` (ids `bl.<name>`, `bl.w.`, `bl.wg.`, `bl.a.`, `bl.p.`, `bl.e.`; team weapon rules `bl.a.wr-blood-offering`, `bl.a.wr-stalk`, `bl.a.wr-shield`). The Chieftain datacard and its weapons exist from the scaffold; keep their ids.
+  - `src/engine/teams/blooded.ts` (code hooks, `registerTeamRules`, hook handlers, ploy rules)
+  - `src/client/teams/blooded.ts` (weapon flavour, VFX family, sound, attachments, pool label for `bl.blooded`, token labels, figure stand-ins already listed: `bl-chieftain` and its five loadout bodies, `bl-brimstone-grenadier`, `bl-butcher`, `bl-commsman`, `bl-corpseman`, `bl-enforcer`, `bl-flenser`, `bl-gunner-flamer`, `bl-gunner-grenade-launcher`, `bl-gunner-meltagun`, `bl-gunner-plasma-gun`, `bl-ogryn`, `bl-sharpshooter`, `bl-thug`, `bl-trench-sweeper`, `bl-trooper`, `bl-trooper-b`; add `loadoutBodies` for the Gunner's four weapons)
+  - `tests/engine/teams/blooded.test.ts` (TEAM-BL-nnn tests) and `tests/engine/teams/blooded.hooks.ts` (code-hook firing scenarios)
+  - append-only: `docs/needs-rules-check.md` (RULING lines), `docs/spec/13-teams.md` section 18 and `12-rules-test-checklist.md` section TEAM-BL (refinements only)
+- Activation flag: `"playable": false` in `src/data/teams/blooded/team.json`. Flip it (with `defaults` filled: a legal roster of Chieftain, nine main picks within the Gunner/Sharpshooter cap and four heavy selections, and every weapon in `src/client/teams/blooded.ts`) only when the team is complete and all gates pass.
+- Capabilities to use: the Engine map above. Batch D: `operative.removed` / `killsSince` (D2), `rerollBannedValues` (D3), `preBattleChoices` (D4), live `refreshFlags` (D5), `extraCoverSaves` (D6), `firefight.chargeMoved` (D8). Batch C: `pools.ts`. Existing: tokens, 0 CP strategy records, `ownGrenades`, `chainActivation`, `startDelegatedAction`, `aplChangeNextActivation`, `commsBonus`, `blockCapacity`, `redirectAttack`, Boom! decision pattern in removals. Team-local fallbacks for `strikeOnIncapacitated` and outside-attack before-removal choices (18.9). Order: roster and loadouts (TEAM-BL-001 to 003), then the token economy (gains, gambit, Gaze, Accurate and Gaze crit: TEAM-BL-004 to 007), the spine of the team; then Group Activation (030), Enforcer (017, 018), Corpseman (012 to 014), Ogryn (021 to 024), then ploys and equipment.
+- Team-local weapon rules the data needs: `bl.a.wr-blood-offering` (power weapon & cleaver), `bl.a.wr-stalk` (skinning blades), `bl.a.wr-shield` (bayonet & shield). Heavy variants use the core `only` field.
+- RULING lines expected: heavy list fill, Gunner model, combined cap scope, plasma exclusion, Corpseman entry, once-only scope, keyword spacing, low crit Dmg, Chieftain bayonet, Blooded Icon use, Lead With Strength without a token and errata, Brimstone Grenadier allowance, Explosive Demise choice and errata, Regular Dosage timing, STIMMS self-target and limit, Fortified scope, Signal and the Comms Device, Gruelling Disciplinarian scope and errata, Enforce action cost, Stalk terrain in control range, Wretched last strike, Avalanche of Muscle timing, Blooded Camo Cloak, A Name Whispered In Blood scope, Shield pairing, Shielding choice point, token gains, gambit use, Gaze crit and combined Accurate, Glory Kill errata (Corrected), Reckless Aspirant retaliating, Bitter Demise target and errata, Callous Disregard fails, Reward Earned any cause, Dark Favour errata, Sinister Trophies scope, Symbols of Bloody Worship scope.
+- Gotchas: section 18.10. 12 to 14 operatives. The Gunner is one datacard (Kasrkin pattern, not five cards). Tokens live in two places (pool and operative token); assignment only in the gambit. Gaze checks go through `underGaze` (Lead With Strength, A Name Whispered) and holder checks through `isHolder`, never a raw `hasToken`.
+
+## 19. Fellgor Ravagers
+
+Rule IDs `T-FG.<n>`, checklist IDs `TEAM-FG-<nnn>`. Sources: the Fellgor Ravagers team PDF (Kill Team 2024, faction version 3, August '26 update log state: the August '26 errata and rules commentary, plus the previous errata and commentary; the flow and layout extracts were read together) as the primary source, cross-checked against the Wahapedia Fellgor Ravager page (faction version 3, August 2026; its FAQ block has one entry, Violent Temperament against re-rolled or replaced dice). The PDF's update log also answers a second question (a crit with Critical Dmg 0 cannot finish off a Frenzy operative), which Wahapedia lacks. The two sources agree on every stat line and weapon profile, and both already carry the August '26 changes (Mangler Hit 4+, Gnarlscar and Mangler Wounds 10, Tech-curse Seek Light, Gong Knell without the Piercing clause, Incite Fury without SUPPORT). In two places the "previous errata" list says more than the current card (Ambush, Reckless Determination); both cards and Wahapedia print the shorter text, so the current card wins (19.10). Facts read from the PDF are Confirmed; our own calls are Unsourced. All rule text is restated in our own words; team, operative, weapon, ploy and equipment names are used as printed. Core terms per `10-rules-core.md` (R-x.y), missions and universal equipment per `11-missions.md` (M-x.y). Ploys and equipment are one bullet per record so each can carry its MECH line.
+
+Weapon type column: R = ranged, M = melee. Dmg is `normal/crit`. Base is in mm.
+
+### 19.1 Team selection
+
+- T-FG.1 Roster is exactly 10 operatives: 1 FELLGOR IRONHORN (leader) plus 9 picks from the main list (T-FG.2). Nothing counts as two selections or half a selection.
+  - MECH: roster validator: leader slot count 1 (`fg.ironhorn`), main slot count 9 | CLASS: data
+- T-FG.2 Main list: DEATHKNELL, FLUXBRAY, GNARLSCAR, GOREHORN, HERD-GOAD, MANGLER, SHAMAN, TOXHORN, VANDAL, WARRIOR. WARRIOR may be taken any number of times; every other entry at most once. Nine single entries fill the nine slots exactly, so a roster may hold no Warrior at all.
+  - MECH: main slot `from` the ten datacards, `repeatable: ["fg.warrior"]` | CLASS: data
+  - RULING: Fellgor Ravagers roster limits | WARRIOR unlimited, every other entry once, no further caps | both sources print exactly this and nothing else | Confirmed
+- T-FG.3 Loadouts:
+  - IRONHORN: exactly one of two sets: corrupted pistol and corrupted chainsword; plasma pistol (both profiles) and bludgeon.
+  - WARRIOR: exactly one of two sets: autopistol and bludgeon; autopistol and cleaver.
+  - DEATHKNELL: autopistol and bludgeon. FLUXBRAY: triple cleavers. GNARLSCAR: autopistol and bionic fist. GOREHORN: autopistol and skullcleaver. HERD-GOAD: autopistol and crackthorn whip (ranged and melee profiles). MANGLER: vicious claws. SHAMAN: autopistol, tech-curse and braystave. TOXHORN: autopistol and cleaver (plus the Pox Bomb rule, T-FG.25, which is not a weapon). VANDAL: mancrusher. All fixed.
+  - MECH: datacard `weapons.options` `sets` for Ironhorn and Warrior, `fixed` elsewhere; profile group `fg.wg.plasma-pistol` brings both profiles | CLASS: data
+- T-FG.4 Archetypes: RECON, SEEK & DESTROY (tac ops out of scope for v1).
+  - MECH: team.json `archetypes: ["recon", "seek-and-destroy"]` | CLASS: data
+- T-FG.5 Keywords and terms: every operative carries FELLGOR RAVAGER and CHAOS plus its role keyword (IRONHORN also LEADER; SHAMAN also PSYKER). An operative **is frenzied** while it holds one of your Frenzy tokens (T-FG.29). **Fighting** means performing the Fight action (attacker); **retaliating** is the defender's side of a fight; "fighting or retaliating" covers both.
+  - MECH: keyword lists in operatives.json; helper `isFrenzied(state, op)` = holds token `fg.frenzy` | CLASS: data (helper team-hook)
+- T-FG.6 Team-local weapon rules: the PSYCHIC tag on the tech-curse, **Headtaker** (skullcleaver, T-FG.16), **Tactual Hunter** (vicious claws, T-FG.19), **Vicious Blows** (mancrusher, T-FG.26). Every other weapon rule on the cards is core (R-10): Brutal, Ceaseless, Hot, Lethal, Piercing, Range, Rending, Saturate, Seek Light, Shock, Stun.
+  - MECH: weapon records carry `{ "rule": "fg.a.wr-psychic" }`, `{ "rule": "fg.a.wr-headtaker" }`, `{ "rule": "fg.a.wr-tactual-hunter" }`, `{ "rule": "fg.a.wr-vicious-blows" }`, each with an ability record in abilities.json (the Corsair / Warpcoven `wr-psychic` pattern) | CLASS: data (resolved by team-hook; PSYCHIC through generic:psychic)
+
+### 19.2 Operative stats
+
+| Operative | APL | Move | Save | Wounds | Base | Keywords |
+|---|---|---|---|---|---|---|
+| FELLGOR IRONHORN | 2 | 6" | 5+ | 11 | 32 | FELLGOR RAVAGER, CHAOS, LEADER, IRONHORN |
+| FELLGOR DEATHKNELL | 2 | 6" | 4+ | 10 | 32 | FELLGOR RAVAGER, CHAOS, DEATHKNELL |
+| FELLGOR FLUXBRAY | 2 | 6" | 5+ | 10 | 32 | FELLGOR RAVAGER, CHAOS, FLUXBRAY |
+| FELLGOR GNARLSCAR | 2 | 6" | 5+ | 10 | 32 | FELLGOR RAVAGER, CHAOS, GNARLSCAR |
+| FELLGOR GOREHORN | 2 | 6" | 5+ | 10 | 32 | FELLGOR RAVAGER, CHAOS, GOREHORN |
+| FELLGOR HERD-GOAD | 2 | 6" | 5+ | 10 | 32 | FELLGOR RAVAGER, CHAOS, HERD-GOAD |
+| FELLGOR MANGLER | 2 | 6" | 5+ | 10 | 32 | FELLGOR RAVAGER, CHAOS, MANGLER |
+| FELLGOR SHAMAN | 2 | 6" | 5+ | 10 | 32 | FELLGOR RAVAGER, CHAOS, PSYKER, SHAMAN |
+| FELLGOR TOXHORN | 2 | 6" | 5+ | 10 | 32 | FELLGOR RAVAGER, CHAOS, TOXHORN |
+| FELLGOR VANDAL | 2 | 6" | 5+ | 10 | 32 | FELLGOR RAVAGER, CHAOS, VANDAL |
+| FELLGOR WARRIOR | 2 | 6" | 5+ | 10 | 32 | FELLGOR RAVAGER, CHAOS, WARRIOR |
+
+Notes: every card is APL 2, Move 6", 32mm; only the Ironhorn has 11 wounds and only the Deathknell has Save 4+. Gnarlscar and Mangler are Wounds 10 after the August '26 errata (both sources print 10). The faction keyword is the two-word FELLGOR RAVAGER (singular), as printed on every card. HERD-GOAD keeps its hyphen (the update log spells it HERDGOAD once; the cards and Wahapedia use HERD-GOAD).
+
+### 19.3 Weapon profiles
+
+| Weapon | Type | Atk | Hit | Dmg | Rules | Held by |
+|---|---|---|---|---|---|---|
+| Corrupted pistol | R | 4 | 4+ | 3/5 | Range 8", Rending | Ironhorn (option) |
+| Plasma pistol (standard) | R | 4 | 4+ | 3/5 | Range 8", Piercing 1 | Ironhorn (option) |
+| Plasma pistol (supercharge) | R | 4 | 4+ | 4/5 | Range 8", Hot, Lethal 5+, Piercing 1 | Ironhorn (option) |
+| Autopistol | R | 4 | 4+ | 2/3 | Range 8" | Deathknell, Gnarlscar, Gorehorn, Herd-Goad, Shaman, Toxhorn, Warrior |
+| Crackthorn whip (ranged) | R | 4 | 2+ | 2/3 | Range 3", Lethal 4+, Stun | Herd-Goad |
+| Tech-curse | R | 4 | 3+ | 1/3 | PSYCHIC, Rending, Saturate, Seek Light | Shaman |
+| Bludgeon | M | 4 | 3+ | 4/4 | Brutal | Ironhorn (option), Deathknell, Warrior (option) |
+| Corrupted chainsword | M | 4 | 3+ | 4/5 | Rending | Ironhorn (option) |
+| Triple cleavers | M | 4 | 3+ | 4/5 | Ceaseless | Fluxbray |
+| Bionic fist | M | 4 | 3+ | 4/5 | Brutal | Gnarlscar |
+| Skullcleaver | M | 4 | 3+ | 4/5 | Lethal 5+, Headtaker | Gorehorn |
+| Crackthorn whip (melee) | M | 4 | 3+ | 2/3 | Lethal 4+, Shock | Herd-Goad |
+| Vicious claws | M | 4 | 4+ | 4/6 | Ceaseless, Tactual Hunter | Mangler |
+| Braystave | M | 4 | 3+ | 3/5 | Shock | Shaman |
+| Cleaver | M | 4 | 3+ | 4/5 | none | Toxhorn, Warrior (option) |
+| Mancrusher | M | 4 | 4+ | 5/5 | Brutal, Vicious Blows | Vandal |
+
+Notes: 16 profiles over 16 records. Ids: `fg.w.corrupted-pistol`, `fg.wg.plasma-pistol` (`fg.w.plasma-pistol-standard`, `fg.w.plasma-pistol-supercharge`), `fg.w.autopistol`, `fg.w.crackthorn-whip-ranged`, `fg.w.tech-curse`, `fg.w.bludgeon`, `fg.w.corrupted-chainsword`, `fg.w.triple-cleavers`, `fg.w.bionic-fist`, `fg.w.skullcleaver`, `fg.w.crackthorn-whip-melee`, `fg.w.vicious-claws`, `fg.w.braystave`, `fg.w.cleaver`, `fg.w.mancrusher`. The leader's five records already exist (Phase 1 scaffold). Every autopistol, bludgeon and cleaver is identical across cards and shares one record. The crackthorn whip's two profiles are two records (one ranged, one melee), not a profile group, because a profile group selects one profile per use of a single weapon type; both are fixed on the Herd-Goad and both display as "Crackthorn whip".
+
+UNCLEAR (resolved): the layout extract runs the Warrior's three weapon rows together (Hit/Dmg and WR columns out of line). The flow extract read against Wahapedia gives autopistol 4 4+ 2/3 Range 8", bludgeon 4 3+ 4/4 Brutal, cleaver 4 3+ 4/5 none; the table follows them.
+UNCLEAR (resolved): the Mangler's vicious claws are Hit 4+ (August '26 errata, both sources); the skullcleaver's Critical Dmg grows with Headtaker (T-FG.16) but starts at the printed 5.
+
+### 19.4 Operative rules and unique actions
+
+- T-FG.7 **Call the Attack** (Ironhorn, STRATEGIC GAMBIT): usable while the Ironhorn is in the killzone and not frenzied. Pick one friendly FELLGOR RAVAGER operative visible to and within 6" of the Ironhorn (the Ironhorn itself allowed). That operative and every other friendly FELLGOR RAVAGER operative visible to and within 2" of it may each perform a free Dash, in the order you choose.
+  - MECH: Strategy-phase gambit with an operative choice (Combat Doctrine pattern), gated on `fg.ironhorn` active and not frenzied; the group is fixed at use; `startFreeSequence` of optional free Dashes in the player's order (strategy free moves, `ReactionInfo.strategy`) | CLASS: team-hook
+  - RULING: Fellgor Ravagers Call the Attack group | the Ironhorn may pick itself (it is within 6" of itself, R-8.3); the 2" group is fixed when the gambit is used; each Dash is optional and follows the Dash rules (3", no climbing); a frenzied operative may be picked or swept along | the card restricts only the Ironhorn's own Frenzy state; the Relocate precedent (T-KS.29) fixes the group at use | Unsourced
+- T-FG.8 **Icon Bearer** (Deathknell): Frenzy's control bullet (T-FG.30 e) never applies to the Deathknell, and when control of a marker is worked out its APL counts 1 higher. This is not a change to its APL stat, so it adds to any APL changes it has.
+  - MECH: provider `controlApl` returns `apl + 1` for `fg.deathknell` (markers only), and the Frenzy branch of the same provider skips it | CLASS: team-hook
+  - RULING: Fellgor Ravagers Icon Bearer areas | the +1 applies to markers only; for control of areas (if a mission uses them) the Deathknell uses its normal APL, frenzied or not | the card names markers for the +1 and only exempts it from the Frenzy bullet for areas | Confirmed
+- T-FG.9 **War Gong** (Deathknell): when an attack die would deal Critical Dmg to a friendly FELLGOR RAVAGER operative within 3" of the Deathknell, and the Deathknell is not frenzied, that die may deal the attacker's Normal Dmg instead.
+  - MECH: `onDamageInflicted` on FELLGOR RAVAGER targets for sources `crit` and `strike-crit`, Deathknell active, not frenzied, within 3": `amount` becomes the weapon's Normal Dmg (`weaponDamage(... ).normal`) and the handler remembers the die as a normal-damage die for the Frenzy counters (T-FG.31 d, e); runs before the Frenzy handler in the same file | CLASS: team-hook
+  - RULING: Fellgor Ravagers War Gong choice | applied automatically whenever the Normal Dmg is lower than the Critical Dmg, and always against a frenzied target in a Shoot (where Critical Dmg would finish it); never when Normal Dmg is higher (a 6/3 meltagun) | `onDamageInflicted` cannot ask a question and the choice is never worse for the Fellgor player under these conditions | Unsourced
+  - RULING: Fellgor Ravagers War Gong range | the Deathknell protects itself (it is within 3" of itself, R-8.3); Devastating and direct damage are never changed; in a fight the strike still counts as a critical success for Frenzy (T-FG.31 b) | the rule changes the damage, not the success; Devastating is not Critical Dmg | Unsourced
+- T-FG.10 **GONG KNELL** (Deathknell, 1 AP): until the start of the Deathknell's next activation, or its incapacitation if sooner, it improves its Save by 1 whenever it is shot. A Gong Knell token marks it.
+  - MECH: unique action setting token `fg.gongKnell` (expiry `sourceActivationStart`, `sourceIncapacitated`); `modifyDefenceDice` `saveDelta -1` while the target holds it | CLASS: data (token) + team-hook
+- T-FG.11 **Blade Whirl** (Fluxbray): when the Fluxbray fights or retaliates and is not frenzied, it may resolve one of its successes out of the normal order, before anything else; that success must block.
+  - MECH: provider `fightResolveStart` returns `queue: [{ seat: <Fluxbray seat>, blockOnly: true }]` when the Fluxbray side would not resolve first and holds a success able to block an unresolved enemy success | CLASS: team-hook
+  - RULING: Fellgor Ravagers Blade Whirl use | used automatically whenever the Fluxbray would otherwise resolve second (retaliating, or attacking against a rule that lets the enemy go first) and has a success that can block; never when it resolves first anyway | `fightResolveStart` cannot ask; blocking first is the only effect of the rule, and when the Fluxbray already goes first it changes nothing | Unsourced
+- T-FG.12 **CLEAVER FLURRY** (Fluxbray, 2 AP): the Fluxbray makes a free Reposition with 2" more movement, during which it may move within enemy operatives' control range (it may not start or end there). After the move, each enemy operative whose control range it moved within takes D3+1 damage, rolled separately, in the order the Fluxbray reached them. Not while it has a Conceal order.
+  - MECH: team unique action (2 AP) with a team-local path: the player picks an end spot from sampled spots (`forcedMoveSpots`-style rings at Move + 2", plus spots beyond each enemy within reach); the team code validates the straight path with `planMove(state, op, 'reposition', [spot], false, move + 2, undefined, undefined, true)` (the forced flag skips the control range check), refuses an end inside any enemy control range and a start inside one (core), applies it like `applyForcedMove` and emits `OperativeMoved` with `action: 'ability:fg.a.cleaver-flurry'`; it then walks the plan's `segments` in half-inch samples and lists the enemies whose control range the base entered, in first-entry order; `directDamage(D3+1)` each in that order; the action counts as a Reposition for other rules (R-4.13 "treated as") | CLASS: team-hook (gap: moving through enemy control range, not built in batch D)
+  - RULING: Fellgor Ravagers Cleaver Flurry path | a straight path to a chosen spot (climbs and drops priced by the planner), no waypoints; the free Reposition is part of the action, counted as a Reposition for other rules (Pelting, reactions, move-limit providers) but performed through the team path; an enemy passed twice takes damage once | no shared move can pass through enemy control range; the card's damage list is "each enemy it moved within control range of", once each | Unsourced
+  - RULING: Fellgor Ravagers Cleaver Flurry and Frenzy | a frenzied Fluxbray cannot perform it (T-FG.30 d); damage that triggers an enemy's own survival rule resolves through `directDamage` as any other direct damage | Frenzy bars every unique action except Sweeping Blow | Confirmed
+- T-FG.13 **Sagacious** (Gnarlscar): when the Gnarlscar's activation ends, you may change its order.
+  - MECH: 0 CP offer (ploy rule `extraOffers`) in the `firefight.activationEnded` window for the Gnarlscar's own activation; flips the order and emits `OrderChanged` | CLASS: team-hook
+  - RULING: Fellgor Ravagers Sagacious scope | only at the end of an activation, never a counteraction; a frenzied Gnarlscar has nothing to change to (Engage only) and is not offered it | the card says activation; R-3.12 keeps counteractions separate | Unsourced
+- T-FG.14 **UNCOMPROMISING ATTACK** (Gnarlscar, 1 AP): the Gnarlscar performs a free Fight action and then a free Shoot action, or the Shoot first and then the Fight. That Shoot may be made while it is in an enemy's control range, and then it must target an enemy within its own control range (even one that friendly operatives are also in control range of). The Shoot may only use the autopistol.
+  - MECH: unique action with an order choice (`ability.choice`: fight first / shoot first); chains two frames with `startFreeAction({ action: 'fight' })` and `startFreeAction({ action: 'shoot', pointBlank: <in enemy CR>, weaponNameContains: 'autopistol' })` through a registered frame resume; `beforeShootTargetSelect` adds enemies within its control range that a friendly is also in control range of, while the point-blank Shoot is live; R-3.9 applies to both | CLASS: team-hook
+  - RULING: Fellgor Ravagers Uncompromising Attack | offered when at least one of the two free actions can be performed; the second is skipped if it cannot be performed when its turn comes (its only enemy fell in the fight, say), and out of control range the Shoot follows the normal targeting rules with the autopistol only | the card chains two free actions without saying what happens when one is impossible; core free actions keep their conditions (R-3.9) | Unsourced
+- T-FG.15 **Champion** (Gorehorn): may perform two Fight actions in one activation.
+  - MECH: provider `maxRepeats(..., 'fight')` returns 2 for `fg.gorehorn` | CLASS: team-hook
+- T-FG.16 **Headtaker** (skullcleaver): when the Gorehorn incapacitates an operative with the skullcleaver, roll one D3. The Gorehorn regains that many lost wounds (not while frenzied), and for the rest of the battle the skullcleaver's Critical Dmg goes up by the result, to no more than 8.
+  - MECH: `damage.inflicted` with `weaponId = fg.w.skullcleaver` and `woundsAfter <= 0` marks a pending Headtaker; `operative.removed` (killer = the Gorehorn, cause `attack`, or `scored` against a frenzied mirror Fellgor) rolls D3, `regainWounds` unless frenzied, and adds to a battle ledger read by `modifyDamage` (crit = min(8, 5 + total)) | CLASS: generic:killLog (`operative.removed`) + team-hook
+  - RULING: Fellgor Ravagers Headtaker | one roll per operative incapacitated (two in one action, two rolls); the wounds are regained even when the Critical Dmg is already at 8; an enemy Fellgor that gains a Frenzy token from the skullcleaver counts (the Frenzy "faction rules" clause) | the rule fires per incapacitation and has two independent parts | Unsourced
+- T-FG.17 **Whip Control** (Herd-Goad): while an enemy operative is visible to and within 3" of the Herd-Goad, and the Herd-Goad is not within the control range of any other enemy operative: that enemy's melee weapons get Atk -1 (never below 1), and its controller pays 1 extra AP for it to Fall Back.
+  - MECH: `modifyAttackDice` `atk -1` (min 1) on melee pools (fight and retaliate) of an affected enemy; provider `actionCostDelta(state, enemy, 'fallBack')` +1; helper `whipped(state, enemy)` checks visibility, 3" and the "no other enemy in control range" condition live | CLASS: team-hook
+  - RULING: Fellgor Ravagers Whip Control scope | applies whomever the enemy fights (not only the Herd-Goad); "any other enemy" means any enemy other than the one being checked, so the enemy fighting the Herd-Goad is still whipped; a frenzied Herd-Goad still whips | the rule names the enemy, not the opponent of the fight; Frenzy does not switch it off | Unsourced
+- T-FG.18 **INCITE FURY** (Herd-Goad, 1 AP): pick another friendly FELLGOR RAVAGER operative, not a SHAMAN or IRONHORN, visible to and within 3" of the Herd-Goad; it gets APL +1 until the end of its next activation. Not while in an enemy's control range. (The August '26 errata removed the SUPPORT keyword, so the Comms Device does not extend it.)
+  - MECH: unique action with a friendly-target filter; `effects.aplChangeNextActivation(ctx, id, +1, 'fg.a.incite-fury')` | CLASS: team-hook
+  - RULING: Fellgor Ravagers Incite Fury timing | on an operative in its own activation the +1 lasts to the end of its next one (`aplChangeNextActivation` holds it over); the core +/-1 cap applies (R-9.6) | the card says "next activation"; the batch C shared helper implements that wording | Confirmed
+- T-FG.19 **Tactual Hunter** (vicious claws): when the Mangler fights (not retaliates) with the vicious claws against an expended operative, the first time it strikes with a critical success in that sequence it may at once strike with another of its successes, before the opponent resolves.
+  - MECH: provider `afterFightResolution(attack, seat, 'strike')` returns `[{ seat, strikeOnly: true }]` after the Mangler's first crit strike when the target was expended at the start of the fight and the Mangler has another unresolved success | CLASS: team-hook
+  - RULING: Fellgor Ravagers Tactual Hunter use | taken automatically whenever another success is left; "expended" is checked when the fight starts | the provider cannot ask; striking is the rule's only effect | Unsourced
+- T-FG.20 **Berserker** (Mangler): the Mangler can never Shoot. It may go on Guard, but when the guard interrupts it may only Fight, never Shoot. Pick Up Marker and mission actions cost it 1 extra AP (Operate Hatch excepted).
+  - MECH: providers `actionForbidden(..., 'shoot')` and `weaponForbidden(..., 'shoot')` for every ranged weapon (equipment grenades included); `actionCostDelta` +1 for `marker:pickUp` and MISSION `ability:<id>` except an Operate Hatch action | CLASS: generic:weaponForbidden + team-hook
+- T-FG.21 **Savage** (Mangler): the first time each activation the Mangler performs Fight, if it is still in the killzone, it may at once perform a free Fight (against the same or another enemy), even though Fight was already performed. Ruthless Rampage (T-FG.37) cannot be used between those two Fights.
+  - MECH: provider `ownReactions` offering a free Fight after the Mangler's first Fight of its activation (`freeActions: true`, the Savage Brutality pattern), with `startFreeAction({ action: 'fight' })`; the R-3.7 restriction is lifted by `maxRepeats` 2 while the offer is live; the Ruthless Rampage offer is withheld while this offer is pending | CLASS: team-hook
+  - RULING: Fellgor Ravagers Savage | "first time in each activation" counts only the Mangler's own activation (not counteractions or guard interrupts); a frenzied Mangler is "not incapacitated" and may take it; the free Fight needs an enemy in control range like any Fight | the card says activation; Frenzy only ends that activation | Unsourced
+- T-FG.22 **APOPLECTIC REJUVENATION** (Shaman, 1 AP): pick a friendly FELLGOR RAVAGER operative that is not frenzied and is visible to and within 6" of the Shaman. It regains up to 2D3 lost wounds, or up to 6 if it has incapacitated an enemy while fighting or retaliating at any time this battle. Not while in an enemy's control range.
+  - MECH: unique action with a friendly-target filter; `effects.regainWounds`; battle ledger `fg.fightKill:<opId>` set when that operative's strike takes an enemy to 0 wounds (`damage.inflicted`, sources `strike-*`, attacker = the operative) or gives a mirror Fellgor its Frenzy token | CLASS: team-hook
+  - RULING: Fellgor Ravagers Apoplectic Rejuvenation | the Shaman may pick itself (it is within 6" of itself, R-8.3); a kill made with a shooting attack, Sweeping Blow or Cleaver Flurry does not unlock the 6; not PSYCHIC, so the Null Rod does not stop it | the card says "while fighting or retaliating" and prints no PSYCHIC keyword on this action | Unsourced
+- T-FG.23 **MANTLE OF DARKNESS** (Shaman, 1 AP, PSYCHIC): until the start of the Shaman's next activation, or its incapacitation if sooner, every friendly FELLGOR RAVAGER operative that is visible to and within 3" of the Shaman, has a Conceal order and is in cover cannot be picked as a valid target, overriding every other rule (Seek, Vantage) except being within 2" of the shooter. Not while in an enemy's control range. A Mantle of Darkness token marks the Shaman.
+  - MECH: unique action with `keywords: ["PSYCHIC"]` (psychic.ts switches it off under the Null Rod); token `fg.mantle` (expiry `sourceActivationStart`, `sourceIncapacitated`); `beforeShootTargetSelect` removes a qualifying friendly from `candidates` (not when `secondary`), with "in cover" read from the target status for that shooter and the 2" exception measured shooter to target | CLASS: generic:psychic + team-hook
+  - RULING: Fellgor Ravagers Mantle of Darkness | checked live at target selection (positions, orders and cover at that moment); Blast secondaries are still hit because they are not selected; the Shaman protects itself when it qualifies; `psychicAllowed` is checked at each selection | "cannot be selected as a valid target" bars selection only, as with Grot and the shared `secondary` flag | Unsourced
+- T-FG.24 **Toxic Blessings** (Toxhorn): (a) the Toxhorn may ignore changes to its APL; (b) enemy Shock never affects it; (c) when an attack die deals it Normal Dmg of 3 or more, roll one D6: on a 5+ that damage is 1 lower.
+  - MECH: (a) provider `flags` returns `ignoreAplDecreases: true` for `fg.toxhorn`; (b) `modifyWeaponRules` removes `core.wr.shock` from an enemy weapon in a fight whose opponent is the Toxhorn; (c) `onDamageInflicted` for sources `normal` and `strike-normal`, `amount >= 3`, D6 5+ subtracts 1 | CLASS: generic:ignoreAplDecreases ((b), (c) team-hook)
+  - RULING: Fellgor Ravagers Toxic Blessings APL | only decreases are ignored; increases (Incite Fury) always count | the player may ignore any change and would never ignore an increase | Unsourced
+  - RULING: Fellgor Ravagers Toxic Blessings damage | the threshold reads the damage after War Gong and other changes; it applies to every die that qualifies (not once per sequence); Devastating, Critical Dmg and direct damage are never reduced | the card names Normal Dmg from an attack die with no per-sequence limit | Confirmed
+- T-FG.25 **Pox Bomb** (Toxhorn): the Toxhorn may perform STUN GRENADE (M-5.5) without the team taking it, and its uses never count against the team's equipment totals. When an enemy takes a stun test because of a Stun Grenade the Toxhorn performed (its own use or the team's) and the result is 3 or more, that enemy also takes damage equal to the result halved, rounded up.
+  - MECH: provider `ownGrenades` returns `actions: { <stun grenade id>: 1 }` for `fg.toxhorn`; team-local copy of the core `stunGrenade` code hook (`fg.a.pox-bomb-stun`, offered through `extraActions`, paying from `grenadeSource`) that rolls each stun test itself and, for enemy operatives on 3+, adds `directDamage(ceil(roll / 2))`; provider `actionForbidden` withholds the core Stun Grenade from the Toxhorn so the copy is the only one it sees | CLASS: team-hook (gap: stun-test hook, not built in batch D) + generic:ownGrenades
+  - RULING: Fellgor Ravagers Pox Bomb allowance | the Toxhorn's own allowance is one Stun Grenade per battle, apart from the team's picks; it may also spend the team's picked stun uses, with the extra damage | the card gives no number; the Hearthkyn Grenadier, Angels of Death and Pathfinders precedents use one | Unsourced
+  - RULING: Fellgor Ravagers Pox Bomb damage | only enemy operatives take the extra damage (friendly operatives within 1" still take the stun test); the damage is direct damage (R-7.5) | the card names enemy operatives | Confirmed
+- T-FG.26 **Vicious Blows** (mancrusher): while the Vandal fights (not retaliates), the mancrusher has Ceaseless.
+  - MECH: `modifyWeaponRules` adds `core.wr.ceaseless` when `kind = fight` and the Vandal is the attacker | CLASS: team-hook
+  - RULING: Fellgor Ravagers Vicious Blows | Ceaseless only when the Vandal performs the Fight action, not when retaliating | 2024 rules separate fighting from retaliating (the T-KS.24 ruling) | Confirmed
+- T-FG.27 **SWEEPING BLOW** (Vandal, 1 AP): every other operative (friend or foe) visible to and within 2" of the Vandal takes D3+1 damage, rolled separately, in the order you choose. Not while it has a Conceal order. A frenzied Vandal may still perform it.
+  - MECH: unique action, `directDamage(D3+1)` per operative; the Frenzy action bar (T-FG.30 d) lists it as the exception | CLASS: team-hook
+  - RULING: Fellgor Ravagers Sweeping Blow order | resolved automatically: enemy operatives first, nearest first, then friendly operatives nearest first | the order only matters for incapacitation and Frenzy triggers; hitting enemies first is always at least as good for the Fellgor player | Unsourced
+- T-FG.28 **Warrior Frenzy** (Warrior): while a Warrior is frenzied it is never injured, overriding the Frenzy rule's "it is injured".
+  - MECH: provider `flags` returns `ignoreInjured: true` while frenzied (D5 live flags keep it current); `injuredEquivalent` is not returned for Warriors | CLASS: generic:ignoreAplDecreases (live flags) + team-hook
+
+### 19.5 Faction rules
+
+- T-FG.29 **FRENZY: gaining it**: whenever a friendly FELLGOR RAVAGER operative without a Frenzy token would be incapacitated, from any cause, it is not incapacitated; instead it gains one of your Frenzy tokens, every remaining attack die in that sequence is discarded (in a fight, both fighters' dice), and if it has a Conceal order it changes to Engage. The opponent counts it as incapacitated at that moment (T-FG.32).
+  - MECH: `beforeIncapacitated` handler: `data.wounds = 1` (the Frenzy floor), `addToken(fg.frenzy)` (owner = the Fellgor seat, no expiry), order to Engage with `OrderChanged`, `scoreAsIncapacitated(ctx, op.id, attackerId)` (killer = the attacker when it is an enemy, else null). Remaining dice (endSequence fallback): in a fight every unresolved die of both sides is marked `used`, so the fight ends; in a Shoot a per-sequence effect `fg.frenzyCut` (keyed to the attack and target index) zeroes every later damage to that operative in the sequence through `onDamageInflicted`, and those dice are ignored by the Frenzy counters | CLASS: generic:scoreAsIncapacitated + team-hook (gap: endSequence, not built in batch D)
+  - RULING: Fellgor Ravagers Frenzy wounds | a frenzied operative is held at 1 wound in the engine; its true state is the token, and damage never takes it below 1 except through T-FG.31 | the card gives no wound count; 0 wounds means incapacitated everywhere in the engine | Unsourced
+  - RULING: Fellgor Ravagers Frenzy causes | any incapacitation triggers it: enemy dice, Devastating, Hot, mines, direct damage, and friendly damage (Sweeping Blow, Gore Marks) | "would be incapacitated during the battle" names no source | Confirmed
+  - RULING: Fellgor Ravagers Frenzy discard | in a Shoot the dice still waiting to deal damage to that operative deal none (Devastating already resolved stays); in a fight the fight ends with nothing more resolved by either side | "all remaining attack dice are discarded, including yours if fighting or retaliating" | Confirmed
+- T-FG.30 **FRENZY: while frenzied**, an operative:
+  - (a) is incapacitated only as T-FG.31 says;
+  - (b) cannot have a Conceal order;
+  - (c) is injured (Warrior excepted, T-FG.28);
+  - (d) cannot perform Pick Up Marker, unique actions (except SWEEPING BLOW) or mission actions (except Operate Hatch);
+  - (e) counts as APL 1 for control of markers and areas, whatever its APL changes are (Deathknell excepted, T-FG.8).
+  - MECH: (b) provider `orders` returns `['engage']`; (c) provider `injuredEquivalent` true (not for Warriors); (d) provider `actionForbidden` for `marker:pickUp`, every `ability:<id>` that is not `fg.a.sweeping-blow` and not an Operate Hatch action (grenade and equipment actions included); (e) provider `controlApl` returns 1 | CLASS: team-hook
+  - RULING: Fellgor Ravagers Frenzy unique actions | equipment and grenade actions (Stun Grenade, Smoke Grenade, the Pox Bomb copy) count as unique actions and are barred | 2024 rules call every non-universal, non-mission action a unique action | Unsourced
+  - RULING: Fellgor Ravagers Frenzy control | APL 1 for control even for the Toxhorn (Toxic Blessings covers APL changes, not this control rule) | the control bullet takes precedence over stat changes by its own words | Confirmed
+- T-FG.31 **FRENZY: how a frenzied operative dies**: only when one of these happens (every other damage to it is ignored):
+  - (a) its activation or counteraction ends;
+  - (b) an enemy fighting or retaliating against it strikes it with a critical success (whose Critical Dmg is above 0);
+  - (c) an enemy fighting or retaliating against it strikes it with a normal success for the second time since it gained the token (the two may come from different Fight actions and different enemies);
+  - (d) an enemy shooting it inflicts Critical Dmg on it;
+  - (e) an enemy shooting it inflicts Normal Dmg from two or more attack dice in that sequence;
+  - (f) the battle ends (before any end-of-battle victory conditions).
+  - MECH: `onDamageInflicted` on a frenzied FELLGOR RAVAGER: sources `strike-crit` (b) and `crit` (d) pass through when `amount > 0`; `strike-normal` (c) increments the per-operative counter `fg.normalStrikes` and passes only on the second; `normal` (e) increments a per-sequence counter and passes only on the second; everything else (`devastating`, `hot`, `direct`, and damage cut by `fg.frenzyCut`) is set to 0. A passed amount takes the operative from 1 to 0 and `inflict` incapacitates it normally. (a) `activation.end` (`data.counteract` included) and (f) `turningPoint.end` of the last TP kill it through `directDamage` under a one-shot `fg.frenzyKill` effect that the damage handler lets through, then `queueRemoval` | CLASS: team-hook
+  - RULING: Fellgor Ravagers Frenzy kill thresholds | a strike or die counts only if its damage after every reduction (War Gong, Toxic Blessings, enemy rules) is above 0, matching the update log answer on Critical Dmg 0; a War Gong-converted shooting crit counts as Normal Dmg (e), while a crit strike in a fight still counts as (b) | the update log rules out a 0 Critical Dmg crit; War Gong changes the damage, not the success | Unsourced
+  - RULING: Fellgor Ravagers Frenzy shooting count | the two dice in (e) must come from the same shooting sequence; a Blast or Torrent secondary is its own sequence; dice from separate Shoot actions do not add up | "an enemy operative is shooting it and Normal Dmg from two or more attack dice is inflicted" describes one shooting | Unsourced
+  - RULING: Fellgor Ravagers Frenzy end of activation | gaining the token in its own activation or counteraction means it dies when that ends; gained during the enemy's turn, it lives until its next activation or counteraction ends; a Strategy phase free Dash is not an activation | the card's first condition | Confirmed
+  - RULING: Fellgor Ravagers Frenzy battle end | resolved in the last TP's `turningPoint.end`, before that TP's crit op scoring and the end-of-battle kill op comparison; the opponent already counted it (T-FG.32), so nothing is counted twice | the card puts it before victory conditions that resolve at the end of the battle | Confirmed
+  - RULING: Fellgor Ravagers Frenzy odds | the engine's displayed odds treat a frenzied target as an operative on 1 wound (they overstate the kill chance from a single Normal Dmg die); the target's tooltip names Frenzy | a kill model for alternate incapacitation is not built in batch D | Unsourced
+- T-FG.32 **FRENZY: scored as incapacitated**: the opponent treats a Fellgor operative as incapacitated when it gains its Frenzy token, not when it later dies: for VP (kill op) and for faction rules that need an incapacitation (Hand of the Archon Power From Pain, Chaos Cult Mutation and the like).
+  - MECH: `scoreAsIncapacitated(ctx, opId, killerId?)` at token gain: counts the kill op now, logs a `KillRecord` with cause `scored`, runs `operative.removed` once (`{ killerId, cause: 'scored' }`); the later real removal is neither counted nor logged again | CLASS: generic:scoreAsIncapacitated
+  - RULING: Fellgor Ravagers Frenzy scoring reach | other teams' rules that read `operative.removed` or the kill log see the token gain as the kill; ploy windows that open only on an attack removal (`operative.killed`) do not open then, nor at the later real removal | the card covers VP and faction rules; the shared kill log is the one place those rules read | Unsourced
+
+### 19.6 Ploys
+
+The source prints no costs: every ploy is 1 CP (R-2.4) unless a rule changes it (T-FG.41). Strategy ploys last until the end of the TP (R-2.5).
+
+- T-FG.33 **VIOLENT TEMPERAMENT** | Strategy | 1 CP | Gambit step | When a friendly FELLGOR RAVAGER operative fights or retaliates, after its attack dice are rolled, you may re-roll all of them (all or none). Dice the opponent already re-rolled or replaced are left alone (update log commentary).
+  - MECH: 0 CP offer in the `fight.beforeRerolls` window for the Fellgor fighter while the ploy is in effect; `attack-common.forcedReroll` over every die that is not already re-rolled and not a fixed die (`isFixedDie`) | CLASS: team-hook
+  - RULING: Fellgor Ravagers Violent Temperament | offered once per fighter per sequence, before any other re-roll; the re-rolled dice cannot be re-rolled again (R-9.2), so a Command Re-roll or Gore Marks can then only touch dice it left alone | "after rolling your attack dice ... re-roll all" sets the moment; the commentary excludes dice already changed | Confirmed
+- T-FG.34 **AMBUSH** | Strategy | 1 CP | Gambit step | A friendly FELLGOR RAVAGER operative whose order changes from Conceal to Engage when it is activated is ambushing for that activation. While an ambushing operative fights (not retaliates), you may retain one of its normal successes as a critical success. A frenzied operative cannot ambush.
+  - MECH: `activation.start` with `data.previousOrder = conceal`, `data.order = engage` while the ploy is in effect sets effect `fg.ambush` (expires `activation`), dropped if the operative gains a Frenzy token; `afterAttackRoll` (fight, attacker side) converts one `normal` to `crit` | CLASS: team-hook
+  - RULING: Fellgor Ravagers Ambush errata | only the normal-to-crit option; the older "retain a fail as a normal" alternative is not applied | the current card (August '26) and Wahapedia print only normal-to-crit; the update log's previous-errata text predates the current card | Confirmed
+  - RULING: Fellgor Ravagers Ambush use | the conversion is automatic (a crit is never worse than a normal in a fight); only in the operative's own activation, not counteractions or free-action frames outside it | "is activated" names the activation | Unsourced
+- T-FG.35 **PELTING FIREPOWER** | Strategy | 1 CP | Gambit step | When a friendly FELLGOR RAVAGER operative shoots an enemy that another friendly FELLGOR RAVAGER operative has already shot this TP, the shooter's ranged weapons have Ceaseless; if two or more other friendly FELLGOR RAVAGER operatives have shot it this TP, they have Relentless instead.
+  - MECH: TP ledger `fg.shotBy[enemyId]` = Fellgor shooters, written in `afterShootResolved` for every target of the action (primary and secondaries) whether or not the ploy is in effect, cleared at `turningPoint.start`; `modifyWeaponRules` with `targetId` adds `core.wr.ceaseless` or `core.wr.relentless` (counting shooters other than the current one) | CLASS: team-hook
+  - RULING: Fellgor Ravagers Pelting Firepower | "been shot" means it was a target (primary or secondary) of a finished Shoot by a Fellgor this TP, including shots before the ploy was used; checked per target; the current shooter's own earlier Shoots do not count | the ploy reads the TP's history; the card says "another" | Unsourced
+- T-FG.36 **RECKLESS DETERMINATION** | Strategy | 1 CP | Gambit step | When an enemy shoots an expended friendly FELLGOR RAVAGER operative that cannot retain any cover saves, you may retain one of its defence dice as a normal success without rolling it.
+  - MECH: `diceRolled` (shoot, defence side, before any re-roll) on an expended Fellgor target with no cover save retained (not in cover, Saturate, or cover denied) and at least one collected die: the first die becomes a normal success tagged `fg.reckless`, registered with `registerFixedDieTag` so nothing re-rolls it | CLASS: team-hook (gap: autoRetain, not built in batch D)
+  - RULING: Fellgor Ravagers Reckless Determination errata | applies only when no cover save can be retained (not "in addition to a cover save") | the current card and Wahapedia print the "cannot retain any cover saves" condition; the previous-errata text is older | Confirmed
+  - RULING: Fellgor Ravagers Reckless Determination die | the first rolled defence die is set to a normal success and fixed, which gives the same odds as one die retained unrolled plus the rest rolled; automatic | no shared auto-retain step exists in batch D; the result can never be worse than rolling | Unsourced
+- T-FG.37 **RUTHLESS RAMPAGE** | Firefight | 1 CP | After a friendly FELLGOR RAVAGER operative performs Fight, if it is no longer within an enemy's control range | It may at once perform a free Charge (even if it already Charged this activation) of no more than 3".
+  - MECH: firefight ploy in `firefight.actionEnded` after a Fight by a Fellgor operative outside every enemy control range; `startFreeAction({ action: 'charge', maxMove: 3 })` with the R-3.7 restriction lifted for that Charge; withheld while the Mangler's Savage free Fight (T-FG.21) is still to come | CLASS: team-hook
+  - RULING: Fellgor Ravagers Ruthless Rampage | any Fight action counts (free Fights, a guard interrupt Fight), retaliation does not; a Conceal operative cannot use it (Charge rules); the 3" cap includes climbs | the ploy triggers on performing Fight; the Charge keeps its own conditions | Unsourced
+- T-FG.38 **WILD RAGE** | Firefight | 1 CP | When a friendly FELLGOR RAVAGER operative is activated | Until the end of that activation, its Move is 1" higher.
+  - MECH: firefight ploy in `firefight.activationStart`; effect `fg.wildRage` (expires `activation`), provider `moveDelta` +1 | CLASS: team-hook
+- T-FG.39 **ANIMALISTIC FURY** | Firefight | 1 CP | When a friendly FELLGOR RAVAGER operative fighting or retaliating strikes with a critical success | That strike deals 1 extra damage.
+  - MECH: firefight ploy in the `fight.rolled` window (after re-rolls, before the Resolve step), offered only when the Fellgor side retained a crit; it arms effect `fg.animalisticFury` for that sequence, and the attack hook `beforeStrike` adds 1 to `amount` on that fighter's first strike whose `die` is `crit`, then clears it | CLASS: team-hook
+  - RULING: Fellgor Ravagers Animalistic Fury timing | the ploy is chosen once the dice are final and applies to that fighter's first crit strike; if the fight ends before it strikes with a crit, the CP is still spent | `beforeStrike` cannot ask; a strike-time ploy window is not built, and the arming point is the last decision before the Resolve step | Unsourced
+- T-FG.40 **BLOODSENSE** | Firefight | 1 CP | During a friendly FELLGOR RAVAGER operative's activation, when it incapacitates an enemy operative within its control range | Pick another ready friendly FELLGOR RAVAGER operative visible to and within 3" of that enemy. When the first operative is expended, you activate the picked one next, before your opponent; after it, play returns to normal.
+  - MECH: firefight ploy offered in `firefight.actionEnded` when `killsSince(state, activation.declaredSeq)` holds a kill whose killer is the active operative and whose victim was within its control range at incapacitation (victim body at its last position); operative choice; provider `chainActivation` returns the picked id when the first operative's activation ends | CLASS: generic:killLog + team-hook
+  - RULING: Fellgor Ravagers Bloodsense | any cause counts (fight, point-blank Shoot, Cleaver Flurry, Sweeping Blow at 1" or less) if the victim was in control range; offered after the action, not mid-action; only in the operative's own activation (not counteractions, guard interrupts); the chain still happens if the first operative is incapacitated as its activation ends (Frenzy) | the kill log is the batch D reaction point for kills; "during its activation" excludes counteractions (R-3.12) | Unsourced
+
+### 19.7 Faction equipment
+
+Universal equipment (M-5) can also be chosen; the four-option limit covers faction and universal options together (M-5.12).
+
+- T-FG.41 **BRASS ADORNMENTS** | Once per battle each, ANIMALISTIC FURY and WILD RAGE cost 0 CP.
+  - MECH: equipment `ployCost` effects (Chapter Reliquaries pattern): `fg.p.animalistic-fury` and `fg.p.wild-rage` at 0 CP, once per battle each | CLASS: data
+  - RULING: Fellgor Ravagers Brass Adornments | one free use of each ploy per battle (two free uses in all), not one free use shared between them | "for 0CP each" | Unsourced
+- T-FG.42 **GORE MARKS** | Once per TP, when a friendly FELLGOR RAVAGER operative fights or retaliates, you may deal it 1 damage and re-roll one of its attack dice; if the re-rolled die is a fail, deal it 1 more damage.
+  - MECH: 0 CP offer in `fight.beforeRerolls` (and again after Violent Temperament if unused), one option per die not already re-rolled or fixed; `directDamage(1)` on the fighter, then `forcedReroll` of that die, then `directDamage(1)` on a fail; once-per-TP ledger | CLASS: team-hook
+  - RULING: Fellgor Ravagers Gore Marks and Frenzy | the damage comes first; if it triggers Frenzy the fight ends at once (T-FG.29) and the re-roll does not happen; on a frenzied operative the damage is ignored (T-FG.31) and the re-roll still happens | the card orders damage then re-roll; Frenzy discards every remaining die | Unsourced
+- T-FG.43 **CHAOS SIGIL** | Once per TP, when an operative shoots a friendly FELLGOR RAVAGER operative, at the start of the Roll Defence Dice step, you may lower that weapon's Piercing x by 1 until the end of the sequence (Piercing 1 is ignored).
+  - MECH: 0 CP offer in `shoot.beforeDefenceRoll` (defender) when the weapon has `core.wr.piercing`; a per-sequence flag read by `modifyWeaponRules` (`x - 1`, removed at 0); once-per-TP ledger | CLASS: team-hook
+  - RULING: Fellgor Ravagers Chaos Sigil scope | plain Piercing only; Piercing Crits is a separate rule and unchanged | the card names "the Piercing weapon rule" | Unsourced
+- T-FG.44 **WAR PAINT** | Friendly FELLGOR RAVAGER operatives ignore the Move loss from being injured (the Hit penalty still applies), whether the injury is real or the Frenzy one.
+  - MECH: provider `moveDelta` +2 while the operative is injured or frenzied (T-FG.30 c) and not ignoring injury | CLASS: team-hook
+  - RULING: Fellgor Ravagers War Paint | done as +2" while injured, which cancels exactly the -2" from injury | no shared "ignore only the Move part of injury" exists; the result is the same number | Unsourced
+
+Marker/token guide (UI): Frenzy token, Gong Knell token, Mantle of Darkness token, Chaos Sigil token, Brass Adornments token, Gore Marks token, Pelting Firepower token.
+
+### 19.8 Checklist
+
+Rows in `12-rules-test-checklist.md` section TEAM-FG: TEAM-FG-000 to TEAM-FG-042.
+
+### 19.9 Generic capabilities (survey; resolved in the Engine map below)
+
+- **scoreAsIncapacitated / killLog** (batch D, D2): Frenzy's kill op credit at token gain with `operative.removed` (cause `scored`) for other teams' kill rules; `killsSince` for Bloodsense; `operative.removed` for Headtaker. Used by T-FG.16, T-FG.29, T-FG.32, T-FG.40.
+- **ignoreAplDecreases + live flags** (batch D, D5): Toxic Blessings; live `ignoreInjured` for Warrior Frenzy. Used by T-FG.24, T-FG.28.
+- **weaponForbidden** (batch C): Berserker. Used by T-FG.20.
+- **psychic** (batch C): Tech-curse tag and Mantle of Darkness. Used by T-FG.6, T-FG.23.
+- **ownGrenades**, `ownReactions`, `afterFightResolution` (strikeOnly), `fightResolveStart` (blockOnly), `controlApl`, `injuredEquivalent`, `orders`, `actionForbidden`, `actionCostDelta`, `maxRepeats`, `moveDelta`, `chainActivation`, `beforeIncapacitated`, `onDamageInflicted`, `beforeStrike`, `modifyDamage`, `regainWounds`, `aplChangeNextActivation`, `forcedReroll`, `registerFixedDieTag`, `startFreeAction` / `startFreeSequence`, `planMove` (forced flag), windows `fight.beforeRerolls`, `fight.rolled`, `firefight.actionEnded`, `firefight.activationStart`, `firefight.activationEnded`, `shoot.beforeDefenceRoll`, equipment `ployCost`: existing.
+- Gaps (not built in batch D; each has a team-local fallback with a RULING):
+  - **endSequence** (Frenzy discard): fight dice marked `used`; Shoot damage zeroed by `fg.frenzyCut`. Used by T-FG.29.
+  - **killModel** (odds for alternate incapacitation): odds read the 1-wound floor. Used by T-FG.31.
+  - **autoRetain** (defence die kept unrolled, not a cover save): first die fixed as a normal (`registerFixedDieTag`). Used by T-FG.36.
+  - **move through enemy control range** (Cleaver Flurry): team-local path with `planMove`'s forced flag and a segment walk. Used by T-FG.12.
+  - **stun-test hook** (Pox Bomb): team copy of the Stun Grenade action. Used by T-FG.25.
+  - **choices inside damage** (War Gong): automatic. Used by T-FG.9.
+  - **strike-time ploy window** (Animalistic Fury): armed at `fight.rolled`, applied in `beforeStrike`. Used by T-FG.39.
+  - **ignore only the Move part of injury** (War Paint): `moveDelta` +2. Used by T-FG.44.
+
+### 19.10 Gotchas
+
+- Current card over the update log's previous errata twice (Confirmed): Ambush is normal-to-crit only; Reckless Determination needs "cannot retain any cover saves". The August '26 errata are already on both sources' cards: Mangler Hit 4+, Gnarlscar and Mangler W10, Tech-curse Seek Light, Gong Knell is Save +1 only, Incite Fury is not SUPPORT, Frenzy's fifth incapacitation condition (two Normal Dmg dice) exists, Call the Attack is a STRATEGIC GAMBIT barred to a frenzied Ironhorn.
+- Frenzy is the spine and touches everything: a frenzied operative sits on 1 wound in the engine, ignores all damage except the six T-FG.31 conditions, dies when its own activation or counteraction ends, is Engage only, is injured (not the Warrior), uses APL 1 for control (not the Deathknell) and can only perform Sweeping Blow among unique actions. The opponent's kill op counts it at token gain (D2), so its later death is never counted again.
+- The Frenzy damage handler must run after every other Fellgor reduction (War Gong first, then Toxic Blessings, then Frenzy) and must treat zero-damage dice as not counting (update log commentary).
+- "Fighting" is not "retaliating": Ambush, Vicious Blows, Tactual Hunter and Ruthless Rampage are fighting-only; Blade Whirl, Violent Temperament, Animalistic Fury, Gore Marks and Frenzy's fight conditions cover both.
+- Mangler: no Shoot at all (Guard only to Fight), +1 AP for Pick Up Marker and mission actions, a free second Fight once per activation (Savage), and Ruthless Rampage cannot come between the two Fights.
+- Whip Control affects the enemy whoever it fights and makes Fall Back cost 1 extra AP; Incite Fury cannot pick a Shaman or the Ironhorn, nor itself.
+- Sweeping Blow and Pox Bomb hurt friendly operatives too (Sweeping Blow deals damage, Pox Bomb only stuns friends); Sweeping Blow can push a friend into Frenzy.
+- Gore Marks damage can trigger Frenzy mid-fight and end the fight before its re-roll.
+- Pelting Firepower reads the whole TP's shooting history, written even before the ploy is used.
+- Operate Hatch exceptions (Frenzy, Berserker) only matter on a Gallowdark killzone, which v1 does not have.
+- Edition leaks to reject: nothing from earlier-edition Fellgor Ravager cards (no rolled Frenzy tests, no Overwatch, no shape distances, no 2 APL-for-everyone assumptions from 2021), nothing from 40k 10th Chaos or Beastmen rules (no wound rolls, AP, battle-shock, Command phase); inches only, three defence dice, cover save, obscured discards one success, every printed number from the August '26 cards.
+
+### 19.11 Engine map
+
+| Rule or capability | Built as |
+|---|---|
+| Roster (Ironhorn 1, main 9, WARRIOR repeatable, every other entry once) | team.json slots, `repeatable: ["fg.warrior"]` |
+| Loadouts | datacard `weapons.options` (`sets` for Ironhorn and Warrior), profile group `fg.wg.plasma-pistol` |
+| Frenzy gain (T-FG.29) | `beforeIncapacitated` (wounds 1), token `fg.frenzy`, order flip, `scoreAsIncapacitated` (D2); remaining dice: fight dice `used`, Shoot damage zeroed by `fg.frenzyCut` (gap endSequence) |
+| Frenzy state (T-FG.30) | providers `orders`, `injuredEquivalent`, `actionForbidden`, `controlApl` |
+| Frenzy deaths (T-FG.31) | `onDamageInflicted` with per-operative and per-sequence counters; `activation.end` and last `turningPoint.end` with a flagged `directDamage` + `queueRemoval` |
+| Frenzy scoring (T-FG.32) | `scoreAsIncapacitated`, `operative.removed` cause `scored` (D2) |
+| Call the Attack | Strategy gambit with an operative choice, `startFreeSequence` of free Dashes |
+| Icon Bearer | provider `controlApl` (+1, Frenzy exemption) |
+| War Gong | `onDamageInflicted` (crit sources to Normal Dmg), automatic |
+| Gong Knell | token `fg.gongKnell`, `modifyDefenceDice` `saveDelta -1` |
+| Blade Whirl | provider `fightResolveStart` (`blockOnly` first) |
+| Cleaver Flurry | team unique action: `planMove` forced path, end-spot options, segment walk, `directDamage(D3+1)` in entry order (gap) |
+| Sagacious | 0 CP offer in `firefight.activationEnded` |
+| Uncompromising Attack | unique action, two chained `startFreeAction` frames (`pointBlank`, `weaponNameContains`), `beforeShootTargetSelect` |
+| Champion | provider `maxRepeats` (fight 2) |
+| Headtaker | `damage.inflicted` + `operative.removed` (D2), `regainWounds`, `modifyDamage` (crit up to 8) |
+| Whip Control | `modifyAttackDice` (atk -1, min 1), provider `actionCostDelta` (Fall Back +1) |
+| Incite Fury | unique action, `aplChangeNextActivation` |
+| Tactual Hunter | provider `afterFightResolution` (`strikeOnly`) |
+| Berserker | providers `actionForbidden`, `weaponForbidden`, `actionCostDelta` |
+| Savage | provider `ownReactions` (free Fight), `maxRepeats` |
+| Apoplectic Rejuvenation | unique action, `regainWounds`, battle ledger of fight kills |
+| Mantle of Darkness | PSYCHIC unique action, token `fg.mantle`, `beforeShootTargetSelect` |
+| Toxic Blessings | provider `flags` `ignoreAplDecreases` (D5), `modifyWeaponRules` (strip Shock), `onDamageInflicted` (5+ minus 1) |
+| Pox Bomb | `ownGrenades` stun 1, team copy of the Stun Grenade action with the extra damage, `actionForbidden` on the core one (gap) |
+| Vicious Blows | `modifyWeaponRules` (Ceaseless when fighting) |
+| Sweeping Blow | unique action, `directDamage(D3+1)` enemies first |
+| Warrior Frenzy | provider `flags` `ignoreInjured` (D5 live flags) |
+| Violent Temperament | 0 CP offer in `fight.beforeRerolls`, `forcedReroll` of unchanged dice |
+| Ambush | `activation.start` (previousOrder), effect `fg.ambush`, `afterAttackRoll` |
+| Pelting Firepower | `afterShootResolved` TP ledger, `modifyWeaponRules` (Ceaseless / Relentless) |
+| Reckless Determination | `diceRolled` (defence), fixed die via `registerFixedDieTag` (gap autoRetain) |
+| Ruthless Rampage | window `firefight.actionEnded`, `startFreeAction({ action: 'charge', maxMove: 3 })` |
+| Wild Rage | window `firefight.activationStart`, provider `moveDelta` +1 |
+| Animalistic Fury | window `fight.rolled` (arm), attack hook `beforeStrike` (+1 on the first crit strike) |
+| Bloodsense | window `firefight.actionEnded`, `killsSince` (D2), provider `chainActivation` |
+| Brass Adornments | equipment `ployCost` (0 CP, once per battle each) |
+| Gore Marks | 0 CP offer in `fight.beforeRerolls`, `directDamage`, `forcedReroll` |
+| Chaos Sigil | 0 CP offer in `shoot.beforeDefenceRoll`, `modifyWeaponRules` (Piercing x - 1) |
+| War Paint | provider `moveDelta` +2 while injured |
+
+### 19.12 Implementer brief
+
+- Files you own (nothing else):
+  - `src/data/teams/fellgor-ravagers/team.json`, `operatives.json`, `weapons.json`, `abilities.json`, `ploys.json`, `equipment.json` (ids `fg.<name>`, `fg.w.`, `fg.wg.`, `fg.a.`, `fg.p.`, `fg.e.`; team weapon rules `fg.a.wr-psychic`, `fg.a.wr-headtaker`, `fg.a.wr-tactual-hunter`, `fg.a.wr-vicious-blows`). The leader datacard and its five weapon records exist from the Phase 1 scaffold.
+  - `src/engine/teams/fellgor-ravagers.ts` (code hooks, `registerTeamRules`, hook handlers, ploy rules)
+  - `src/client/teams/fellgor-ravagers.ts` (weapon flavour, VFX family, sound, attachments, a Frenzy badge on frenzied operatives, the stand-ins already listed: `fg-ironhorn` with its two loadout bodies, `fg-deathknell`, `fg-fluxbray`, `fg-gnarlscar`, `fg-gorehorn`, `fg-herd-goad`, `fg-mangler`, `fg-shaman`, `fg-toxhorn`, `fg-vandal`, `fg-warrior-bludgeon` / `-b`, `fg-warrior-cleaver` / `-b`; add Warrior `loadoutBodies`)
+  - `tests/engine/teams/fellgor-ravagers.test.ts` (TEAM-FG-nnn tests) and `tests/engine/teams/fellgor-ravagers.hooks.ts` (code-hook firing scenarios)
+  - append-only: `docs/needs-rules-check.md` (RULING lines), `docs/spec/13-teams.md` section 19 and `12-rules-test-checklist.md` section TEAM-FG (refinements only)
+- Activation flag: `"playable": false` in `src/data/teams/fellgor-ravagers/team.json`. Flip it (with `defaults` filled: Ironhorn plus the nine single entries or a legal mix with Warriors, and every weapon in the client file) only when the team is complete and all gates pass.
+- Capabilities to use: the Engine map above. Batch D: `scoreAsIncapacitated` / `operative.removed` / `killsSince` (D2), `flags.ignoreAplDecreases` and live flags (D5). Batch C: `weaponForbidden`, psychic.ts. Existing: `beforeIncapacitated`, `onDamageInflicted`, `beforeStrike`, `fightResolveStart`, `afterFightResolution`, `ownReactions`, `ownGrenades`, `controlApl`, `injuredEquivalent`, `chainActivation`, equipment `ployCost`. Team-local fallbacks for the gaps endSequence, killModel, autoRetain, move through control range, stun-test hook, War Gong choice, strike-time window, Move-only injury (19.9).
+- Order: roster and loadouts (TEAM-FG-001, 002); then Frenzy end to end (TEAM-FG-003 to 010), the spine every other rule leans on; then the operatives whose rules touch Frenzy (War Gong, Warrior Frenzy, Icon Bearer, Sweeping Blow: 011, 012, 027, 033); then the rest of the datacards, ploys and equipment.
+- Team-local weapon rules the data needs: `fg.a.wr-psychic` on the tech-curse; `fg.a.wr-headtaker` on the skullcleaver; `fg.a.wr-tactual-hunter` on the vicious claws; `fg.a.wr-vicious-blows` on the mancrusher. Core rules elsewhere.
+- RULING lines expected: roster limits, Call the Attack group, Icon Bearer areas, War Gong choice and range, Blade Whirl use, Cleaver Flurry path and Frenzy, Sagacious scope, Uncompromising Attack, Headtaker, Whip Control scope, Incite Fury timing, Tactual Hunter use, Savage, Apoplectic Rejuvenation, Mantle of Darkness, Toxic Blessings APL and damage, Pox Bomb allowance and damage, Vicious Blows, Sweeping Blow order, Frenzy wounds, causes, discard, unique actions, control, kill thresholds, shooting count, end of activation, battle end, odds, scoring reach, Violent Temperament, Ambush errata and use, Pelting Firepower, Reckless Determination errata and die, Ruthless Rampage, Animalistic Fury timing, Bloodsense, Brass Adornments, Gore Marks and Frenzy, Chaos Sigil scope, War Paint.
+- Gotchas: section 19.10. Ten operatives use the 10-operative kill grade row. A frenzied operative is on 1 wound by design: every Fellgor handler that reads wounds or injury must ask `isFrenzied` first. Damage handlers in this file run in a fixed order (War Gong, Toxic Blessings, Frenzy). The Warrior is one datacard with two loadout sets.
+
+## 20. Chaos Cult
+
+Rule IDs `T-CC.<n>`, checklist IDs `TEAM-CC-<nnn>`. Sources: the Chaos Cult team PDF (Kill Team 2024, July '25, including its update log with the July '25 errata and the previous errata; the flow and layout extracts were read together, and the errata page was checked in the PDF itself for colour and strike-through) as the primary source, cross-checked against the Wahapedia Chaos Cult page (faction version 3, June '25), plus the core rules page for terms. Facts read from the PDF are Confirmed; our own calls are Unsourced. The two sources agree on every stat line, weapon and base; they differ only in two places of wording (20.10). All rule text is restated in our own words; team, operative, weapon, ploy and equipment names are used as printed. Core terms per `10-rules-core.md` (R-x.y), missions and universal equipment per `11-missions.md` (M-x.y). Ploys and equipment are one bullet per record so each can carry its MECH line.
+
+Weapon type column: R = ranged, M = melee. Dmg is `normal/crit`. Base is in mm.
+
+### 20.1 Team selection
+
+- T-CC.1 Roster is a fixed list of exactly 14 operatives: 1 CULT DEMAGOGUE (leader), 2 BLESSED BLADE, 9 CHAOS DEVOTEE, 1 ICONARCH, 1 MINDWITCH. There is no choice: every entry is taken, nothing counts as two selections. CHAOS MUTANT and CHAOS TORMENT are never selected; operatives only become them during the battle (T-CC.19 to T-CC.21).
+  - MECH: team.json slots `leader` (1, `cc.demagogue`), `blessed-blades` (2, `cc.blessed-blade`, repeatable), `devotees` (9, `cc.devotee`, repeatable), `iconarch` (1), `mindwitch` (1); `cc.mutant` and `cc.torment` are datacard records with `"selectable": false` (in no slot, snapshotted into every game with the team) | CLASS: generic:transformOperative (selectable flag; roster data)
+  - RULING: Chaos Cult fixed roster | all 14 operatives are always taken; the builder shows the roster but offers no picks | the selection page lists exact counts with no "up to" and no options | Confirmed
+- T-CC.2 Loadouts: every datacard has one fixed loadout (20.3). Demagogue: diabolical stave (ranged and melee profiles) and pistol. Blessed Blade: commune blade. Iconarch: burning censer, pistol, crude melee weapon. Mindwitch: infernal gaze, fists. Devotee: pistol, crude melee weapon. Mutant: blasphemous appendages. Torment: hideous mutations.
+  - MECH: datacard `weapons.fixed`, no options | CLASS: data
+  - RULING: Chaos Cult Devotee gun name | the Devotee's ranged weapon is the "Pistol" of the datacard, sharing one record with the Demagogue's and the Iconarch's (identical 4 4+ 2/3 Range 8") | the datacard and Wahapedia print "Pistol"; only the selection page's figure caption says "Autopistol" | Confirmed
+- T-CC.3 Archetypes: INFILTRATION, SEEK & DESTROY (tac ops out of scope for v1).
+  - MECH: team.json `archetypes: ["infiltration", "seek-and-destroy"]` | CLASS: data
+- T-CC.4 Keywords and terms: every operative has CHAOS CULT and CHAOS. DARK COMMUNE: Demagogue, Blessed Blades, Iconarch, Mindwitch. PSYKER: Iconarch, Mindwitch. Role keywords DEVOTEE, MUTANT, TORMENT name the three forms. To **MUTATE** is T-CC.20; to **turn into** another operative is T-CC.21. An **ACCURSED GIFT** is one of six rules (T-CC.23 to T-CC.28) a friendly operative has through T-CC.22 or T-CC.34.
+  - MECH: keyword lists in operatives.json (DARK COMMUNE with a space, as other teams' two-word keywords) | CLASS: data
+  - RULING: Chaos Cult PDF keyword spacing | the faction keyword is CHAOS CULT | the PDF prints "CHAOS CULT ," with a stray space, Wahapedia prints CHAOS CULT | Confirmed
+- T-CC.5 Team-local weapon rule: **PSYCHIC** on the infernal gaze (the batch C PSYCHIC tag). Every other weapon rule on the cards is core (R-10).
+  - MECH: weapon record carries `{ "rule": "cc.a.wr-psychic" }`; `psychic.isPsychicWeapon` switches it off under a Null Rod | CLASS: data (batch C PSYCHIC layer)
+
+### 20.2 Operative stats
+
+| Operative | APL | Move | Save | Wounds | Base | Keywords |
+|---|---|---|---|---|---|---|
+| CULT DEMAGOGUE | 2 | 6" | 5+ | 8 | 32 | CHAOS CULT, CHAOS, LEADER, DARK COMMUNE, CULT DEMAGOGUE |
+| BLESSED BLADE | 2 | 6" | 5+ | 8 | 28 | CHAOS CULT, CHAOS, DARK COMMUNE, BLESSED BLADE |
+| ICONARCH | 2 | 6" | 5+ | 8 | 32 | CHAOS CULT, CHAOS, DARK COMMUNE, PSYKER, ICONARCH |
+| MINDWITCH | 2 | 6" | 5+ | 8 | 32 | CHAOS CULT, CHAOS, DARK COMMUNE, PSYKER, MINDWITCH |
+| CHAOS DEVOTEE | 2 | 6" | 5+ | 7 | 25 | CHAOS CULT, CHAOS, DEVOTEE |
+| CHAOS MUTANT (not selectable) | 2 | 6" | 5+ | 7 | 25 | CHAOS CULT, CHAOS, MUTANT |
+| CHAOS TORMENT (not selectable) | 2 | 6" | 5+ | 13 | 40 | CHAOS CULT, CHAOS, TORMENT |
+
+Notes: every card is APL 2, Move 6", Save 5+. The Blessed Blade's 28mm comes from the errata (previous errata, "Changed to 28"); Wahapedia already prints 28. The Torment's 40mm base is the only size change Mutation can cause (25 to 40). Ids: `cc.demagogue`, `cc.blessed-blade`, `cc.iconarch`, `cc.mindwitch`, `cc.devotee`, `cc.mutant`, `cc.torment`. 14 starting operatives for the kill op (Mutation never changes the count).
+
+### 20.3 Weapon profiles
+
+| Weapon | Type | Atk | Hit | Dmg | Rules | Held by |
+|---|---|---|---|---|---|---|
+| Diabolical stave (ranged) | R | 4 | 4+ | 3/6 | Range 2", Stun | Demagogue |
+| Pistol | R | 4 | 4+ | 2/3 | Range 8" | Demagogue, Iconarch, Devotee |
+| Burning censer | R | 4 | 2+ | 4/4 | Range 5", Saturate, Torrent 2" | Iconarch |
+| Infernal gaze | R | 5 | 3+ | 0/0 | PSYCHIC, Range 6", Devastating 2, Lethal 3+ | Mindwitch |
+| Diabolical stave (melee) | M | 4 | 4+ | 3/6 | Shock, Stun | Demagogue |
+| Commune blade | M | 4 | 4+ | 4/6 | Lethal 5+ | Blessed Blade |
+| Crude melee weapon (Iconarch) | M | 3 | 4+ | 2/3 | none | Iconarch |
+| Crude melee weapon | M | 4 | 4+ | 2/3 | none | Devotee |
+| Fists | M | 3 | 5+ | 1/2 | none | Mindwitch |
+| Blasphemous appendages | M | 4 | 4+ | 3/4 | Ceaseless, Rending | Mutant |
+| Hideous mutations | M | 5 | 4+ | 4/5 | Ceaseless, Rending | Torment |
+
+Notes: 11 profiles, 11 records (no profile groups: the stave's two lines are a ranged and a melee weapon). Ids: `cc.w.diabolical-stave-ranged`, `cc.w.pistol`, `cc.w.burning-censer`, `cc.w.infernal-gaze`, `cc.w.diabolical-stave-melee`, `cc.w.commune-blade`, `cc.w.crude-melee-weapon-iconarch`, `cc.w.crude-melee-weapon`, `cc.w.fists`, `cc.w.blasphemous-appendages`, `cc.w.hideous-mutations`. The Iconarch's crude melee weapon has Atk 3, the Devotee's Atk 4, so they are separate records. The infernal gaze deals no Normal or Critical Dmg: it hurts only through Devastating 2 on each retained crit, and Lethal 3+ makes every success a crit.
+
+UNCLEAR (resolved): the Iconarch weapon table is scrambled in the layout extract (the WR column is offset). The flow extract and Wahapedia agree row for row; the table above follows them. RULING: Chaos Cult Iconarch crude melee weapon | Atk 3, Hit 4+, Dmg 2/3, a separate record from the Devotee's Atk 4 one | both extracts and Wahapedia print 3 attacks on the Iconarch card and 4 on the Devotee card | Confirmed
+
+### 20.4 Operative rules and unique actions
+
+- T-CC.6 **INCITE SLAUGHTER** (Demagogue, 1 AP, SUPPORT): one other friendly CHAOS CULT operative visible to and within 9" of the Demagogue immediately performs a free Fight action. Not while the Demagogue is in an enemy's control range.
+  - MECH: unique action with a friendly-target filter (other, visible, within 9" plus `core-hooks.commsBonus(state, seat, demagogue)` for SUPPORT), then `startDelegatedAction({ allow: ['fight'] })`; the target needs an enemy in its control range to be offered | CLASS: team-hook
+  - RULING: Chaos Cult Incite free Fight eligibility | only operatives that could perform Fight now (an enemy in their control range, not otherwise barred) are offered; the free Fight counts as that operative's Fight for R-3.9 | the action grants a performance, it does not lift the Fight requirements | Unsourced
+- T-CC.7 **INCITE URGENCY** (Demagogue, 1 AP, SUPPORT): one other friendly CHAOS CULT operative visible to and within 9" immediately performs a free Charge (moving no more than 3") or a free Dash. Not while the Demagogue is in an enemy's control range.
+  - MECH: as T-CC.6 with `startDelegatedAction({ allow: ['charge', 'dash'], maxMove: 3 })` (the 3" cap applies to the Charge; Dash is 3" anyway) | CLASS: team-hook
+  - RULING: Chaos Cult Incite Urgency Charge distance | the free Charge may move at most 3" in total, climbing and dropping costs included, and must still end in an enemy's control range | "it cannot move more than 3"" caps the move, not the Move stat | Unsourced
+- T-CC.8 **Cut Them Down** (Blessed Blade): whenever an enemy operative performs Fall Back while within control range of a Blessed Blade, before it moves it takes D3+1 damage; if it is within control range of both Blessed Blades it takes 2D3+2 instead (once, not once per Blade).
+  - MECH: `action.declared` hook on an enemy `fallBack` (Ctx `engine`): count friendly BLESSED BLADE operatives whose control range holds the mover, roll and `directDamage` with the Blade as source operative (D2 killer); if the mover is incapacitated, `cancel` the Fall Back | CLASS: team-hook (generic:killLog records the kill)
+  - RULING: Chaos Cult Cut Them Down use | always used (no decision); with two Blades in range the 2D3+2 replaces the single roll; a mover killed by it never moves and its Fall Back is cancelled | the rule only helps its owner, and it inflicts the damage "before it moves" | Unsourced
+- T-CC.9 **Attuned In Purpose** (Blessed Blade): when a Blessed Blade is activated, you may activate the other ready Blessed Blade within 6" of it at the same time; the two complete their activations action by action in any order.
+  - MECH: the `firefight.activate` decision offers a joint option when the other Blade is ready and within 6"; `firefight.joinActivation` (Warpcoven Psychic Cabal / Hunter Clade pattern) | CLASS: team-hook
+  - RULING: Chaos Cult Attuned In Purpose order | the partner takes its own order when joined; Group Activation (T-CC.14) does not involve Blessed Blades; a joint activation counts as the activation of both for every other rule | same reading as Extremis Mind-Link (T-HC) and Psychic Cabal | Unsourced
+- T-CC.10 **Icon Bearer** (Iconarch): when control of a marker is worked out, the Iconarch counts as APL 1 higher. Not an APL change, so it adds to any other change.
+  - MECH: provider `controlApl` returns `apl + 1` for `cc.iconarch` | CLASS: team-hook
+- T-CC.11 **RUINOUS ICON** (Iconarch, 1 AP, PSYCHIC): pick one effect; it lasts until the start of the Iconarch's next activation, its incapacitation, or its next RUINOUS ICON, whichever is first. **Invigoration** (PSYCHIC): while a friendly CHAOS CULT operative is within 4" of the Iconarch, Normal and Critical Dmg of 4 or more against it is 1 lower. **Deterioration** (PSYCHIC): while an enemy operative is within 4" of the Iconarch, Normal and Critical Dmg against it is 1 higher. Not while in an enemy's control range.
+  - MECH: unique action (PSYCHIC keyword) with `ability.choice` of the two effects; token `cc.ruinousIcon` on the Iconarch with `data.effect`, expiring at its `activation.start` and `sourceIncapacitated`, replaced on re-use; attack hook `modifyDamage` adjusts `dmg.normal` / `dmg.crit` for a target within 4" of the Iconarch when the token is set and `psychicAllowed(state, iconarch)` | CLASS: team-hook (batch C PSYCHIC layer)
+  - RULING: Chaos Cult Ruinous Icon scope | the Iconarch is within 4" of itself (Invigoration covers it); distance is checked when each sequence's damage is worked out; the change applies to the weapon's Dmg values, so Devastating and non-dice damage are untouched; Invigoration lowers each value of 4 or more separately (4/6 becomes 3/5, 3/4 becomes 3/3); Deterioration raises every value, a 0 included (the infernal gaze becomes 1/1 against that enemy); a counteraction does not end the effect | R-8.3 makes an operative within any distance of itself; "Normal and Critical Dmg" names the weapon's Dmg stats; counteracting is not activating (R-3.12) | Unsourced
+- T-CC.12 **HEINOUS DELUGE** (Mindwitch, 1 AP, PSYCHIC): pick one enemy operative that is a valid target for the Mindwitch; until the end of that operative's next activation its APL is 1 lower. Not while in an enemy's control range.
+  - MECH: unique action (PSYCHIC keyword) with an enemy-target filter: visible to the Mindwitch and, if on Conceal, not in cover (`coverForSelection`), plus `psychicSelectable`; `applyAplEffect(ctx, id, -1, 'cc.heinousDeluge')` | CLASS: team-hook
+  - RULING: Chaos Cult Heinous Deluge valid target | a valid target is visible and, on Conceal, not in cover (R-5.2); there is no range, and an enemy within a friendly operative's control range may still be picked, since that bar belongs to the Shoot action | the card asks for a valid target, not a Shoot | Unsourced
+- T-CC.13 **MALEFIC VORTEX** (Mindwitch, 1 AP, PSYCHIC): remove your Malefic Vortex marker if it is in the killzone, then place it anywhere visible to the Mindwitch, or on the Vantage terrain of a terrain feature that is visible to the Mindwitch. Each enemy operative within 2" of the marker takes 1 damage. In the Ready step of each later Strategy phase, each enemy operative within 2" of the marker takes 1 damage. Not while in an enemy's control range.
+  - MECH: unique action (PSYCHIC keyword); team marker `cc.maleficVortex` (one per seat, not pickable); spots from `placementSpots` with `levels: true` (D11), filtered to spots visible to the Mindwitch or on a Vantage floor of a feature with any part visible to it; `directDamage(1)` with the Mindwitch as source to each enemy within 2"; `turningPoint.start` hook (Ready step) repeats the 1 damage while the marker exists | CLASS: generic:placementSpots levels (rest team-hook)
+  - RULING: Chaos Cult Malefic Vortex placement and range | no distance limit; "visible" is checked from the Mindwitch's head to the marker spot; "within 2"" is measured in 3D from the marker to the nearest part of each base; the Ready-step damage also happens in TP1's Ready step if the marker were somehow placed before it (it cannot be); the marker stays after the Mindwitch is incapacitated | the card gives no range and no removal other than re-use; R-8.3 distances | Unsourced
+  - RULING: Chaos Cult Malefic Vortex Null Rod | a Null Rod stops the action (PSYCHIC unique action) but not the Ready-step damage of a marker already placed | the batch C PSYCHIC layer switches off PSYCHIC actions; the marker's damage is not a PSYCHIC rule of an operative | Unsourced
+- T-CC.14 **Group Activation** (Devotee): when a DEVOTEE is expended, you must next activate one other ready friendly DEVOTEE (if any) before your opponent activates; that second one does not chain again.
+  - MECH: provider `chainActivation` returns ready DEVOTEE ids when `expended` is a DEVOTEE and `wasChained` is false (Wyrmblade T-WYR.23 pattern) | CLASS: team-hook
+  - RULING: Chaos Cult Group Activation and Mutation | the rule belongs to the DEVOTEE card: a Devotee that turned into a Mutant during its activation does not chain when expended, and a Mutant is never chained into | after turning it uses the new datacard's rules (T-CC.21) | Unsourced
+- T-CC.15 **Accursed Mutant** (Mutant): it cannot perform unique actions (team, equipment and grenade actions included); Pick Up Marker and mission actions cost it 1 AP more, except Operate Hatch.
+  - MECH: provider `actionForbidden` for `ability:<id>` without the MISSION keyword (and the grenade actions); `actionCostDelta` +1 for `marker:pickUp` and MISSION abilities other than Operate Hatch | CLASS: team-hook
+  - RULING: Chaos Cult Accursed Mutant unique actions | equipment actions such as Smoke and Stun Grenade are unique actions (M-5.5) and are barred; frag and krak grenades are weapons used through Shoot and stay usable; mission actions stay legal at +1 AP | the card bars unique actions and only surcharges mission actions | Confirmed
+- T-CC.16 **Unnatural Regeneration** (Mutant, Torment): whenever an attack die would inflict 3 or more damage on it, roll one D6; on a 5+ that damage is 1 lower.
+  - MECH: attack hook `onDamageInflicted` on a MUTANT or TORMENT for sources `normal`, `crit`, `strike-normal`, `strike-crit` with `amount >= 3`: roll through `engine`, `amount -= 1` on 5+ | CLASS: team-hook
+  - RULING: Chaos Cult Unnatural Regeneration scope | Devastating and other non-dice damage are never rolled for (R-5.15); the 3+ test reads the damage after every other modifier (Ruinous Icon, Deterioration); one roll per die | R-5.15 and the card's "attack dice inflicts damage" | Confirmed
+- T-CC.17 **Accursed Torment** (Torment): it can only use the weapons on its datacard, and it cannot perform Pick Up Marker, unique actions or mission actions (Operate Hatch excepted).
+  - MECH: provider `weaponForbidden` for any weapon not in `cc.torment`'s fixed weapons (equipment grants); `actionForbidden` for `marker:pickUp`, every `ability:<id>` except Operate Hatch | CLASS: generic:weaponForbidden (batch C)
+  - RULING: Chaos Cult Torment carrying | a Mutant carrying a marker that turns into a Torment keeps carrying it and may still Place Marker; it just cannot pick one up | transformation keeps carried markers (D1) and the card bars only Pick Up | Unsourced
+- T-CC.18 **Brute** (Torment): while the opponent selects a valid target, a Torment on Conceal cannot use Light terrain to be in cover for that selection; it may still be in cover for its cover save.
+  - MECH: attack hook `beforeShootTargetSelect` (opponent's Shoot, not `secondary`): add the Torment back to `candidates` when it is visible, in range and on Conceal, and `coverForSelection` with Light parts filtered out (the Seek Light filter) would be false; the cover save step is unchanged | CLASS: team-hook
+  - RULING: Chaos Cult Brute scope | applies to Shoot target selection (and every other "valid target" pick an enemy rule makes through the shared `validTargets`); Heavy terrain still protects; the cover save itself is kept | the card targets selection only and says the cover save stays | Confirmed
+
+### 20.5 Faction rules
+
+- T-CC.19 **MUTATION, when**: friendly CHAOS CULT operatives MUTATE (a) as a STRATEGIC GAMBIT (0 CP, once per TP): up to 2 operatives in TP1, 2 in TP2, 3 in TP3, 4 in TP4 and later; (b) whenever a friendly DEVOTEE incapacitates an enemy operative within its control range, that Devotee may MUTATE. No operative MUTATES more than once per TP.
+  - MECH: (a) Strategy-phase gambit `cc.mutation` that raises its own decisions (Kommandos SSSSHHHH pattern): repeated `ability.choice` "operative plus option" (options per T-CC.20) up to the TP's number, a pass ends, then `strategy.resumeGambit`. (b) D2: after each action, `ownReactions` (the Devotee's seat is active) or `reactions` (a retaliation kill in the enemy's activation) read `killsSince(state, activation.declaredSeq)` for records whose `killerId` is a friendly DEVOTEE (now a DEVOTEE, not already mutated this TP) and whose victim was within its control range at removal; one `ReactionOffer` per such Devotee with the T-CC.20 options. Team ledger `mutation.tp[opId]` (cleared at `turningPoint.start`) | CLASS: generic:killLog (with `ownReactions` / `reactions`; gambit team-hook)
+  - RULING: Chaos Cult Mutation after a kill timing | the mutation decision is offered at the next reaction point after the action in which the Devotee incapacitated the enemy (own activation, counteraction, retaliation in the enemy's activation, or a free action), never in the middle of the action, for every kind of kill (attack, Horned, Barbed); the `operative.killed` window is not used | one place for every cause of kill; R-3.16 has stat changes take effect once the action is finished, so the new datacard never applies mid-action | Unsourced
+  - RULING: Chaos Cult Mutation kill in control range | the victim must have been within the Devotee's control range when it was incapacitated (its last position, visibility included); a kill by the Devotee's pistol at range does not qualify | the card ties the kill to control range | Confirmed
+  - RULING: Chaos Cult Mutation gambit scope | any friendly CHAOS CULT operative may be picked, DARK COMMUNE included (for them only the regain-wounds option exists); fewer than the number may be picked; the gambit is a 0 CP STRATEGIC GAMBIT used at most once per TP (R-2.4); the AI uses it every TP | "a number of friendly CHAOS CULT operatives"; the regain option has no keyword condition | Unsourced
+- T-CC.20 **MUTATION, what**: each time an operative MUTATES, pick one: a DEVOTEE turns into a MUTANT; a MUTANT turns into a TORMENT (at most twice per TP across the team); or it regains up to D3+1 lost wounds. At no time may you have more than five MUTANT and three TORMENT operatives.
+  - MECH: option list per operative: `mutant` (DEVOTEE, fewer than 5 MUTANT in the killzone), `torment` (MUTANT, fewer than 3 TORMENT, team ledger `mutation.tormentsThisTp < 2`), `regain` (any; `effects.regainWounds(D3+1)`); `transformOperative` (D1) for the first two; the gift picks of T-CC.22 are folded into the option when this is the first turn of that kind (`mutant:<gift>`, `torment:<gift>`) so no nested decision is needed | CLASS: generic:transformOperative
+  - RULING: Chaos Cult Mutation caps | "at once" counts MUTANT and TORMENT operatives in the killzone now (incapacitated ones free a place); a Mutant that turns into a Torment frees a Mutant place | the cap is about operatives existing at the same time | Unsourced
+  - RULING: Chaos Cult Mutation twice-per-TP errata | at most two Mutant-to-Torment turns per TP for the whole team | July '25 errata changed "once" to "twice" (magenta, balance); Wahapedia already prints twice | Confirmed
+  - RULING: Chaos Cult regain on an unwounded operative | the regain option may be picked for an operative at full wounds (it regains nothing) and still uses up its once-per-TP mutation | "up to D3+1" | Unsourced
+- T-CC.21 **Turning into a new operative**: swap the miniature, the new base's centre as close as possible to the old one's (it may end in an enemy's control range, and if the old one was in an enemy's control range the new one must be if possible); the new operative type has lost as many wounds as the old one had; it is still the same operative for every rule it was already selected for; it uses the new datacard and miniature from then on.
+  - MECH: `transformOperative(ctx, opId, 'cc.mutant' | 'cc.torment')` (D1): datacard, name, stats, weapons (new card's loadout plus equipment grants), keywords, base and height swap; starting wounds become the new card's and wounds = new max minus wounds lost (Devotee 7 to Mutant 7 keeps the same wounds; Mutant 7 to Torment 13 gains 6); nearest legal spot via `placementSpots` when the 40mm base does not fit, preferring spots in an enemy's control range when the old base was; keeps id, seat, order, ready or expended, the current activation, aplFx (Stun), tokens, picks, flags, carried marker, ledgers keyed by id (Abhorrent Mutation gift, once-per-battle uses); event `OperativeTransformed`; then the team re-applies Chitinous to `op.save` (T-CC.25) | CLASS: generic:transformOperative
+  - RULING: Chaos Cult transformation state | order, ready or expended state, APL effects (Stun, Heinous Deluge), tokens, Guard, a carried marker, kill op standing and every per-operative use carry over; injured is recomputed against the new starting wounds | "still the same operative for any rules it's already been selected for" | Unsourced
+  - RULING: Chaos Cult transformation placement | the new base goes at the legal spot nearest the old centre (the old spot when it fits); if the old base was in an enemy's control range, the nearest legal spot that keeps it in one is used when any exists | the card's placement rule; the engine's placement sampler stands in for "as close as possible" | Confirmed
+- T-CC.22 **ACCURSED GIFTS**: the first time in the battle a friendly DEVOTEE turns into a MUTANT, pick your primary gift; the first time a MUTANT turns into a TORMENT, pick your secondary gift. Every friendly MUTANT has the primary gift; every TORMENT has both. Abhorrent Mutation (T-CC.34) gives single operatives extra gifts. The same gift cannot be selected twice in one battle.
+  - MECH: team ledger `gifts { primary?, secondary?, perOp: Record<opId, gift>, selected: gift[] }` set when a `mutant:<gift>` / `torment:<gift>` option is taken (T-CC.20); helper `giftsOf(state, op)` = (MUTANT or TORMENT: primary) + (TORMENT: secondary) + `perOp[op.id]`; public in `view` (HUD chip) | CLASS: team-hook
+  - RULING: Chaos Cult gift uniqueness | every selection in the battle (primary, secondary, each Abhorrent Mutation, Baleful Script's replacement) must be a gift never selected before, including one Baleful Script has replaced; six gifts cover the two team picks plus at most four Abhorrent Mutations | "You cannot select the same ACCURSED GIFT more than once per battle" applies to every selection | Unsourced
+  - RULING: Chaos Cult gift pick by the AI | the AI takes Chitinous, then Fleet, then Sinewed, then Horned, then Barbed, then Deformed Wings, skipping gifts already selected | a fixed preference keeps simulations reproducible | Unsourced
+- T-CC.23 **Deformed Wings** (gift): each climb costs exactly 2" whatever its height; drops cost nothing.
+  - MECH: provider `moveSurcharge` returns `sum(climbs[i] - 2) - drop` from the breakdown (never below the cost of the horizontal part) | CLASS: team-hook
+  - RULING: Chaos Cult Deformed Wings | a climb is one R-12.2 climb (consecutive segments totalled), costing 2" whatever its height; Dash still cannot climb; a counteraction may now climb within its 2" | the July '25 errata reads "whenever this operative is climbing up, you can treat the vertical distance as 2""; R-12.2 defines one climb | Confirmed
+- T-CC.24 **Fleet** (gift): Move +1".
+  - MECH: provider `moveDelta` +1 while `giftsOf` has it | CLASS: team-hook
+- T-CC.25 **Chitinous** (gift): Save improved by 1 (5+ to 4+).
+  - MECH: team-local: write `op.save` (one better than the datacard's) whenever the operative gains the gift, turns into a new operative (after `transformOperative` resets Save), or Baleful Script changes the gift away (Legionaries pattern); no shared save provider | CLASS: team-hook
+  - RULING: Chaos Cult Chitinous stat write | the gift is applied by writing the operative's Save after every event that can change it (transform, gift gained, gift changed); the datacard panel shows the improved value | no shared save-change provider exists (batch D decision); the Legionaries Mark save writes are the precedent | Unsourced
+- T-CC.26 **Horned** (gift): when the operative ends its move during a Charge, you may inflict 1 damage (D3 if it is a TORMENT) on one enemy operative in its control range.
+  - MECH: ploy rule `extraOffers` (cost 0) in window `firefight.chargeMoved` (D8), one offer per enemy in control range; `directDamage` with the operative as source (D2 records the kill, so a Horned Devotee's kill feeds T-CC.19) | CLASS: generic:firefight.chargeMoved
+- T-CC.27 **Sinewed** (gift): its melee weapons ignore the Hit change from being injured and have Brutal.
+  - MECH: `modifyAttackDice` lowers `hitDelta` by 1 when the weapon is melee and `hasInjuredPenalty(op)`; `modifyWeaponRules` adds `core.wr.brutal` to its melee weapons | CLASS: team-hook
+- T-CC.28 **Barbed** (gift): while the operative fights or retaliates, enemy operatives cannot assist, and the first time you strike in that sequence, every other enemy operative in its control range also takes 1 damage (D3 each if it is a TORMENT, rolled separately).
+  - MECH: `modifyAttackDice` empties `assists` on the enemy fighter's side in a fight involving the operative; `beforeStrike` on its side's first strike of the sequence (per-sequence ledger): `directDamage` to each other enemy in control range, source the operative (removals at the end of the action, R-5.14) | CLASS: team-hook
+  - RULING: Chaos Cult Barbed errata | the extra damage happens on the first strike of each sequence in which it strikes (July '25 wording), and only if it strikes at all; each D3 is rolled separately | the July '25 errata changed the trigger to "the first time you strike during that sequence"; the PDF card adds "roll separately for each", which Wahapedia lacks | Confirmed
+
+### 20.6 Ploys
+
+The source prints no costs: every ploy is 1 CP (R-2.4). Strategy ploys last until the end of the TP (R-2.5).
+
+- T-CC.29 **EXALTATION IN PAIN** | Strategy | 1 CP | Gambit step | Friendly CHAOS CULT operatives' weapons ignore the Hit change from being injured (Move is still reduced). When an operative shoots a friendly CHAOS CULT operative that is wounded, you may re-roll one defence die.
+  - MECH: `modifyAttackDice` lowers `hitDelta` by 1 when `hasInjuredPenalty(op)` (any weapon); `modifyDefenceDice` adds `RerollGrant { mode: 'one' }` when the target's wounds are below its starting wounds | CLASS: team-hook
+  - RULING: Chaos Cult Exaltation in Pain errata | only the injury Hit change of the operatives' weapons is ignored; injured operatives still lose 2" of Move | in the July '25 errata the PDF shows "Hit stat" and "weapons" added in magenta and "(including their weapons' stats)" struck through, so the older full ignore-injury wording was cut back; the PDF card text agrees; Wahapedia's card text was compared and matches; the text extracts drop the strike-through, so the quoted errata line looks longer than the rule | Corrected
+- T-CC.30 **FERVENT ONSLAUGHT** | Strategy | 1 CP | Gambit step | Friendly CHAOS CULT operatives' melee weapons have Accurate 1, or Accurate 2 for MUTANT and TORMENT operatives.
+  - MECH: `modifyWeaponRules` adds `core.wr.accurate` x 1 or 2 to melee profiles | CLASS: team-hook
+- T-CC.31 **CREATURES OF NIGHTMARE** | Strategy | 1 CP | Gambit step | When marker control is worked out, the enemy's contesting total counts 1 lower if at least one of those enemy operatives is within 2" of a friendly MUTANT or TORMENT. Not an APL change.
+  - MECH: provider `controlTotal` for the opponent's seat: `total - 1` when the ploy is active for the cult's seat and any id in `contesting` is within 2" of a friendly MUTANT or TORMENT | CLASS: team-hook
+- T-CC.32 **SICKENING AURA** | Strategy | 1 CP | Gambit step | An enemy operative within 2" of a friendly MUTANT or TORMENT has the Hit of its weapons worsened by 1; this does not add to the injury worsen.
+  - MECH: `modifyAttackDice` on an enemy attacker or retaliator: `hitDelta += 1` when within 2" of a friendly MUTANT or TORMENT and no injury worsen applies (not `hasInjuredPenalty` and not `injuredEquivalent`) | CLASS: team-hook
+  - RULING: Chaos Cult Sickening Aura stacking | an injured enemy that ignores injury does get the worsen; an injured enemy (or one under an injury equivalent) does not get a second one; distance is checked when the dice are rolled | "not cumulative with being injured" compares with the worsen actually applied | Unsourced
+- T-CC.33 **FAITHFUL FOLLOWER** | Firefight | 1 CP | A friendly DARK COMMUNE operative is selected as the valid target of a Shoot or as the opponent of a Fight | Pick one other friendly CHAOS CULT operative that is not DARK COMMUNE, visible to and within 3" of it; that operative becomes the target or the one fought instead, even if it would not be valid. In a Fight it counts as within the fighter's control range for that action. In a Shoot it is in cover or obscured only if the original target was. No effect against a Blast or Torrent weapon.
+  - MECH: Wyrmblade Unquestioning Loyalty pattern (T-WYR.36): windows `shoot.targetSelected` and `fight.weaponsSelected`, `attack-common.redirectAttack` with statuses `was && own` (Pathfinders drone precedent), Blast or Torrent weapons excluded | CLASS: team-hook
+  - RULING: Chaos Cult Faithful Follower statuses | in a Shoot the substitute is in cover (or obscured) only when both the original target was and the substitute itself would be; it may be on Conceal in cover and still be shot | the previous errata adds "only if the original target was"; "even if it wouldn't normally be valid" lifts the selection rules, the Pathfinders drone ruling does the same | Unsourced
+- T-CC.34 **ABHORRENT MUTATION** | Firefight | 1 CP | A friendly CHAOS CULT operative that is not DARK COMMUNE is activated | Pick a gift (never selected before in the battle) for that operative; it has it in addition to any others, keeps it if it turns into another operative, and the same operative cannot be picked for this ploy again in the battle.
+  - MECH: window `firefight.activationStart`; ploy param = gift; team ledger `gifts.perOp[opId]`, `gifts.selected`; Chitinous written at once (T-CC.25) | CLASS: team-hook
+- T-CC.35 **FRENZIED DEMISE** | Firefight | 1 CP | A friendly MUTANT or TORMENT is incapacitated, before it is removed | One enemy operative visible to and within 2" of it takes D3 damage (D6 if it is a TORMENT).
+  - MECH: window `operative.incapacitated` (owner, before removal); ploy param = enemy id; `directDamage` with the incapacitated operative as source | CLASS: team-hook
+- T-CC.36 **UNLEASH THE DAEMON** | Firefight | 1 CP | During a friendly MUTANT or TORMENT's activation, before or after an action | For the rest of that activation it may perform two Fight actions, and one of them is free.
+  - MECH: windows `firefight.activationStart` and `firefight.actionEnded` (own activation); activation flag; provider `maxRepeats` 2 for `fight`; `actionCostDelta` -1 on the first Fight after the ploy (a Fight already performed this activation means the next one is the free one) | CLASS: team-hook
+  - RULING: Chaos Cult Unleash the Daemon free Fight | the next Fight after the ploy costs 0 AP (it can be performed with no AP left), the other costs 1; a Fight it performed earlier in the activation counts as one of the two | either Fight may be the free one, and the totals are the same whichever is | Unsourced
+
+### 20.7 Faction equipment
+
+Universal equipment (M-5) can also be chosen; the four-option limit covers faction and universal options together (M-5.12).
+
+- T-CC.37 **BALEFUL SCRIPT** | Once per battle, as a STRATEGIC GAMBIT (0 CP): change one of your gifts (primary, secondary, or one operative's Abhorrent Mutation gift) to another gift never selected in this battle. Changing an Abhorrent Mutation gift affects only that operative.
+  - MECH: equipment-granted gambit with params (gift to replace, new gift); once-per-battle ledger; re-writes Chitinous saves (T-CC.25) | CLASS: team-hook
+  - RULING: Chaos Cult Baleful Script before a gift exists | the gambit is offered only once at least one gift is selected; the new gift must never have been selected in the battle | "change one of your ACCURSED GIFTS" needs one to change; T-CC.22 uniqueness | Unsourced
+- T-CC.38 **COVERT GUISES** | When the equipment is revealed, roll one D3. As a STRATEGIC GAMBIT in TP1 (0 CP): that many friendly DEVOTEE operatives wholly within your drop zone may each perform a free Reposition that must end wholly within 3" of your drop zone.
+  - MECH: D3 rolled at the equipment reveal (team ledger, public); TP1 gambit that raises its own decisions (SSSSHHHH pattern): pick a Devotee, `startFreeAction({ action: 'reposition' })` with provider `moveProblem` rejecting an end not wholly within 3" of the drop zone; repeat up to the roll, then `resumeGambit` | CLASS: team-hook
+  - RULING: Chaos Cult Covert Guises | the D3 is rolled once when the equipment is revealed and shown to both players; each Reposition is optional, follows the Reposition rules (Move 6", outside any activation, R-2.7) and must end wholly within 3" of the drop zone (inside it counts); the gambit is offered only in TP1 | the card's timing and end condition | Confirmed
+- T-CC.39 **UNHOLY TALISMAN** | Once per TP, when an operative shoots a friendly CHAOS CULT operative, in the Roll Defence Dice step you may retain one normal success as a crit instead.
+  - MECH: 0 CP equipment offer in window `shoot.defenceRolled` (defender) when a `normal` defence die exists; once-per-TP ledger; one `normal` becomes `crit`, `tag: 'talisman'` | CLASS: team-hook
+  - RULING: Chaos Cult Unholy Talisman timing | after defence re-rolls, before blocks are allocated; the AI uses it when the crit changes what can be blocked (an unblocked attack crit, or two normals that would otherwise need pairing) | the Roll Defence Dice step ends with retention; the Kasrkin Relics of Cadia timing | Unsourced
+- T-CC.40 **VILE BLESSING** | Once per battle, when an attack die inflicts Normal Dmg on a friendly CHAOS CULT operative that is not a DEVOTEE, you may ignore that damage. For a MUTANT or TORMENT you may use either this or the Unnatural Regeneration roll on that die, not both.
+  - MECH: `onDamageInflicted` (sources `normal`, `strike-normal`) on a non-DEVOTEE: automatic policy, run before Unnatural Regeneration: if the amount would incapacitate the operative, set it to 0, spend the once-per-battle use, and skip the Regeneration roll for that die | CLASS: team-hook
+  - RULING: Chaos Cult Vile Blessing automatic | used automatically on the first Normal Dmg die that would incapacitate a non-Devotee friendly operative; for a Mutant or Torment it is then used instead of the Regeneration roll | no per-die defender decision exists during damage (batch D: not built); saving an operative from death is the case the rule exists for | Unsourced
+
+Marker/token guide (UI): Malefic Vortex marker, Ruinous Icon token (effect shown), Heinous Deluge APL effect, gift chips (team primary/secondary and per-operative), Mutation counter (operatives mutated this TP, Torments this TP, Mutant 5 / Torment 3 caps), Unholy Talisman and Vile Blessing uses, Covert Guises roll.
+
+### 20.8 Checklist
+
+Rows in `12-rules-test-checklist.md` section TEAM-CC: TEAM-CC-000 to TEAM-CC-043.
+
+### 20.9 Generic capabilities (survey; resolved in the Engine map below)
+
+- **transformOperative** (batch D, D1): MUTATION's turning into a MUTANT or TORMENT, with `"selectable": false` datacards for the two forms. Used by T-CC.1, T-CC.20, T-CC.21.
+- **killLog / operative.removed** (batch D, D2): a Devotee's kill by any cause (attack, Horned, Barbed) found through `killsSince` at the next reaction point. Used by T-CC.8 (records), T-CC.19, T-CC.26, T-CC.28.
+- **firefight.chargeMoved** (batch D, D8): Horned. Used by T-CC.26.
+- **placementSpots levels** (batch D, D11): Malefic Vortex on Vantage terrain. Used by T-CC.13.
+- **weaponForbidden** (batch C): Accursed Torment. Used by T-CC.17.
+- **PSYCHIC layer** (batch C): infernal gaze, Ruinous Icon, Heinous Deluge, Malefic Vortex. Used by T-CC.5, T-CC.11 to T-CC.13.
+- Existing: `chainActivation` (Group Activation), `joinActivation` (Attuned In Purpose), `startDelegatedAction` + `commsBonus` (Incite), `controlApl` / `controlTotal`, `modifyDamage`, `onDamageInflicted`, `modifyAttackDice`, `modifyDefenceDice`, `modifyWeaponRules`, `beforeStrike`, `beforeShootTargetSelect`, `action.declared`, `redirectAttack` (Unquestioning Loyalty pattern), `operative.incapacitated` window, `moveSurcharge` with `breakdown.climbs`, `moveDelta`, `moveProblem`, gambits with their own decisions + `resumeGambit`, `applyAplEffect`, `regainWounds`, `ownReactions` / `reactions`. Used by the rest.
+- Gaps (not built; each has a team-local fallback):
+  - **saveDelta** (NICE, fallback): no shared Save-change provider. Fallback: write `op.save` after every transform, gift gain and gift change (Legionaries pattern). Used by T-CC.25.
+  - **per-die defender choice** (NICE, fallback): no decision can be raised while an attack die's damage is resolved. Fallback: Vile Blessing is automatic (T-CC.40 RULING). Used by T-CC.40.
+- Everything else maps onto existing providers, hooks, windows and 0 CP offers (Engine map).
+
+### 20.10 Gotchas
+
+- PDF over Wahapedia: the July '25 Exaltation in Pain errata is a cut-back (struck-through words in the PDF); both card texts say Hit only, and Move still drops (Corrected). Barbed's "roll separately" is PDF only. Wahapedia is the June '25 version; the PDF update log is July '25.
+- The roster has no choices: 14 fixed operatives, all single-loadout. Mutant and Torment exist only through Mutation and are `"selectable": false`.
+- Mutation: once per operative per TP; the gambit's number grows with the TP; Mutant to Torment at most twice per TP; at most 5 Mutants and 3 Torments at once; any Chaos Cult operative may take the regain option. The kill trigger needs a DEVOTEE killer and the victim in its control range; the decision comes after the action.
+- Transform keeps lost wounds, not current wounds: a Devotee on 2 of 7 becomes a Mutant on 2 of 7, a Mutant on 2 of 7 becomes a Torment on 8 of 13 (no longer injured). The 40mm Torment base may need re-placing.
+- Gifts: primary picked at the first Devotee-to-Mutant turn, secondary at the first Mutant-to-Torment turn; no gift is ever selected twice in a battle (Abhorrent Mutation and Baleful Script included). Devotees only get a gift through Abhorrent Mutation.
+- Chitinous must be re-applied after every transform because `transformOperative` resets Save from the new card.
+- Mutants cannot perform unique actions (grenade actions included) and pay +1 AP for Pick Up Marker and mission actions; Torments cannot use equipment weapons or perform Pick Up Marker, unique or mission actions; Operate Hatch is always allowed.
+- Unnatural Regeneration and Vile Blessing never touch Devastating damage. Ruinous Icon changes Dmg stats (Invigoration only on values of 4 or more); Deterioration raises the infernal gaze's 0/0 to 1/1 against an enemy near the Iconarch (T-CC.11 RULING).
+- Sickening Aura never stacks with the injury worsen; Exaltation in Pain and Sinewed lift only the injury Hit change.
+- Faithful Follower never works against Blast or Torrent; the substitute is never better protected than the original target.
+- Cut Them Down is automatic and can kill before the Fall Back moves; two Blades in range give 2D3+2 once.
+- Group Activation is a DEVOTEE rule: a Devotee that mutated mid-activation does not chain.
+- Edition leaks to reject: nothing from the 2021 Chaos Cult cards (no older mutation or gift tables, no Overwatch, no 2 APL rules carried over as such, no shape distances), nothing from 40k 10th (no wound rolls, no AP, no battle-shock, no Dark Pacts); inches only, three defence dice, cover save, obscured discards one success; every printed number from the July '25 cards.
+
+### 20.11 Engine map
+
+| Rule or capability | Built as |
+|---|---|
+| Roster (fixed 14), loadouts | team.json slots with exact counts (`repeatable` for Blessed Blade and Devotee); datacard `weapons.fixed`; `cc.mutant`, `cc.torment` `"selectable": false` (D1) |
+| Incite Slaughter, Incite Urgency | unique actions, `startDelegatedAction` (`fight`; `charge`/`dash` with `maxMove: 3`), `commsBonus(state, seat, user)` |
+| Cut Them Down | `action.declared` on enemy `fallBack`, `directDamage`, `cancel` when killed |
+| Attuned In Purpose | joint option on `firefight.activate`, `joinActivation` |
+| Icon Bearer | provider `controlApl` +1 |
+| Ruinous Icon | unique action, token `cc.ruinousIcon`, attack hook `modifyDamage`, `psychicAllowed` |
+| Heinous Deluge | unique action, `coverForSelection` + `psychicSelectable` filter, `applyAplEffect(-1)` |
+| Malefic Vortex | team marker, `placementSpots` with `levels: true` (D11), `directDamage(1)`, `turningPoint.start` hook |
+| Group Activation | provider `chainActivation` (Wyrmblade pattern) |
+| Accursed Mutant | providers `actionForbidden`, `actionCostDelta` |
+| Unnatural Regeneration | attack hook `onDamageInflicted` (dice sources, amount >= 3, D6 5+) |
+| Accursed Torment | providers `weaponForbidden` (batch C), `actionForbidden` |
+| Brute | attack hook `beforeShootTargetSelect` (Light parts filtered) |
+| Mutation gambit | gambit with its own decisions + `resumeGambit`; ledger `mutation.tp`, `mutation.tormentsThisTp` |
+| Mutation after a kill | `killsSince(state, activation.declaredSeq)` (D2) read by `ownReactions` / `reactions` |
+| Turning into a new operative | `transformOperative` (D1), event `OperativeTransformed` |
+| Accursed Gifts | team ledger `gifts`, helper `giftsOf`, view chip |
+| Deformed Wings, Fleet | providers `moveSurcharge` (negative, `breakdown.climbs`, `drop`), `moveDelta` |
+| Chitinous | `op.save` writes after transform and gift changes (gap `saveDelta`) |
+| Horned | window `firefight.chargeMoved` (D8), 0 CP `extraOffers`, `directDamage` |
+| Sinewed | `modifyAttackDice` hitDelta, `modifyWeaponRules` Brutal |
+| Barbed | `modifyAttackDice` assists, `beforeStrike` first strike, `directDamage` |
+| Exaltation in Pain | `modifyAttackDice` hitDelta, `modifyDefenceDice` re-roll one |
+| Fervent Onslaught | `modifyWeaponRules` Accurate 1 / 2 |
+| Creatures of Nightmare | provider `controlTotal` (opponent seat) |
+| Sickening Aura | `modifyAttackDice` hitDelta (not with injury) |
+| Faithful Follower | windows `shoot.targetSelected`, `fight.weaponsSelected`; `redirectAttack` |
+| Abhorrent Mutation | window `firefight.activationStart`, ledger `gifts.perOp` |
+| Frenzied Demise | window `operative.incapacitated`, `directDamage` |
+| Unleash the Daemon | windows `firefight.activationStart` / `firefight.actionEnded`; providers `maxRepeats`, `actionCostDelta` |
+| Baleful Script | equipment gambit with params, once-per-battle ledger |
+| Covert Guises | D3 at reveal; TP1 gambit with free Repositions, provider `moveProblem` |
+| Unholy Talisman | 0 CP offer at `shoot.defenceRolled`, once-per-TP ledger |
+| Vile Blessing | `onDamageInflicted` automatic policy, once-per-battle ledger (gap per-die choice) |
+
+### 20.12 Implementer brief
+
+- Files you own (nothing else):
+  - `src/data/teams/chaos-cult/team.json`, `operatives.json` (seven datacards; `cc.mutant` and `cc.torment` with `"selectable": false`), `weapons.json`, `abilities.json`, `ploys.json`, `equipment.json` (ids `cc.<name>`, `cc.w.`, `cc.a.`, `cc.p.`, `cc.e.`; team weapon rule `cc.a.wr-psychic`)
+  - `src/engine/teams/chaos-cult.ts` (code hooks, `registerTeamRules`, hook handlers, ploy rules)
+  - `src/client/teams/chaos-cult.ts` (weapon flavour, VFX family, sound, attachments, HUD labels for the gifts and the Mutation counter; figure stand-ins `cc-cult-demagogue`, `cc-blessed-blade` with `cc-blessed-blade-b`, `cc-iconarch`, `cc-mindwitch`, `cc-devotee` with `-b`, `-c`, `cc-mutant` with `cc-mutant-b`, `cc-torment` with `cc-torment-b`)
+  - `tests/engine/teams/chaos-cult.test.ts` (TEAM-CC-nnn tests) and `tests/engine/teams/chaos-cult.hooks.ts` (code-hook firing scenarios)
+  - append-only: `docs/needs-rules-check.md` (RULING lines), `docs/spec/13-teams.md` section 20 and `12-rules-test-checklist.md` section TEAM-CC (refinements only)
+- Activation flag: `"playable": false` in `src/data/teams/chaos-cult/team.json`. Flip it (with `defaults` filled: the fixed 14, equipment, and every weapon of all seven cards in `src/client/teams/chaos-cult.ts`, Mutant and Torment included) only when the team is complete and all gates pass.
+- Capabilities to use: the Engine map above. Batch D: `transformOperative` (D1), `killLog` / `killsSince` / `operative.removed` (D2), `firefight.chargeMoved` (D8), `placementSpots` `levels` (D11). Batch C: `weaponForbidden`, the PSYCHIC layer. Existing: `chainActivation`, `joinActivation`, `startDelegatedAction`, `redirectAttack`, gambits with their own decisions. Team-local fallbacks for the gaps `saveDelta` and per-die defender choice (20.9). Order: roster and the seven datacards (TEAM-CC-001 to 005); then Mutation (gambit, kill trigger, transform, caps, gifts: TEAM-CC-019 to 023, 041 to 043), the spine of the team, with the gift effects (024 to 029) and the Mutant and Torment rules (014 to 018); then the ploys (030 to 037); then the DARK COMMUNE rules (006 to 013) and equipment (038 to 040).
+- Team-local weapon rules the data needs: `cc.a.wr-psychic` on the infernal gaze only. Core rules elsewhere.
+- RULING lines expected: fixed roster, Devotee gun name, keyword spacing, Iconarch crude melee weapon, Incite free Fight eligibility, Incite Urgency Charge distance, Cut Them Down use, Attuned In Purpose order, Ruinous Icon scope, Heinous Deluge valid target, Malefic Vortex placement and range, Malefic Vortex Null Rod, Group Activation and Mutation, Accursed Mutant unique actions, Unnatural Regeneration scope, Torment carrying, Brute scope, Mutation after a kill timing, Mutation kill in control range, Mutation gambit scope, Mutation caps, Mutation twice-per-TP errata, regain on an unwounded operative, transformation state, transformation placement, gift uniqueness, gift pick by the AI, Deformed Wings, Chitinous stat write, Barbed errata, Exaltation in Pain errata (Corrected), Sickening Aura stacking, Faithful Follower statuses, Unleash the Daemon free Fight, Baleful Script before a gift exists, Covert Guises, Unholy Talisman timing, Vile Blessing automatic.
+- Gotchas: section 20.10. 14 operatives use the 14-operative kill grade row (or the table's largest row; `gradeThresholds` clamps). Mutation decisions after a kill come at the reaction point after the action, never mid-action. `transformOperative` resets Save, so re-apply Chitinous every time. Gifts live in one team ledger (primary, secondary, per operative, selected list) read through `giftsOf`.
+
+## 21. Goremongers
+
+Rule IDs `T-GM.<n>`, checklist IDs `TEAM-GM-<nnn>`. Sources: the Goremongers team PDF (Kill Team 2024, Faction version 3, August '26, with its update log listing the August '26 errata and the previous errata and rules commentary; the flow and layout extracts were read together) is the primary source. It is cross-checked against the Wahapedia Goremongers page (faction version 3, August 2026; its FAQ panel has two entries, Wrist Chains with Enhanced Violence and the Enhanced Violence check after a Sanguavitae decrease) and the core rules page for terms. Facts read from the PDF are Confirmed; our own calls are Unsourced. The two sources agree on every stat line, weapon profile and base size. They disagree in two places, listed in 21.10. First, the PDF's August '26 errata keeps Enhanced Violence's weapon rules on thrown weapons where the Wahapedia FAQ says they are lost; the PDF wins (Corrected). Second, the Rejuvenate card text still says "up to" where the update log drops it. All rule text is restated in our own words; team, operative, weapon, ploy and equipment names are used as printed. Core terms per `10-rules-core.md` (R-x.y), missions and universal equipment per `11-missions.md` (M-x.y). Ploys and equipment are one bullet per record so each can carry its MECH line.
+
+Weapon type column: R = ranged, M = melee. Dmg is `normal/crit`. Base is in mm.
+
+### 21.1 Team selection
+
+- T-GM.1 Roster is exactly 8 operatives: 1 GOREMONGER BLOOD HERALD (leader) plus 7 picks from the main list (T-GM.2). Nothing counts as two selections or half a selection.
+  - MECH: roster validator: leader slot count 1 (`gm.blood-herald`), main slot count 7 | CLASS: data
+- T-GM.2 Main list: ASPIRANT, BLOODTAKER, IMPALER, INCITER, SKULLCLAIMER, STALKER. ASPIRANT may be taken any number of times. Every other entry may be taken at most once. Only five entries are single, so a legal roster always has at least two Aspirants.
+  - MECH: main slot `repeatable: ["gm.aspirant"]`; the single entries need no cap beyond the slot default | CLASS: data
+  - RULING: Goremongers roster limits | ASPIRANT unlimited, every other entry once; seven picks with five single entries means two to seven Aspirants | both sources print "other than ASPIRANT operatives, each once" | Confirmed
+- T-GM.3 Loadouts: every datacard is fixed (no options).
+  - BLOOD HERALD: Icon of Khorne, chainblade.
+  - ASPIRANT: autopistol, chainglaive.
+  - BLOODTAKER: autopistol, ritual blade.
+  - IMPALER: autopistol, fleshskewer (ranged and stab profiles).
+  - INCITER: dual autopistols (focused and point-blank profiles). It has no melee weapon.
+  - SKULLCLAIMER: autopistol, great chainaxe.
+  - STALKER: autopistol, pickrippers.
+  - MECH: datacard `weapons.fixed`; profile group `gm.wg.dual-autopistols`; the fleshskewer is two records (one ranged, one melee; see 21.3) | CLASS: data
+  - RULING: Goremongers Inciter without a melee weapon | the Inciter cannot perform the Fight action; when an enemy fights it, it collects no dice and only the attacker resolves dice | the datacard lists only the two dual autopistols profiles, both ranged; R-6.2 needs a melee weapon to collect dice | Unsourced
+- T-GM.4 Archetypes: RECON, SEEK & DESTROY (tac ops out of scope for v1).
+  - MECH: team.json `archetypes: ["recon", "seek-and-destroy"]` | CLASS: data
+- T-GM.5 Keywords and terms: every operative carries GOREMONGER and CHAOS plus its role keyword (BLOOD HERALD also LEADER).
+  - A **GORE TANK** (T-GM.22) is a per-operative gauge with three levels, empty, half and full.
+  - To **increase** a gore tank is to move it up one level; it never goes above full. To **decrease** one is to move it down one level; it never goes below empty.
+  - A **SANGUAVITAE rule** is one of the six rules T-GM.24 to T-GM.29, used under T-GM.23.
+  - The **thrown weapons** of Wrist Chains (T-GM.41) are the chainblade, chainglaive, great chainaxe and pickrippers.
+  - MECH: keyword lists in operatives.json; gore tank helpers in the team file (`goreLevel(state, opId)`, `increaseGore`, `decreaseGore`) over the token `gm.gore` | CLASS: data (helpers team-hook)
+  - RULING: Goremongers PDF keyword spacing | the faction keyword is GOREMONGER | the PDF prints "GOREMONGER ," with a stray space, Wahapedia prints GOREMONGER | Confirmed
+- T-GM.6 Team-local weapon rules: **Ritual** (ritual blade, T-GM.10) and **Drag** (fleshskewer ranged profile, T-GM.12). Every other weapon rule on the cards is core (R-10).
+  - MECH: weapon records carry `{ "rule": "gm.a.wr-ritual" }` and `{ "rule": "gm.a.wr-drag" }` (the Kasrkin `ks.a.wr-concealed-position` pattern), resolved by the team file | CLASS: team-hook
+
+### 21.2 Operative stats
+
+| Operative | APL | Move | Save | Wounds | Base | Keywords |
+|---|---|---|---|---|---|---|
+| GOREMONGER BLOOD HERALD | 2 | 7" | 5+ | 11 | 32 | GOREMONGER, CHAOS, LEADER, BLOOD HERALD |
+| GOREMONGER ASPIRANT | 2 | 7" | 5+ | 10 | 32 | GOREMONGER, CHAOS, ASPIRANT |
+| GOREMONGER BLOODTAKER | 2 | 7" | 5+ | 10 | 32 | GOREMONGER, CHAOS, BLOODTAKER |
+| GOREMONGER IMPALER | 2 | 7" | 5+ | 10 | 32 | GOREMONGER, CHAOS, IMPALER |
+| GOREMONGER INCITER | 2 | 7" | 5+ | 10 | 32 | GOREMONGER, CHAOS, INCITER |
+| GOREMONGER SKULLCLAIMER | 2 | 7" | 5+ | 10 | 32 | GOREMONGER, CHAOS, SKULLCLAIMER |
+| GOREMONGER STALKER | 2 | 7" | 5+ | 10 | 32 | GOREMONGER, CHAOS, STALKER |
+
+Notes:
+- Every card is APL 2, Move 7", Save 5+, 32mm. Only the Blood Herald has 11 wounds.
+- Stats and bases agree between the PDF and Wahapedia for all seven cards.
+- The Blood Herald is already in `src/data/teams/goremongers/` (scaffold): `gm.blood-herald`.
+- Datacard ids are `gm.aspirant`, `gm.bloodtaker`, `gm.impaler`, `gm.inciter`, `gm.skullclaimer`, `gm.stalker`.
+
+### 21.3 Weapon profiles
+
+| Weapon | Type | Atk | Hit | Dmg | Rules | Held by |
+|---|---|---|---|---|---|---|
+| Icon of Khorne | R | 4 | 2+ | 4/4 | Range 8", Saturate | Blood Herald |
+| Autopistol | R | 4 | 4+ | 2/3 | Range 8" | Aspirant, Bloodtaker, Impaler, Skullclaimer, Stalker |
+| Fleshskewer (ranged) | R | 4 | 3+ | 4/5 | Range 8", Piercing Crits 1, Stun, Drag | Impaler |
+| Dual autopistols (focused) | R | 4 | 3+ | 2/2 | Range 8", Ceaseless, Devastating 1, Rending | Inciter |
+| Dual autopistols (point-blank) | R | 4 | 3+ | 3/4 | Ceaseless, Rending | Inciter |
+| Chainblade | M | 4 | 3+ | 4/5 | Rending | Blood Herald |
+| Chainglaive | M | 4 | 3+ | 4/5 | Rending | Aspirant |
+| Ritual blade | M | 4 | 3+ | 3/5 | Ritual | Bloodtaker |
+| Fleshskewer (stab) | M | 4 | 3+ | 3/4 | none | Impaler |
+| Great chainaxe | M | 4 | 3+ | 5/6 | Brutal | Skullclaimer |
+| Pickrippers | M | 4 | 3+ | 4/5 | Rending | Stalker |
+| Chainblade (thrown) | R | 4 | 3+ | 4/5 | Range 2", Rending | Blood Herald via T-GM.41 |
+| Chainglaive (thrown) | R | 4 | 3+ | 4/5 | Range 2", Rending | Aspirant via T-GM.41 |
+| Great chainaxe (thrown) | R | 4 | 3+ | 5/6 | Range 2" | Skullclaimer via T-GM.41 |
+| Pickrippers (thrown) | R | 4 | 3+ | 4/5 | Range 2", Rending | Stalker via T-GM.41 |
+
+Notes:
+- 15 profiles over 14 weapon records. Ids:
+  - printed weapons: `gm.w.icon-of-khorne` and `gm.w.chainblade` (both in the scaffold), `gm.w.autopistol`, `gm.w.fleshskewer-ranged`, `gm.wg.dual-autopistols` (focused, point-blank), `gm.w.chainglaive`, `gm.w.ritual-blade`, `gm.w.fleshskewer-stab`, `gm.w.great-chainaxe`, `gm.w.pickrippers`;
+  - Wrist Chains twins: `gm.w.chainblade-thrown`, `gm.w.chainglaive-thrown`, `gm.w.great-chainaxe-thrown`, `gm.w.pickrippers-thrown`.
+- The five autopistols are identical and share one record.
+- The fleshskewer is one weapon with a ranged and a melee profile. It is stored as two records named "Fleshskewer" because a profile group holds one weapon type; the team file treats both as one weapon wherever a rule says "any profile of its fleshskewer" (Gore-fuel, T-GM.13).
+- "Point-blank" is only the second profile's name: it is an ordinary ranged profile with no Range limit, not a pistol rule. The core point-blank Shoot (in an enemy's control range) applies only when a rule grants it.
+- The four thrown twins are not printed weapons. They are the Wrist Chains fallback (T-GM.41): ranged copies of the melee profiles with Range 2" added, and the great chainaxe twin without Brutal. They are hidden from the datacard and offered only through T-GM.41.
+
+UNCLEAR (resolved): the August '26 errata adds Piercing Crits 1 to the fleshskewer (ranged) and removes a team rule (Prey) from it. Both sources print the new profile. RULING: Goremongers fleshskewer errata | Range 8", Piercing Crits 1, Stun, Drag; no Prey | the August '26 update log and both sources' card text agree | Confirmed
+UNCLEAR (resolved): the Icon of Khorne prints Dmg 4/4 and Hit 2+. Kept as printed; never tune printed numbers. RULING: Goremongers Icon of Khorne | 4 2+ 4/4, Range 8", Saturate as printed | identical in both sources and both PDF extracts | Confirmed
+
+### 21.4 Operative rules and unique actions
+
+- T-GM.7 **Khorne's Favour** (Blood Herald): once during each of the Blood Herald's activations, before or after any of its actions, if its gore tank is empty, you may increase it. It is not a SANGUAVITAE rule.
+  - MECH: 0 CP offer (ploy rule `extraOffers`, the Auspex pattern) in `firefight.activationStart` (not counteracting) and in `firefight.actionEnded` for the Herald's own actions while its tank is empty; per-activation ledger | CLASS: team-hook
+  - RULING: Goremongers Khorne's Favour scope | activations only, never a counteraction; it may follow a SANGUAVITAE use that emptied the tank in the same activation | the card says "each of this operative's activations"; R-3.12 separates counteractions | Confirmed
+- T-GM.8 **Impending Apotheosis** (Blood Herald): once per battle, when an attack die would deal Normal Dmg to the Blood Herald, that damage can be ignored. An Impending Apotheosis token marks the use.
+  - MECH: shooting: 0 CP offer to the defender in `shoot.beforeResolve` (generic D9), which lowers `AttackSeq.unblocked.normal` by 1 when at least one normal success is unblocked. Fights: automatic in the attack hook `beforeStrike` (`cancel`) on the first normal strike that would incapacitate the Herald. Battle ledger and token `gm.apotheosis` | CLASS: generic:shoot.beforeResolve (fights team-hook)
+  - RULING: Goremongers Impending Apotheosis | in a Shoot the defender may discard one unblocked normal success at the start of the Resolve step (the same as ignoring that die's damage); in a fight it is used automatically on the first normal strike that would incapacitate the Blood Herald; once used, it is gone for the battle | per-die defender choices inside a fight are not built (`inflict` is synchronous) | Unsourced
+- T-GM.9 **Obsessive Bloodlust** (Aspirant): once per turning point for the whole kill team, when an Aspirant finishes a Fight action and no enemy operative is in its control range any more, it may at once perform a free Charge of at most 2". This works even if it already charged this activation, and does not stop it performing Charge, Dash or Reposition later in the activation.
+  - MECH: provider `ownReactions` after a `fight` action by an ASPIRANT with no enemy in its control range; `startFreeAction({ action: 'charge', maxMove: 2 })`; team ledger once per TP. The free frame's `performed` list is not merged into the activation, which gives the card's "does not prevent" exemption from R-3.9 | CLASS: team-hook
+  - RULING: Goremongers Obsessive Bloodlust frequency | once per turning point for all Aspirants together | the August '26 errata replaced "once during each of this operative's activations" with "once per turning point, when an operative with this rule ...", the team-wide form | Unsourced
+  - RULING: Goremongers Obsessive Bloodlust scope | it follows any Fight action, a counteraction's included; the 2" cap beats Surge's +1" Move (T-GM.28); Charge's usual +2" is not added beyond the cap | the trigger names the Fight action, not the activation; "cannot move more than 2"" is an absolute cap | Unsourced
+- T-GM.10 **Ritual** (ritual blade, weapon rule): whenever the Bloodtaker uses the ritual blade, the first time in that sequence it deals damage to an operative in its control range, you may increase the Bloodtaker's gore tank. This stacks with the increase for incapacitating that operative (T-GM.22).
+  - MECH: `damage.inflicted` for the Bloodtaker as attacker with weapon `gm.w.ritual-blade` (fighting and retaliating), once per sequence (ledger keyed by attack and sequence), automatic | CLASS: team-hook
+  - RULING: Goremongers Ritual | automatic (never worse), fighting and retaliating alike, at most one increase per sequence from Ritual | "whenever this operative is using this weapon" covers retaliation; "the first time" limits it per sequence | Unsourced
+- T-GM.11 **TRANSFUSION RITUAL** (Bloodtaker, 1 AP): decrease the Bloodtaker's gore tank and increase the gore tank of one other friendly GOREMONGER operative within 8" of it. This decrease is not a SANGUAVITAE use. Not while in an enemy's control range or with an empty tank.
+  - MECH: unique 1 AP action; target filter: another friendly GOREMONGER within 8" whose tank is not full; `ability.choice` for the recipient | CLASS: team-hook
+  - RULING: Goremongers Transfusion Ritual recipient | offered only when a recipient exists (another friendly within 8", no visibility needed, tank not full); usable as a counteraction (1 AP); it does not count toward the SANGUAVITAE limits | the card names no visibility; an increase on a full tank does nothing; "instead of using a SANGUAVITAE rule" | Unsourced
+- T-GM.12 **Drag** (fleshskewer ranged, weapon rule): at the start of the Resolve Attack Dice step of a Shoot with this profile, before any damage, you may pull the target up to x inches, where x is twice your unblocked successes (normal and crit together).
+  - You pick a distance up to x. The target goes to the placeable location closest to the Impaler that a move of that length can reach, in straight-line increments, each rounded up to the whole inch. Drops cost no distance.
+  - Then you may discard any of your unblocked successes, so they inflict no damage.
+  - MECH: generic D9 window `shoot.beforeResolve` (attacker first), 0 CP offers: drag distances 0 to x (whole inches) then discard choices. The team-local spot code runs over `movement.forcedMoveSpots` / `applyForcedMove`: candidate spots reachable with the chosen distance (drops free, climbs at R-12.2 cost); it picks the one nearest the Impaler, ties by shortest path then lowest id. Discarding lowers `AttackSeq.unblocked`. `checkMines` runs on the forced move | CLASS: generic:shoot.beforeResolve
+  - RULING: Goremongers Drag move | the pull is a forced move (no action, no reactions); it follows normal movement limits except that drops cost nothing; it may end in anyone's control range, the Impaler's included; mines trigger as for any move | the card defines only distance, direction and the drop exception | Unsourced
+  - RULING: Goremongers Drag discard | after the pull the attacker may discard any number of unblocked successes, normal or crit; Devastating damage already dealt at retention stays | August '26 errata text; Devastating resolves at retention (R-5.15) | Confirmed
+- T-GM.13 **GORE-FUEL** (Impaler, 1 AP): decrease the Impaler's gore tank. From then on, until the Impaler next uses either fleshskewer profile, both profiles have Severe. This decrease is not a SANGUAVITAE use. Not while in an enemy's control range or with an empty tank.
+  - MECH: unique 1 AP action; token `gm.goreFuel` on the Impaler; `modifyWeaponRules` adds `core.wr.severe` to `gm.w.fleshskewer-ranged` and `gm.w.fleshskewer-stab` while the token is held; the token is removed when an action (Shoot, Fight) or retaliation in which either profile rolled dice is over | CLASS: team-hook
+  - RULING: Goremongers Gore-fuel duration | it lasts across turning points until a fleshskewer profile is used in a Shoot, a fight or a retaliation; "used" means its attack dice were rolled; the effect covers that whole use; a second Gore-fuel while it is active adds nothing | the card ends it on use, not at a time | Unsourced
+- T-GM.14 **DASH AND SPRAY** (Inciter, 1 AP): the Inciter performs a free Dash and a free Shoot, in either order. That Shoot may use only the dual autopistols (focused). Not while it has a Conceal order or is in an enemy's control range.
+  - MECH: unique 1 AP action; `ability.choice` for the order; `startFreeAction({ action: 'dash' })` and `startFreeAction({ action: 'shoot' })` chained through frame resumes; provider `weaponForbidden` bars the point-blank profile in that Shoot; ledger: the free Dash and Shoot count as performed (R-3.9), so `actionForbidden` bars Dash and Shoot for the rest of the activation | CLASS: team-hook
+  - RULING: Goremongers Dash and Spray parts | not offered once the Inciter has performed Dash or Shoot in this activation; either part may be passed (no Dash spot, no valid target); afterwards Dash and Shoot are barred for that activation (a free action counts as performed, R-3.9); as a counteraction (R-3.12) both parts still happen | R-3.7 and R-3.9 apply to the free actions inside it | Unsourced
+- T-GM.15 **Incite the Hunt** (Inciter, part 1): whenever the Inciter incapacitates an enemy operative that is more than 2" away from it, before that enemy is removed you may increase the gore tank of one friendly GOREMONGER operative within 8" of that enemy (the Inciter included).
+  - MECH: `operative.killed` ploy window (the killer's seat; `removedPos`), 0 CP offers, one per eligible friendly whose tank is not full; distance from the Inciter to the victim's last position | CLASS: team-hook
+  - RULING: Goremongers Incite the Hunt timing | resolved in the `operative.killed` window with the enemy's last position standing in for "before it is removed"; distances measured to that position | the Inciter only kills with attacks (it has no direct-damage rule), and that window carries the removed position | Unsourced
+- T-GM.16 **Incite the Hunt** (Inciter, part 2, Bleeding):
+  - Whenever the Inciter damages an enemy operative with either dual autopistols profile and does not incapacitate it, that enemy gains one of your Bleeding tokens, unless it already holds one.
+  - During a friendly GOREMONGER operative's activation or counteraction, before or after any of its actions, if it is within 8" of an enemy holding one of your Bleeding tokens, you may remove that token and increase that friendly operative's gore tank. This is not a SANGUAVITAE use.
+  - MECH:
+    - Gain: token `gm.bleeding` (cap 1, owner the Goremonger seat, `expires: ['battle']`), added when the Shoot action that damaged the enemy ends with the enemy still in the killzone.
+    - Use: 0 CP offers in `firefight.activationStart` and `firefight.actionEnded`, one per bleeding enemy within 8", only while the friendly operative's tank is not full.
+  - CLASS: team-hook
+  - RULING: Goremongers Bleeding gain timing | decided when the Shoot action ends (incapacitation is processed then, R-5.14), so an enemy that survives the action gains the token | "doesn't incapacitate it" can only be known once incapacitation is resolved | Unsourced
+  - RULING: Goremongers Bleeding use | not offered to an operative with a full tank; any number per activation (one token each); no visibility needed | the removal and the increase are one effect; the card sets no per-activation limit | Unsourced
+- T-GM.17 **Brutish** (Skullclaimer): whenever an attack die would deal Critical Dmg to the Skullclaimer, it may deal the weapon's Normal Dmg instead.
+  - MECH: `onDamageInflicted` on the Skullclaimer for sources `crit` and `strike-crit`: `amount` becomes the attacker weapon's Normal Dmg (`weaponDamage`) when that is lower, applied before every other reduction | CLASS: team-hook
+  - RULING: Goremongers Brutish | automatic whenever Normal Dmg is lower; Devastating damage is not Critical Dmg and is unchanged; the swap happens before Gory Tenacity's halving and Runes of Khorne's cap | the choice can never hurt; Devastating is separate damage (R-5.15) | Unsourced
+- T-GM.18 **Claim Skull** (Skullclaimer): once per turning point, when the Skullclaimer incapacitates an enemy operative with its great chainaxe, you gain 1 CP. A Claim Skull token tracks the use.
+  - MECH: `damage.inflicted` remembers the weapon of the incapacitating damage (`gm.w.great-chainaxe` or its thrown twin); `operative.removed` (generic D2) with `killerId` = the Skullclaimer grants the CP; TP ledger; token `gm.claimSkull` until `turningPoint.start` | CLASS: generic:killLog (team-hook)
+  - RULING: Goremongers Claim Skull and Wrist Chains | a kill with the thrown great chainaxe (T-GM.41) counts; the CP comes when the enemy is removed, at the end of the action (R-5.14) | the thrown weapon is the great chainaxe treated as ranged | Unsourced
+- T-GM.19 **Climbing Picks** (Stalker): whenever the Stalker climbs up, the vertical distance counts as 2", however high the climb really is.
+  - MECH: provider `moveSurcharge` with `breakdown.climbs`: each climb (consecutive climb segments summed as R-12.2) costs exactly 2" | CLASS: team-hook
+  - RULING: Goremongers Climbing Picks | each run of consecutive climb segments costs 2" in total; drops and jumps unchanged; Dash still cannot climb (R-4.2); applied automatically | R-12.2 already makes every climb cost at least 2", so the rule only lowers costs | Unsourced
+- T-GM.20 **Rooftop Stalker** (Stalker): the Stalker's melee weapons have Relentless while it fights in an activation in which it dropped from Vantage terrain at least 2" above the killzone floor, or while it fights an enemy operative that is on Vantage terrain at least 2" above the floor.
+  - MECH: `action.ended` reads the Stalker's `OperativeMoved.segments` (the Hearthkyn Climbing Rigs pattern): a `drop` segment starting at a height of 2" or more on Vantage terrain (`los.baseUnderVantage`) writes the per-activation effect `gm.dropped`; `modifyWeaponRules` adds `core.wr.relentless` to its melee weapons when it is the attacker in a fight and `gm.dropped` is set or the defender is on Vantage 2" or more up | CLASS: team-hook
+  - RULING: Goremongers Rooftop Stalker and retaliating | only when the Stalker is fighting (its own Fight action), not when retaliating; free moves in the activation count | 2024 rules separate fighting from retaliating (T-LG.28, T-KS.24) | Confirmed
+
+### 21.5 Faction rules
+
+- T-GM.21 **RUNES OF KHORNE**: a friendly GOREMONGER operative can lose at most 8 wounds per Shoot action.
+  - MECH: `onDamageInflicted` on a GOREMONGER target while a Shoot action is being resolved (`state.attack` kind `shoot`); ledger keyed by the Shoot action and the target sums wounds lost; `amount` is cut to `8 - lost`. Every sequence of the action counts, Devastating and `splash` included | CLASS: team-hook
+  - RULING: Goremongers Runes of Khorne scope | every wound the operative loses while one Shoot action resolves counts toward the 8 (all its sequences, Blast and Torrent secondaries, Devastating and splash damage); free Shoots and Guard interrupt Shoots are Shoot actions; damage outside a Shoot action is not capped; the cap applies after every other reduction | the card counts wounds lost per Shoot action, whatever the source | Unsourced
+- T-GM.22 **GORE TANKS**: every friendly GOREMONGER operative has a gore tank with three levels: empty, half and full.
+  - Each tank starts the battle at half. An increase moves it up one level and a decrease moves it down one; it never goes above full or below empty.
+  - Whenever a friendly GOREMONGER operative incapacitates an operative that is in its control range, or is visible to it and within 2", you may increase its tank.
+  - Using a SANGUAVITAE rule always decreases the user's tank (T-GM.23).
+  - The Gore Tank tokens (half, full) show the level; an empty tank has no token.
+  - MECH:
+    - The tank is token `gm.gore` on the operative (owner its seat, cap 2, count 1 = half, 2 = full, none = empty, `expires: ['battle']`), set to 1 for every GOREMONGER in the turning point 1 `turningPoint.start` hook (Ready step, before anything can use it).
+    - The kill increase uses generic D2 `operative.removed` (`killerId`, any cause: attack, Rake, Destructive Demise, direct damage), automatic. Distance and visibility are measured from the killer to the victim's last position.
+  - CLASS: generic:killLog (team-hook)
+  - RULING: Goremongers gore tank start | set at half in the turning point 1 Ready step, before any rule can read it | the card says the tanks start the battle at half; nothing in set-up reads them | Unsourced
+  - RULING: Goremongers gore from kills | automatic for any cause of incapacitation by that operative (attacks, Rake, Ritual kills, direct damage it inflicts), friendly victims included; measured between the killer and the victim's position when incapacitated | the card says "an operative" and sets no source; the increase has no downside | Unsourced
+- T-GM.23 **SANGUAVITAE** (limits): each SANGUAVITAE rule says when it can be used, and using it always decreases the operative's gore tank (so an empty tank cannot use one). The limits:
+  - An operative uses each SANGUAVITAE rule at most once per activation or counteraction.
+  - It uses at most two SANGUAVITAE rules per activation or counteraction.
+  - It never uses both Mania and Fury in the same activation.
+  - MECH: SANGUAVITAE uses are 0 CP offers through ploy rule `extraOffers` (not ploys, no CP, no ploy ledger) in the windows each rule names; per-frame ledger (effect `gm.sv`, expiring at activation end, keyed by operative and activation or counteraction) | CLASS: team-hook
+  - RULING: Goremongers Sanguavitae as window offers | offered as 0 CP choices in the existing windows (`firefight.activationStart`, `firefight.actionEnded`, `firefight.actionDeclared`, `firefight.chargeMoved`), not as 0 AP unique actions | a 0 AP action is once per activation (R-3.7), is not allowed as a counteraction (R-3.12) and would count as an action, while Rejuvenate is usable in counteractions and several rules can be used between the same two actions | Unsourced
+  - RULING: Goremongers Sanguavitae outside activations | never used outside an activation or counteraction (not on the Strategy-phase Charge of Hunt for Blood) | the limits are counted per activation or counteraction, and Surge and Rage's triggers sit inside them | Unsourced
+- T-GM.24 **Rejuvenate** (SANGUAVITAE): during a friendly GOREMONGER operative's activation or counteraction, before or after any of its actions, it regains D3+1 lost wounds (never above its starting wounds).
+  - MECH: 0 CP offer in `firefight.activationStart` and `firefight.actionEnded`; `effects.regainWounds(D3+1)`; decrease the tank | CLASS: team-hook
+  - RULING: Goremongers Rejuvenate errata | regains D3+1, capped at starting wounds; offered only when the operative has lost wounds | the August '26 update log drops "up to" while the card text and Wahapedia keep it; with the cap the two readings give the same result | Unsourced
+- T-GM.25 **Mania** (SANGUAVITAE): during a friendly GOREMONGER operative's activation (not a counteraction), before or after any of its actions, add 1 to its APL until the start of its next activation.
+  - MECH: 0 CP offer in `firefight.activationStart` (not counteracting) and `firefight.actionEnded` (own activation); `applyAplEffect(+1)` expiring at the operative's next `activation.start`; mid-activation the extra AP is usable at once (R-3.15); R-9.6 caps the sum | CLASS: team-hook
+- T-GM.26 **Fury** (SANGUAVITAE): during a friendly GOREMONGER operative's activation (not a counteraction), before or after any of its actions, it may perform two Fight actions in that activation, and the second is free.
+  - MECH: 0 CP offer as Mania; effect `gm.fury` for the activation; provider `maxRepeats` returns 2 for `fight`; provider `actionCostDelta` makes the second Fight cost 0 AP | CLASS: team-hook
+  - RULING: Goremongers Fury | usable before any Fight or after the first; the second Fight costs 0 AP, so it is possible with no AP left; Mania and Fury never share an activation | the card's "second one is free" | Unsourced
+- T-GM.27 **Rake** (SANGUAVITAE): when a friendly GOREMONGER operative performs the Charge action during its activation, once it finishes moving you may deal D3 damage to one enemy operative in its control range.
+  - MECH: generic D8 window `firefight.chargeMoved` (owner, between the Charge move and the end of the action); 0 CP offers, one per enemy in control range; `effects.directDamage(D3, source = the charger)`; decrease the tank | CLASS: generic:firefight.chargeMoved
+  - RULING: Goremongers Rake scope | activations only (never a counteraction, per the August '26 errata wording); free Charges inside the activation count (Obsessive Bloodlust); the choice is made after the move, with the enemy picked then | the errata adds "during its activation"; the effect happens when the move is finished | Confirmed
+- T-GM.28 **Surge** (SANGUAVITAE): when a friendly GOREMONGER operative performs a Charge or Reposition, add 1" to its Move until the end of that action.
+  - MECH: 0 CP offer in `firefight.actionDeclared` for `charge` and `reposition` (counteractions and free actions included); provider `moveLimitDelta(state, op, kind)` returns 1 for that action (effect expiring at action end); a `maxMove` cap of a free Charge still holds | CLASS: team-hook
+- T-GM.29 **Rage** (SANGUAVITAE): when a friendly GOREMONGER operative performs a Fight action, its melee weapons get +1 Atk until the end of that action.
+  - MECH: 0 CP offer in `firefight.actionDeclared` for `fight` (counteractions included, Fury's second Fight included if Rage was not used yet); `modifyAttackDice` atk +1 for melee weapons while the effect holds; the tank decreases at once, so Enhanced Violence reads the lower level (FAQ) | CLASS: team-hook
+  - RULING: Goremongers Rage and retaliation | only in its own Fight action, never when retaliating | the trigger is performing the Fight action | Confirmed
+
+### 21.6 Ploys
+
+The source prints no costs: every ploy is 1 CP (R-2.4) unless a rule changes it. Strategy ploys last until the end of the TP (R-2.5) unless they say otherwise. There are four firefight ploys (the PDF); a stray extra heading on the Wahapedia page is ignored.
+
+- T-GM.30 **ENHANCED VIOLENCE** | Strategy | 1 CP | Gambit step | While this ploy is in effect, a friendly GOREMONGER operative with a half gore tank has Balanced on its melee weapons, and one with a full tank has Relentless on them. The level is read live (after a SANGUAVITAE decrease, per the FAQ). Retaliating counts. The thrown twins of Wrist Chains keep these rules (T-GM.41).
+  - MECH: `modifyWeaponRules` on melee weapons and on the `-thrown` twins: `core.wr.balanced` at level 1, `core.wr.relentless` at level 2, read when re-rolls are offered | CLASS: team-hook
+  - RULING: Goremongers Enhanced Violence timing | the tank level is read when the re-roll is made, after any SANGUAVITAE decrease for that action | the rules commentary answers "after" | Confirmed
+- T-GM.31 **AUGMENTED ENDURANCE** | Strategy | 1 CP | Gambit step | When an operative shoots a friendly GOREMONGER operative, the defender may re-roll one defence die if its tank is half, or any of them if it is full.
+  - MECH: `modifyDefenceDice` adds `RerollGrant { mode: 'one' }` (level 1) or `{ mode: 'any' }` (level 2) when the target is GOREMONGER | CLASS: team-hook
+- T-GM.32 **GORY TENACITY** | Strategy | 1 CP | Gambit step | When a friendly GOREMONGER operative is fighting or retaliating, the first time the opponent strikes it in that sequence the damage is halved, rounding up, but not below 2.
+  - MECH: `onDamageInflicted` for sources `strike-normal` and `strike-crit` on the first enemy strike per sequence (ledger keyed by attack and sequence): `amount = min(amount, max(2, ceil(amount / 2)))`, after Brutish | CLASS: team-hook
+  - RULING: Goremongers Gory Tenacity minimum | the minimum only stops the halving below 2; a strike of 1 or 2 damage is unchanged, never raised | the August '26 errata adds "to a minimum of 2" to a reduction; reading it as an increase would make a reduction rule deal more damage | Unsourced
+- T-GM.33 **HUNT FOR BLOOD** | Strategy | 1 CP | Gambit step | Pick one friendly GOREMONGER operative; a Conceal order becomes Engage. It may then perform a free Charge of at most 3".
+  - MECH: strategy ploy with an operative choice; order change, then `startFreeAction({ action: 'charge', maxMove: 3 })` outside any activation (Strategy-phase free action, existing reaction point `strategy`) | CLASS: team-hook
+  - RULING: Goremongers Hunt for Blood | the order changes even when no Charge follows; the Charge is optional; it is outside the operative's activation, so it may Charge again when activated (R-3.9); no SANGUAVITAE on it | "then it can immediately perform" is a permission; free actions outside the activation do not block that action later | Unsourced
+- T-GM.34 **UNBRIDLED AGGRESSION** | Firefight | 1 CP | At the end of the Roll Attack Dice step of a fight in which a friendly GOREMONGER operative is the attacker, during an activation in which it performed Charge | Its melee weapons have Severe until the end of that sequence.
+  - MECH: firefight ploy in the `fight.rolled` window, the attacker's seat, condition: the Goremonger is the fight's attacker, in its activation, and `performed` (or a free frame of that activation) contains `charge`; `modifyWeaponRules` adds `core.wr.severe` for the sequence; if retention already ran when the window closes, the team file applies the Severe conversion to the attacker's dice directly (one normal to crit when no crit, tag `severe`) | CLASS: team-hook
+  - RULING: Goremongers Unbridled Aggression | attacker only (not when retaliating); a free Charge in the activation counts, the Strategy-phase Charge of Hunt for Blood does not; used after the re-rolls | "is fighting during an activation in which it performed the Charge action"; R-6.4 re-rolls are part of the roll step | Unsourced
+- T-GM.35 **GORETHIRST** | Firefight | 1 CP | When you would counteract | You may counteract with one friendly GOREMONGER operative that has a Conceal order. Its order becomes Engage before it counteracts, and in that counteraction it may perform only Charge, Shoot or Fight.
+  - MECH (fallback, counteract ploys not built): provider `counteract(state, op)` returns `'any'` for a Conceal GOREMONGER while the seat can pay 1 CP and Gorethirst is unused this TP. In `firefight.activationStart` with `counteracting` and order `conceal`, the team file spends 1 CP, records the ploy use (ploy ledger and its event), sets the order to Engage and writes effect `gm.gorethirst`; provider `actionForbidden` bars every action but `charge`, `shoot` and `fight` for that counteraction | CLASS: team-hook
+  - RULING: Goremongers Gorethirst | the CP is paid when a Conceal operative is chosen to counteract; the counteract prompt shows the cost in the client label; once per TP like every ploy; an Engage operative counteracts normally without it | counteract ploys are not built (batch D); the effect matches the card | Unsourced
+- T-GM.36 **DESTRUCTIVE DEMISE** | Firefight | 1 CP | When a friendly GOREMONGER operative is incapacitated, before it is removed | Deal damage to one enemy operative in its control range: D3 if its tank is empty, D3+1 if half, D3+2 if full.
+  - MECH: firefight ploy in the `operative.incapacitated` window (owner); param: one enemy in the dying operative's control range; `effects.directDamage(roll, source = the dying operative)` | CLASS: team-hook
+  - RULING: Goremongers Destructive Demise scope | offered only when the operative is incapacitated by an attack (the window's reach); mines, direct damage and Lacerate Flesh remove at once with no window; the tank level is read as it stands | before-removal reactions for other causes are not built (batch D) | Unsourced
+- T-GM.37 **LACERATE FLESH** | Firefight | 1 CP | When a friendly GOREMONGER operative with an empty tank is activated or counteracts | Increase its tank. When that activation or counteraction ends, decrease it (this decrease is not a SANGUAVITAE use); if it cannot be decreased, deal D3 damage to the operative.
+  - MECH: firefight ploy in `firefight.activationStart` (activations and counteractions), condition: tank empty; effect `gm.lacerate` on the operative; `activation.end` hook decreases the tank or calls `directDamage(D3, source = itself)` | CLASS: team-hook
+  - RULING: Goremongers Lacerate Flesh self-damage | the D3 may incapacitate the operative, which then counts toward the opponent's kill op like any other incapacitation (killer: itself); Destructive Demise is not offered for it | the damage comes from the ploy; the incapacitation window covers attacks only | Unsourced
+
+### 21.7 Faction equipment
+
+Universal equipment (M-5) can also be chosen; the four-option limit covers faction and universal options together (M-5.12).
+
+- T-GM.38 **GORY TOTEM** | Before the battle, set up your Gory Totem marker wholly within your territory and more than 2" from every other marker. While an enemy operative within 3" of it is shooting, fighting or retaliating, its attack dice cannot be re-rolled.
+  - MECH: equipment `setup: { type: "marker", whollyWithinTerritory: true, clearances: [{ from: ["otherMarkers"], moreThan: 2 }] }` (`setup.equipMarker`); provider `rerollsBanned(state, side, attack)` when `side` is the attack side of an enemy operative within 3" of the marker (R-8.3) | CLASS: data (team-hook)
+  - RULING: Goremongers Gory Totem and Bloody Cadaver spacing | each is set up more than 2" from every other marker, including each other (stricter than the card, which exempts the pair) | a clearance exception list is not built (batch D) | Unsourced
+  - RULING: Goremongers Gory Totem scope | bans every re-roll of that side's attack dice (weapon rules, ploys, Command Re-roll) while the enemy is within 3" of the marker | "cannot re-roll their attack dice" | Confirmed
+- T-GM.39 **BLOODY CADAVER** | Before the battle, set up your Bloody Cadaver marker as the Gory Totem. Only friendly GOREMONGER operatives may perform Pick Up Marker on it. In the Ready step of each Strategy phase, you may increase the gore tank of one friendly GOREMONGER operative that controls the marker, unless that operative is in an enemy's control range.
+  - MECH: setup as T-GM.38; the marker is created with `pickable: true`, `pickableBy` = the Goremonger seat (generic D7); provider `readyStepChoices` offers one choice per controlling friendly operative (carrier, or contesting with control per R-8.6) not in an enemy's control range whose tank is not full; the code hook calls `strategy.readyChoiceDone` | CLASS: generic:Marker.pickableBy
+  - RULING: Goremongers Bloody Cadaver control | the carrier controls it; uncarried, control is the core marker control (R-8.6); one increase per Ready step, turning point 1 included; R-4.6 forced placement applies when its carrier is incapacitated | the core rules make a carrier the sole controller | Confirmed
+- T-GM.40 **CHAOS SIGIL** | Once per TP, when an operative shoots a friendly GOREMONGER operative, at the start of the Roll Defence Dice step: until the end of that sequence the attacker's Piercing x is 1 lower (Piercing 1 is ignored).
+  - MECH: 0 CP equipment offer in `shoot.beforeDefenceRoll` (defender) when the weapon has `core.wr.piercing` (plain or crits); TP ledger; `modifyWeaponRules` for the sequence lowers x by 1 and drops the rule at 0 | CLASS: team-hook
+  - RULING: Goremongers Chaos Sigil and Piercing Crits | the reduction also applies to Piercing Crits x | Piercing Crits is the Piercing rule's crit variant (R-10) | Unsourced
+- T-GM.41 **WRIST CHAINS** | Once per TP, when a friendly GOREMONGER operative performs a Shoot and selects a ranged weapon, its chainblade, chainglaive, great chainaxe (without Brutal) and pickrippers count as ranged weapons with Range 2" until the end of that action. Balanced or Relentless from Enhanced Violence stay on them.
+  - MECH (fallback, `extraShootWeapons` not built): the four `-thrown` twin records (21.3) are given by provider `ownGrenades.weapons` to operatives whose datacard has the matching melee weapon (uses per battle set high), only while Wrist Chains is equipped; provider `weaponForbidden(state, op, twin, 'shoot')` bars the twins once the seat has used Wrist Chains this TP; the use is recorded when a Shoot action picks a twin | CLASS: team-hook
+  - RULING: Goremongers Wrist Chains and Enhanced Violence | thrown weapons keep Balanced or Relentless from Enhanced Violence | the August '26 errata adds this sentence to the card; the Wahapedia FAQ answering "No" predates it | Corrected
+  - RULING: Goremongers Wrist Chains model | each thrown weapon is a separate ranged twin record of the melee profile with Range 2" (Brutal dropped on the great chainaxe); rules naming the melee weapon also apply to its twin (Claim Skull); the once-per-TP use is spent by the Shoot action that picks a twin | treating a melee weapon as ranged has no shared support (batch D) | Unsourced
+
+Marker/token guide (UI): Gore Tank token (half, full), Impending Apotheosis token, Bleeding token, Claim Skull token, Bloody Cadaver marker, Gory Totem marker, Chaos Sigil token, Wrist Chains token.
+
+### 21.8 Checklist
+
+Rows in `12-rules-test-checklist.md` section TEAM-GM: TEAM-GM-000 to TEAM-GM-038.
+
+### 21.9 Generic capabilities (survey; resolved in the Engine map below)
+
+- **shoot.beforeResolve** (batch D, D9): Drag's pull and discard (attacker); Impending Apotheosis in a Shoot (defender). Used by T-GM.8, T-GM.12.
+- **firefight.chargeMoved** (batch D, D8): Rake after the Charge move. Used by T-GM.27.
+- **Marker.pickableBy** (batch D, D7): only Goremongers pick up the Bloody Cadaver. Used by T-GM.39.
+- **killLog / operative.removed** (batch D, D2): gore from kills of any cause (attacks, Rake, direct damage) and Claim Skull's CP. Used by T-GM.18, T-GM.22.
+- **Operative tokens** (batch A): gore tank (`gm.gore`, cap 2), Bleeding (`gm.bleeding`, cap 1), Gore-fuel, Impending Apotheosis and Claim Skull markers. Used by T-GM.8, T-GM.13, T-GM.16, T-GM.18, T-GM.22.
+- **0 CP window offers** (ploy rule `extraOffers`, the Auspex pattern) in `firefight.activationStart`, `firefight.actionEnded`, `firefight.actionDeclared`, `operative.killed`, `shoot.beforeDefenceRoll`: SANGUAVITAE, Khorne's Favour, Bleeding, Incite the Hunt, Chaos Sigil. Used by T-GM.7, T-GM.15, T-GM.16, T-GM.23 to T-GM.29, T-GM.40.
+- Existing providers and helpers:
+  - `ownReactions` + `startFreeAction({ maxMove })`: Obsessive Bloodlust, Hunt for Blood.
+  - `maxRepeats` / `actionCostDelta`: Fury. `applyAplEffect`: Mania. `regainWounds`: Rejuvenate. `moveLimitDelta`: Surge.
+  - `moveSurcharge` climbs: Climbing Picks. `rerollsBanned`: Gory Totem. `readyStepChoices`: Bloody Cadaver.
+  - `weaponForbidden`: Dash and Spray, Wrist Chains. `ownGrenades.weapons`: Wrist Chains twins.
+  - `onDamageInflicted`: Runes of Khorne, Brutish, Gory Tenacity. `beforeStrike`: Apotheosis in fights.
+  - `modifyWeaponRules`, `modifyAttackDice`, `modifyDefenceDice`: Enhanced Violence, Augmented Endurance, Rage, Gore-fuel, Rooftop Stalker, Unbridled Aggression, Chaos Sigil.
+  - `operative.incapacitated` and `fight.rolled` windows: Destructive Demise, Unbridled Aggression. `setup.equipMarker`: Totem and Cadaver. `counteract` provider: Gorethirst fallback. `movement.forcedMoveSpots` / `applyForcedMove`: Drag.
+- Gaps (not built in batch D; each has a team-local fallback and a RULING):
+  - **counteract ploys** (NICE): Gorethirst uses the `counteract` provider plus a CP charge at `firefight.activationStart`. Used by T-GM.35.
+  - **extraShootWeapons** (NICE): Wrist Chains uses `ownGrenades.weapons` twin records plus a per-TP `weaponForbidden`. Used by T-GM.41.
+  - **clearance exceptions** (NICE): Totem and Cadaver keep 2" from each other (stricter than the card). Used by T-GM.38, T-GM.39.
+  - **per-die defender choices in fights** (NICE): Impending Apotheosis is automatic in fights. Used by T-GM.8.
+  - **before-removal reactions for any cause** (NICE): Destructive Demise only after attack incapacitation. Used by T-GM.36.
+- Everything else maps onto existing hooks and providers (Engine map).
+
+### 21.10 Gotchas
+
+- PDF over Wahapedia once (Corrected): Wrist Chains keeps Enhanced Violence's rules on thrown weapons (August '26 errata; the Wahapedia FAQ says no). Update log over card text once (Unsourced): Rejuvenate regains D3+1 (no "up to"; same result under the cap).
+- The tank is three levels (empty, half, full), not a count of points. It starts at half. An empty tank has no token. Decreasing is the cost of every SANGUAVITAE rule, Transfusion Ritual and Gore-fuel, but only SANGUAVITAE uses count toward the once-each, two-per-activation and Mania/Fury limits.
+- SANGUAVITAE timings differ:
+  - Rejuvenate: activation or counteraction, between actions.
+  - Mania and Fury: activation only, between actions, never together.
+  - Rake: own activation's Charge, after the move.
+  - Surge: any Charge or Reposition, at declaration.
+  - Rage: any Fight action, at declaration, never a retaliation.
+- Enhanced Violence reads the level after a SANGUAVITAE decrease (FAQ): Rage on a full tank leaves Balanced, not Relentless.
+- Runes of Khorne caps wounds lost per Shoot action at 8 for each Goremonger, all sequences and Devastating included; fights and direct damage are uncapped.
+- Obsessive Bloodlust is once per TP for all Aspirants together (August '26 errata), follows any Fight action, a counteraction's included, and its free 2" Charge does not block a later Charge, Dash or Reposition. Dash and Spray's free Dash and Shoot do block them (R-3.9).
+- Drag: x = 2 per unblocked success; the target ends as close to the Impaler as the chosen distance allows, drops free; then discards are allowed (to keep a target alive for a Charge). Piercing Crits 1 and Stun on the same profile; Gore-fuel adds Severe until the fleshskewer is next used.
+- The Inciter has no melee weapon. Its point-blank profile is just a profile name. Bleeding comes only from its dual autopistols and only on a surviving enemy, one token per enemy. Incite the Hunt needs the kill from more than 2".
+- Brutish swaps Critical Dmg for Normal Dmg automatically; Devastating unchanged. Claim Skull is 1 CP once per TP for a great chainaxe kill (thrown included).
+- Climbing Picks: every climb costs 2". Rooftop Stalker: Relentless when the Stalker fights (not retaliates) after dropping from Vantage 2" or more this activation, or against an enemy on Vantage 2" or more up.
+- Gory Tenacity never raises a strike's damage; it reduces only the first enemy strike per sequence.
+- Gorethirst charges its CP when a Conceal operative is picked to counteract, and that counteraction is Charge, Shoot or Fight only.
+- Destructive Demise only after an attack incapacitates; Lacerate Flesh's D3 can incapacitate its own operative.
+- Eight operatives use the 8-operative kill grade row.
+- Edition leaks to reject: nothing from the 2021 Kill Team Goremongers (no Blood Tithe points, no shape distances, no Overwatch). Nothing from 40k 10th (no Blood Tithe army rule, no Khorne Daemonkin, no Leadership or battle-shock, no wound rolls or AP). Inches only, three defence dice, every printed number from the August '26 cards.
+
+### 21.11 Engine map
+
+| Rule or capability | Built as |
+|---|---|
+| Roster (Herald 1, main 7, ASPIRANT repeatable, others once) | team.json slots, `repeatable` |
+| Loadouts | datacard `weapons.fixed`; profile group `gm.wg.dual-autopistols`; fleshskewer as two records |
+| Gore tank | token `gm.gore` (cap 2), helpers `goreLevel` / `increaseGore` / `decreaseGore`, set to half at the turning point 1 `turningPoint.start` |
+| Gore from kills, Claim Skull | generic D2 `operative.removed` (`killerId`), `damage.inflicted` remembers the weapon |
+| SANGUAVITAE limits | per-frame effect `gm.sv`; 0 CP ploy-rule `extraOffers` |
+| Rejuvenate, Mania, Fury, Khorne's Favour, Bleeding use | 0 CP offers in `firefight.activationStart` / `firefight.actionEnded`; `regainWounds`; `applyAplEffect`; providers `maxRepeats`, `actionCostDelta` |
+| Surge, Rage | 0 CP offers in `firefight.actionDeclared`; provider `moveLimitDelta`; `modifyAttackDice` |
+| Rake | generic D8 `firefight.chargeMoved`, `directDamage(D3)` |
+| Drag, Impending Apotheosis (Shoot) | generic D9 `shoot.beforeResolve` (`AttackSeq.unblocked`), team spot code over `movement.forcedMoveSpots` / `applyForcedMove` |
+| Impending Apotheosis (fight) | attack hook `beforeStrike` (`cancel`), battle ledger, token |
+| Obsessive Bloodlust | provider `ownReactions`, `startFreeAction({ action: 'charge', maxMove: 2 })`, TP ledger |
+| Ritual | `damage.inflicted` (ritual blade, once per sequence) |
+| Transfusion Ritual, Gore-fuel | unique 1 AP actions, `ability.choice`; token `gm.goreFuel` + `modifyWeaponRules` (Severe) |
+| Dash and Spray | unique 1 AP action, chained `startFreeAction` dash and shoot, providers `weaponForbidden`, `actionForbidden` |
+| Incite the Hunt | `operative.killed` window (0 CP offers); token `gm.bleeding` at the Shoot action's end |
+| Brutish, Gory Tenacity, Runes of Khorne | `onDamageInflicted` (in that order: swap, halve, cap) |
+| Climbing Picks | provider `moveSurcharge` (`breakdown.climbs`) |
+| Rooftop Stalker | `action.ended` drop segments, effect `gm.dropped`, `modifyWeaponRules` (Relentless) |
+| Enhanced Violence, Augmented Endurance | `modifyWeaponRules` by tank level; `modifyDefenceDice` grants |
+| Hunt for Blood | strategy ploy, order change, `startFreeAction({ action: 'charge', maxMove: 3 })` |
+| Unbridled Aggression | `fight.rolled` window, Severe for the sequence |
+| Gorethirst | provider `counteract` `'any'`, CP charge at `firefight.activationStart`, provider `actionForbidden` (fallback) |
+| Destructive Demise | `operative.incapacitated` window, `directDamage` |
+| Lacerate Flesh | `firefight.activationStart` window, `activation.end` hook |
+| Gory Totem | `setup.equipMarker`, provider `rerollsBanned` |
+| Bloody Cadaver | `setup.equipMarker`, generic D7 `Marker.pickableBy`, provider `readyStepChoices` |
+| Chaos Sigil | 0 CP offer in `shoot.beforeDefenceRoll`, `modifyWeaponRules` (Piercing x - 1) |
+| Wrist Chains | twin records via `ownGrenades.weapons`, provider `weaponForbidden` per TP (fallback) |
+
+### 21.12 Implementer brief
+
+- Files you own (nothing else):
+  - `src/data/teams/goremongers/team.json`, `operatives.json`, `weapons.json`, `abilities.json`, `ploys.json`, `equipment.json`. Ids `gm.<name>`, `gm.w.`, `gm.wg.`, `gm.a.`, `gm.p.`, `gm.e.`; team weapon rules `gm.a.wr-ritual`, `gm.a.wr-drag`. The scaffold already holds the Herald, the Icon of Khorne and the chainblade.
+  - `src/engine/teams/goremongers.ts`: code hooks, `registerTeamRules`, hook handlers, ploy rules.
+  - `src/client/teams/goremongers.ts`:
+    - weapon flavour, VFX family, sound and attachments for every weapon (the thrown twins included);
+    - labels for the tank and Bleeding tokens;
+    - figure stand-ins `gm-blood-herald`, `gm-aspirant` with `gm-aspirant-b`, `gm-bloodtaker`, `gm-impaler`, `gm-inciter`, `gm-skullclaimer`, `gm-stalker`. Every card has one loadout, so `loadoutBodies` stays empty.
+  - `tests/engine/teams/goremongers.test.ts` (TEAM-GM-nnn tests) and `tests/engine/teams/goremongers.hooks.ts` (code-hook firing scenarios).
+  - append-only: `docs/needs-rules-check.md` (RULING lines), `docs/spec/13-teams.md` section 21 and `12-rules-test-checklist.md` section TEAM-GM (refinements only).
+- Activation flag: `"playable": false` in `src/data/teams/goremongers/team.json`. Flip it only when the team is complete and all gates pass, with `defaults` filled: a legal roster (Herald, two Aspirants and one each of the other five) and every weapon present in `src/client/teams/goremongers.ts`.
+- Capabilities to use: the Engine map above.
+  - Batch D: `shoot.beforeResolve` (Drag, Apotheosis in a Shoot), `firefight.chargeMoved` (Rake), `Marker.pickableBy` (Bloody Cadaver), `operative.removed` / killLog (gore from kills, Claim Skull).
+  - Existing: tokens, ploy-rule `extraOffers` 0 CP offers, `ownReactions`, `startFreeAction`, `readyStepChoices`, `rerollsBanned`, `ownGrenades.weapons`, `weaponForbidden`, `moveSurcharge`, `moveLimitDelta`, `applyAplEffect`, `regainWounds`, forced moves.
+  - Team-local fallbacks for the gaps in 21.9.
+- Order:
+  1. Roster and data (TEAM-GM-001, 002).
+  2. The gore tank and the kill increase (003, 004), the spine of the team.
+  3. SANGUAVITAE with its limits (005 to 011) and Enhanced Violence (026).
+  4. Runes of Khorne (012).
+  5. Operative rules (013 to 025).
+  6. The rest of the ploys and equipment.
+- Check first that a ploy window re-offers the remaining 0 CP offers after one is taken, so two SANGUAVITAE can be used between the same two actions. If it does not, report it rather than editing shared files.
+- Bot policy (normal decider) is a suggestion, not a rule:
+  - Rejuvenate when 3 or more wounds are lost; Rage or Rake before a fight that can kill.
+  - Keep a half tank for Enhanced Violence when no use is pressing.
+  - Drag at full distance with no discards unless the pull would make the target leave a contested objective.
+- Team-local weapon rules the data needs: `gm.a.wr-ritual` on the ritual blade, `gm.a.wr-drag` on the fleshskewer (ranged). Core rules elsewhere.
+- RULING lines expected:
+  - roster and data: roster limits, Inciter without a melee weapon, PDF keyword spacing, fleshskewer errata, Icon of Khorne;
+  - operative rules: Khorne's Favour scope, Impending Apotheosis, Obsessive Bloodlust frequency and scope, Ritual, Transfusion Ritual recipient, Drag move and discard, Gore-fuel duration, Dash and Spray parts, Incite the Hunt timing, Bleeding gain timing and use, Brutish, Claim Skull and Wrist Chains, Climbing Picks, Rooftop Stalker and retaliating;
+  - faction rules: Runes of Khorne scope, gore tank start, gore from kills, Sanguavitae as window offers and outside activations, Rejuvenate errata, Fury, Rake scope, Rage and retaliation;
+  - ploys: Enhanced Violence timing, Gory Tenacity minimum, Hunt for Blood, Unbridled Aggression, Gorethirst, Destructive Demise scope, Lacerate Flesh self-damage;
+  - equipment: Gory Totem and Bloody Cadaver spacing, Gory Totem scope, Bloody Cadaver control, Chaos Sigil and Piercing Crits, Wrist Chains and Enhanced Violence (Corrected), Wrist Chains model.
+- Gotchas: section 21.10.
+  - The tank is a token stack of 0 to 2, not a pool (pools are per player).
+  - SANGUAVITAE limits are per activation or counteraction frame; Transfusion Ritual, Gore-fuel, Khorne's Favour and Bleeding never count toward them.
+  - Read `goreLevel` live everywhere (Enhanced Violence, Augmented Endurance, Destructive Demise).
+
+## 22. Scout Squad
+
+Rule IDs `T-SS.<n>`, checklist IDs `TEAM-SS-<nnn>`. Sources: the Scout Squad team PDF (Kill Team 2024, Faction version 3, April '26, including its update log with the April '26 errata and the previous errata; the flow and layout extracts were read together) as the primary source, cross-checked against the Wahapedia Scout Squad page (faction version 3, April 2026; its FAQ panel is empty for this team), plus the core rules page and the universal equipment card for terms. Facts read from the PDF are Confirmed; our own calls are Unsourced. The two sources agree on every stat line, weapon profile and rule text. In four places the update log's previous errata say something the April '26 card no longer says (Track Enemy "expended", Stealth Relocation's order change, Ambush "ranged weapons", the combat knife); we apply the April '26 card text, which both sources print (22.10). All rule text is restated in our own words; team, operative, weapon, ploy and equipment names are used as printed. Core terms per `10-rules-core.md` (R-x.y), missions and universal equipment per `11-missions.md` (M-x.y). Ploys and equipment are one bullet per record so each can carry its MECH line.
+
+Weapon type column: R = ranged, M = melee. Dmg is `normal/crit`. Base is in mm.
+
+### 22.1 Team selection
+
+- T-SS.1 Roster is exactly 9 operatives: 1 SCOUT SERGEANT (leader) plus 8 picks from the main list (T-SS.2). Nothing counts as two selections or half a selection.
+  - MECH: roster validator: leader slot count 1 (`ss.sergeant`), main slot count 8 | CLASS: data
+- T-SS.2 Main list: HEAVY GUNNER with heavy bolter, HEAVY GUNNER with missile launcher, HUNTER, SNIPER, TRACKER, WARRIOR. WARRIOR may be taken any number of times; every other entry at most once. So a roster holds at most two Heavy Gunners (one per heavy weapon), one each of Hunter, Sniper and Tracker, and at least three Warriors.
+  - MECH: one Heavy Gunner datacard `ss.heavy-gunner` with a weapon pick (T-SS.3); main slot `repeatable: ["ss.warrior", "ss.heavy-gunner"]`; `selection.loadoutCaps: [{ label: "Heavy Gunner weapon", weapons: ["ss.wg.heavy-bolter", "ss.wg.missile-launcher"], max: 1, each: true }]` | CLASS: data
+  - RULING: Scout Squad Heavy Gunner entries | one HEAVY GUNNER datacard taken up to twice, once with the heavy bolter and once with the missile launcher | the selection list prints the two Heavy Gunner loadouts as separate entries and caps each entry (not each datacard) at one, the Kasrkin Gunner pattern | Unsourced
+- T-SS.3 Loadouts:
+  - SERGEANT: exactly one of three sets: Astartes shotgun and fists; boltgun and fists; bolt pistol and chainsword.
+  - HEAVY GUNNER: bolt pistol and fists, plus one of heavy bolter (focused and sweeping) or missile launcher (frag and krak).
+  - HUNTER: bolt pistol and combat blade (fixed).
+  - SNIPER: bolt pistol, sniper rifle (mobile and stationary) and fists (fixed).
+  - TRACKER: boltgun and fists (fixed).
+  - WARRIOR: exactly one of three sets: Astartes shotgun and fists; boltgun and fists; bolt pistol and combat blade.
+  - MECH: datacard `weapons.options` (`sets` for Sergeant, Heavy Gunner and Warrior); profile groups bring every profile | CLASS: data
+- T-SS.4 Archetypes: INFILTRATION, RECON (tac ops out of scope for v1).
+  - MECH: team.json `archetypes: ["infiltration", "recon"]` | CLASS: data
+- T-SS.5 Keywords and terms: every operative carries SCOUT SQUAD, IMPERIUM and ADEPTUS ASTARTES plus its role keyword (SERGEANT also LEADER). A **bolt weapon** (ASTARTES, Astartes Training) is the Astartes shotgun, bolt pistol or boltgun. A **heavy weapon** (Astartes Training) is any profile of the heavy bolter, missile launcher or sniper rifle. The team has no team-local weapon rules; every weapon rule on the cards is core (R-10).
+  - MECH: keyword lists in operatives.json; weapon id sets in the team file (`BOLT = ss.w.astartes-shotgun, ss.w.bolt-pistol, ss.w.boltgun`; `HEAVY = ss.wg.heavy-bolter, ss.wg.missile-launcher, ss.wg.sniper-rifle`) | CLASS: data (sets team-hook)
+  - RULING: Scout Squad PDF keyword spacing | the faction keyword is SCOUT SQUAD | the PDF prints "SCOUT SQUAD ," with a stray space, Wahapedia prints SCOUT SQUAD | Confirmed
+
+### 22.2 Operative stats
+
+| Operative | APL | Move | Save | Wounds | Base | Keywords |
+|---|---|---|---|---|---|---|
+| SCOUT SERGEANT | 3 | 6" | 4+ | 11 | 28 | SCOUT SQUAD, IMPERIUM, ADEPTUS ASTARTES, LEADER, SERGEANT |
+| SCOUT HEAVY GUNNER | 2 | 6" | 4+ | 10 | 28 | SCOUT SQUAD, IMPERIUM, ADEPTUS ASTARTES, HEAVY GUNNER |
+| SCOUT HUNTER | 2 | 6" | 4+ | 10 | 28 | SCOUT SQUAD, IMPERIUM, ADEPTUS ASTARTES, HUNTER |
+| SCOUT SNIPER | 2 | 6" | 4+ | 10 | 28 | SCOUT SQUAD, IMPERIUM, ADEPTUS ASTARTES, SNIPER |
+| SCOUT TRACKER | 2 | 6" | 4+ | 10 | 28 | SCOUT SQUAD, IMPERIUM, ADEPTUS ASTARTES, TRACKER |
+| SCOUT WARRIOR | 2 | 6" | 4+ | 10 | 28 | SCOUT SQUAD, IMPERIUM, ADEPTUS ASTARTES, WARRIOR |
+
+Notes: only the Sergeant has APL 3 and 11 wounds; every card is Move 6", Save 4+, 28mm. Stats and bases agree between the PDF and Wahapedia for all six cards. Ids: `ss.sergeant`, `ss.heavy-gunner`, `ss.hunter`, `ss.sniper`, `ss.tracker`, `ss.warrior`. The Wounds stat matters for Emboldened Aspirant (T-SS.32): 11 for the Sergeant, 10 for everyone else.
+
+### 22.3 Weapon profiles
+
+| Weapon | Type | Atk | Hit | Dmg | Rules | Held by |
+|---|---|---|---|---|---|---|
+| Astartes shotgun | R | 4 | 2+ | 4/4 | Range 6" | Sergeant (option), Warrior (option) |
+| Bolt pistol | R | 4 | 3+ | 3/4 | Range 8" | Sergeant (option), Heavy Gunner, Hunter, Sniper, Warrior (option) |
+| Boltgun | R | 4 | 3+ | 3/4 | none | Sergeant (option), Tracker, Warrior (option) |
+| Heavy bolter (focused) | R | 5 | 3+ | 4/5 | Heavy (Dash only), Piercing Crits 1 | Heavy Gunner (option) |
+| Heavy bolter (sweeping) | R | 4 | 3+ | 4/5 | Heavy (Dash only), Piercing Crits 1, Torrent 1" | Heavy Gunner (option) |
+| Missile launcher (frag) | R | 4 | 3+ | 3/5 | Blast 2", Heavy (Dash only) | Heavy Gunner (option) |
+| Missile launcher (krak) | R | 4 | 3+ | 5/7 | Heavy (Dash only), Piercing 1 | Heavy Gunner (option) |
+| Sniper rifle (mobile) | R | 4 | 3+ | 3/4 | none | Sniper |
+| Sniper rifle (stationary) | R | 4 | 2+ | 3/3 | Devastating 3, Heavy (Dash only), Silent | Sniper |
+| Chainsword | M | 5 | 3+ | 4/5 | none | Sergeant (option) |
+| Combat blade | M | 4 | 3+ | 4/5 | none | Hunter, Warrior (option) |
+| Combat blade (equipment) | M | 3 | 3+ | 4/5 | none | every friendly SCOUT SQUAD operative without the 4-Atk blade, via T-SS.36 |
+| Fists (Sergeant) | M | 4 | 3+ | 3/4 | none | Sergeant (option) |
+| Fists | M | 3 | 3+ | 3/4 | none | Heavy Gunner, Sniper, Tracker, Warrior (option) |
+
+Notes: 14 profiles over 11 weapon records. Ids: `ss.w.astartes-shotgun`, `ss.w.bolt-pistol`, `ss.w.boltgun`, `ss.wg.heavy-bolter` (focused, sweeping), `ss.wg.missile-launcher` (frag, krak), `ss.wg.sniper-rifle` (mobile, stationary), `ss.w.chainsword`, `ss.w.combat-blade`, `ss.w.combat-blade-equipment`, `ss.w.fists-sergeant`, `ss.w.fists`. The Sergeant's fists (Atk 4) are better than everyone else's (Atk 3), so they are a separate record; every other Sergeant weapon equals the other cards' and shares the record. Heavy (Dash only) is the core rule (R-10): in an activation or counteraction where the weapon is used, the only move allowed is Dash.
+
+UNCLEAR (resolved): the Astartes shotgun prints Hit 2+ on both the Sergeant and the Warrior cards, in both PDF extracts and on Wahapedia. Kept as printed; never tune printed numbers. RULING: Scout Squad Astartes shotgun Hit | 2+ as printed | identical on both cards in the PDF (layout and flow) and Wahapedia | Confirmed
+UNCLEAR (resolved): the PDF layout extract scrambles the Heavy Gunner and Sniper tables (Hit/Dmg and WR blocks out of row alignment). Read against the name column, the flow extract and Wahapedia agree row for row; the table above follows them. The mobile sniper rifle has no weapon rules (no Silent, no Heavy).
+
+### 22.4 Operative rules and unique actions
+
+- T-SS.6 **Guidance and Experience** (Sergeant): once in each of the Sergeant's activations, pick one other friendly SCOUT SQUAD operative anywhere in the killzone; it has APL +1 until the end of its next activation.
+  - MECH: unique 0 AP action `ss.a.guidance-and-experience` with a friendly-target filter (other SCOUT SQUAD operatives in the killzone); `effects.applyAplEffect(+1)` ending at the end of the target's next activation (R-9.6 cap applies) | CLASS: team-hook
+  - RULING: Scout Squad Guidance and Experience as an action | built as a 0 AP unique action: once per activation (R-3.7), never in a counteraction (R-3.12 needs exactly 1 AP), allowed in an enemy's control range (the card names no restriction); the +1 applies at once, so it already counts for marker control before the target activates | the card grants a selection "once during each activation", and the engine has no activation choice that is not an action (batch D "Not built"); a 0 AP action reproduces the once-per-activation limit and the counteraction exclusion exactly | Unsourced
+- T-SS.7 **ASTARTES** (Sergeant): in each of its activations the Sergeant may perform two Shoot actions or two Fight actions (not two of each). With two Shoots, at least one must use a bolt weapon (T-SS.5); every Sergeant ranged weapon is one, so this never bites. The Sergeant can counteract whatever its order.
+  - MECH: providers `maxRepeats` (2 for `shoot` while the activation has at most one Fight, 2 for `fight` while it has at most one Shoot) and `counteract: 'any'` for `ss.sergeant`; the bolt-weapon check is the T-SS.30 `weaponForbidden` path (no effect with the printed loadouts) | CLASS: team-hook
+  - RULING: Scout Squad Astartes either-or | once the Sergeant has performed a second Shoot it gets only one Fight, and the reverse; one Shoot plus one Fight is always allowed | the card says "either two Shoot actions or two Fight actions" | Confirmed
+- T-SS.8 **Heavy Weapon Bipod** (Heavy Gunner): while the Heavy Gunner shoots with a weapon from its datacard (bolt pistol, heavy bolter, missile launcher), if it has not moved in this activation, or the Shoot is a counteraction, that weapon has Ceaseless; if the weapon already has Ceaseless (from Ambush, T-SS.27), it has Relentless instead. Moving after the Shoot is not barred by this rule (Heavy still is).
+  - MECH: `modifyWeaponRules` for `ss.heavy-gunner`, ranged datacard weapons only (not equipment grants): when `movedThisActivation === 0` and no move action was performed this activation, or the action is a counteraction, add `core.wr.ceaseless`, or `core.wr.relentless` when the rule set already holds Ceaseless; runs after the Ambush modifier | CLASS: team-hook
+  - RULING: Scout Squad Heavy Weapon Bipod moved | "has not moved" means no distance moved and no move action performed in this activation (a 0" Reposition still counts as moving); free moves in the activation count; a counteraction always qualifies, even after its 2" move | the card says "hasn't moved during the activation, or if it's a counteraction" | Unsourced
+  - RULING: Scout Squad Heavy Weapon Bipod errata | the April '26 log moves Heavy Weapon Bipod from faction equipment to a Heavy Gunner rule and adds Tactical Vox-link as equipment | update log April '26 | Confirmed
+- T-SS.9 **Grapnel Launcher** (Hunter): whenever the Hunter climbs up, the climb counts as 2" of vertical distance however high it goes (the 3" reach of R-12.2 still limits each climb).
+  - MECH: provider `moveSurcharge` for `ss.hunter`: for each entry of `breakdown.climbs` add `2 - cost` (a negative surcharge, so every climb costs exactly 2") | CLASS: team-hook
+  - RULING: Scout Squad Grapnel Launcher climb | one climb is a run of consecutive climb segments totalled before rounding (R-12.2), and the whole run costs 2"; drops and jumps are unchanged; a Dash still cannot climb | R-12.2 totals consecutive climbs, and the card replaces "the vertical distance" of a climb | Unsourced
+- T-SS.10 **Grapnel Assault** (Hunter): when the Hunter performs a Charge in its activation and in that Charge it climbs, drops, jumps, or its base passes under Vantage terrain, its melee weapons have Lethal 3+ until the end of that activation.
+  - MECH: `action.ended` for the Hunter's own Charge (not a counteraction) reads the step's `OperativeMoved` segments: any segment `kind` of `climb`, `drop` or `jump`, or `los.baseUnderVantage` true at any increment end point (and the start); sets a per-activation effect `ss.grapnelAssault` that `modifyWeaponRules` reads to add `core.wr.lethal` `3+` to melee profiles | CLASS: team-hook
+  - RULING: Scout Squad Grapnel Assault drops | any drop counts, including one of 2" or less that costs nothing (R-12.3); "under Vantage" is checked at every increment end point and the start of the move | the card names the movement types, not their cost; the engine knows positions at increment ends | Unsourced
+- T-SS.11 **Camo Cloak** (Sniper): while an operative shoots the Sniper, Saturate is ignored, and if it can retain any cover saves it may retain one more, or retain one as a crit instead. This improvement does not stack with the Vantage cover improvement (R-11.5 b).
+  - MECH: provider `stealthyCover` returns 1 for `ss.sniper` (the Vantage interaction is already in the shared cover code); `modifyWeaponRules` removes `core.wr.saturate` from the attacker's weapon when the target is the Sniper | CLASS: team-hook
+  - RULING: Scout Squad Sniper Camo Cloak | the extra or crit cover save is the shared Stealthy-type improvement, used automatically in the defender's favour; it does not combine with the Camo Cloak equipment (T-SS.34 excludes the Sniper) | same wording as Kasrkin T-KS.17 | Confirmed
+- T-SS.12 **OPTICS** (Sniper, 1 AP): until the start of the Sniper's next activation, enemy operatives cannot be obscured while the Sniper shoots them. Not while in an enemy's control range. An Optics token marks the Sniper.
+  - MECH: unique action setting token `ss.optics` on the Sniper (expires at its `activation.start`); `target.status` sets `obscured: false` when the shooter holds the token | CLASS: team-hook
+  - RULING: Scout Squad Optics duration | performing Optics in a counteraction lasts until the Sniper's next activation; the effect survives the Sniper being wounded but ends if it is incapacitated (the token goes with it) | the card names only the next activation; tokens on a removed operative go (tokens.ts) | Unsourced
+- T-SS.13 **TRACK ENEMY** (Tracker, 1 AP): pick one enemy operative within 8" of the Tracker (no visibility needed). Until the end of the turning point, friendly SCOUT SQUAD operatives shooting that enemy have Seek Light on their ranged weapons. Not while in an enemy's control range. A Track Enemy token marks the enemy.
+  - MECH: unique action with an enemy-target filter (distance <= 8"); token `ss.trackEnemy` on the enemy (owner = Scout Squad seat, expiry TP end); `modifyWeaponRules` with `targetId` adds `core.wr.seek-light` for SCOUT SQUAD shooters, evaluated per candidate at target selection | CLASS: team-hook
+  - RULING: Scout Squad Track Enemy target | any enemy within 8", ready or expended | the April '26 card (PDF and Wahapedia) says "one enemy operative"; the previous-errata line that added "expended" is not in the current card, and we apply the current card | Unsourced
+- T-SS.14 **AUSPEX SCAN** (Tracker, 1 AP): until the start of the Tracker's next activation, or its incapacitation if sooner, while a friendly SCOUT SQUAD operative shoots an enemy within 8" of the Tracker, that enemy cannot be obscured; if the shooter is a SNIPER under its Optics effect (T-SS.12), its ranged weapons also have Seek Light. Not while in an enemy's control range. An Auspex Scan token marks the Tracker.
+  - MECH: token `ss.auspexScan` on the Tracker (expires at its `activation.start` and `sourceIncapacitated`); helper `isScanned(state, enemy)` = token active and distance <= 8" (live); `target.status` sets `obscured: false`; `modifyWeaponRules` with `targetId` adds `core.wr.seek-light` when the shooter holds `ss.optics` and the target is scanned | CLASS: team-hook
+  - RULING: Scout Squad Auspex Scan scope | measured live at each shot, no visibility needed; a counteraction does not end it, performing it again restarts it | same wording and ruling as Kasrkin T-KS.15 | Unsourced
+- T-SS.15 **Adaptive Equipment** (Warrior): once per TP, one friendly WARRIOR may perform the Smoke Grenade action, and once per TP one friendly WARRIOR may perform the Stun Grenade action (M-5.5). These uses never count against grenades the team picked as equipment.
+  - MECH: provider `ownGrenades` returns `tpActions: { smoke: 1, stun: 1 }` for operatives with keyword WARRIOR (seat-wide per TP, grenade source `ownTp`); the actions are offered through `extraActions` | CLASS: generic:ownGrenades.tpActions
+  - RULING: Scout Squad Adaptive Equipment | the two uses are per TP for the whole kill team; a Warrior still cannot perform the same action twice in one activation (R-3.7) | same wording and ruling as Kasrkin T-KS.18 | Confirmed
+
+### 22.5 Faction rules
+
+- T-SS.16 **FORWARD SCOUTING** (faction rule): after the last operative is set up and before the first TP, the player makes up to six Forward Scouting picks from T-SS.17 to T-SS.25, resolving each pick at once. Each option has a battle maximum (in brackets below), and a pick of the same option counts against both its maximum and the six. If the opponent also has pre-battle picks, the two players alternate one pick at a time, starting with the setup initiative holder. A pass ends that player's picks.
+  - MECH: provider `preBattleChoices(state, seat)` returns one `ReactionOffer` per option still under its maximum (offer hook `ssForwardScouting`, `option` = the option slug) while the seat has made fewer than six picks; the hook's `choice` resolves the option (its own follow-up `ability.choice` decisions included) and calls `setup.preBattleChoiceDone(ctx)`; team ledger `ss.fs` (`picks`, per-option counts) public in `view`; event for the feed | CLASS: generic:preBattleChoices
+  - RULING: Scout Squad Forward Scouting order | the setup initiative holder (R-1.2) picks first, because no TP initiative exists yet; the players alternate whenever both have pre-battle picks (any team's), and a player with none left or who passed is skipped | the rule says "starting with the player with initiative" at a point where only the setup initiative exists | Unsourced
+  - RULING: Scout Squad Forward Scouting pass | a pass ends that player's picks for the battle (no later picks after the opponent's), and fewer than six is legal | "up to six"; one pass rule keeps the alternation finite, as the Gambit step's passes | Unsourced
+  - RULING: Scout Squad Forward Scouting errata | picks are made at the end of the Set Up Operatives step (after both kill teams are set up) | April '26 update log changes the first sentence to this timing | Confirmed
+- T-SS.17 **Redeploy (1)**: set up again up to one third of your operatives in the killzone (rounded up; 3 of 9), each wholly within your drop zone with a Conceal order.
+  - MECH: the choice asks, up to `ceil(n / 3)` times, for one of your set-up operatives not yet redeployed (or done), then for a spot among sampled spots (`placementSpots` over your drop zone polygon, the operative's footprint wholly inside, no overlap); the operative moves there (`OperativeDeployed`-style event, order Conceal) | CLASS: team-hook (gap `preBattleRedeploy`)
+  - RULING: Scout Squad Redeploy spots | the new position is picked from sampled legal spots in your drop zone (the same sampler as set-up suggestions), not a free point; up to ceil(n/3) operatives, n = your operatives in the killzone at that moment, each at most once; it gets a Conceal order (R-1.5) | the engine has no free-point pre-battle redeploy (batch D "Not built"); sampled spots keep every legal choice close to reachable | Unsourced
+- T-SS.18 **Reposition (2)**: one friendly operative wholly within your drop zone performs a free Reposition; it must end wholly within 3" of your drop zone.
+  - MECH: choice picks an eligible operative (footprint wholly inside your drop zone polygon), then `startFreeAction({ action: 'reposition' })` whose frame resume calls `setup.preBattleChoiceDone`; provider `moveProblem` refuses an end point whose footprint is not wholly within 3" of your drop zone while the team's `ss.fs.repositioning` flag names that operative | CLASS: generic:preBattleChoices (end limit `moveProblem`)
+  - RULING: Scout Squad Forward Scouting Reposition | a normal free Reposition (R-4.1, R-3.9): Move 6", climb and drop costs, no ending in an enemy's control range; it is outside any activation, so it never counts as moving for Heavy or Heavy Weapon Bipod; the same operative may be picked by both Reposition picks if it is still wholly within the drop zone | the option says "free Reposition action"; free actions outside an activation do not touch that activation (R-3.9) | Unsourced
+- T-SS.19 **Trip Alarm (2)**: place one of your Trip Alarm markers more than 6" from the opponent's drop zone. In TP1 and TP2, when a friendly SCOUT SQUAD operative shoots an enemy within 2" of that marker, its ranged weapons have Seek. The marker is removed in the Ready step of TP3.
+  - MECH: choice over sampled spots (2" grid on the killzone floor, plus the floor centre of each legal cell, keeping spots more than 6" from the opponent's drop zone polygon); team marker `ss.tripAlarm` (owner = seat, not pickable, public); `modifyWeaponRules` with `targetId` adds `core.wr.seek` while `state.tp <= 2` and the target's base is within 2" of a Trip Alarm; `turningPoint.start` of TP3 removes every Trip Alarm | CLASS: team-hook (gap `preBattleMarkerPlacement`)
+  - RULING: Scout Squad Trip Alarm placement | picked from sampled floor spots (2" grid) more than 6" from the opponent's drop zone; never on Vantage | the engine has no free-point pre-battle placement (batch D "Not built"); the card names only the 6" limit | Unsourced
+  - RULING: Scout Squad Trip Alarm distance | "within 2" of the marker" is measured horizontally from the marker to the nearest point of the enemy's base; Seek applies at target selection and for the whole sequence | markers are measured as areas (R-8.3); Seek works at target selection (R-10.18) | Unsourced
+- T-SS.20 **Booby Trap (1)**: place your Booby Trap marker more than 6" from the opponent's drop zone and more than 2" from every other marker, access point and Accessible terrain. The first time it is within an enemy operative's control range, remove it and inflict 2D3 damage on that operative; if that operative survives, its current action (if any) ends at once, even if unfinished. (A clause for a marker that cannot be placed never applies to sampled spots.)
+  - MECH: choice over the Trip Alarm sampler, also dropping spots within 2" of any marker (objectives, Trip Alarms, equipment markers), access point or Accessible terrain; team marker `ss.boobyTrap` (public); provider `checkMines` (after every step with no declared action, forced moves included): the first moved point or position of an enemy operative with the marker in its control range (`markerInControlRange`) removes the marker, rolls 2D3, `directDamage` with source `ss.boobyTrap`, event `MineTriggered`; if it survives and the trigger was an increment end before the end of its move, the operative is put back at that increment end point (gap `moveTruncation`) | CLASS: team-hook (gaps `preBattleMarkerPlacement`, `moveTruncation`)
+  - RULING: Scout Squad Booby Trap placement | sampled legal spots only, so the "move it the minimum amount" clause never arises; if no sampled spot is legal the option is not offered | the engine has no free-point pre-battle placement | Unsourced
+  - RULING: Scout Squad Booby Trap end of action | the check runs after the step, at every completed move increment and at current positions (the core Mines check points); a surviving operative is put back at the first increment end point that set it off (the last placeable one at or before it, never mid-climb), which ends its move there; a Charge cut short this way may end outside control range | the engine cannot stop a move mid-path (batch D "Not built"); putting it back at the trigger point reproduces "end its action even if its effects aren't fulfilled" | Unsourced
+  - RULING: Scout Squad Booby Trap visibility | the marker is public (not hidden like the universal Mines); only enemy operatives set it off | the card gives no hiding rule and names enemy operatives | Unsourced
+- T-SS.21 **Tactical Manoeuvre (1)**: unlocks a STRATEGIC GAMBIT usable twice per battle (never twice in one TP): pick one friendly operative; it has APL +1 until the end of its next activation.
+  - MECH: 0 CP strategy ploy record `ss.p.tactical-manoeuvre` (team-gated, not in the ploy picker list) offered only while `ss.fs` holds the pick and the battle ledger shows fewer than two uses; friendly-target choice; `effects.applyAplEffect(+1)` to the end of its next activation | CLASS: team-hook
+  - RULING: Scout Squad Forward Scouting gambit cost | Tactical Manoeuvre and Diversion cost 0 CP | they are faction-rule gambits, not ploys, and print no cost (the Art of War pattern, T-PF.7) | Unsourced
+  - RULING: Scout Squad Tactical Manoeuvre errata | twice per battle | April '26 update log (previous errata) changes it to "Twice per battle", and the card prints it | Confirmed
+- T-SS.22 **Diversion (1)**: unlocks a STRATEGIC GAMBIT usable once per battle: pick one enemy operative within 6" of any killzone edge; it has APL -1 until the end of its next activation.
+  - MECH: 0 CP strategy ploy record `ss.p.diversion` gated like T-SS.21 (one use); enemy-target filter (base within 6" of an edge of the killzone rectangle); `effects.applyAplEffect(-1)` | CLASS: team-hook
+- T-SS.23 **Devise Plan (1)**: gain 1 CP at once.
+  - MECH: `players[seat].cp += 1` with the CP event | CLASS: team-hook
+- T-SS.24 **Designate Target (1)**: pick one enemy operative; it gains your Target token for the battle. When a friendly SCOUT SQUAD operative shoots, fights or retaliates against it, you may re-roll one of your attack dice.
+  - MECH: token `ss.target` on the enemy (owner = Scout Squad seat, expiry `battle`, gone on removal); attack re-roll grant `{ mode: 'one' }` for the SCOUT SQUAD side when the opposing operative holds the token | CLASS: team-hook
+- T-SS.25 **Spy (1)**: Approved Ops only: the opponent reveals their chosen tac op.
+  - MECH: not offered (v1 has no tac ops) | CLASS: data
+  - RULING: Scout Squad Spy | never offered | the engine's missions have no tac ops (T-SS.4), so the option has nothing to reveal | Unsourced
+
+### 22.6 Ploys
+
+The source prints no costs: every ploy is 1 CP (R-2.4) unless a rule changes it (T-SS.37). Strategy ploys last until the end of the TP (R-2.5) unless they say otherwise.
+
+- T-SS.26 **GUERRILLA ENGAGEMENT** | Strategy | 1 CP | Gambit step | When an enemy shoots a friendly SCOUT SQUAD operative that is in cover and more than 6" from every enemy operative it is visible to, you may re-roll one defence die.
+  - MECH: `modifyDefenceDice` adds `RerollGrant { mode: 'one' }` when the sequence's `target.status` is in cover and every enemy operative that can see the target (visibility from the enemy to the target) is more than 6" away | CLASS: team-hook
+  - RULING: Scout Squad Guerrilla Engagement distance | the shooter itself counts (a shooter within 6" denies it); "visible to" is visibility from each enemy to the target, checked when defence dice are rolled; "in cover" is the sequence status even if Saturate stops the save | the target is visible to its shooter by definition; in cover is a status (R-5.4), as Kasrkin T-KS.27 | Unsourced
+- T-SS.27 **AMBUSH** | Strategy | 1 CP | Gambit step | When a friendly SCOUT SQUAD operative shoots or fights in its own activation, and either its order was changed from Conceal to Engage at the start of that activation or no enemy operative could see it at the start of that activation, its weapons have Balanced; against an expended target they have Ceaseless instead.
+  - MECH: `activation.start` records `ss.ambushReady` for the activation when the order went Conceal -> Engage or no active enemy operative has visibility to it; `modifyWeaponRules` with `targetId` adds `core.wr.ceaseless` (target expended) or `core.wr.balanced` (otherwise) while the ploy is in effect and the flag is set; retaliation and counteractions excluded | CLASS: team-hook
+  - RULING: Scout Squad Ambush scope | melee and ranged weapons both qualify, in its own activation only (not retaliating, not a counteraction); the start-of-activation state is fixed when the activation starts (after the order is chosen) | the April '26 card says "weapons" and "shooting or fighting during its activation"; the older errata's "ranged weapons" predates the merge with Blade Ambush | Unsourced
+- T-SS.28 **ADAPTABLE TRAINING** | Strategy | 1 CP | Gambit step, immediately | Roll D3: change the order of up to that many friendly SCOUT SQUAD operatives that are more than 4" from every enemy operative.
+  - MECH: ploy with a D3 roll then a repeated `ability.choice` (eligible operative or done), each pick flipping its order; resume through `resumeGambit` | CLASS: team-hook
+  - RULING: Scout Squad Adaptable Training eligibility | the D3 is rolled when the ploy is used; each operative is picked at most once; the 4" is checked when it is picked | the card says "up to D3" operatives | Unsourced
+- T-SS.29 **STEALTH RELOCATION** | Strategy | 1 CP | Gambit step, immediately, not in TP1 | Roll D3: up to that many friendly SCOUT SQUAD operatives that have a Conceal order and are more than 4" from every enemy operative may each perform a free Dash, one at a time in your chosen order.
+  - MECH: ploy (not offered when `state.tp === 1`) with a D3 roll, the eligible group fixed at use, `startFreeSequence` of optional free Dashes in the player's order | CLASS: team-hook
+  - RULING: Scout Squad Stealth Relocation group | the group is fixed when the ploy is used; each Dash is optional and follows the Dash rules (3", no climb); no order change | the April '26 card has only the Dash; the older errata's "and/or change its order" is not in the current card | Unsourced
+- T-SS.30 **ASTARTES TRAINING** | Firefight | 1 CP (0 CP via T-SS.37) | During a friendly SCOUT SQUAD operative's activation | Pick one for the rest of that activation: (a) it may perform two Fight actions; (b) it may perform two Shoot actions if at least one of them uses a bolt weapon; (c) it may perform two Shoot actions both with a heavy weapon, the second costing 1 AP more.
+  - MECH: firefight ploy with param `fight` | `shoot` | `heavy` in `firefight.activationStart` / `firefight.actionEnded` (own activation); per-activation effect read by providers `maxRepeats` (2 for the matching action), `weaponForbidden` (b: in the second Shoot every non-bolt weapon is barred when the first used none; c: every non-heavy weapon is barred in both Shoots after the ploy) and `actionCostDelta` (c: +1 for the second `shoot`) | CLASS: team-hook
+  - RULING: Scout Squad Astartes Training option | the option is picked when the ploy is used and cannot be switched; with (c) both Shoots use a heavy weapon (the same weapon allowed) and the second costs 2 AP, so an APL 2 operative needs APL +1 (Guidance and Experience, Tactical Manoeuvre) to use it | "can do one of the following"; the AP rises only in the all-heavy case, because a mixed pair already fits (b) | Unsourced
+- T-SS.31 **RAW PHYSIOLOGY** | Firefight | 1 CP | During a friendly SCOUT SQUAD operative's activation, before or after an action | Until the start of its next activation: Move +1", and it ignores every stat change from being injured (Move and its weapons' Hit).
+  - MECH: firefight ploy in `firefight.activationStart` / `firefight.actionEnded` (own activation); effect `ss.rawPhysiology` ending at its next `activation.start` read by providers `moveDelta` (+1) and `flags` (`ignoreInjured: true`) | CLASS: team-hook
+  - RULING: Scout Squad Raw Physiology errata | Move +1" and ignoring injury, usable before or after any action of the activation | April '26 update log (previous errata) | Confirmed
+- T-SS.32 **EMBOLDENED ASPIRANT** | Firefight | 1 CP (0 CP via T-SS.37) | A friendly SCOUT SQUAD operative performs Shoot or Fight, at the end of the Roll Attack Dice step after re-rolls | If it is the first friendly operative to perform a Shoot or Fight action this TP, or the enemy in that action (the primary target for Blast or Torrent) has a higher Wounds stat than it, retain one of your normal successes as a crit instead.
+  - MECH: firefight ploy in `shoot.attackRolled` / `fight.rolled` (attacker side only, after re-rolls); condition: no other friendly operative has a `shoot` or `fight` in `actionsThisTp`, or the enemy's datacard Wounds is greater than the operative's datacard Wounds; one `normal` die becomes `crit` | CLASS: team-hook
+  - RULING: Scout Squad Emboldened Aspirant first | "first friendly operative" is checked per operative: an operative whose own earlier Shoot or Fight was the team's first still qualifies; free Shoots, Guard interrupts and counteractions count as performing the action; the Wounds compared are the printed stats, not the remaining wounds; only when the operative is the attacker (not retaliating) | the card speaks of operatives performing the action and of the Wounds stat | Unsourced
+  - RULING: Scout Squad Emboldened Aspirant errata | at the end of the Roll Attack Dice step, after any re-rolls | April '26 update log (previous errata) | Confirmed
+- T-SS.33 **COVERT POSITION** | Firefight | 1 CP | During a friendly SCOUT SQUAD operative's activation | Until the start of its next activation, while it has a Conceal order and is in cover, it cannot be selected as a valid target, whatever other rules say (Seek, Vantage), unless the shooter is within 2" of it.
+  - MECH: firefight ploy in `firefight.activationStart` / `firefight.actionEnded` (own activation); token `ss.covertPosition` (expires at its `activation.start`); `beforeShootTargetSelect` removes it from `candidates` while its order is Conceal, a raw cover check finds intervening terrain within its control range from that shooter (Seek, Seek Light and the Vantage denial ignored), and the shooter is more than 2" away | CLASS: team-hook
+  - RULING: Scout Squad Covert Position and Blast | a Blast secondary can still be hit (R-10.3: a rule that bars selection does not stop secondaries); a Torrent secondary is selected, so it is barred | R-10.3 | Confirmed
+  - RULING: Scout Squad Covert Position errata | "cannot be selected as a valid target" overrides Seek and Vantage, not the 2" rule | April '26 update log (previous errata) | Confirmed
+
+### 22.7 Faction equipment
+
+Universal equipment (M-5) can also be chosen; the four-option limit covers faction and universal options together (M-5.12).
+
+- T-SS.34 **CAMO CLOAK** | When an operative shoots a friendly SCOUT SQUAD operative other than the SNIPER, if it can retain any cover saves it may retain one more. Not cumulative with the Vantage cover improvement.
+  - MECH: provider `extraCoverSaves(state, op)` returns 1 for SCOUT SQUAD operatives without keyword SNIPER while the equipment is taken, and 0 when the shot already has the Vantage improved cover save | CLASS: generic:extraCoverSaves
+  - RULING: Scout Squad Camo Cloak equipment | an extra cover save only, never a crit save, and no effect on Saturate | the equipment card, unlike the Sniper's rule (T-SS.11), offers only the additional save | Confirmed
+- T-SS.35 **TARGETING OCULARS** | Up to twice per TP (across the team), when a friendly SCOUT SQUAD operative performs a Shoot and you are selecting its target, you may use this: until the end of that action, its ranged weapons have Lethal 5+ and Saturate.
+  - MECH: 0 CP equipment offer at `shoot.targetSelected` (attacker side, first sequence of the action only); per-TP seat ledger (max 2); per-action effect read by `modifyWeaponRules` (adds `core.wr.lethal` `5+` and `core.wr.saturate`), Blast and Torrent secondaries included | CLASS: team-hook
+  - RULING: Scout Squad Targeting Oculars timing | offered once the primary target is chosen (no window exists before it; neither rule affects selection) and lasts for every sequence of that Shoot | the effects only matter from the Roll Attack Dice step on | Unsourced
+  - RULING: Scout Squad Targeting Oculars errata | twice per TP, Lethal 5+ and Saturate | April '26 update log (previous errata) | Confirmed
+- T-SS.36 **COMBAT BLADE** | Every friendly SCOUT SQUAD operative has the combat blade (3 3+ 4/5); one that already carries the better datacard combat blade (4 3+ 4/5: Hunter, Warrior with bolt pistol and combat blade) uses its own.
+  - MECH: equipment `grants` of `ss.w.combat-blade-equipment` with `grants.to` keyword SCOUT SQUAD; provider `equipmentEligible` returns false for an operative whose loadout includes `ss.w.combat-blade` | CLASS: data (eligibility team-hook)
+  - RULING: Scout Squad Combat Blade | a Warrior with the shotgun or boltgun set gets the 3-Atk equipment blade, not the 4-Atk datacard blade it did not select | only an operative that "already has" the weapon keeps the better version; the older combat knife errata is replaced by the current card | Unsourced
+- T-SS.37 **TACTICAL VOX-LINK** | Once per TP, while a friendly SERGEANT is in the killzone, Astartes Training (T-SS.30) or Emboldened Aspirant (T-SS.32) costs 0 CP.
+  - MECH: ploy rule `costAdjust` (-1) on `ss.p.astartes-training` and `ss.p.emboldened-aspirant` while the equipment is taken, a SERGEANT is active in the killzone and the per-TP ledger `ss.voxLink` is unused; using either ploy at 0 CP marks the ledger | CLASS: team-hook
+  - RULING: Scout Squad Tactical Vox-link use | the discount applies automatically to the first of the two ploys used in the TP | there is no reason to pay 1 CP while a free use is available; the Reconnoitre Killzone pattern (T-KS.14) | Unsourced
+
+Marker/token guide (UI): Designate Target token, Track Enemy token, Auspex Scan token, Optics token, Covert Position token, Trip Alarm marker, Booby Trap marker; Smoke Grenade and Stun Grenade tokens are the universal ones.
+
+### 22.8 Checklist
+
+Rows in `12-rules-test-checklist.md` section TEAM-SS: TEAM-SS-000 to TEAM-SS-034.
+
+### 22.9 Generic capabilities (survey; resolved in the Engine map below)
+
+- **preBattleChoices** (batch D, D4): the Forward Scouting picks after set-up, alternating with the opponent from the setup initiative holder; the Reposition option runs `startFreeAction` whose resume calls `setup.preBattleChoiceDone`, with the 3" end limit through `moveProblem`. Used by T-SS.16 to T-SS.25.
+- **extraCoverSaves** (batch D, D6): the Camo Cloak equipment's extra-only cover save. Used by T-SS.34.
+- **ownGrenades.tpActions** (batch C): Adaptive Equipment. Used by T-SS.15.
+- **weaponForbidden**, `moveProblem`, `checkMines` (batch C / batch C shared): Astartes Training's weapon limits, Forward Scouting Reposition, Booby Trap. Used by T-SS.18, T-SS.20, T-SS.30.
+- **stealthyCover**, `moveSurcharge` (`breakdown.climbs`), `los.baseUnderVantage`, `target.status`, `beforeShootTargetSelect`, `modifyWeaponRules`, `modifyDefenceDice`, tokens, `applyAplEffect`, `startFreeSequence`, `startFreeAction`, `resumeGambit`, 0 CP ploy records gated on a ledger (Art of War pattern), ploy rule `costAdjust`, `shoot.attackRolled` / `fight.rolled` / `shoot.targetSelected` windows: existing. Used by T-SS.6 to T-SS.14, T-SS.21 to T-SS.37.
+- Gaps (not built in batch D; each has a team-local fallback with a RULING):
+  - **preBattleRedeploy** (NICE, fallback): no free-point pre-battle redeploy. Fallback: sampled drop-zone spots from `placementSpots` as choice options per operative. Used by T-SS.17.
+  - **preBattleMarkerPlacement** (NICE, fallback): no free-point marker placement outside an action. Fallback: sampled floor spots (2" grid) as choice options, filtered by the option's limits (the Cloud of Flies pattern). Used by T-SS.19, T-SS.20.
+  - **moveTruncation** (NICE, fallback): no way to stop a move at a mine trigger. Fallback: `checkMines` puts the surviving operative back at the triggering increment end point. Used by T-SS.20.
+  - **activationChoice** (NICE, fallback): no activation choice that is not an action. Fallback: a 0 AP unique action. Used by T-SS.6.
+- Everything else maps onto existing providers, hooks, windows and 0 CP offers (Engine map).
+
+### 22.10 Gotchas
+
+- Card over older errata four times (Unsourced): Track Enemy picks any enemy within 8" (not only expended ones); Stealth Relocation is a Dash only (no order change) and never in TP1; Ambush covers melee too ("weapons"); the combat knife is gone, so the equipment is a single 3-Atk combat blade. Heavy Weapon Bipod is a Heavy Gunner rule now, not equipment; Tactical Vox-link is the fourth equipment.
+- The Astartes shotgun hits on 2+ (both cards, both sources). The Sergeant's fists are Atk 4, everyone else's Atk 3. The mobile sniper rifle has no weapon rules; the stationary one has Heavy (Dash only) and Silent, so the Sniper can shoot it on a Conceal order.
+- Two Heavy Gunners are legal (one per heavy weapon); Hunter, Sniper and Tracker once each; Warriors fill the rest (at least three). Nine operatives use the 9-operative kill grade row.
+- Forward Scouting happens after both teams are set up and before TP1: up to six picks, each resolved at once, option maximums per battle, alternating from the setup initiative holder. The Reposition pick is a real free Reposition (no ending in enemy control range) that must end wholly within 3" of the drop zone. Trip Alarm works in TP1 and TP2 only and is removed in TP3's Ready step. Booby Trap hurts enemies only (2D3), is public, and stops the move at the trigger point. Tactical Manoeuvre (twice per battle) and Diversion (once) become 0 CP gambits. Spy is never offered.
+- ASTARTES is the Sergeant's only: two Shoots or two Fights (not both), counteract on any order. Everyone else needs Astartes Training for a second Shoot or Fight; its heavy option makes the second Shoot cost 2 AP, so it needs an APL boost on an APL 2 operative.
+- Heavy Weapon Bipod gives Ceaseless (or Relentless on top of Ambush's Ceaseless) to the Heavy Gunner's own ranged weapons when it has not moved this activation or is counteracting; Heavy (Dash only) still allows a Dash, but a Dash before the Shoot loses the Bipod.
+- Grapnel Launcher makes every climb cost 2" (not more, not less); Grapnel Assault needs a climb, drop (even a free one), jump or a pass under Vantage inside the Charge itself, and gives Lethal 3+ to melee for the rest of the activation.
+- Two Camo Cloaks: the Sniper's rule (extra save or crit save, ignores Saturate) and the equipment for everyone else (extra save only, Saturate still works). Neither stacks with the Vantage improvement.
+- Optics, Auspex Scan and Track Enemy: Optics stops obscured for the Sniper's own shots; Auspex Scan stops obscured for every Scout shooting within 8" of the Tracker and adds Seek Light for an Optics Sniper; Track Enemy adds Seek Light against one enemy for the TP. Seek Light lets a Scout select a Conceal enemy behind Light terrain; it never removes the cover save.
+- Covert Position overrides Seek, Trip Alarm and Vantage but not the 2" rule and not Blast secondaries. Ambush needs the order flip or invisibility at activation start; against an expended target it is Ceaseless, otherwise Balanced.
+- Guerrilla Engagement fails whenever any enemy that can see the target is within 6", the shooter included. Emboldened Aspirant compares printed Wounds (Scouts are 10, the Sergeant 11).
+- Edition leaks to reject: nothing from the 2021 Scout Squad or Kill Team 2021 Scouts (no shape distances, no Overwatch, no infiltrate-at-set-up "Scout" move, no 2 APL everywhere), nothing from 40k 10th Space Marine Scouts or Infiltrators (no pre-game 6" Scouts move, no Omni-scrambler deep-strike denial, no Oath of Moment, no wound rolls or AP, no +1 save cloaks); inches only, three defence dice, every printed number from the April '26 cards.
+
+### 22.11 Engine map
+
+| Rule or capability | Built as |
+|---|---|
+| Roster (Sergeant 1, main 8, WARRIOR and HEAVY GUNNER repeatable, each heavy weapon once) | team.json slots, `repeatable`, `selection.loadoutCaps` (`each`) |
+| Loadouts | datacard `weapons.options` (`sets` for Sergeant, Heavy Gunner, Warrior), profile groups |
+| Forward Scouting (framework, Reposition) | provider `preBattleChoices` (offer hook `ssForwardScouting`), `setup.preBattleChoiceDone`, ledger `ss.fs`; Reposition through `startFreeAction` + `moveProblem` |
+| Redeploy | sampled `placementSpots` in the drop zone as choice options (gap `preBattleRedeploy`) |
+| Trip Alarm, Booby Trap | sampled floor spots as choice options (gap `preBattleMarkerPlacement`); team markers `ss.tripAlarm`, `ss.boobyTrap`; `modifyWeaponRules` (Seek, TP1-2), `turningPoint.start` removal; provider `checkMines` with put-back (gap `moveTruncation`) |
+| Tactical Manoeuvre, Diversion | 0 CP strategy ploy records gated on `ss.fs` and the battle ledger; `applyAplEffect(+1 / -1)` |
+| Devise Plan, Designate Target, Spy | CP +1; token `ss.target` (battle) + attack re-roll grant `one`; Spy not offered |
+| Guidance and Experience | unique 0 AP action, `applyAplEffect(+1)` (gap `activationChoice`) |
+| ASTARTES | providers `maxRepeats` (either-or), `counteract: 'any'` |
+| Heavy Weapon Bipod | `modifyWeaponRules` (Ceaseless or Relentless), `movedThisActivation`, counteraction flag |
+| Grapnel Launcher | provider `moveSurcharge` (`breakdown.climbs` -> 2" each) |
+| Grapnel Assault | `action.ended` on the Charge (segment kinds, `los.baseUnderVantage`), per-activation effect, `modifyWeaponRules` (Lethal 3+) |
+| Camo Cloak (Sniper) | provider `stealthyCover`, `modifyWeaponRules` strips Saturate |
+| Camo Cloak (equipment) | provider `extraCoverSaves` |
+| OPTICS, AUSPEX SCAN, TRACK ENEMY | tokens `ss.optics`, `ss.auspexScan`, `ss.trackEnemy`; `target.status` (`obscured: false`); `modifyWeaponRules` (Seek Light) |
+| Adaptive Equipment | provider `ownGrenades` `tpActions { smoke: 1, stun: 1 }` + `extraActions` |
+| Guerrilla Engagement | `modifyDefenceDice` re-roll one (in cover, every enemy that sees it > 6") |
+| Ambush | `activation.start` flag, `modifyWeaponRules` (Balanced / Ceaseless) |
+| Adaptable Training, Stealth Relocation | ploys with a D3 roll; order flips via `ability.choice`; `startFreeSequence` of Dashes; `resumeGambit` |
+| Astartes Training | firefight ploy with param; providers `maxRepeats`, `weaponForbidden`, `actionCostDelta` |
+| Raw Physiology | effect read by providers `moveDelta`, `flags.ignoreInjured` |
+| Emboldened Aspirant | firefight ploy at `shoot.attackRolled` / `fight.rolled`, normal -> crit |
+| Covert Position | token `ss.covertPosition`, `beforeShootTargetSelect` with a raw cover check |
+| Targeting Oculars | 0 CP equipment offer at `shoot.targetSelected`, per-TP ledger (2), `modifyWeaponRules` |
+| Combat Blade | equipment `grants` (`grants.to` SCOUT SQUAD) + provider `equipmentEligible` |
+| Tactical Vox-link | ploy rule `costAdjust`, per-TP ledger `ss.voxLink` |
+
+### 22.12 Implementer brief
+
+- Files you own (nothing else):
+  - `src/data/teams/scout-squad/team.json`, `operatives.json`, `weapons.json`, `abilities.json`, `ploys.json`, `equipment.json` (ids `ss.<name>`, `ss.w.`, `ss.wg.`, `ss.a.`, `ss.p.`, `ss.e.`; no team weapon rules)
+  - `src/engine/teams/scout-squad.ts` (code hooks, `registerTeamRules`, hook handlers, ploy rules)
+  - `src/client/teams/scout-squad.ts` (weapon flavour, VFX family, sound, attachments, labels for the Forward Scouting picks and the Trip Alarm / Booby Trap markers, figure stand-ins `ss-sergeant` with `ss-sergeant-astartes-shotgun`, `ss-sergeant-boltgun`, `ss-sergeant-bolt-pistol-chainsword`, `ss-heavy-gunner-heavy-bolter`, `ss-heavy-gunner-missile-launcher`, `ss-hunter`, `ss-sniper`, `ss-tracker`, `ss-warrior-shotgun`, `ss-warrior-boltgun`, `ss-warrior-bolt-pistol-blade` and their `-b` variants; `loadoutBodies` for the Sergeant, Heavy Gunner and Warrior sets)
+  - `tests/engine/teams/scout-squad.test.ts` (TEAM-SS-nnn tests) and `tests/engine/teams/scout-squad.hooks.ts` (code-hook firing scenarios; Forward Scouting needs a game opened before set-up ends)
+  - append-only: `docs/needs-rules-check.md` (RULING lines), `docs/spec/13-teams.md` section 22 and `12-rules-test-checklist.md` section TEAM-SS (refinements only)
+- Activation flag: `"playable": false` in `src/data/teams/scout-squad/team.json`. Flip it (with `defaults` filled: a legal roster such as Sergeant, both Heavy Gunners, Hunter, Sniper, Tracker and three Warriors, and every weapon in `src/client/teams/scout-squad.ts`) only when the team is complete and all gates pass.
+- Capabilities to use: the Engine map above. Batch D: `preBattleChoices` (Forward Scouting), `extraCoverSaves` (Camo Cloak equipment). Batch C: `weaponForbidden`, `ownGrenades.tpActions`, `moveProblem`, `checkMines`. Existing: `stealthyCover`, `moveSurcharge` climbs, `los.baseUnderVantage`, Art of War style 0 CP gambit records, `startFreeAction`, `startFreeSequence`, `beforeShootTargetSelect`, tokens. Team-local fallbacks for the gaps `preBattleRedeploy`, `preBattleMarkerPlacement`, `moveTruncation`, `activationChoice` (22.9). Order: roster and loadouts (TEAM-SS-001, 002), then Forward Scouting framework and options (TEAM-SS-003 to 012), the team's signature; then ASTARTES and Astartes Training (013, 027), the Tracker and Sniper actions (017 to 020), then the rest.
+- Team-local weapon rules the data needs: none.
+- The AI: Forward Scouting default policy (Devise Plan, Designate Target on the highest-Wounds enemy, Trip Alarm twice near objectives, Booby Trap on the likeliest enemy path, Tactical Manoeuvre) so the sims exercise the picks; Booby Trap and Trip Alarm spots near the centre line.
+- RULING lines expected: Heavy Gunner entries, keyword spacing, Astartes shotgun Hit, Guidance and Experience as an action, Astartes either-or, Heavy Weapon Bipod moved and errata, Grapnel Launcher climb, Grapnel Assault drops, Sniper Camo Cloak, Optics duration, Track Enemy target, Auspex Scan scope, Adaptive Equipment, Forward Scouting order, pass and errata, Redeploy spots, Forward Scouting Reposition, Trip Alarm placement and distance, Booby Trap placement, end of action and visibility, Forward Scouting gambit cost, Tactical Manoeuvre errata, Spy, Guerrilla Engagement distance, Ambush scope, Adaptable Training eligibility, Stealth Relocation group, Astartes Training option, Raw Physiology errata, Emboldened Aspirant first and errata, Covert Position and Blast, Covert Position errata, Camo Cloak equipment, Targeting Oculars timing and errata, Combat Blade, Tactical Vox-link use.
+- Gotchas: section 22.10. The Heavy Gunner is one datacard with two weapon sets (do not make two cards). The Sergeant's fists are a separate record. Forward Scouting runs inside the set-up phase: free Repositions there are outside any activation, and the Booby Trap check must run after them.
+
+## 23. Tempestus Aquilons
+
+Rule IDs `T-TA.<n>`, checklist IDs `TEAM-TA-<nnn>`. Sources: the Tempestus Aquilons team PDF (Kill Team 2024, August '26, including its update log with the August '26 errata and the previous errata; the flow and layout extracts were read together) as the primary source, cross-checked against the Wahapedia Tempestus Aquilons page, plus the core rules page for terms. Facts read from the PDF are Confirmed; our own calls are Unsourced; a call taken from Wahapedia alone is Fan-source. The PDF and Wahapedia agree on every stat line and every rule text (both already carry the August '26 errata); Wahapedia adds the weapon type markers the PDF extracts lose (23.3). All rule text is restated in our own words; team, operative, weapon, ploy and equipment names are used as printed. Core terms per `10-rules-core.md` (R-x.y), missions and universal equipment per `11-missions.md` (M-x.y). Ploys and equipment are one bullet per record so each can carry its MECH line.
+
+Weapon type column: R = ranged, M = melee. Dmg is `normal/crit`. Base is in mm.
+
+### 23.1 Team selection
+
+- T-TA.1 Roster is exactly 11 operatives: 1 TEMPESTUS AQUILON TEMPESTOR (leader), 1 TEMPESTUS AQUILON SERVO-SENTRY, plus 9 picks from the main list (T-TA.2). Nothing counts as two selections or half a selection.
+  - MECH: roster validator: leader slot count 1 (`ta.tempestor`), servo slot count 1 (`ta.servo-sentry`), main slot count 9 | CLASS: data
+  - RULING: Tempestus Aquilons Servo-Sentry status | the Servo-Sentry is a full operative: it is in the roster count, the set-up batches (T-TA.20), the kill op and every "friendly TEMPESTUS AQUILON operative" rule unless the rule excludes it | it carries the TEMPESTUS AQUILON keyword, has its own selection line since the previous errata, and the rules that should not reach it name it as an exclusion | Confirmed
+- T-TA.2 Main list: GRENADIER, GUNFIGHTER, GUNNER with melta carbine, GUNNER with plasma carbine, MARKSMAN, PRECURSOR, TROOPER. TROOPER may be taken any number of times; every other entry at most once, so at most two GUNNER operatives, one with each carbine.
+  - MECH: one Gunner datacard `ta.gunner` with two loadout sets; main slot `repeatable: ["ta.trooper", "ta.gunner"]`; `selection.loadoutCaps: [{ label: "Gunner carbine", weapons: ["ta.w.melta-carbine", "ta.wg.plasma-carbine"], max: 1, each: true }]` | CLASS: data
+  - RULING: Tempestus Aquilons Gunner entries | the two GUNNER entries are separate list entries, each at most once, so a melta Gunner and a plasma Gunner may both be taken | the selection list prints them as two bullets and limits "each operative on this list"; the previous errata deleted the old cap of three on Gunner, Marksman and Servo-Sentry combined | Unsourced
+- T-TA.3 Loadouts:
+  - TEMPESTOR: exactly one of three sets: hot-shot laspistol and power weapon; relic bolt pistol and chainsword; hot-shot lascarbine and fists.
+  - SERVO-SENTRY: exactly one of flamer, grenade launcher (frag and krak), hot-shot volley gun (focused and sweeping). It has no melee weapon.
+  - GRENADIER: hot-shot laspistol, melta bomb, fists (fixed).
+  - GUNFIGHTER: hot-shot laspistols (focused, salvo and point-blank profiles; fixed). It has no fists: the point-blank profile is its melee weapon.
+  - GUNNER: melta carbine and fists, or plasma carbine (both profiles) and fists.
+  - MARKSMAN: hot-shot long-las (all three profiles) and fists (fixed).
+  - PRECURSOR: hot-shot laspistol and Tempestus dagger (its own profile, 23.3; fixed). No fists.
+  - TROOPER: hot-shot lascarbine and fists (fixed).
+  - MECH: datacard `weapons.options` (`sets` for the Tempestor, Servo-Sentry and Gunner); profile groups bring every profile | CLASS: data
+- T-TA.4 Archetypes: RECON, SEEK & DESTROY (tac ops out of scope for v1).
+  - MECH: team.json `archetypes: ["recon", "seek-and-destroy"]` | CLASS: data
+- T-TA.5 Keywords and terms: every operative carries TEMPESTUS AQUILON and IMPERIUM plus its role keyword (TEMPESTOR also LEADER). An operative **set up above** is one the owner put to one side at set-up under T-TA.20 and that has not landed yet. An operative **lands** when it is set up in the killzone from above (T-TA.23, T-TA.24). **Drop markers** are this team's own markers (T-TA.21). An operative is **dropping** when a move takes it down off terrain or after a jump (R-12.3).
+  - MECH: keyword lists in operatives.json; "set up above" = `op.status === 'reserve' && op.offboard === 'setAside'` on a TEMPESTUS AQUILON operative | CLASS: data
+- T-TA.6 Team-local weapon rules: **Salvo** (hot-shot laspistols, salvo profile; T-TA.10) and **Concealed Position** (hot-shot long-las, concealed profile; T-TA.13). Every other weapon rule on the cards is core (R-10), including Heavy (Reposition only) on the melta bomb.
+  - MECH: weapon records carry `{ "rule": "ta.a.wr-salvo" }` and `{ "rule": "ta.a.wr-concealed-position" }`, resolved by the team file through `extraTargets` and `weaponForbidden` | CLASS: generic:extraTargets, generic:weaponForbidden
+
+### 23.2 Operative stats
+
+| Operative | APL | Move | Save | Wounds | Base | Keywords |
+|---|---|---|---|---|---|---|
+| TEMPESTUS AQUILON TEMPESTOR | 3 | 6" | 4+ | 9 | 28 | TEMPESTUS AQUILON, IMPERIUM, LEADER, TEMPESTOR |
+| TEMPESTUS AQUILON SERVO-SENTRY | 2 | 4" | 3+ | 10 | 40 | TEMPESTUS AQUILON, IMPERIUM, SERVO-SENTRY |
+| TEMPESTUS AQUILON GRENADIER | 2 | 6" | 4+ | 8 | 28 | TEMPESTUS AQUILON, IMPERIUM, GRENADIER |
+| TEMPESTUS AQUILON GUNFIGHTER | 2 | 6" | 4+ | 8 | 28 | TEMPESTUS AQUILON, IMPERIUM, GUNFIGHTER |
+| TEMPESTUS AQUILON GUNNER | 2 | 6" | 4+ | 8 | 28 | TEMPESTUS AQUILON, IMPERIUM, GUNNER |
+| TEMPESTUS AQUILON MARKSMAN | 2 | 6" | 4+ | 8 | 28 | TEMPESTUS AQUILON, IMPERIUM, MARKSMAN |
+| TEMPESTUS AQUILON PRECURSOR | 2 | 6" | 4+ | 8 | 28 | TEMPESTUS AQUILON, IMPERIUM, PRECURSOR |
+| TEMPESTUS AQUILON TROOPER | 2 | 6" | 4+ | 8 | 28 | TEMPESTUS AQUILON, IMPERIUM, TROOPER |
+
+Notes: only the Tempestor has APL 3 and 9 wounds; the Servo-Sentry is the odd card out (Move 4", Save 3+, 10 wounds, 40mm base). The datacards print no ASTRA MILITARUM keyword; do not add one. Ids: `ta.tempestor`, `ta.servo-sentry`, `ta.grenadier`, `ta.gunfighter`, `ta.gunner`, `ta.marksman`, `ta.precursor`, `ta.trooper`.
+
+### 23.3 Weapon profiles
+
+| Weapon | Type | Atk | Hit | Dmg | Rules | Held by |
+|---|---|---|---|---|---|---|
+| Hot-shot lascarbine | R | 4 | 3+ | 3/4 | none | Tempestor (option), Trooper |
+| Hot-shot laspistol | R | 4 | 3+ | 3/4 | Range 8" | Tempestor (option), Grenadier, Precursor |
+| Relic bolt pistol | R | 4 | 3+ | 3/5 | Range 8", Lethal 5+ | Tempestor (option) |
+| Melta bomb | R | 4 | 3+ | 5/3 | Range 3", Devastating 3, Heavy (Reposition only), Limited 1, Piercing 2 | Grenadier |
+| Hot-shot laspistols (focused) | R | 4 | 3+ | 3/4 | Range 8", Ceaseless, Rending | Gunfighter |
+| Hot-shot laspistols (salvo) | R | 4 | 4+ | 3/4 | Range 8", Salvo | Gunfighter |
+| Hot-shot laspistols (point-blank) | M | 4 | 3+ | 3/4 | Ceaseless | Gunfighter |
+| Melta carbine | R | 4 | 3+ | 6/3 | Range 6", Devastating 4, Piercing 2 | Gunner (option) |
+| Plasma carbine (standard) | R | 4 | 3+ | 4/6 | Piercing 1 | Gunner (option) |
+| Plasma carbine (supercharge) | R | 4 | 3+ | 5/6 | Hot, Lethal 5+, Piercing 1 | Gunner (option) |
+| Hot-shot long-las (concealed) | R | 4 | 2+ | 3/3 | Devastating 3, Heavy, Silent, Concealed Position | Marksman |
+| Hot-shot long-las (mobile) | R | 4 | 3+ | 3/4 | none | Marksman |
+| Hot-shot long-las (stationary) | R | 4 | 2+ | 3/3 | Devastating 3, Heavy | Marksman |
+| Flamer | R | 4 | 2+ | 3/3 | Range 8", Saturate, Torrent 2" | Servo-Sentry (option) |
+| Grenade launcher (frag) | R | 4 | 4+ | 2/4 | Blast 2" | Servo-Sentry (option) |
+| Grenade launcher (krak) | R | 4 | 4+ | 4/5 | Piercing 1 | Servo-Sentry (option) |
+| Hot-shot volley gun (focused) | R | 5 | 4+ | 3/4 | Piercing Crits 1 | Servo-Sentry (option) |
+| Hot-shot volley gun (sweeping) | R | 4 | 4+ | 3/4 | Piercing Crits 1, Torrent 1" | Servo-Sentry (option) |
+| Chainsword | M | 4 | 3+ | 4/5 | none | Tempestor (option) |
+| Power weapon | M | 4 | 3+ | 4/6 | Lethal 5+ | Tempestor (option) |
+| Fists (Tempestor) | M | 3 | 3+ | 2/3 | none | Tempestor (option) |
+| Fists | M | 3 | 4+ | 2/3 | none | Grenadier, Gunner, Marksman, Trooper |
+| Tempestus dagger (Precursor) | M | 4 | 3+ | 3/4 | Ceaseless, Lethal 5+ | Precursor |
+| Tempestus dagger (equipment) | M | 3 | 4+ | 3/4 | none | every friendly TEMPESTUS AQUILON except the Servo-Sentry via T-TA.38 |
+
+Notes: 24 profiles over 18 weapon records. Ids: `ta.w.hot-shot-lascarbine`, `ta.w.hot-shot-laspistol`, `ta.w.relic-bolt-pistol`, `ta.w.melta-bomb`, `ta.wg.hot-shot-laspistols` (focused, salvo), `ta.w.hot-shot-laspistols-point-blank`, `ta.w.melta-carbine`, `ta.wg.plasma-carbine` (standard, supercharge), `ta.wg.hot-shot-long-las` (concealed, mobile, stationary), `ta.w.flamer`, `ta.wg.grenade-launcher` (frag, krak), `ta.wg.hot-shot-volley-gun` (focused, sweeping), `ta.w.chainsword`, `ta.w.power-weapon`, `ta.w.fists-tempestor`, `ta.w.fists`, `ta.w.tempestus-dagger-precursor`, `ta.w.tempestus-dagger`. The Tempestor's fists (Hit 3+) and the Precursor's dagger are better than the shared fists and the equipment dagger, so each is its own record. The Servo-Sentry's grenade launcher and volley gun hit on 4+ (the Kasrkin Gunner's equivalents hit on 3+); do not share records across teams. Plain Heavy on the long-las concealed and stationary profiles is the core rule; the melta bomb's Heavy (Reposition only) allows a Reposition, and landing counts as one (T-TA.23).
+
+UNCLEAR (resolved): the PDF extracts print the three hot-shot laspistols profiles without type markers, and the Gunfighter has no fists. RULING: Tempestus Aquilons Gunfighter point-blank profile | a melee weapon, kept as its own record outside the ranged profile group | Wahapedia's profile table marks it as melee, it prints no Range, and the card would otherwise have no melee weapon | Fan-source
+UNCLEAR (resolved): the melta bomb and melta carbine print Dmg 5/3 and 6/3. Kept as printed; never tune printed numbers. RULING: Tempestus Aquilons melta Dmg | 5/3 (melta bomb) and 6/3 (melta carbine) as printed, with Devastating on each retained crit | identical in the PDF and Wahapedia; the low crit value is the 2024 melta pattern | Confirmed
+
+### 23.4 Operative rules and unique actions
+
+- T-TA.7 **Tempestus Veteran** (Tempestor): once per battle, either (a) a firefight ploy costs 0 CP when the Tempestor is the friendly TEMPESTUS AQUILON operative that ploy names (Hot Drop: the operative whose dice were rolled; Adjust Coordinates: the operative landing; Tempestus Exemplars: the operative in its activation; Progena: the operative activated), or (b) Command Re-roll costs 0 CP when the re-rolled attack or defence dice were rolled for the Tempestor. One use covers both bullets.
+  - MECH: `registerPloyRule.costAdjust` returning `{ cost: 0, via: 'tempestusVeteran' }` when the offer's subject operative is the Tempestor and the once-per-battle ledger is unused; provider `commandRerollCost` 0 when the attack side's operative is the Tempestor; `onUsed` / `onCommandReroll` spend the ledger (the Phobos Tactical Advantage pattern, T-PH.7, T-PH.8) | CLASS: team-hook
+  - RULING: Tempestus Aquilons Tempestus Veteran use | the 0 CP price is applied automatically to the first eligible firefight ploy or Command Re-roll and spends the battle use | every firefight ploy costs 1 CP, so the saving is the same whenever it is taken; same call as Phobos Tactical Advantage | Unsourced
+- T-TA.8 **COMMAND** (Tempestor, 1 AP, SUPPORT): pick one other friendly TEMPESTUS AQUILON operative, not the Servo-Sentry, visible to and within 6" of the Tempestor. It gets APL +1 until the end of its next activation (this TP if it is still ready, otherwise next TP). Not while the Tempestor is in an enemy's control range.
+  - MECH: unique action with a friendly-target filter (in the killzone, visible, within 6" plus `core-hooks.commsBonus(state, seat, tempestor)` because the action is SUPPORT, not self, not SERVO-SENTRY); `effects.aplChangeNextActivation(+1)`; `actionForbidden` in enemy control range | CLASS: team-hook
+  - RULING: Tempestus Aquilons Command target | an operative set up above cannot be picked (it is not in the killzone, so it is not visible); the +1 obeys the R-9.6 cap and ends with the target's next activation, which a counteraction does not end | the card requires visibility and distance; R-3.12 separates counteractions from activations | Unsourced
+- T-TA.9 **Grenadier** (Grenadier): it may use frag and krak grenades (M-5.6) and perform SMOKE GRENADE and STUN GRENADE (M-5.5) without the team having picked them and without using up any team grenade uses; there is no limit on its own uses. Whenever it uses a frag or krak grenade (its own or the team's), that grenade's Hit improves by 1 (to 3+).
+  - MECH: provider `ownGrenades` (weapons frag 99, krak 99; actions smoke 99, stun 99), smoke and stun offered through `extraActions`; `modifyAttackDice` hitDelta -1 on frag and krak for this operative | CLASS: generic:ownGrenades
+  - RULING: Tempestus Aquilons Grenadier allowance | unlimited own uses, stored as 99 per battle and kept apart from the team's picks; R-3.7 still allows each grenade action once per activation | the card exempts the uses from every limit and the designer's commentary calls the access unlimited; `ownGrenades` has no "unlimited" value, and 99 is never reached | Confirmed
+  - RULING: Tempestus Aquilons Melta Bomb token | the token in the marker guide only shows that the Limited 1 melta bomb has been used (display only, no rule reads it) | no card text refers to the token; Limited 1 is already tracked by the core rule | Unsourced
+- T-TA.10 **Salvo** (team-local weapon rule, hot-shot laspistols (salvo)): pick up to two different valid targets, neither in a friendly operative's control range, and shoot each in its own sequence, in the order you choose.
+  - MECH: provider `extraTargets` for `ta.w.hot-shot-laspistols-salvo` returning `{ candidates: other valid targets not in a friendly CR, max: 1 }` (the Farstalker T-FK.20 pattern) | CLASS: generic:extraTargets
+  - RULING: Tempestus Aquilons Salvo targets | the second target is optional and is a primary target in its own right (its own cover, obscured and valid-target test, never a Blast secondary); the first target must also be outside every friendly control range | each is "a valid target"; the previous errata added the control-range clause to both | Confirmed
+- T-TA.11 **Gunfight** (Gunfighter): whenever an enemy operative within 8" of the Gunfighter shoots it, count that enemy's attack dice discarded as fails in the sequences aimed at the Gunfighter. When that Shoot action ends, before anything it incapacitated is removed (the Gunfighter included), the Gunfighter may perform a free Shoot (changing a Conceal order to Engage first) that may only target that enemy, only with the focused profile, rolling fails + 1 attack dice (at most 4). With no fails it still rolls one die.
+  - MECH: team-local (gap `beforeRemovalReactions`, 23.9): an attack hook on the enemy's sequences (the enemy within 8" at target selection, the target is the Gunfighter, dice of kind `fail` after re-rolls) writes the count into a `ta.gunfight` effect `{ enemyId, fails }`; then (a) when the Gunfighter is among the action's incapacitated operatives, its `operative.incapacitated` hook raises the offer and starts the free Shoot, and the removal queue continues from the frame's resume (`continueRemovals`); (b) otherwise provider `reactions` after the enemy's Shoot action offers it. The free Shoot is `startFreeAction({ action: 'shoot', interrupt: true })`; `weaponForbidden` bars every profile but `ta.w.hot-shot-laspistols-focused` in that frame, `beforeShootTargetSelect` keeps only the enemy, `modifyAttackDice` sets `atk` to `min(4, fails + 1)` | CLASS: team-hook
+  - RULING: Tempestus Aquilons Gunfight timing | when the Gunfighter is not incapacitated, its free Shoot comes after the enemy's Shoot action ends, so other operatives that action incapacitated are already removed; when it is incapacitated, it shoots before its own removal | the engine has no reaction point between an action's last sequence and its removals; only an incapacitated operative's own hook runs there (the Boom! path) | Unsourced
+  - RULING: Tempestus Aquilons Gunfight dice | "discarded as a fail" counts only dice that ended as fails after re-rolls in sequences aimed at the Gunfighter (as primary or secondary target); a success discarded because the Gunfighter was obscured is not a fail; the 8" is measured when the enemy selects its target | the card counts fails; obscured discards a success; the FAQ confirms one die with no fails | Confirmed
+  - RULING: Tempestus Aquilons Gunfight conditions | the free Shoot follows the normal Shoot conditions apart from the order (it needs the enemy to be a valid target within 8" and the Gunfighter outside enemy control range), and an enemy Guard interrupt Shoot or free Shoot triggers it like any Shoot | free actions keep their conditions (R-3.9); the card says "shoots" with no action restriction | Unsourced
+- T-TA.12 **Sniper's Vantage** (Marksman): while the Marksman stands on Vantage terrain and shoots an operative with an Engage order whose base is at least 2" lower, every hot-shot long-las profile has Severe.
+  - MECH: `modifyWeaponRules` with `targetId`: `terrain.standingSolid(shooter.pos)` has the `vantage` trait, `shooter.pos.y - target.pos.y >= 2`, target order `engage` -> add `core.wr.severe` to `ta.wg.hot-shot-long-las` profiles | CLASS: team-hook
+  - RULING: Tempestus Aquilons Sniper's Vantage height | "at least 2" lower" compares the heights of the two bases; "on Vantage terrain" means standing on a Vantage floor, not merely being higher | the core rules measure height between bases; Vantage is a floor operatives finish on (R-11.5) | Unsourced
+- T-TA.13 **Concealed Position** (Marksman, concealed profile): the concealed profile can only be used in the Marksman's first Shoot action of the battle.
+  - MECH: provider `weaponForbidden(state, op, 'ta.w.hot-shot-long-las-concealed', 'shoot')` returns a reason once the battle ledger records a resolved Shoot by this operative (the Kasrkin T-KS.16 pattern) | CLASS: generic:weaponForbidden
+  - RULING: Tempestus Aquilons Concealed Position | any Shoot action in which the Marksman shot (free Shoots and Guard interrupt Shoots included) uses up the profile, whatever profile it picked; going on Guard without shooting does not | same wording as Kasrkin T-KS.16; same ruling | Unsourced
+- T-TA.14 **Vicious Knife Fighter** (Precursor): while the Precursor is fighting (its own Fight action), after it resolves its first attack die in that sequence it immediately resolves a second one, before the opponent resolves anything.
+  - MECH: provider `afterFightResolution` returns `[{ seat: own }]` after the Precursor side's first resolution (strike or block) when it is the attacker, once per sequence | CLASS: team-hook
+  - RULING: Tempestus Aquilons Vicious Knife Fighter | only when the Precursor is the attacker, not when it retaliates; the second resolution is always taken (strike or block, the player's choice of die) | 2024 rules separate fighting from retaliating (T-LG.28); an extra resolution never hurts its owner (the Assassinate precedent) | Unsourced
+- T-TA.15 **Dynamic** (Precursor): whenever the Precursor performs a Shoot or Fight action, it may perform a free Dash right afterwards, even if it performed Charge earlier in that activation. The Dash keeps its other conditions: not while in an enemy's control range (so not after a Fight whose enemy survives in control range) and no climbing.
+  - MECH: provider `ownReactions` after the Precursor's own `shoot` / `fight` (`freeActions: true`, so after free Shoots and Fights too) and provider `reactions` with `info.interrupt` (Guard interrupt Shoots) offer `startFreeAction({ action: 'dash' })`; `freeActionProblem` does not apply the after-Charge bar; in a counteraction the Dash gets `maxMove` = what is left of the 2" counteraction allowance | CLASS: team-hook
+  - RULING: Tempestus Aquilons Dynamic errata | no limit tied to the Charge distance (the August '26 errata deleted it); the Dash is optional, follows R-4.2 apart from the Charge bar, and inside a counteraction stays within the 2" counteraction movement limit (R-3.12) | the update log deletes the old cap; the counteraction limit covers every move in it | Confirmed
+- T-TA.16 **Machine** (Servo-Sentry): its only actions are Dash, Fall Back, Reposition and Shoot (landing is allowed, as it counts as a Reposition); never Charge, Fight, Guard, Pick Up or Place Marker, mission or other unique actions, or grenade actions. It never retaliates, never assists a fight and uses only the weapons on its own card (no Tempestus dagger, no grenades).
+  - MECH: provider `actionForbidden` for every action id other than `dash`, `fallBack`, `reposition`, `shoot` and `ability:ta.a.land`; no melee weapon on the card, so it rolls no dice when fought; `modifyAttackDice` removes it from `assists`; `equipmentEligible` false for grenade and dagger equipment; `weaponForbidden` for any weapon not on its datacard | CLASS: team-hook
+  - RULING: Tempestus Aquilons Servo-Sentry landing | the Servo-Sentry may be set up above and land, because landing is a Reposition, not another action | the rule treats landing as the Reposition action; the PDF describes the servo-sentry dropping into battle | Confirmed
+- T-TA.17 **Turret** (Servo-Sentry): it may perform two Shoot actions in one activation.
+  - MECH: provider `maxRepeats` 2 for `shoot` on `ta.servo-sentry` | CLASS: team-hook
+- T-TA.18 **Rapid Insertion** (Trooper): a STRATEGIC GAMBIT in the first TP only: each friendly TROOPER in the killzone that is wholly within your drop zone may perform a free Reposition, which must end wholly within 3" of your drop zone.
+  - MECH: 0 CP gambit ploy record `ta.p.rapid-insertion` (the Kurnite Hunter datacard-gambit pattern), offered in TP1 while an eligible TROOPER exists; the group is fixed at use; `startFreeSequence` of optional free Repositions in the player's order; provider `moveProblem` rejects a Rapid Insertion end point not wholly within 3" of the drop zone (horizontal distance to the drop zone polygon plus base radius at most 3") | CLASS: team-hook
+  - RULING: Tempestus Aquilons Rapid Insertion | the group is fixed when the gambit is used (Troopers still above are not in it); each Reposition is optional and follows R-4.1; it is a gambit of its own, separate from the Drop marker gambit (T-TA.22), and like every gambit once per TP | "each ... can immediately perform" after a test made once; R-2.4 | Unsourced
+- T-TA.19 **Swift Landing** (Trooper): when a TROOPER lands, it may be set up within 4" of a Drop marker horizontally instead of 3" (T-TA.24).
+  - MECH: the landing spot test (T-TA.24) uses 4" for operatives with keyword TROOPER | CLASS: team-hook
+
+### 23.5 Faction rules
+
+- T-TA.20 **DROP INSERTION: set up above.** When setting up operatives (R-1.5), the first batch of your kill team is set up as normal. Each later batch may instead be set up above: put to one side, not in the killzone. A batch is all above or all set up normally, never split. For each batch set up above you get one Drop marker (T-TA.21).
+  - MECH: provider `setAsideBatches(state, seat)` returning `{ skipFirst: true }` for a TEMPESTUS AQUILON seat; `setAsideAtSetup` true for every TEMPESTUS AQUILON operative; no `setAsideCap`; set-aside operatives are offboard with kind `setAside` | CLASS: generic:setAsideBatches
+  - RULING: Tempestus Aquilons thirds | a "third" is one of the core set-up batches (R-1.5, `ceil(n / 3)`): 4, 4 and 3 operatives for 11, so up to 7 may go above; "the first third" is the first batch this player places | the core sequence sets up a kill team in thirds and Drop Insertion builds on it | Unsourced
+- T-TA.21 **DROP INSERTION: Drop markers.** For each batch set up above, place one of your Drop markers wholly within your drop zone (one or two markers).
+  - MECH: provider `preBattleChoices(state, seat)` offers one `ability.choice` per marker still to place (count from the number of operatives above: none, one batch or two); spots sampled on the drop zone floor where the marker disc is wholly within the zone; team marker kind `equipment`, `equipmentId: 'ta.drop'`, `owner` = seat, public, not pickable, no control; the hook calls `setup.preBattleChoiceDone(ctx)` | CLASS: generic:preBattleChoices
+  - RULING: Tempestus Aquilons Drop marker timing | the Drop markers are placed once set-up has ended, in the pre-battle step, not straight after each batch | the engine has no team decision between set-up batches; the pre-battle step is the earliest point after set-up, and the markers then wait for the TP1 gambit move (T-TA.22), so seeing the opponent's last batch first matters little | Unsourced
+  - RULING: Tempestus Aquilons Drop marker placement mandatory | placing the marker cannot be declined; a pass puts it at the offered spot nearest the drop zone's centre | the rule says the marker is placed | Unsourced
+- T-TA.22 **DROP INSERTION: moving Drop markers.** A STRATEGIC GAMBIT in TP1 and TP2: move each of your Drop markers up to 4" horizontally. In a close-quarters killzone (Gallowdark) the distance may pass through Wall terrain.
+  - MECH: 0 CP gambit ploy record `ta.p.drop-insertion` offered in TP1 and TP2 while a Drop marker exists; one `ability.choice` per marker (sampled floor spots within 4" of its centre, plus "stay"); no path is traced in any killzone | CLASS: team-hook
+  - RULING: Tempestus Aquilons Drop marker move | every marker may move once per use, each up to 4" centre to centre, to a killzone floor spot not inside terrain; no path is traced, so walls and other terrain never block it in any killzone | markers are moved, not walked; the card mentions Wall terrain only because close-quarters rules would otherwise stop a straight-line move | Unsourced
+- T-TA.23 **DROP INSERTION: activating an operative above.** In the Firefight phase an operative set up above is ready and is activated like any other. On activation choose: expend it (it stays above), or land it (T-TA.24). Landing counts as performing the Reposition action: it costs 1 AP, Charge and Fall Back are then barred, Reposition cannot be repeated, and Heavy weapons other than Heavy (Reposition only) cannot be used in that activation. The activation then continues.
+  - MECH: offboard activation (`reserve.ts`): expending is the activation's `end` option; landing is the unique action `ta.a.land` (1 AP) listed by `offboardActions` and declared with `treatedAs: 'reposition'` (the Wyrmblade EMERGE pattern), whose `ability.choice` lists spots and orders and calls `returnToKillzone` | CLASS: team-hook
+  - RULING: Tempestus Aquilons Land action | landing is modelled as a team unique action because the engine needs an option to pick; it is not an extra action for any rule (Machine allows it, R-3.7 sees a Reposition) | the rule describes landing as being treated as the Reposition action | Unsourced
+  - RULING: Tempestus Aquilons landing and Heavy | after landing, the Marksman cannot use its concealed or stationary long-las in that activation, while the Grenadier's melta bomb (Heavy (Reposition only)) is still allowed | Heavy (R-10.9) bars any move other than the named one, and landing is a Reposition | Confirmed
+- T-TA.24 **DROP INSERTION: where it lands.** A landing operative is set up in a placeable location: with its base within 3" horizontally of one of your Drop markers, or wholly within your drop zone; not within an enemy operative's control range (a PRECURSOR is exempt); with no part of its base under Vantage terrain; and with an order of your choice. It may land on a Vantage floor. TROOPER (T-TA.19) uses 4", Adjust Coordinates (T-TA.35) 5".
+  - MECH: `placementSpots(state, op, { levels: true, notUnderVantage: true, test })` where `test` = (horizontal distance from base to a Drop marker at most 3 / 4 / 5) or (base wholly within the own drop zone horizontally), and no enemy control range unless PRECURSOR; options `order@x,y,z` for Engage and Conceal | CLASS: generic:placementSpots.levels
+  - RULING: Tempestus Aquilons landing distance | "within 3" horizontally of a Drop marker" is the horizontal distance from the nearest point of the base to the marker's edge, at any height; "wholly within your drop zone" is horizontal too, so a Vantage floor above the drop zone qualifies | the card says horizontally; drop-zone checks are horizontal in this engine (10-rules-core ruling under R-8) | Unsourced
+  - RULING: Tempestus Aquilons landing under Vantage | an operative may stand on a Vantage floor, but not on a lower floor with any part of its base under a Vantage floor above | the card bars bases underneath Vantage, not bases on it; Vantage is a placeable floor (R-11.5) | Confirmed
+- T-TA.25 **DROP INSERTION: landed and obscured.** After landing, the operative is obscured until the end of the next activation, or until the end of the TP if that comes first.
+  - MECH: effect `ta.landed` on the operative; `target.status` sets `obscured: true` when it is the target; an `activation.end` handler clears it at the end of the first activation that ends after the landing operative's own activation; `turningPoint.end` clears it | CLASS: team-hook
+  - RULING: Tempestus Aquilons landing obscured duration | the landing operative's own activation is not "the next activation": the status lasts through the rest of it and the following activation (either player's); a counteraction is not an activation and does not end it | the operative lands during its own activation, so "the next" one is the one after; R-3.12 | Unsourced
+- T-TA.26 **DROP INSERTION: fewer than half above.** By the end of TP1, fewer than half of your kill team's operatives may still be set up above (more than half must have been set up in the killzone at some point).
+  - MECH: team-local (gap `endActivationProblem`, 23.9): the `turningPoint.end` handler of TP1 incapacitates operatives still above (`incapacitateOffboard`, latest roster entries first) until fewer than half of the roster is above; the client's activate prompt warns while landings are owed; the bot lands every operative above when it activates and a spot exists | CLASS: team-hook
+  - RULING: Tempestus Aquilons half-above check | "half" is half of the full roster (incapacitated operatives included); with 11 operatives at most 5 may still be above at the end of TP1; operatives still above beyond that are incapacitated at the end of TP1 (counted for the kill op) | the engine cannot refuse the end of an activation, so the breach is settled at the TP end; incapacitation matches the rule's own consequence at the end of TP2 | Unsourced
+- T-TA.27 **DROP INSERTION: losing Drop markers.** In the Ready step of TP2 and of TP3, remove one of your Drop markers (your choice when you have two). Any friendly operative still above at the end of TP2 is incapacitated.
+  - MECH: provider `readyStepChoices` in TP2 and TP3 (an `ability.choice` over the markers when two remain; removed at once when one remains; nothing when none); `turningPoint.end` handler of TP2 runs `incapacitateOffboard` on every operative still above | CLASS: team-hook
+  - RULING: Tempestus Aquilons above at the end of TP2 | each counts among the starting operatives for the opponent's kill grade and as an incapacitated enemy for the kill op, scored with TP2; no before-removal rules apply | same call as Wyrmblade HIDING (T-WYR.26) | Unsourced
+- T-TA.28 **DROP INSERTION: what "above" means while it lasts.** An operative set up above is not in the killzone: it cannot be targeted or chosen, does not see, block, control or contest, does not count for "visible to" or "within x" checks, cannot counteract and cannot trigger mines. It is still ready or expended for activation alternation and counteract conditions, and it is still a friendly operative that is not incapacitated (Sudden Offensive counts it). Its identity is open information.
+  - MECH: offboard semantics of `reserve.ts`; `view` shows it to both seats | CLASS: team-hook
+  - RULING: Tempestus Aquilons counteracting with operatives above | while you have a ready operative above you are not "all expended", so you cannot counteract and must activate it (expending it is allowed) | R-3.2 and R-3.11 count ready operatives wherever they are; same call as Wyrmblade HIDING | Unsourced
+- T-TA.29 **GRAV-CHUTE**: whenever a friendly TEMPESTUS AQUILON operative drops, the vertical distance costs nothing (not just the first 2" of R-12.3). The other drop rules (a drop cannot cross open space, the landing must be placeable) still apply.
+  - MECH: provider `moveSurcharge` returns `-breakdown.drop` for TEMPESTUS AQUILON operatives | CLASS: team-hook
+  - RULING: Tempestus Aquilons Grav-Chute | only the drop's cost is removed (counteraction 2" included); jumps keep their 4" horizontal limit and the drop after a jump is free | the rule changes how far the drop counts, not where a drop can go | Confirmed
+
+### 23.6 Ploys
+
+The source prints no costs: every ploy is 1 CP (R-2.4) unless a rule changes it (T-TA.7). Strategy ploys last until the end of the TP (R-2.5) unless they say otherwise.
+
+- RULING: Tempestus Aquilons ploy costs | every team ploy costs 1 CP | neither the PDF extracts nor Wahapedia print a cost, and R-2.4 sets 1 CP by default | Unsourced
+
+- T-TA.30 **SUDDEN OFFENSIVE** | Strategy | 1 CP | Gambit step | Count your TEMPESTUS AQUILON operatives that are not incapacitated (operatives above included), halve and round up: x. The first x friendly TEMPESTUS AQUILON operatives you activate this TP have Balanced on all their weapons until the end of their activation.
+  - MECH: ploy rule `onUsed` stores x and an empty list in a TP effect; an `activation.start` handler appends the activated operative while the list holds fewer than x; `modifyWeaponRules` adds `core.wr.balanced` while the operative is listed and in its own activation | CLASS: team-hook
+  - RULING: Tempestus Aquilons Sudden Offensive count | x is fixed when the ploy is used; every activation counts toward x, including an operative above that is activated and expended without landing; counteractions neither count nor benefit | the card counts "the first ... activated"; R-3.12 says a counteraction is not an activation | Unsourced
+- T-TA.31 **MAINTAIN MOMENTUM** | Strategy | 1 CP | Gambit step | When a friendly TEMPESTUS AQUILON operative shoots, or fights in its own Fight action, against an enemy operative that is ready, its weapons have Severe.
+  - MECH: `modifyWeaponRules` with `targetId`: target `ready` and the operative is shooting or is the attacker in the fight -> add `core.wr.severe` | CLASS: team-hook
+  - RULING: Tempestus Aquilons Maintain Momentum | the August '26 ready-enemy version; checked per sequence; a retaliating Aquilon gains nothing | the update log gives this text; 2024 rules separate fighting from retaliating (T-LG.28) | Confirmed
+- T-TA.32 **EYE ABOVE** | Strategy | 1 CP | Gambit step | Pick one enemy operative in the killzone. It and every other enemy operative within 3" of it get one of your Detected tokens until the end of the TP. When an enemy with your Detected token shoots a friendly TEMPESTUS AQUILON operative, you may re-roll one defence die; when it fights or retaliates against one, one of your blocks may cancel two unresolved successes instead of one.
+  - MECH: ploy with an enemy choice; tokens `ta.detected` (owner = Aquilon seat, expiry TP end) on the pick and every enemy within 3" at use; `modifyDefenceDice` adds `RerollGrant { mode: 'one' }` when the shooter holds the token; provider `blockCapacity` returns 2 for the Aquilon side's block while no block of that sequence has used it yet (attack hook `afterBlock` marks the use) | CLASS: team-hook
+  - RULING: Tempestus Aquilons Eye Above spread | the tokens are given once, when the ploy is used: an enemy that later moves within 3" gains none, and one that moves away keeps its token | the tokens are placed at selection | Confirmed
+  - RULING: Tempestus Aquilons Eye Above double block | the first block the Aquilon resolves while two or more unresolved enemy successes remain uses the double block; one per sequence | "one of your blocks"; resolving it at the first useful block is never worse for its owner | Unsourced
+- T-TA.33 **DROP AND SECURE** | Strategy | 1 CP | Gambit step | Pick one objective or mission marker. Until the Ready step of the next TP: while at least one friendly TEMPESTUS AQUILON operative contests it, your contesting total for it counts 1 higher (not an APL change); and every friendly TEMPESTUS AQUILON operative within 3" of it has Atk +1 on its melee weapons, to no more than 4. A Drop and Secure token marks the marker.
+  - MECH: ploy with a marker choice; team effect `ta.dropAndSecure { markerId }` cleared at `turningPoint.start`; provider `controlTotal` +1 when an Aquilon contests; `modifyAttackDice` atk +1 below 4 for melee weapons when the operative is within 3" of the marker (fighting or retaliating) | CLASS: team-hook
+  - RULING: Tempestus Aquilons Drop and Secure marker | only objective markers and mission markers (the markers control is worked out for) can be picked, not equipment markers or Drop markers | the first bullet is about control of the marker | Unsourced
+  - RULING: Tempestus Aquilons Drop and Secure errata | lasts until the Ready step of the next TP (August '26) | the update log changes the duration | Confirmed
+- T-TA.34 **HOT DROP** | Firefight | 1 CP | After rolling attack dice for a friendly TEMPESTUS AQUILON operative that is wholly within your opponent's territory, or that in this activation landed or dropped from Vantage terrain at least 2" above the killzone floor | If the target is within 6" of it, re-roll any of your attack dice.
+  - MECH: firefight ploy in the `shoot.beforeAttackRerolls` and `fight.beforeRerolls` windows; condition: base wholly within the opponent's territory (`equipment.territoryOf`), or a `ta.landedAct` effect (set when it lands, cleared at `activation.end`), or a `ta.droppedAct` effect set by an `action.ended` handler that reads `ctx.events` `OperativeMoved` drop segments starting at least 2" up on a Vantage floor (or from a jump off one); `RerollGrant { mode: 'any' }` | CLASS: team-hook
+  - RULING: Tempestus Aquilons Hot Drop scope | usable when shooting, fighting or retaliating; the landing or drop must be in the same activation (or the same counteraction) as the attack, so a retaliating Aquilon qualifies only through the territory condition; 6" is measured to the sequence's target or the fight's opponent | the card says "after rolling your attack dice" and "during this activation" | Unsourced
+- T-TA.35 **ADJUST COORDINATES** | Firefight | 1 CP | When a friendly TEMPESTUS AQUILON operative lands | It may be set up within 5" horizontally of a Drop marker instead of 3" (or 4"). For the rest of the TP it cannot perform Dash, Shoot or Fight.
+  - MECH: team-local (no window inside the land action): the land choice also lists spots that only the 5" reach allows, tagged with the ploy and its price; picking one spends it through `ploys.usePloy` (CP, once per TP, `PloyUsed`, Tempestus Veteran pricing); effect `ta.adjusted` until TP end; `actionForbidden` bars `dash`, `shoot` and `fight` (free ones and Guard interrupt Shoots too) | CLASS: team-hook
+  - RULING: Tempestus Aquilons Adjust Coordinates use | the ploy is offered inside the landing decision as extra spots; a spot that is legal without it never spends it | "use when it lands" and the effect only matters for the set-up distance | Unsourced
+- T-TA.36 **TEMPESTUS EXEMPLARS** | Firefight | 1 CP | During a friendly TEMPESTUS AQUILON operative's activation, not the Servo-Sentry and not an operative whose APL is above 2 | For that activation, Pick Up Marker, Place Marker and mission actions cost it 1 AP less (never below 0).
+  - MECH: firefight ploy in `firefight.activationStart` and `firefight.actionEnded` (own activation); activation effect; provider `actionCostDelta` -1 for `marker:pickUp`, the Place Marker action and MISSION `ability:` ids | CLASS: team-hook
+  - RULING: Tempestus Aquilons Tempestus Exemplars APL | the operative's current APL when the ploy is used, so the Tempestor (APL 3) qualifies only while its APL is reduced, and an operative raised to 3 by COMMAND does not; a 0 AP action is still once per activation | "APL stat higher than 2" reads the stat with its changes (R-9.6); R-3.7 | Unsourced
+- T-TA.37 **PROGENA** | Firefight | 1 CP | When a friendly TEMPESTUS AQUILON operative other than the Servo-Sentry is activated | It regains up to 2D3 lost wounds, and for that activation every change to its APL is ignored.
+  - MECH: firefight ploy in `firefight.activationStart`; `effects.regainWounds(2D3)`; activation effect with provider `flags` `ignoreApl` | CLASS: team-hook
+  - RULING: Tempestus Aquilons Progena | increases (COMMAND) are ignored as well as decreases; it may be used on an operative above when it is activated | the card says "any changes"; the operative is activated | Unsourced
+
+### 23.7 Faction equipment
+
+Universal equipment (M-5) can also be chosen; the four-option limit covers faction and universal options together (M-5.12).
+
+- T-TA.38 **TEMPESTUS DAGGERS** | Every friendly TEMPESTUS AQUILON operative except the Servo-Sentry has the Tempestus dagger (equipment profile, 23.3) for the battle. The Precursor keeps its own better dagger as well.
+  - MECH: equipment `grants` of `ta.w.tempestus-dagger` with `grants.to` keyword TEMPESTUS AQUILON; provider `equipmentEligible` false for SERVO-SENTRY | CLASS: data (exclusion team-hook)
+- T-TA.39 **COMBAT STIMMS** | The Move loss from being injured does not apply to friendly TEMPESTUS AQUILON operatives (the Hit penalty still does).
+  - MECH: provider `moveDelta` +2 while the operative is injured (the Holy Embrocations pattern, T-NV.45) | CLASS: team-hook
+- T-TA.40 **DROP AUGURY** | Once per battle, when a friendly operative set up above is activated, before you expend or land it: move one of your Drop markers up to 4" horizontally, but not closer to your opponent's drop zone.
+  - MECH: 0 CP equipment offer through ployRule `extraOffers` in `firefight.activationStart` when the activated operative is above; `ability.choice` of marker then spot (within 4" of its centre, horizontal distance from the marker centre to the opponent's drop zone not smaller than before); battle ledger | CLASS: team-hook
+  - RULING: Tempestus Aquilons Drop Augury distance | "again" means the gambit's move (up to 4" horizontally, no path); "closer" compares the horizontal distance from the marker's centre to the nearest point of the opponent's drop zone, and equal distance is allowed | the card refers back to the Drop marker move | Unsourced
+- T-TA.41 **REMOTE OVERSEER** | Once per battle, after the initiative roll-off of a TP, you may re-roll your own die.
+  - MECH: providers `initiativeReroll` / `onInitiativeReroll` with a battle ledger (the Writ of Claim pattern) | CLASS: team-hook
+  - RULING: Tempestus Aquilons Remote Overseer scope | only the turning point initiative roll-offs, not the set-up roll-off | the card says "to decide initiative", which is the Strategy phase roll-off (R-2.1) | Unsourced
+
+Marker/token guide (UI): Drop marker, Detected token, Drop and Secure token, Melta Bomb token (display only).
+
+### 23.8 Checklist
+
+Rows in `12-rules-test-checklist.md` section TEAM-TA: TEAM-TA-000 to TEAM-TA-036.
+
+### 23.9 Generic capabilities (survey; resolved in the Engine map below)
+
+- **setAsideBatches** (batch D, D10): Drop Insertion sets whole batches above, never the first. Used by T-TA.20.
+- **placementSpots.levels / notUnderVantage** (batch D, D11): landing spots on Vantage floors, none under one. Used by T-TA.24.
+- **preBattleChoices** (batch D, D4): Drop markers placed once set-up ends. Used by T-TA.21.
+- **Offboard operatives** (`reserve.ts`: `setAside`, `offboardActions`, `returnToKillzone`, `incapacitateOffboard`; the Wyrmblade HIDING path): above operatives, landing as a Reposition, end-of-TP2 incapacitation. Used by T-TA.23, T-TA.26 to T-TA.28.
+- **readyStepChoices** (batch C shared): Drop marker removal. Used by T-TA.27.
+- **extraTargets**, **weaponForbidden** (batch C): Salvo, Concealed Position, the Gunfight profile limit. Used by T-TA.10, T-TA.11, T-TA.13.
+- **ownGrenades**, **ownReactions**, **commandRerollCost**, `aplChangeNextActivation` (batch B / C shared): Grenadier, Dynamic, Tempestus Veteran, COMMAND. Used by T-TA.7 to T-TA.9, T-TA.15.
+- **moveSurcharge**, `moveDelta`, `moveProblem`, `blockCapacity`, `afterBlock`, `afterFightResolution`, `controlTotal`, `initiativeReroll`, `target.status`, `modifyWeaponRules`, `modifyAttackDice`, `modifyDefenceDice`, tokens, `regainWounds`, `startFreeSequence`, `startFreeAction`, ploy rule `costAdjust` / `extraOffers`, 0 CP gambit records: existing.
+- Gaps (not built in batch D; each has a team-local fallback):
+  - **setupChoices per batch** (NICE, fallback): no team decision between set-up batches, so the Drop markers cannot be placed right after their batch. Fallback: D4 `preBattleChoices` once set-up ends (RULING, T-TA.21).
+  - **endActivationProblem** (MUST, fallback): the `end` option is always offered, so an activation above cannot be forced to land. Fallback: TP1 `turningPoint.end` incapacitates the excess above; client warning; the bot always lands (RULING, T-TA.26).
+  - **beforeRemovalReactions** (MUST, fallback): no reaction point between an action's last sequence and its removals. Fallback: the incapacitated Gunfighter uses its `operative.incapacitated` hook; otherwise `reactions` after the action (RULING, T-TA.11).
+  - **unlimited ownGrenades** (NICE, fallback): `ownGrenades` counts have no "unlimited". Fallback: 99 (RULING, T-TA.9).
+  - **mid-land ploy window** (NICE, fallback): no window inside the land action for Adjust Coordinates. Fallback: ploy-tagged spots in the land choice, paid through `ploys.usePloy` (RULING, T-TA.35).
+- Everything else maps onto existing providers, hooks, windows and 0 CP offers (Engine map).
+
+### 23.10 Gotchas
+
+- The Servo-Sentry is a full operative (roster, batches, kill op, Drop Insertion) on a 40mm base with Move 4", Save 3+ and 10 wounds; its grenade launcher and volley gun hit on 4+. It has no melee weapon, never gets the Tempestus dagger or grenades, and lands like everyone else.
+- Gunners: one datacard, at most two, one melta and one plasma. Troopers unlimited; everything else once. 11 operatives, batches 4/4/3.
+- The Gunfighter's point-blank profile is a melee weapon (it has no fists). Salvo is a 4+ profile. Gunfight rolls fails + 1 dice (1 to 4) with the focused profile at the shooter only, even as it dies.
+- The Precursor's Tempestus dagger is 4 3+ 3/4 Ceaseless, Lethal 5+; the equipment dagger is 3 4+ 3/4. Only the Precursor may land in an enemy's control range.
+- Landing is a Reposition: 1 AP, no Charge or Fall Back afterwards, no plain Heavy weapons that activation (melta bomb fine), no second Reposition; Dash is still allowed (Adjust Coordinates excepted).
+- Landing reach is horizontal: 3" of a Drop marker, 4" for Troopers, 5" with Adjust Coordinates, or wholly within the drop zone; on a Vantage floor is fine, under one is not. Obscured until the end of the next activation.
+- Above operatives are ready and block counteracting; they cannot be COMMAND targets; at most 5 of 11 may be above at the end of TP1; all left above die at the end of TP2. Drop markers: one lost in each of the TP2 and TP3 Ready steps.
+- Grav-Chute makes every drop free, also inside a counteraction's 2". Hot Drop's "dropped from Vantage" needs a drop starting at least 2" up on Vantage in the same activation.
+- Two different free gambits in TP1 (Rapid Insertion, Drop marker move); only the marker move again in TP2.
+- Tempestus Veteran is one use for either a 0 CP firefight ploy on the Tempestor or a 0 CP Command Re-roll on its dice. Tempestus Exemplars excludes the Tempestor at APL 3 and anyone raised to 3.
+- Sudden Offensive counts above operatives for x and spends a slot on every activation, landing or not. Maintain Momentum is Severe against ready enemies when shooting or fighting, never retaliating.
+- Eye Above's Detected tokens spread only at use; one double block per sequence.
+- Edition leaks to reject: nothing from the 2021-edition Tempestus Aquilons (no Overwatch, no shape distances, no APL 2 everywhere, no old Drop Insertion), nothing from 40k 10th Militarum Tempestus (no Deep Strike 9" rule, no Orders, no Leadership or battle-shock tests, no wound rolls or AP); inches only, three defence dice, every printed number from the August '26 cards.
+
+### 23.11 Engine map
+
+| Rule or capability | Built as |
+|---|---|
+| Roster (Tempestor 1, Servo-Sentry 1, main 9, TROOPER and GUNNER repeatable, one Gunner per carbine) | team.json slots, `repeatable`, `selection.loadoutCaps` (`each`) |
+| Loadouts | datacard `weapons.options` (`sets`), profile groups; point-blank as a separate melee record |
+| Tempestus Veteran | ployRule `costAdjust` / `onUsed`, provider `commandRerollCost` / `onCommandReroll`, battle ledger |
+| COMMAND | unique action, friendly-target filter with `commsBonus`, `aplChangeNextActivation(+1)` |
+| Grenadier | provider `ownGrenades` (99 each) + `extraActions`, `modifyAttackDice` Hit +1 |
+| Salvo | provider `extraTargets` |
+| Gunfight | attack hook fail count, `operative.incapacitated` hook or provider `reactions`, `startFreeAction({ action: 'shoot', interrupt: true })`, `weaponForbidden`, `beforeShootTargetSelect`, `modifyAttackDice` atk (gap `beforeRemovalReactions`) |
+| Sniper's Vantage, Sudden Offensive, Maintain Momentum | `modifyWeaponRules` (with `targetId`) |
+| Concealed Position | provider `weaponForbidden`, battle ledger of resolved Shoots |
+| Vicious Knife Fighter | provider `afterFightResolution` |
+| Dynamic | providers `ownReactions` (`freeActions`) and `reactions` (`info.interrupt`), `startFreeAction({ action: 'dash' })` |
+| Machine, Turret | providers `actionForbidden`, `maxRepeats`, `equipmentEligible`, `weaponForbidden`; `modifyAttackDice` assists |
+| Rapid Insertion | 0 CP gambit record, `startFreeSequence` of free Repositions, provider `moveProblem` |
+| Drop Insertion set-up | provider `setAsideBatches` (D10) + `setAsideAtSetup` |
+| Drop markers | provider `preBattleChoices` (D4), team markers `ta.drop` |
+| Drop marker move | 0 CP gambit record (TP1, TP2), `ability.choice` per marker |
+| Land, Swift Landing, Adjust Coordinates | `offboardActions` `ta.a.land` (`treatedAs: 'reposition'`), `placementSpots({ levels, notUnderVantage })` (D11), `returnToKillzone`; Adjust Coordinates spots paid through `ploys.usePloy`, `actionForbidden` for the TP |
+| Landed obscured | effect `ta.landed`, `target.status`, `activation.end` / `turningPoint.end` |
+| Half above by TP1 end, TP2 end | `turningPoint.end` handler with `incapacitateOffboard` (gap `endActivationProblem`) |
+| Drop marker removal | provider `readyStepChoices` (TP2, TP3) |
+| Grav-Chute | provider `moveSurcharge` (`-breakdown.drop`) |
+| Eye Above | tokens `ta.detected`, `modifyDefenceDice` re-roll one, provider `blockCapacity` + `afterBlock` ledger |
+| Drop and Secure | team effect on a marker, provider `controlTotal`, `modifyAttackDice` (melee, max 4), cleared at `turningPoint.start` |
+| Hot Drop | windows `shoot.beforeAttackRerolls` / `fight.beforeRerolls`, `territoryOf`, `ta.landedAct` / `ta.droppedAct` effects (`action.ended` + `ctx.events`), grant `any` |
+| Tempestus Exemplars | windows `firefight.activationStart` / `firefight.actionEnded`, provider `actionCostDelta` |
+| Progena | window `firefight.activationStart`, `regainWounds(2D3)`, provider `flags` `ignoreApl` |
+| Tempestus Daggers | equipment `grants` with `grants.to`, `equipmentEligible` |
+| Combat Stimms | provider `moveDelta` +2 while injured |
+| Drop Augury | ployRule `extraOffers` (0 CP) at `firefight.activationStart`, battle ledger |
+| Remote Overseer | providers `initiativeReroll` / `onInitiativeReroll` |
+
+### 23.12 Implementer brief
+
+- Files you own (nothing else):
+  - `src/data/teams/tempestus-aquilons/team.json`, `operatives.json`, `weapons.json`, `abilities.json`, `ploys.json`, `equipment.json` (ids `ta.<name>`, `ta.w.`, `ta.wg.`, `ta.a.`, `ta.p.`, `ta.e.`; team weapon rules `ta.a.wr-salvo`, `ta.a.wr-concealed-position`; unique action `ta.a.land`; gambit records `ta.p.rapid-insertion`, `ta.p.drop-insertion`)
+  - `src/engine/teams/tempestus-aquilons.ts` (code hooks, `registerTeamRules`, hook handlers, ploy rules)
+  - `src/client/teams/tempestus-aquilons.ts` (weapon flavour, VFX family, sound, attachments; `loadoutBodies` for the Tempestor (three sets), the Servo-Sentry (three weapons) and the Gunner (two carbines); figure stand-ins `ta-tempestor-*`, `ta-servo-sentry-flamer`, `-grenade-launcher`, `-volley-gun`, `ta-grenadier`, `ta-gunfighter`, `ta-gunner-melta-carbine`, `ta-gunner-plasma-carbine`, `ta-marksman`, `ta-precursor`, `ta-trooper` with `-b`, `-c`; a Drop marker and Detected token look; the "above" tray reuses the HIDING tray)
+  - `tests/engine/teams/tempestus-aquilons.test.ts` (TEAM-TA-nnn tests) and `tests/engine/teams/tempestus-aquilons.hooks.ts` (code-hook firing scenarios)
+  - append-only: `docs/needs-rules-check.md` (RULING lines), `docs/spec/13-teams.md` section 23 and `12-rules-test-checklist.md` section TEAM-TA (refinements only)
+- Activation flag: `"playable": false` in `src/data/teams/tempestus-aquilons/team.json`. Flip it (with `defaults` filled: Tempestor, Servo-Sentry and nine legal picks, and every weapon in `src/client/teams/tempestus-aquilons.ts`) only when the team is complete and all gates pass.
+- Capabilities to use: the Engine map above. Batch D: `setAsideBatches` (D10), `placementSpots` `levels` / `notUnderVantage` (D11), `preBattleChoices` (D4). Existing: the Wyrmblade HIDING path in `reserve.ts`, `readyStepChoices`, `extraTargets`, `weaponForbidden`, `ownGrenades`, `ownReactions`, `commandRerollCost`, `aplChangeNextActivation`, `blockCapacity`, `afterFightResolution`, `controlTotal`, `moveSurcharge`, `moveProblem`, 0 CP gambit records. Team-local fallbacks for the gaps `setupChoices per batch`, `endActivationProblem`, `beforeRemovalReactions`, `unlimited ownGrenades`, `mid-land ploy window` (23.9).
+- Order: roster and loadouts (TEAM-TA-001, 002), then Drop Insertion end to end, the spine of the team (set-up 015, markers 016, gambit 017, land 018 to 020, limits 021, 022, above semantics 023, Grav-Chute 024), then the datacard rules (COMMAND 004, Gunfight 007, Machine and Turret 012), then ploys and equipment.
+- AI: the bot's set-aside and landing policies live in shared `src/ai/` files (`setup.ts` `hideChoice` is per operative with a third cap; `moves.ts` lands only on an ability id matching `/emerge/`). Report to the lead that they need a batch-aware set-aside policy (D10) and to accept `ta.a.land` (e.g. `/emerge|land/`); do not edit them yourself. Until then, test landing through explicit actions.
+- RULING lines expected: Servo-Sentry status, Gunner entries, Gunfighter point-blank profile (Fan-source), melta Dmg, Tempestus Veteran use, Command target, Grenadier allowance, Melta Bomb token, Salvo targets, Gunfight timing / dice / conditions, Sniper's Vantage height, Concealed Position, Vicious Knife Fighter, Dynamic errata, Servo-Sentry landing, Rapid Insertion, thirds, Drop marker timing, Drop marker placement mandatory, Drop marker move, Land action, landing and Heavy, landing distance, landing under Vantage, landing obscured duration, half-above check, above at the end of TP2, counteracting with operatives above, Grav-Chute, ploy costs, Sudden Offensive count, Maintain Momentum, Eye Above spread and double block, Drop and Secure marker and errata, Hot Drop scope, Adjust Coordinates use, Tempestus Exemplars APL, Progena, Drop Augury distance, Remote Overseer scope.
+- Gotchas: section 23.10. Eleven operatives use the 11-operative kill grade row. The Gunner is one datacard with two sets (the Kasrkin pattern). Landing must stay a Reposition for every restriction (`treatedAs`), and the land choice must never be empty while the operative is above: wholly within the drop zone always yields spots unless the zone is full, and the `end` option keeps legalActions non-empty.
+
+## 24. Exaction Squad
+
+Rule IDs `T-EX.<n>`, checklist IDs `TEAM-EX-<nnn>`. Sources: the Exaction Squad team PDF (Kill Team 2024, faction version 3, June '26 update log state). It includes the June '26 rules commentary (Marked for Justice timing), the previous errata and the three previous commentaries. The flow and layout extracts were read together as the primary source. Cross-check: the Wahapedia Exaction Squad page (faction version 3, June 2026; its FAQ panel holds the same four answers as the PDF commentary), plus the core rules page for terms.
+
+Facts read from the PDF are Confirmed; our own calls are Unsourced. The two sources agree on every stat line and on every card text. Two card texts (Spot, Veriscant) differ from wording in the PDF's "previous errata" list; we follow the cards (24.3, 24.10). Every other previous erratum already appears in the card text. All rule text is restated in our own words; team, operative, weapon, ploy and equipment names are used as printed. Core terms per `10-rules-core.md` (R-x.y), missions and universal equipment per `11-missions.md` (M-x.y). Ploys and equipment are one bullet per record so each can carry its MECH line.
+
+Weapon type column: R = ranged, M = melee. Dmg is `normal/crit`. Base is in mm.
+
+### 24.1 Team selection
+
+- T-EX.1 The roster is exactly 11 operatives: 1 ARBITES PROCTOR-EXACTANT (leader) plus 10 picks from the main list (T-EX.2). Nothing counts as two selections or half a selection; the R-VR Cyber-mastiff is a full selection.
+  - MECH: roster validator: leader slot count 1 (`ex.proctor-exactant`), main slot count 10 | CLASS: data
+- T-EX.2 The main list is CASTIGATOR, CHIRURGANT, GUNNER, LEASHMASTER, MALOCATOR, MARKSMAN, R-VR CYBER-MASTIFF, REVELATUM, SUBDUCTOR, VIGILANT and VOX-SIGNIFIER.
+  - GUNNER: at most two, each with a different weapon option.
+  - SUBDUCTOR: at most four.
+  - VIGILANT: any number.
+  - Every other entry: at most once.
+  - A Cyber-mastiff may be taken without a Leashmaster and the reverse; neither needs the other on the roster.
+  - MECH: one Gunner datacard `ex.gunner` with a weapon pick (T-EX.3); main slot `repeatable: ["ex.gunner", "ex.subductor", "ex.vigilant"]`; `selection.caps: [{ label: "Gunners", from: ["ex.gunner"], max: 2 }, { label: "Subductors", from: ["ex.subductor"], max: 4 }]`; `selection.loadoutCaps: [{ label: "Gunner weapon", weapons: ["ex.w.grenade-launcher", "ex.wg.heavy-stubber", "ex.w.webber"], max: 1, each: true }]`; no `requires` | CLASS: data
+  - RULING: Exaction Squad Gunner model | one GUNNER datacard taken at most twice, each of its three weapon options at most once (loadout cap `each`), not three Gunner cards | the PDF has one Gunner datacard with three options and says each Gunner must have a different option (the Kasrkin pattern, T-KS.2) | Confirmed
+  - RULING: Exaction Squad Cyber-mastiff without Leashmaster | legal; it then has no attack patterns (T-EX.13) and can never activate jointly (T-EX.12) | the selection rules set no dependency, and both effects live on the Leashmaster's datacard | Confirmed
+- T-EX.3 Loadouts:
+  - PROCTOR-EXACTANT: exactly one of two sets: combat shotgun (both profiles) and repression baton; or shotpistol and dominator maul & assault shield.
+  - GUNNER: one of grenade launcher, heavy stubber (focused and sweeping) or webber; plus repression baton.
+  - LEASHMASTER: combat shotgun (both profiles), shotpistol and repression baton (fixed; the shotpistol comes from an earlier erratum).
+  - CHIRURGANT, MALOCATOR, VIGILANT, VOX-SIGNIFIER: combat shotgun (both profiles) and repression baton (fixed).
+  - CASTIGATOR: combat shotgun (both profiles) and excruciator maul (fixed; no baton).
+  - MARKSMAN: executioner shotgun (three profiles) and repression baton. REVELATUM: scoped shotpistol (two profiles) and repression baton.
+  - SUBDUCTOR: shotpistol and shock maul & assault shield. R-VR CYBER-MASTIFF: mechanical bite.
+  - MECH: datacard `weapons.options` (`sets` for the Proctor, a `from` slot for the Gunner); profile groups bring every profile | CLASS: data
+- T-EX.4 Archetypes: SECURITY and SEEK & DESTROY (tac ops are out of scope for v1).
+  - MECH: team.json `archetypes: ["security", "seek-and-destroy"]` | CLASS: data
+- T-EX.5 Keywords and terms:
+  - Every operative carries EXACTION SQUAD, IMPERIUM and ADEPTUS ARBITES plus its role keyword. The PROCTOR-EXACTANT also has LEADER; the CHIRURGANT also has MEDIC. The mastiff's role keyword is R-VR CYBER-MASTIFF (one keyword with a space and hyphens).
+  - **Shells weapons** (Special Issue Shells, T-EX.43) are, by name: combat shotgun, executioner shotgun, scoped shotpistol and shotpistol, every profile, and both Proctor variants.
+  - A **Range x weapon** (Long Arm, T-EX.36) is any profile that carries `core.wr.range`.
+  - **Frag or krak grenade** means the universal grenade weapons (M-5).
+  - MECH: keyword lists in operatives.json; the Shells set is a weapon id list in the team file (`SHELLS_WEAPONS`) | CLASS: data (lists team-hook)
+  - RULING: Exaction Squad PDF keyword spacing | the faction keyword is EXACTION SQUAD | the PDF prints "EXACTION SQUAD ," with a stray space; Wahapedia prints EXACTION SQUAD | Confirmed
+- T-EX.6 Team-local weapon rules:
+  - **Repress** (T-EX.31) on the dominator maul & assault shield and on the shock maul & assault shield.
+  - **Concealed Position** (T-EX.22) on the executioner shotgun's concealed profile.
+  - Every other weapon rule on the cards is core (R-10).
+  - MECH: weapon records carry `{ "rule": "ex.a.wr-repress" }` / `{ "rule": "ex.a.wr-concealed-position" }`, each backed by an ability record of kind `weaponRule` (validate-data rejects the reference without it, so the Phase 1 scaffold leaves Repress off the Proctor's maul until that record exists) | CLASS: data (effects team-hook)
+
+### 24.2 Operative stats
+
+| Operative | APL | Move | Save | Wounds | Base | Keywords |
+|---|---|---|---|---|---|---|
+| ARBITES PROCTOR-EXACTANT | 2 | 6" | 4+ (3+ with the maul set, T-EX.7) | 9 | 28 | EXACTION SQUAD, IMPERIUM, ADEPTUS ARBITES, LEADER, PROCTOR-EXACTANT |
+| ARBITES CASTIGATOR | 2 | 6" | 4+ | 8 | 28 | EXACTION SQUAD, IMPERIUM, ADEPTUS ARBITES, CASTIGATOR |
+| ARBITES CHIRURGANT | 2 | 6" | 4+ | 8 | 28 | EXACTION SQUAD, IMPERIUM, ADEPTUS ARBITES, MEDIC, CHIRURGANT |
+| ARBITES GUNNER | 2 | 6" | 4+ | 8 | 28 | EXACTION SQUAD, IMPERIUM, ADEPTUS ARBITES, GUNNER |
+| ARBITES LEASHMASTER | 2 | 6" | 4+ | 8 | 28 | EXACTION SQUAD, IMPERIUM, ADEPTUS ARBITES, LEASHMASTER |
+| R-VR CYBER-MASTIFF | 2 | 6" | 4+ | 8 | 25 | EXACTION SQUAD, IMPERIUM, ADEPTUS ARBITES, R-VR CYBER-MASTIFF |
+| ARBITES MALOCATOR | 2 | 6" | 4+ | 8 | 28 | EXACTION SQUAD, IMPERIUM, ADEPTUS ARBITES, MALOCATOR |
+| ARBITES MARKSMAN | 2 | 6" | 4+ | 8 | 28 | EXACTION SQUAD, IMPERIUM, ADEPTUS ARBITES, MARKSMAN |
+| ARBITES REVELATUM | 2 | 6" | 4+ | 8 | 28 | EXACTION SQUAD, IMPERIUM, ADEPTUS ARBITES, REVELATUM |
+| ARBITES SUBDUCTOR | 2 | 6" | 3+ | 8 | 28 | EXACTION SQUAD, IMPERIUM, ADEPTUS ARBITES, SUBDUCTOR |
+| ARBITES VIGILANT | 2 | 6" | 4+ | 8 | 28 | EXACTION SQUAD, IMPERIUM, ADEPTUS ARBITES, VIGILANT |
+| ARBITES VOX-SIGNIFIER | 2 | 6" | 4+ | 8 | 28 | EXACTION SQUAD, IMPERIUM, ADEPTUS ARBITES, VOX-SIGNIFIER |
+
+Notes:
+- Every card has APL 2 and Move 6". Only the Proctor has 9 wounds.
+- The Subductor's printed Save is 3+ (its shield is in the stat line). The Proctor's 3+ comes from its Assault Shield rule.
+- The mastiff is the only 25mm base. Stats and bases agree between the PDF and Wahapedia for all twelve cards.
+- Datacard ids: `ex.proctor-exactant`, `ex.castigator`, `ex.chirurgant`, `ex.gunner`, `ex.leashmaster`, `ex.cyber-mastiff`, `ex.malocator`, `ex.marksman`, `ex.revelatum`, `ex.subductor`, `ex.vigilant`, `ex.vox-signifier`.
+
+### 24.3 Weapon profiles
+
+| Weapon | Type | Atk | Hit | Dmg | Rules | Held by |
+|---|---|---|---|---|---|---|
+| Combat shotgun (close range), Proctor | R | 4 | 2+ | 4/4 | Range 6" | Proctor (option) |
+| Combat shotgun (long range), Proctor | R | 4 | 4+ | 2/2 | none | Proctor (option) |
+| Combat shotgun (close range) | R | 4 | 3+ | 4/4 | Range 6" | Castigator, Chirurgant, Leashmaster, Malocator, Vigilant, Vox-signifier |
+| Combat shotgun (long range) | R | 4 | 5+ | 2/2 | none | as above |
+| Shotpistol, Proctor | R | 4 | 3+ | 3/3 | Range 8" | Proctor (option) |
+| Shotpistol | R | 4 | 4+ | 3/3 | Range 8" | Leashmaster, Subductor |
+| Scoped shotpistol (short range) | R | 4 | 3+ | 3/3 | Range 8", Lethal 5+ | Revelatum |
+| Scoped shotpistol (long range) | R | 4 | 3+ | 3/3 | none | Revelatum |
+| Executioner shotgun (concealed) | R | 4 | 2+ | 4/0 | Devastating 4, Heavy, Silent, Concealed Position | Marksman |
+| Executioner shotgun (mobile) | R | 4 | 3+ | 4/4 | none | Marksman |
+| Executioner shotgun (stationary) | R | 4 | 2+ | 4/0 | Devastating 4, Heavy | Marksman |
+| Grenade launcher | R | 5 | 4+ | 4/5 | Piercing 1 | Gunner (option) |
+| Heavy stubber (focused) | R | 5 | 4+ | 4/5 | Heavy (Dash only) | Gunner (option) |
+| Heavy stubber (sweeping) | R | 4 | 4+ | 4/5 | Heavy (Dash only), Torrent 1" | Gunner (option) |
+| Webber | R | 4 | 3+ | 4/5 | Range 12", Severe, Stun | Gunner (option) |
+| Dominator maul & assault shield | M | 4 | 3+ | 4/4 | Lethal 5+, Shock, Repress | Proctor (option) |
+| Excruciator maul | M | 4 | 3+ | 5/5 | Rending, Shock | Castigator |
+| Shock maul & assault shield | M | 4 | 4+ | 4/4 | Shock, Repress | Subductor |
+| Mechanical bite | M | 4 | 4+ | 3/5 | Lethal 5+ | R-VR Cyber-mastiff |
+| Repression baton, Proctor | M | 3 | 3+ | 2/3 | none | Proctor (option) |
+| Repression baton | M | 3 | 4+ | 2/3 | none | Chirurgant, Gunner, Leashmaster, Malocator, Marksman, Revelatum, Vigilant, Vox-signifier |
+
+Notes:
+- 21 profiles over 15 weapon records. Ids: `ex.wg.combat-shotgun-proctor` (close range, long range), `ex.wg.combat-shotgun` (close range, long range), `ex.w.shotpistol-proctor`, `ex.w.shotpistol`, `ex.wg.scoped-shotpistol` (short range, long range), `ex.wg.executioner-shotgun` (concealed, mobile, stationary), `ex.w.grenade-launcher`, `ex.wg.heavy-stubber` (focused, sweeping), `ex.w.webber`, `ex.w.dominator-maul-assault-shield`, `ex.w.excruciator-maul`, `ex.w.shock-maul-assault-shield`, `ex.w.mechanical-bite`, `ex.w.repression-baton-proctor`, `ex.w.repression-baton`.
+- The Proctor's combat shotgun, shotpistol and baton are better than everyone else's, so each is a separate record (the Kasrkin Sergeant gun butt pattern). The Phase 1 scaffold already holds the Proctor's records.
+- Plain Heavy on the executioner shotgun's concealed and stationary profiles is the core rule. The heavy stubber's Heavy allows a Dash only (`"only": "dash"`).
+- The executioner shotgun's 4/0 means a retained crit inflicts no ordinary damage but triggers Devastating 4.
+
+UNCLEAR (resolved): the PDF layout extract scrambles every weapon table (the Hit/Dmg and WR columns are listed out of row alignment, e.g. Castigator's maul line appears under its long-range shotgun). Read against the name column, the flow extract and Wahapedia agree row for row; the table above follows them.
+UNCLEAR (resolved): the grenade launcher has a single profile with Piercing 1 and no Blast, and the webber's Dmg is 4/5. Both look odd but both sources print them, and the earlier erratum sets the grenade launcher's Atk to 5 and Dmg to 4/5. RULING: Exaction Squad grenade launcher and webber | as printed: grenade launcher 5 4+ 4/5 Piercing 1 (no Blast, no frag/krak profiles); webber 4 3+ 4/5 Range 12", Severe, Stun | identical in the PDF card, the PDF errata and Wahapedia; never tune printed numbers | Confirmed
+UNCLEAR (resolved): the Proctor's combat shotgun at long range is 4+ 2/2 while every other card's is 5+ 2/2, and the Proctor's shotpistol and baton hit on 3+ against 4+ elsewhere. RULING: Exaction Squad Proctor weapons | separate Proctor records for combat shotgun, shotpistol and repression baton | both sources print the better Hit on the Proctor card only | Confirmed
+
+### 24.4 Operative rules and unique actions
+
+- T-EX.7 **Assault Shield** (Proctor): with the shotpistol and dominator maul & assault shield set, the Proctor's Save is 3+ instead of 4+.
+  - MECH: LoadoutSet stat changes are not built (batch D list). Fallback: the team's set-up hook sets `op.save = 3` for an `ex.proctor-exactant` whose weapons include `ex.w.dominator-maul-assault-shield` (the Legionaries pattern), so every query and the datacard view show 3+ | CLASS: team-hook
+  - RULING: Exaction Squad Assault Shield | the 3+ is the operative's Save stat for the whole battle (Piercing and every "improve/worsen Save" rule start from 3+), set at set-up from the loadout | the card defines the stat, not a modifier; LoadoutSet stat overrides are not built, so the team writes the stat once | Unsourced
+- T-EX.8 **Nuncio-aquila** (Proctor):
+  - The centre is your Nuncio-aquila marker. While that marker is not in the killzone, the centre is the Proctor itself.
+  - (a) An enemy operative within 3" of the centre pays 1 extra AP for Pick Up Marker and for mission actions.
+  - (b) When control of any marker is worked out (R-8.6), the total APL of the enemy operatives contesting it counts 1 lower if at least one of them is within 3" of the centre. This is not a change to APL, so it stacks with APL changes.
+  - MECH: (a) provider `actionCostDelta(state, op, actionId)` returns +1 for an enemy of the Exaction seat, for `marker:pickUp` and for `ability:<id>` whose keywords include MISSION, when the operative is within 3" of the marker (or of the Proctor while the marker is off the board and the Proctor is in the killzone); (b) provider `controlTotal(state, seat, marker, total, contesting)` returns `max(0, total - 1)` for the opposing seat when any `contesting` id is within 3" of the centre | CLASS: team-hook
+  - RULING: Exaction Squad Nuncio-aquila mission actions | the surcharge covers Pick Up Marker and every action keyworded MISSION in our data (Operate Hatch too, if the killzone data keywords it MISSION); measured when the action is declared; the cost shown on the prompt includes it, so an operative short of AP is not offered the action, and a 1 AP Pick Up Marker becomes 2 AP and so is not available as a counteraction | "Pick Up Marker and mission actions" names the action categories; Execution Order's explicit exclusion of Operate Hatch shows the designers count it as a mission action | Unsourced
+  - RULING: Exaction Squad Nuncio-aquila control | applied once per marker per seat however many enemies are near (the total drops by exactly 1), never below 0, and only to the Exaction player's opponent | "treat the total ... as 1 lower if at least one" | Confirmed
+  - RULING: Exaction Squad Nuncio-aquila without a Proctor | when the marker is off the board and the Proctor is not in the killzone (incapacitated or set aside), neither effect applies | the fallback centre is the Proctor, and an absent operative has no position | Unsourced
+- T-EX.9 **DEPLOY NUNCIO-AQUILA** (Proctor, 0 AP): if your Nuncio-aquila marker is not in the killzone, place it within 6" of the Proctor measured horizontally; otherwise move it to a point within 6" of where it is, measured horizontally. If the Proctor is removed from the killzone, the marker is removed too. Not while in an enemy's control range.
+  - MECH: unique 0 AP action; the spot choice reuses the Hierotek `markerSpots` sampler (horizontal distance from the Proctor, or from the marker's current position) as `ability.choice` options; team marker `ex.nuncio` (not pickable, never an objective, owner = Exaction seat); removal of the marker on the D2 hook `operative.removed` for the Proctor (any cause) | CLASS: generic:killLog / operative.removed
+  - RULING: Exaction Squad Nuncio-aquila placement | only horizontal distance counts (vertical ignored); the spot may be on the killzone floor or on a terrain surface the shared sampler offers; no visibility needed; it may be within enemy control range | the action says "horizontally" and names no other restriction on the spot | Unsourced
+  - RULING: Exaction Squad Deploy Nuncio-aquila cost | 0 AP, so once per activation and never as a counteraction | R-3.7, R-3.12 | Confirmed
+- T-EX.10 **Medic!** (Chirurgant): the first time each TP that another friendly EXACTION SQUAD operative visible to and within 3" of the Chirurgant would be incapacitated, you may use this rule. Conditions: neither of the two is in an enemy's control range, the Chirurgant is not incapacitated, and (in a Shoot action) the Chirurgant is not a primary or secondary target. Effect:
+  - The friendly operative is not incapacitated, is left on 1 wound and cannot be incapacitated for the rest of that action.
+  - After the action it may perform a free Dash that must end within the Chirurgant's control range.
+  - Both operatives then have APL -1 until the end of their next activations.
+  - If this happened during the saved operative's own activation, that activation ends.
+  - A Medic token marks the saved operative.
+  - MECH: the Kasrkin / Pathfinders Medic! implementation (T-KS.9, T-PF.14): `beforeIncapacitated` sets `wounds: 1`, `onDamageInflicted` floor for the rest of the action, free Dash via `startFreeAction({ action: 'dash', endWithinCrOf })`, `effects.aplChangeNextActivation(-1)` for both (the batch C shared helper), `Activation.endsAfterAction`, once-per-TP ledger, Medic token | CLASS: team-hook
+  - RULING: Exaction Squad Medic! opportunity | automatic at the first qualifying moment each TP (the shared damage pipeline cannot pause for a decision, 00-architecture batch C shared row); the free Dash is optional and skipped when no end point lies in the Chirurgant's control range; with Reinforced Mirror-visor (T-EX.40) both APL -1s are ignored | same wording and same engine limits as the Kasrkin card (T-KS.9) | Unsourced
+- T-EX.11 **MEDIKIT** (Chirurgant, 1 AP): one friendly EXACTION SQUAD operative in the Chirurgant's control range regains up to 2D3 lost wounds (never above its starting wounds). It cannot pick the operative Medic! saved this TP. Not while in an enemy's control range.
+  - MECH: unique 1 AP action with friendly-target filter (in CR, not this TP's Medic! target), `effects.regainWounds(2D3)` | CLASS: data
+  - RULING: Exaction Squad MEDIKIT self-target | the Chirurgant may heal itself | an operative is within any distance of itself (R-8.3) and the text does not say "other" (the Kasrkin ruling) | Unsourced
+- T-EX.12 **Handler** (Leashmaster): when the Leashmaster is activated, you may activate a ready friendly R-VR CYBER-MASTIFF together with it. Their activations then run action by action in any order you like.
+  - MECH: 0 CP offer (ploy rule `extraOffers`) in the `firefight.activationStart` window of the Leashmaster's own activation (not a counteraction), one option per ready mastiff and per allowed order; `firefight.joinActivation(ctx, mastiffId, order)` (the Extremis Mind-Link / Mutant Herd pattern); the player switches with `firefight.action` `switch` | CLASS: team-hook
+  - RULING: Exaction Squad Handler | only when the Leashmaster is activated (never when the mastiff is picked first, never in a counteraction); the mastiff picks its own order; each keeps its own AP and action limits | "whenever this operative is activated"; counteracting is not activating (R-3.12); joint activation rules as T-HC Extremis Mind-Link | Confirmed
+  - RULING: Exaction Squad Handler and Brutal Backup | in a joint activation, an operative that has already performed Fight in it cannot be the Brutal Backup fighter | PDF previous rules commentary and Wahapedia FAQ | Confirmed
+- T-EX.13 **Attack Pattern** (Leashmaster): a STRATEGIC GAMBIT in TP1 only. Pick two different patterns for one friendly R-VR CYBER-MASTIFF, kept for the battle:
+  - **Aggressive**: its melee weapons have Relentless.
+  - **Swift**: +2" to its Move.
+  - **Defensive**: its Save improves by 1.
+  - Tokens (Aggressive, Swift, Defensive) mark the patterns.
+  - MECH: Strategy-phase gambit with params in TP1 only (the Kasrkin Skill at Arms pattern, two `distinctFrom` picks), gated on the Leashmaster and a mastiff in the killzone. Patterns go in a battle ledger on the mastiff (`ex.pattern` effect `expires: 'battle'`) plus public tokens. Aggressive: `modifyWeaponRules` adds `core.wr.relentless` to its melee profiles. Swift: provider `moveDelta` +2. Defensive: `op.save` lowered by 1 while the pattern is held (restored when it is changed away), so queries show it | CLASS: team-hook
+  - RULING: Exaction Squad Attack Pattern use | offered once, in the TP1 Gambit step, while the Leashmaster and at least one Cyber-mastiff are in the killzone; the patterns stay for the battle even if the Leashmaster is later incapacitated; the AI picks Aggressive and Swift | the gambit belongs to the Leashmaster's card; "for the battle" fixes the duration | Unsourced
+  - RULING: Exaction Squad Defensive pattern | written into the mastiff's Save stat (4+ to 3+), so Piercing and the Save shown in every view start from 3+ | "improve its Save stat by 1" is a stat change the engine owns | Unsourced
+- T-EX.14 **R-VR COMMAND** (Leashmaster, 0 AP): pick one friendly R-VR CYBER-MASTIFF (anywhere) and swap one of its attack patterns for the one it does not have.
+  - MECH: unique 0 AP action, `ability.choice` over (pattern held -> missing pattern); updates the ledger, tokens and `op.save` (Defensive) | CLASS: team-hook
+  - RULING: Exaction Squad R-VR Command | offered only when a mastiff holds patterns (none before the TP1 gambit or if it was never used); no range, visibility or enemy-control-range restriction | the card prints none; with no patterns there is nothing to change | Unsourced
+- T-EX.15 **Beast** (R-VR Cyber-mastiff): it can take only Apprehend, Charge, Dash, Fall Back, Fight, Guard, Reposition, Pick Up Marker and Place Marker. It can use no weapon that is not on its datacard.
+  - MECH: the Farstalker Beast pattern (T-FK.14): provider `actionForbidden` for every other universal, unique, mission or equipment action; `weaponForbidden` for any weapon but `ex.w.mechanical-bite`; `equipmentEligible` false for weapon-granting equipment | CLASS: team-hook
+  - RULING: Exaction Squad Beast actions | mission actions, Operate Hatch, Shoot, grenade actions and every other unique action are barred; Guard is allowed (it can only interrupt with a Fight, having no ranged weapon) | the card's list is exhaustive | Confirmed
+- T-EX.16 **APPREHEND** (R-VR Cyber-mastiff, 0 AP): pick one enemy operative in the mastiff's control range. The effect lasts until that enemy is no longer in the mastiff's control range, or until the mastiff performs Apprehend again, whichever is first:
+  - The enemy's weapons have their Hit worsened by 1. This does not add to the injured penalty.
+  - The enemy cannot perform Fall Back.
+  - Only possible with an enemy in the mastiff's control range. An Apprehend token marks the enemy.
+  - MECH: token `ex.apprehend` on the enemy with `data.by = mastiffId`; a pure check `apprehended(state, enemy)` = token present and the enemy in that mastiff's control range (so it lapses the moment either moves or is removed). Effects: `modifyAttackDice` adds `hitDelta +1` when the enemy shoots, fights or retaliates and has no injured penalty (`hasInjuredPenalty` / `injuredEquivalent`); provider `actionForbidden(enemy, 'fallBack')` | CLASS: team-hook
+  - RULING: Exaction Squad Apprehend and injury | the +1 is skipped while the enemy suffers the injured Hit penalty (real or an injured-equivalent rule) and comes back if it is healed out of injury while still apprehended | "not cumulative with being injured" | Confirmed
+  - RULING: Exaction Squad Apprehend duration | checked live; once the enemy leaves the mastiff's control range (either moves, or the mastiff is removed) the effect ends for good, even if they meet again | "until that enemy is no longer within this operative's control range" | Unsourced
+- T-EX.17 **Engendered Focus** (Castigator): you may ignore any change to the Castigator's stats and its weapons' stats, but not to its Save.
+  - MECH:
+    - APL: D5 `flags.ignoreAplDecreases` (decreases ignored, increases such as Signal kept).
+    - Injury (Move -2", Hit +1): `flags.ignoreInjured`.
+    - Other Hit and Atk changes: a team `modifyAttackDice` clamp for the Castigator that sets `hitDelta = min(hitDelta, 0)` and `atk = max(atk, printed Atk)`.
+    - CLASS: generic:ignoreAplDecreases (Hit, Atk and injury team-hook)
+  - RULING: Exaction Squad Engendered Focus choice | "can ignore" is applied in the operative's favour automatically: decreases and worsenings are ignored, increases and improvements are kept | a player would never keep a harmful change; it saves a decision on every stat read | Unsourced
+  - RULING: Exaction Squad stat clamp hook order | the Hit and Atk clamp (Engendered Focus, Stubborn Subjugator) runs in the Exaction `modifyAttackDice` handler, on the net `hitDelta` (an improvement and a worsening that cancel stay at 0). A worsening added later by a handler from a team registered after Exaction is not caught. Move changes other than injury (another team's negative `moveDelta`) are not ignored | no shared "final stat" hook exists in batch D; the clamp covers the core injury, Apprehend-type and Stun-type changes that occur in practice | Unsourced
+  - RULING: Exaction Squad Engendered Focus damage | rules that lower the damage the Castigator inflicts (or suffers) change damage, not a weapon stat, and still apply | the rule names stats; damage reductions are not stat changes (R-9.6) | Unsourced
+- T-EX.18 **Zealous Dedication** (Castigator): each time an attack die would inflict 3 or more damage on the Castigator, roll one D6; on a 5+ that die inflicts 1 less.
+  - MECH: `onDamageInflicted` on the Castigator for attack-die sources (`normal`, `crit`, `strike-normal`, `strike-crit`) with `amount >= 3`: roll through `engine`, subtract 1 on 5+ | CLASS: team-hook
+  - RULING: Exaction Squad Zealous Dedication scope | every attack die in shoot, fight and retaliation, normal and crit alike, after other reductions; never Devastating damage or direct damage (not damage from an attack die, R-5.15) | the card says "attack dice"; Devastating is not dice damage | Confirmed
+- T-EX.19 **Castigator's Arrest** (Castigator): while exactly one enemy operative is in the Castigator's control range, that enemy cannot perform Fall Back.
+  - MECH: provider `actionForbidden(enemy, 'fallBack')` when that enemy is the only enemy in a friendly Castigator's control range | CLASS: team-hook
+- T-EX.20 **Acute Focus** (Malocator): once in each of the Malocator's activations, one Pick Up Marker, Place Marker, VERISCANT or mission action it performs costs 1 AP less.
+  - MECH: provider `actionCostDelta` -1 for those actions (`marker:pickUp`, `marker:place`, `ability:ex.a.veriscant`, MISSION abilities) while the per-activation ledger `ex.acuteFocus` is unset; the `action.ended` hook sets it after the first discounted action | CLASS: team-hook
+  - RULING: Exaction Squad Acute Focus | the discount goes automatically to the first qualifying action of the activation; it never applies in a counteraction; a 0 AP action stays once per activation (R-3.7) | "during each of this operative's activations"; counteracting is not activating (R-3.12) | Unsourced
+- T-EX.21 **VERISCANT** (Malocator, 1 AP): pick one enemy operative visible to the Malocator. While a friendly EXACTION SQUAD operative shoots, fights or retaliates against that enemy, its weapons have Lethal 5+ and Severe. The effect lasts until the start of the Malocator's next activation, until the Malocator is incapacitated, or until it performs Veriscant again, whichever comes first. Not while in an enemy's control range. A Veriscant token marks the enemy.
+  - MECH: token `ex.veriscant` on the enemy (expiry: source activation start, source incapacitated, replaced on re-use); `modifyWeaponRules` with `targetId` adds `core.wr.lethal 5+` and `core.wr.severe` for EXACTION SQUAD attackers | CLASS: team-hook
+  - RULING: Exaction Squad Veriscant card text | Lethal 5+ and Severe, as on the June '26 card and Wahapedia, not the older wording in the PDF's previous-errata list | every other previous erratum is already in the card text, so the card is the later state | Unsourced
+- T-EX.22 **Concealed Position** (Marksman, concealed profile): the concealed profile can be used only in the Marksman's first Shoot action of the battle.
+  - MECH: provider `weaponForbidden(state, op, 'ex.w.executioner-shotgun-concealed', 'shoot')` returns a reason once the battle ledger records a resolved Shoot by this operative (the Kasrkin implementation) | CLASS: generic:weaponForbidden
+  - RULING: Exaction Squad Concealed Position | any Shoot action in which the Marksman shot (free and Guard interrupt Shoots included) uses up the profile, whichever profile it picked | same as T-KS.16 | Unsourced
+- T-EX.23 **OPTICS** (Marksman, 1 AP): until the start of the Marksman's next activation, (a) the concealed and stationary profiles of its executioner shotgun have Lethal 5+, and (b) while it shoots with any executioner shotgun profile, enemy operatives cannot be obscured. Not while in an enemy's control range.
+  - MECH: token `ex.optics` on the Marksman (expiry: its next `activation.start`); `modifyWeaponRules` adds `core.wr.lethal 5+` to the two profiles; `target.status` sets `obscured: false` when the shooter has the token and the weapon is in `ex.wg.executioner-shotgun` | CLASS: team-hook
+- T-EX.24 **First in the Field** (Revelatum): a STRATEGIC GAMBIT in TP1 only. If the Revelatum is wholly within your drop zone, it may perform a free Reposition at once.
+  - MECH: TP1 gambit gated on `wholly within` the seat's drop zone; `startFreeAction({ action: 'reposition' })` in the Strategy phase (the gambit free-move pattern; reaction points as `ReactionInfo.strategy`) | CLASS: team-hook
+  - RULING: Exaction Squad First in the Field | the Reposition is optional, follows the normal Reposition rules (Move, terrain, control range) and may leave the drop zone; the gambit is spent if used even when no move is made | "can immediately perform a free Reposition action" | Unsourced
+- T-EX.25 **SPOT** (Revelatum, 1 AP): pick one enemy operative visible to the Revelatum and within 8" of it. Until the end of the TP, whenever a friendly EXACTION SQUAD operative shoots that enemy, you may use this effect: its ranged weapons have Seek Light, and the enemy cannot be obscured. Not while in an enemy's control range. A Spot token marks the enemy.
+  - MECH: token `ex.spot` on the enemy (expires at TP end); `modifyWeaponRules` with `targetId` adds `core.wr.seek-light`; `target.status` sets `obscured: false` for EXACTION SQUAD shooters | CLASS: team-hook
+  - RULING: Exaction Squad Spot use | always used (both parts only help the shooter); every friendly EXACTION SQUAD shooter qualifies wherever it is; Spot is not a SUPPORT rule, so the Comms Device does not lengthen its 8" | the June '26 card and Wahapedia print no distance to the Revelatum and no SUPPORT keyword; the PDF's previous-errata list shows an older text with both, but every other previous erratum is already in the card text, so the card is the later state | Unsourced
+- T-EX.26 **Stubborn Subjugator** (Subductor): you may ignore any change to the Hit stat of the Subductor's melee weapons.
+  - MECH: the T-EX.17 team `modifyAttackDice` clamp, melee only (`kind: 'fight'`): `hitDelta = min(hitDelta, 0)` | CLASS: team-hook
+  - RULING: Exaction Squad Stubborn Subjugator | applied automatically in the Subductor's favour (worsenings ignored, improvements kept), including the injured Hit penalty on melee; its ranged weapon and Move are unaffected | as T-EX.17; the rule names only melee Hit | Unsourced
+- T-EX.27 **Close Quarters Vigilance** (Vigilant): the Vigilant may perform Shoot while in an enemy's control range, unless it has performed Charge in this activation. In a counteraction it always may. Guard is not covered: a guarding Vigilant still interrupts under the core rules. The Vigilant may still Charge after such a Shoot.
+  - MECH:
+    - Provider `shootInControlRange(state, op)`: true for a Vigilant when the current activation's `performed` has no `charge`, or when it is counteracting.
+    - Provider `freeShootInControlRange`: true under the same conditions.
+    - `beforeShootTargetSelect` adds enemies in the Vigilant's own control range (visible, valid if Conceal and in cover) when it shoots from inside one.
+    - CLASS: team-hook
+  - RULING: Exaction Squad Close Quarters Vigilance targets | the Vigilant may target an enemy in its own control range; only R-5.2's friendly-in-control-range clause for the Vigilant itself is waived (other friendlies there are handled by Ruthless Efficiency); the Shoot is a normal Shoot, not a point-blank one (no Hit penalty, no ban on retaliating); a guarding Vigilant's interrupt in control range stays the core point-blank shot | the permission would be empty otherwise; "excluding Guard" keeps Guard on the core rules (the Corsair Quick on the Trigger precedent, T-CV.18) | Unsourced
+- T-EX.28 **SIGNAL** (Vox-signifier, 1 AP, SUPPORT): pick another friendly EXACTION SQUAD operative visible to the Vox-signifier. It has APL +1 until the end of its next activation. Not while in an enemy's control range.
+  - MECH: unique action with a friendly-target filter (not self, visible); `applyAplEffect(+1)` expiring at the end of the target's next activation (the Kasrkin Battle Comms shape without the ceiling) | CLASS: data
+  - RULING: Exaction Squad Signal | the +1 applies at once (it counts for control and for a counteraction before that activation) and ends when the target's next activation ends; a second Signal on the same target adds nothing (R-9.6); the Comms Device adds nothing (Signal has no distance) | "until the end of that operative's next activation"; the APL cap; SUPPORT bonuses lengthen distances only | Confirmed
+
+### 24.5 Faction rules
+
+- T-EX.29 **RUTHLESS EFFICIENCY**: when a friendly EXACTION SQUAD operative shoots (with any weapon except frag or krak grenades), other friendly EXACTION SQUAD operatives in an enemy's control range do not stop you choosing that enemy as a target.
+  - MECH: `beforeShootTargetSelect` (primary and Blast/Torrent secondary enumeration alike) adds back every enemy that core dropped only because friendly EXACTION SQUAD operatives other than the shooter are in its control range, after checking visibility and `coverBlocks` with `targetInfo` | CLASS: team-hook
+  - RULING: Exaction Squad Ruthless Efficiency use | always used (there is no friendly fire in 2024 Kill Team, so it has no downside); friendly operatives of another faction (none in a single-team roster) would still block; Blast and Torrent secondaries are covered too | "you can use this rule"; R-5.2 and the Torrent secondary clause both name friendly operatives in control range | Unsourced
+- T-EX.30 **MARKED FOR JUSTICE** (STRATEGIC GAMBIT, once per TP): pick one enemy operative anywhere as your mark for the TP. While a friendly EXACTION SQUAD operative shoots, fights or retaliates against the mark, its weapons have Punishing. Whenever the mark is incapacitated, you may pick a new mark for the rest of the TP, and keep doing so each time a mark falls. A Marked for Justice token shows the mark.
+  - MECH: Strategy-phase gambit with an enemy pick (the Farstalker Call the Kill pattern, T-FK.7): effect `ex.mark` (`data.markId`, expires at TP end) plus a public token. `modifyWeaponRules` with `targetId` adds `core.wr.punishing` for EXACTION SQUAD attackers against the mark. The re-pick reads the D2 kill log: at the next reaction point after the action, `ownReactions` (Exaction active) or `reactions` (opponent active) offer a 0 CP pick when `killsSince(state, activation.declaredSeq)` holds the current mark | CLASS: generic:killLog / operative.removed
+  - RULING: Exaction Squad Marked for Justice new mark timing | the new mark is picked at the end of the action in which the mark fell, after removals, whatever removed it (attack, Blast/Torrent secondary, direct damage, mine) | the June '26 rules commentary answers this for Blast and Torrent; D2 records every removal | Confirmed
+  - RULING: Exaction Squad Marked for Justice outside an action | a mark removed with no action in progress (Strategy phase damage, end of TP) is re-picked at the Exaction seat's next reaction point in the same TP, and the chance lapses at the TP's end | no reaction point exists outside actions; the mark lasts only for the TP | Unsourced
+  - RULING: Exaction Squad Marked for Justice use | the gambit is free and always used by the AI on the enemy with the most wounds remaining among those a friendly operative can shoot this TP; the pick is public | no cost, no downside; gambit effects are announced | Unsourced
+- T-EX.31 **REPRESS** (team weapon rule; dominator maul & assault shield, shock maul & assault shield): while the operative uses this weapon, (a) each of its blocks may cancel two unresolved enemy successes instead of one, and (b) when it is retaliating, it resolves first (the defender strikes or blocks before the attacker).
+  - MECH: ability record `ex.a.wr-repress` (kind `weaponRule`); (a) provider `blockCapacity(state, attack, seat, die)` returns 2 when `seat`'s fighter's selected weapon has `ex.a.wr-repress` (the Tangle pattern); (b) provider `fightResolveStart` returns `{ first: <defender seat> }` when the defender's weapon has it | CLASS: team-hook
+  - RULING: Exaction Squad Repress blocks | a normal block cancels two normal successes, or one normal success and nothing else; a crit block cancels any two successes (crits or normals). A single block may not be split across a strike in between; both cancelled successes are chosen when the block is made | the block rules of R-6 with capacity 2, as the shared `block2:` option implements for Tangle | Unsourced
+  - RULING: Exaction Squad Repress when both fighters have it | the attacker's Repress gives only (a); a retaliating Repress fighter resolves first even if the attacker also has Repress | (b) names only the retaliating operative | Confirmed
+
+### 24.6 Ploys
+
+The source prints no costs: every ploy is 1 CP (R-2.4). Strategy ploys last until the end of the TP (R-2.5).
+
+- T-EX.32 **GUILT REVEALS ITSELF** | Strategy | 1 CP | Gambit step | When you pick a valid target for a friendly EXACTION SQUAD operative, an enemy within 4" of it cannot be in cover for target selection (instead of 2"). This can make a Conceal enemy in cover a valid target, but it keeps its cover save unless it is within 2" as normal.
+  - MECH: `beforeShootTargetSelect` (primary and secondary enumeration) adds back an enemy that core dropped only for `coverBlocks` when it is within 4" of the shooter, visible, and not barred for another reason; the sequence status stays as the terrain verdict gives it (in cover, so the cover save remains) | CLASS: team-hook
+  - RULING: Exaction Squad Guilt Reveals Itself and other teams' 2" exceptions | another team's "not targetable except within 2"" rule (Hernkyn Yaegir In Position) becomes 4" only where that team expresses it through the cover verdict (`coverBlocks`); a team hook that removes candidates on its own distance test is not widened | the PDF commentary and FAQ answer yes to the 4" extension, but no shared hook exposes another team's 2" figure | Unsourced
+- T-EX.33 **INVIOLATE JURISDICTION** | Strategy | 1 CP | Gambit step | When an operative shoots a friendly EXACTION SQUAD operative that is within 2" of an objective marker or of an enemy operative, you may re-roll one defence die.
+  - MECH: `modifyDefenceDice` adds `RerollGrant { mode: 'one' }` when the target is within 2" of an objective marker or of any enemy operative at the defence roll | CLASS: team-hook
+- T-EX.34 **DISPENSE JUSTICE** | Strategy | 1 CP | Gambit step | When a friendly EXACTION SQUAD operative fights or retaliates, its melee weapons have Ceaseless if it has not moved more than its Move stat in the activation, or if it is counteracting.
+  - MECH: `modifyWeaponRules` (kind fight) adds `core.wr.ceaseless` when `op.movedThisActivation <= effectiveMove(op)` in its own activation, when it is counteracting, or when the fight is outside its own activation | CLASS: team-hook
+  - RULING: Exaction Squad Dispense Justice movement | measured as the distance the operative itself has moved in its current activation (climbs, drops and free moves included) against its current Move stat; retaliating in an enemy activation and free Fights outside its activation always qualify, since it has not moved in that activation; a Charge that used the 2" extra does not qualify | the card ties the test to "during the activation"; `movedThisActivation` counts every inch spent | Unsourced
+- T-EX.35 **TERMINAL DECREE** | Strategy | 1 CP | Gambit step | When a friendly EXACTION SQUAD operative shoots an enemy within 6" of it, and whenever a friendly GUNNER shoots at any range, its ranged weapons have Balanced.
+  - MECH: `modifyWeaponRules` with `targetId` (kind shoot): add `core.wr.balanced` when the target is within 6" of the shooter or the shooter has keyword GUNNER | CLASS: team-hook
+  - RULING: Exaction Squad Terminal Decree distance | checked per target, so a Blast or Torrent secondary beyond 6" gains nothing unless the shooter is a Gunner | each sequence has its own target | Unsourced
+- T-EX.36 **LONG ARM OF THE EMPEROR'S LAW** | Firefight | 1 CP | When a friendly EXACTION SQUAD operative performs Shoot and picks a weapon with Range x (not frag or krak grenades) | x is 3" longer until the end of that action.
+  - MECH: `shoot.weaponSelected` is not built (batch D list). Fallback: firefight ploy in the `firefight.actionDeclared` window of the operative's own Shoot, offered only when it has a usable Range x weapon other than frag/krak; effect `ex.longArm` (expires at action end); `modifyWeaponRules` adds 3 to `core.wr.range` inches on any non-grenade profile used in that action (so `validTargets` already counts the longer range) | CLASS: team-hook
+  - RULING: Exaction Squad Long Arm timing | used when the Shoot is declared, before the weapon pick (no window exists between the weapon and target picks); it then lengthens whichever Range x weapon (not frag or krak) is picked in that action; if a weapon without Range x is picked, nothing happens and the CP is spent | the card's trigger is the weapon pick; the declaration window is the nearest one before targets are chosen | Unsourced
+- T-EX.37 **EXACT PUNISHMENT** | Firefight | 1 CP | After an enemy operative shoots or fights against a friendly EXACTION SQUAD operative within 6" of that enemy, and the friendly operative was not incapacitated | That friendly operative may at once perform a free Shoot or a free Fight against that enemy only. Blast secondaries are still allowed.
+  - MECH: firefight ploy for the Exaction seat in the `firefight.actionEnded` window after an enemy's Shoot or Fight action (its activation or counteraction). The friendly operatives it attacked are recorded by `afterShootResolved` / `onFightResolved` into a per-action effect. `startFreeAction({ action: 'shoot' | 'fight', interrupt: true })`; `beforeShootTargetSelect` keeps only that enemy as primary (secondary enumeration untouched); provider `fightTargets` keeps only that enemy | CLASS: team-hook
+  - RULING: Exaction Squad Exact Punishment scope | measured at the end of the enemy's action (the friendly within 6" of the enemy and still in the killzone); a Blast or Torrent secondary target counts as shot against; the free action follows the normal Shoot or Fight conditions (a friendly in that enemy's control range can Fight, and Shoots only if Close Quarters Vigilance allows it); not offered after a Guard interrupt Shoot, because no ploy window opens there | the card's trigger is the enemy's attack; the FAQ keeps Blast secondaries; batch D has no window after a Guard interrupt | Unsourced
+- T-EX.38 **BRUTAL BACKUP** | Firefight | 1 CP | During a friendly EXACTION SQUAD operative's activation, before or after one of its actions | Pick one enemy operative in its control range. Another friendly EXACTION SQUAD operative may at once perform a free Fight against that enemy only.
+  - MECH: firefight ploy in `firefight.activationStart` and `firefight.actionEnded` of the Exaction seat's own activation (not a counteraction); enemy pick among enemies in the active operative's control range; fighter pick among other friendly EXACTION SQUAD operatives with that enemy in their control range that may still Fight (R-3.7 for an operative inside its own or a joint activation); `startFreeAction({ action: 'fight' })` with provider `fightTargets` keeping only that enemy | CLASS: team-hook
+  - RULING: Exaction Squad Brutal Backup | the fighter may be ready or expended; the free Fight is outside its own activation unless it is the joint Handler partner (then it counts as its Fight for that activation, and a partner that already fought is not offered, per the FAQ); not usable in a counteraction | R-3.9 free actions; the FAQ answer on Handler; "during a friendly operative's activation" excludes counteractions (R-3.12) | Confirmed
+- T-EX.39 **EXECUTION ORDER** | Firefight | 1 CP | (a) When an enemy operative performs a mission action other than Operate Hatch, or (b) at the end of the Firefight phase, naming an enemy that controls an objective marker. The next time the opponent would activate that enemy, you may interrupt and activate a ready friendly EXACTION SQUAD operative. Effects:
+  - In that activation, the friendly operative must shoot or fight that enemy before it may shoot or fight any other enemy; if it cannot, its activation is cancelled.
+  - Afterwards the enemy's activation continues if it can.
+  - The ploy cannot be used again until that enemy has been activated or incapacitated.
+  - FAQ: if an opponent's rule stops the friendly operative's attack, its activation is not cancelled; carry on as if the requirement were met.
+  - MECH: the interrupting activation is not built (batch D list). Fallback:
+    - Trigger (a): the `firefight.opponentActionDeclared` window. Trigger (b): the `turningPoint.end` window.
+    - Effect `ex.executionOrder` on the enemy (`expires: 'battle'`), cleared at that enemy's `activation.start` (after the offer below) or by the D2 hook `operative.removed`.
+    - At that enemy's next `firefight.activationStart` (not a counteraction), the Exaction seat gets a 0 CP offer. The friendly picks come from ready friendly operatives that can shoot the enemy now (it is in their `validTargets` for some usable ranged weapon, Close Quarters Vigilance included) or fight it (it is in their control range).
+    - The chosen operative performs `startFreeAction({ action: 'shoot' | 'fight', interrupt: true })` limited to that enemy (`beforeShootTargetSelect`, `fightTargets`), then becomes expended (`ready = false`, `OperativeExpended`).
+    - CLASS: team-hook (generic:killLog / operative.removed for the release)
+  - RULING: Exaction Squad Execution Order fallback | the interrupting activation is reduced to one free Shoot or Fight against the named enemy, after which the friendly operative is expended; it is offered at the start of the enemy's activation (after its order is chosen) | no shared way exists to run a nested activation inside the opponent's; one attack then expending the operative keeps the cost (the operative's activation) and the purpose (strike the enemy first) | Unsourced
+  - RULING: Exaction Squad Execution Order impossible attack | only operatives that can shoot or fight the enemy at that moment are offered; if none can, the ploy's effect lapses for that activation (nothing happens, the CP was already spent when it was used); if an opponent's rule then cancels the declared Shoot or Fight, the operative is still expended | the card cancels an activation that cannot attack; the FAQ treats a blocked attack as fulfilled | Unsourced
+  - RULING: Exaction Squad Execution Order lock | one named enemy at a time; the lock lifts when that enemy is activated (a counteraction is not an activation) or incapacitated, and it carries over into later TPs until then | "you cannot use this ploy again until that enemy operative is activated or incapacitated" | Confirmed
+  - RULING: Exaction Squad Execution Order trigger (a) | offered when the enemy declares a mission action other than Operate Hatch (Pick Up Marker is not a mission action) | the card names mission actions and excludes only Operate Hatch | Unsourced
+
+### 24.7 Faction equipment
+
+Universal equipment (M-5) can also be chosen; the four-option limit covers faction and universal options together (M-5.12).
+
+- T-EX.40 **REINFORCED MIRROR-VISOR** | You may ignore any change to the APL of friendly EXACTION SQUAD operatives, and enemy weapons' Shock does not affect them.
+  - MECH: provider `flags` returns `ignoreAplDecreases: true` (D5) for every friendly EXACTION SQUAD operative while equipped (decreases ignored, increases such as Signal kept); Shock: `modifyWeaponRules` strips `core.wr.shock` from an enemy's weapon when the sequence's target or the fight opponent is a friendly EXACTION SQUAD operative (the Breachers Rebreathers pattern, T-NB.41) | CLASS: generic:ignoreAplDecreases (Shock team-hook)
+  - RULING: Exaction Squad Mirror-visor APL | applied in the team's favour automatically: APL decreases (Stun, Medic!, enemy rules) are ignored, increases are kept | "can ignore any changes"; a player would never keep a harmful one | Unsourced
+- T-EX.41 **MANACLES** | When an enemy operative would perform Fall Back while in a friendly EXACTION SQUAD operative's control range, and no other enemy is in that friendly's control range, you may use this rule:
+  - Roll two D6, or one D6 if the enemy's Wounds stat is higher than the friendly's.
+  - On any 4+, the enemy cannot perform that Fall Back in that activation or counteraction (no AP spent), and you cannot use this rule again this TP.
+  - MECH: hook `action.declared` for an enemy's `fallBack`: find a friendly EXACTION SQUAD operative whose control range holds only that enemy (prefer one that rolls two dice); roll through `engine`; on a 4+ set `cancel` and `bar`; once-per-TP ledger set only on success | CLASS: team-hook
+  - RULING: Exaction Squad Manacles use | always used (lifecycle hooks raise no decisions, and it has no downside); a failed roll does not use up the TP's use, so a later Fall Back can be tried again; "Wounds stat" is the printed starting wounds, not wounds remaining | the "cannot use again" clause sits inside the 4+ sentence; a stat is the printed value | Unsourced
+- T-EX.42 **STROBING PHOSPHOR-LUMEN** | When an enemy operative shoots, fights or retaliates against a friendly EXACTION SQUAD operative within 2" of that enemy, the opponent cannot re-roll attack dice showing 1.
+  - MECH: provider `rerollBannedValues(state, side, attack)` (D3) returns `[1]` for the enemy's attack side when the Exaction seat has the equipment and the friendly target or fight opponent is within 2" of the enemy operative | CLASS: generic:rerollBannedValues
+  - RULING: Exaction Squad Strobing Phosphor-lumen scope | covers every re-roll source (Balanced, Ceaseless, Relentless, ploys, Command Re-roll); in a fight it always applies (the fighters are within 1"); per sequence for Blast and Torrent targets | "cannot re-roll their attack dice results of 1" names no source | Confirmed
+- T-EX.43 **SPECIAL ISSUE SHELLS** | Up to twice per TP, when a friendly EXACTION SQUAD operative performs Shoot and picks a Shells weapon (T-EX.5), you may give that weapon one of these until the end of that action:
+  - Saturate.
+  - Piercing 1, but only against a target whose Save is 3+ or better.
+  - Torrent 1", with at most one secondary target.
+  - MECH: `shoot.weaponSelected` is not built (batch D list). Fallback, as 0 CP equipment offers with a per-TP ledger of 2:
+    - Saturate and Piercing 1: in the `shoot.targetSelected` window when `state.attack.weaponId` is a Shells weapon (the Farstalker ammunition pattern).
+    - Torrent 1": in the `firefight.actionDeclared` window of the operative's Shoot, because Torrent secondaries are picked before `shoot.targetSelected`.
+    - Effect `ex.shells` (expires at action end). `modifyWeaponRules` adds the rule to Shells profiles only. Piercing 1 is added per sequence only when that target's current Save is 3+ or better. Torrent's one-secondary cap: `beforeShootTargetSelect` returns no secondary candidates once `state.attack.targets` holds one secondary.
+    - CLASS: team-hook
+  - RULING: Exaction Squad Special Issue Shells timing | Saturate and Piercing 1 are chosen once the weapon and primary target are known; Torrent 1" is chosen when the Shoot is declared and applies only if a Shells weapon is then picked (the use counts when chosen) | no window exists between the weapon and target picks; Torrent must exist before secondaries are chosen | Unsourced
+  - RULING: Exaction Squad Special Issue Shells Piercing | the Save check is per target sequence on the target's current Save stat (Defensive, Assault Shield, other teams' improvements count); a Blast or Torrent secondary with 4+ gains no Piercing | "only if the target has a Save stat of 3+ or better" | Unsourced
+
+Marker/token guide (UI): Medic token, Apprehend token, Marked for Justice token, Veriscant token, Spot token, Aggressive token, Swift token, Defensive token, Nuncio-aquila marker.
+
+### 24.8 Checklist
+
+Rows in `12-rules-test-checklist.md` section TEAM-EX: TEAM-EX-000 to TEAM-EX-040.
+
+### 24.9 Generic capabilities (survey; resolved in the Engine map below)
+
+- **killLog / operative.removed** (batch D, D2): Marked for Justice re-pick for any cause at the next reaction point (`killsSince`). Also the Nuncio-aquila marker leaving with the Proctor, and the Execution Order lock lifting when the enemy is incapacitated. Used by T-EX.9, T-EX.30, T-EX.39.
+- **rerollBannedValues** (batch D, D3): Strobing Phosphor-lumen. Used by T-EX.42.
+- **ignoreAplDecreases + live flags** (batch D, D5): Reinforced Mirror-visor, Engendered Focus's APL part. Used by T-EX.17, T-EX.40.
+- **weaponForbidden** (batch C): Concealed Position, Beast. Used by T-EX.15, T-EX.22.
+- **blockCapacity**, **fightResolveStart** (batch B / prep): Repress. Used by T-EX.31.
+- **joinActivation** (batch B): Handler. Used by T-EX.12.
+- **fightTargets** (batch C), `beforeShootTargetSelect`: Exact Punishment, Brutal Backup, Execution Order, Ruthless Efficiency, Guilt Reveals Itself, Close Quarters Vigilance. Used by T-EX.27, T-EX.29, T-EX.32, T-EX.37 to T-EX.39.
+- **shootInControlRange / freeShootInControlRange** (prep / batch C shared): Close Quarters Vigilance. Used by T-EX.27.
+- **Existing, other:**
+  - `actionCostDelta`, `controlTotal`, `actionForbidden`, `moveDelta`, `flags.ignoreInjured`.
+  - `action.declared` (cancel, bar), `startFreeAction` (`endWithinCrOf`, `interrupt`), Strategy-phase free moves, Strategy-phase gambits with params.
+  - The Hierotek `markerSpots` sampler, the Kasrkin/Pathfinders Medic! path, `effects.regainWounds`, `effects.aplChangeNextActivation`, `applyAplEffect`, tokens.
+  - Windows: `firefight.activationStart`, `firefight.actionEnded`, `firefight.actionDeclared`, `firefight.opponentActionDeclared`, `turningPoint.end`, `shoot.targetSelected`.
+  - Used by the rest.
+- Gaps (named in the batch D not-built list; each has a team-local fallback with a RULING):
+  - **Execution Order's interrupting activation** (MUST, fallback): no way to suspend the opponent's chosen activation and run a full friendly activation first. Fallback: a free Shoot or Fight against the enemy at its `firefight.activationStart`, then the friendly is expended (T-EX.39).
+  - **shoot.weaponSelected** (NICE, fallback): no window between the weapon pick and the target pick. Fallback: Long Arm and the Torrent shell at `firefight.actionDeclared`; Saturate and Piercing shells at `shoot.targetSelected` (T-EX.36, T-EX.43).
+  - **LoadoutSet stat changes** (NICE, fallback): Assault Shield writes `op.save = 3` at set-up (T-EX.7).
+  - **Final stat clamp** (NICE, fallback, not on the batch D list): no shared "ignore Hit/Atk/Move changes" read after every handler. Fallback: the Exaction `modifyAttackDice` clamp plus `ignoreInjured`, with the hook-order RULING (T-EX.17, T-EX.26).
+- Everything else maps onto existing providers, hooks, windows and 0 CP offers (Engine map).
+
+### 24.10 Gotchas
+
+- **Source precedence:** the card text wins over the PDF's previous-errata list for Spot (no 3" leash, no SUPPORT) and Veriscant (Lethal 5+ and Severe). Every other previous erratum is already in the card text. Unsourced; flag for a rules check.
+- **Roster:**
+  - 11 operatives, the 11-operative kill grade row.
+  - One Gunner card: at most two Gunners, with different weapons.
+  - Subductors at most four; Vigilants unlimited.
+  - The mastiff is a full selection and needs no Leashmaster.
+- **Proctor:**
+  - Its shotgun, shotpistol and baton are better than everyone else's (separate records).
+  - Save 3+ only with the maul set (written at set-up).
+  - Its maul and the Subductor's carry Repress.
+  - The Subductor's 3+ Save is printed.
+- **Printed oddities:**
+  - The grenade launcher is a single Piercing 1 profile with no Blast; the webber is 4/5 with Severe and Stun; the executioner shotgun's concealed and stationary profiles are 4/0 with Devastating 4.
+  - The scoped shotpistol's short range has Lethal 5+, its long range nothing.
+  - The Castigator has no baton.
+- **Repress** works only in fights: blocks cancel two successes; a retaliating Repress fighter resolves first.
+- **Fall Back bans:**
+  - Castigator's Arrest needs the enemy to be alone in the Castigator's control range.
+  - Apprehend bans Fall Back and worsens Hit only while the enemy stays in the mastiff's control range.
+  - Manacles is a dice roll that only uses up its TP use on success.
+- **"Can ignore" rules** keep the good changes: Engendered Focus, Stubborn Subjugator, Mirror-visor.
+  - Engendered Focus does not cover Save, so the Castigator can still be Pierced and its Save improved.
+  - Stubborn Subjugator covers melee Hit only.
+- **Nuncio-aquila:**
+  - Its 3" bubble falls back to the Proctor while the marker is off the board.
+  - It taxes only the enemy's Pick Up Marker and mission actions.
+  - It lowers only the enemy's control total, by exactly 1.
+- **Marked for Justice:** Punishing only against the mark; the re-pick comes after the action, for any cause of removal.
+- **Weapon-rule gifts on top of the mark:**
+  - Veriscant: Lethal 5+ and Severe.
+  - Spot: Seek Light and no obscuring, until the TP ends.
+  - Optics: Lethal 5+ on two profiles and no obscuring for the Marksman.
+  - Terminal Decree: Balanced within 6", or always for Gunners.
+- **Firefight-ploy fallbacks:**
+  - Execution Order is a free attack plus expending the operative, not a full activation.
+  - Long Arm and the Torrent shell are chosen at Shoot declaration.
+- **Beast** mastiff: no mission actions, no Shoot, no equipment weapons. Handler joins only when the Leashmaster activates. Attack Pattern is a TP1 gambit with two different patterns kept for the battle.
+- **Edition leaks to reject:**
+  - Nothing from the 2021 Kill Team Exaction Squad: no Overwatch, no shape distances, no 2021 Leashmaster command list, no 2021 Repress-free shield profile.
+  - Nothing from 40k 10th Adeptus Arbites or Imperial Agents: no wound rolls, no AP against armour, no Leadership or battle-shock, no Command phase.
+  - Inches only, three defence dice, every printed number from the June '26 cards.
+
+### 24.11 Engine map
+
+| Rule or capability | Built as |
+|---|---|
+| Roster (Proctor 1, main 10, GUNNER/SUBDUCTOR/VIGILANT repeatable, Gunners <= 2 with distinct weapons, Subductors <= 4) | team.json slots, `repeatable`, `selection.caps` (ids), `selection.loadoutCaps` (`each`) |
+| Loadouts | datacard `weapons.options` (`sets` for the Proctor, `from` for the Gunner), profile groups |
+| Assault Shield | set-up hook writes `op.save = 3` (LoadoutSet stats not built) |
+| Nuncio-aquila, Deploy Nuncio-aquila | providers `actionCostDelta`, `controlTotal`; team marker `ex.nuncio` via Hierotek `markerSpots`; D2 `operative.removed` removes it with the Proctor |
+| Medic!, MEDIKIT | Kasrkin/Pathfinders path: `beforeIncapacitated`, `onDamageInflicted` floor, `startFreeAction({ action: 'dash', endWithinCrOf })`, `aplChangeNextActivation`, `Activation.endsAfterAction`; `effects.regainWounds` |
+| Handler | 0 CP offer at the Leashmaster's `firefight.activationStart`, `firefight.joinActivation` |
+| Attack Pattern, R-VR Command | TP1 gambit with two `distinctFrom` picks; battle ledger + tokens; `modifyWeaponRules` (Relentless), `moveDelta` (+2), `op.save` (Defensive); unique 0 AP swap action |
+| Beast | providers `actionForbidden`, `weaponForbidden`, `equipmentEligible` (Farstalker pattern) |
+| Apprehend | token `ex.apprehend` checked live; `modifyAttackDice` hitDelta +1 (no stacking with injury); `actionForbidden` Fall Back |
+| Engendered Focus | D5 `flags.ignoreAplDecreases`, `flags.ignoreInjured`, team `modifyAttackDice` clamp (Hit, Atk) |
+| Zealous Dedication | `onDamageInflicted` (attack-die sources, amount >= 3, D6 5+) |
+| Castigator's Arrest | `actionForbidden` Fall Back |
+| Acute Focus | `actionCostDelta` -1, per-activation ledger set in `action.ended` |
+| Veriscant, Spot, Optics | tokens; `modifyWeaponRules` (Lethal 5+, Severe, Seek Light); `target.status` (`obscured: false`) |
+| Concealed Position | provider `weaponForbidden`, battle ledger of resolved Shoots |
+| First in the Field | TP1 gambit, Strategy-phase `startFreeAction({ action: 'reposition' })` |
+| Stubborn Subjugator | team `modifyAttackDice` clamp (fight only) |
+| Close Quarters Vigilance | providers `shootInControlRange`, `freeShootInControlRange`; `beforeShootTargetSelect` adds enemies in its own control range |
+| Signal | unique action, `applyAplEffect(+1)` to the end of the target's next activation |
+| Ruthless Efficiency, Guilt Reveals Itself | `beforeShootTargetSelect` adds candidates (primary and secondary) after `targetInfo` checks |
+| Marked for Justice | Strategy-phase gambit with an enemy pick; `modifyWeaponRules` (Punishing); D2 `killsSince` re-pick via `ownReactions` / `reactions` |
+| Repress | ability `ex.a.wr-repress` (weaponRule); providers `blockCapacity` (2), `fightResolveStart` (defender first when retaliating) |
+| Inviolate Jurisdiction | `modifyDefenceDice` re-roll one |
+| Dispense Justice, Terminal Decree | `modifyWeaponRules` (Ceaseless; Balanced, per target) |
+| Long Arm | window `firefight.actionDeclared` (fallback for `shoot.weaponSelected`), `modifyWeaponRules` Range +3 |
+| Exact Punishment | window `firefight.actionEnded` (Exaction seat), attack record from `afterShootResolved` / `onFightResolved`, `startFreeAction({ interrupt: true })`, `beforeShootTargetSelect` / `fightTargets` |
+| Brutal Backup | windows `firefight.activationStart` / `firefight.actionEnded` (own activation), `startFreeAction({ action: 'fight' })`, `fightTargets` |
+| Execution Order | windows `firefight.opponentActionDeclared`, `turningPoint.end`; 0 CP offer at the enemy's `firefight.activationStart`; free Shoot/Fight then expended (fallback for the interrupting activation); D2 `operative.removed` lifts the lock |
+| Reinforced Mirror-visor | D5 `flags.ignoreAplDecreases`; `modifyWeaponRules` strips enemy Shock |
+| Manacles | hook `action.declared` (cancel, bar), roll through `engine`, once-per-TP ledger on success |
+| Strobing Phosphor-lumen | D3 provider `rerollBannedValues` `[1]` |
+| Special Issue Shells | 0 CP offers at `shoot.targetSelected` (Saturate, Piercing 1) and `firefight.actionDeclared` (Torrent 1"); per-TP ledger 2; `modifyWeaponRules`; `beforeShootTargetSelect` caps secondaries at one |
+
+### 24.12 Implementer brief
+
+- Files you own (nothing else):
+  - `src/data/teams/exaction-squad/team.json`, `operatives.json`, `weapons.json`, `abilities.json`, `ploys.json`, `equipment.json` (ids `ex.<name>`, `ex.w.`, `ex.wg.`, `ex.a.`, `ex.p.`, `ex.e.`; team weapon rules `ex.a.wr-repress`, `ex.a.wr-concealed-position`). The Phase 1 scaffold holds the Proctor and its five weapon records; `ex.a.wr-repress` was left off the dominator maul because validate-data needs its `weaponRule` ability record first. Add that record, then put `{ "rule": "ex.a.wr-repress" }` back on `ex.w.dominator-maul-assault-shield` and on `ex.w.shock-maul-assault-shield`.
+  - `src/engine/teams/exaction-squad.ts` (code hooks, `registerTeamRules`, hook handlers, ploy rules).
+  - `src/client/teams/exaction-squad.ts`: weapon flavour, VFX family, sound and attachments; HUD labels for the mark and the mastiff's patterns.
+    - `loadoutBodies` for the Proctor (already there) and the Gunner (`ex-gunner-grenade-launcher`, `ex-gunner-heavy-stubber`, `ex-gunner-webber`).
+    - Stand-ins (already listed): `ex-proctor-exactant` and its two loadout bodies, `ex-castigator`, `ex-chirurgant`, `ex-cyber-mastiff`, the three Gunner bodies, `ex-leashmaster`, `ex-malocator`, `ex-marksman`, `ex-revelatum`, `ex-subductor` with `ex-subductor-b`, `ex-vigilant` with `ex-vigilant-b`, `ex-vox-signifier`.
+  - `tests/engine/teams/exaction-squad.test.ts` (TEAM-EX-nnn tests) and `tests/engine/teams/exaction-squad.hooks.ts` (code-hook firing scenarios).
+  - Append-only: `docs/needs-rules-check.md` (RULING lines), `docs/spec/13-teams.md` section 24 and `12-rules-test-checklist.md` section TEAM-EX (refinements only).
+- Activation flag: `"playable": false` in `src/data/teams/exaction-squad/team.json`. Flip it only when the team is complete and all gates pass, with:
+  - `defaults` filled: a legal 11-operative roster, two Gunners with different weapons, no more than four Subductors;
+  - every weapon in `src/client/teams/exaction-squad.ts`.
+- Capabilities to use: the Engine map above.
+  - Batch D: D2 `killLog` / `operative.removed` (Marked for Justice, Nuncio-aquila, Execution Order), D3 `rerollBannedValues` (Strobing Phosphor-lumen), D5 `flags.ignoreAplDecreases` (Mirror-visor, Engendered Focus).
+  - Batch C: `weaponForbidden`, `fightTargets`, `freeShootInControlRange`. Batch B: `joinActivation`, `blockCapacity`.
+  - Existing: the Kasrkin Medic! path and Skill at Arms gambit pattern, the Farstalker Beast and Call the Kill patterns, the Hierotek `markerSpots`, the Breachers Rebreathers Shock strip, the Corsair Quick on the Trigger targeting.
+  - Team-local fallbacks for the not-built gaps (24.9): Execution Order, `shoot.weaponSelected`, LoadoutSet stats, the stat clamp.
+- Order:
+  1. Roster and loadouts (TEAM-EX-001, 002).
+  2. Marked for Justice and Repress (TEAM-EX-003, 004): the faction spine.
+  3. Ruthless Efficiency (005).
+  4. Handler, Attack Pattern and the mastiff (008 to 011).
+  5. Nuncio-aquila (006, 007).
+  6. The rest by checklist row.
+- RULING lines expected: Gunner model, Cyber-mastiff without Leashmaster, keyword spacing, grenade launcher and webber, Proctor weapons, Assault Shield, Nuncio-aquila mission actions, control, without a Proctor and placement, Deploy Nuncio-aquila cost, Medic! opportunity, MEDIKIT self-target, Handler, Handler and Brutal Backup, Attack Pattern use, Defensive pattern, R-VR Command, Beast actions, Apprehend and injury, Apprehend duration, Engendered Focus choice, stat clamp hook order, Engendered Focus damage, Zealous Dedication scope, Acute Focus, Veriscant card text, Concealed Position, First in the Field, Spot use, Stubborn Subjugator, Close Quarters Vigilance targets, Signal, Ruthless Efficiency use, Marked for Justice new mark timing, outside an action and use, Repress blocks, Repress when both fighters have it, Guilt Reveals Itself and other teams' 2" exceptions, Dispense Justice movement, Terminal Decree distance, Long Arm timing, Exact Punishment scope, Brutal Backup, Execution Order fallback, impossible attack, lock and trigger (a), Mirror-visor APL, Manacles use, Strobing Phosphor-lumen scope, Special Issue Shells timing and Piercing.
+- Gotchas: section 24.10.
+  - Eleven operatives use the 11-operative kill grade row.
+  - The Gunner is one datacard (the Kasrkin pattern, not three cards).
+  - Register the Exaction `modifyAttackDice` handler so the Hit/Atk clamp runs after the team's own Apprehend handler (one handler: Apprehend's +1 for enemies first, then the clamp for the Castigator and Subductor).
+  - The Nuncio-aquila marker is a team marker, never an objective and never pickable.

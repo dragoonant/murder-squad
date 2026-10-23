@@ -108,6 +108,8 @@ export interface RuntimeDatacard {
   uniqueActions: string[]
   expendable?: boolean
   nonOperativeForSelection?: boolean
+  /** batch D prep: false = never on a roster; snapshotted with its team for transformOperative (Mutant, Torment) */
+  selectable?: boolean
   /** M2b-game: every legal chosen-weapon set (profile ids, fixed weapons excluded) when the card has a loadout choice tree */
   legalLoadouts?: string[][]
   figureArchetype?: string
@@ -310,6 +312,8 @@ export interface OperativeFlags {
   ignoreApl?: boolean
   /** M2b-game: injured stat penalties are ignored (And They Shall Know No Fear) */
   ignoreInjured?: boolean
+  /** batch D prep: APL decreases are ignored, increases still count (Mirror-visor, Toxic Blessings) */
+  ignoreAplDecreases?: boolean
 }
 
 export interface Operative {
@@ -368,6 +372,27 @@ export interface Operative {
    * keywords for every rule (conditions.hasKeyword), public in view; changed only through operative-picks.setOperativePick
    */
   picks?: Record<string, string>
+  /**
+   * batch D prep (killLog): who dealt the damage that last took this operative to 0 wounds and of what kind
+   * (`source` as passed to inflict: crit, normal, direct...); kept after removal
+   */
+  incapacitatedBy?: { id: string; source: string }
+}
+
+/** batch D prep (killLog): one removal from the killzone, any cause, in order (`GameState.kills`, kills.ts). */
+export interface KillRecord {
+  removedId: string
+  victimSeat: Seat
+  /** the operative whose damage incapacitated it, when that was an operative */
+  killerId: string | null
+  killerSeat: Seat | null
+  /** attack dice, direct damage (mines, rules), out of the killzone at a deadline, or scored before removal (Frenzy) */
+  cause: 'attack' | 'direct' | 'offboard' | 'scored'
+  turningPoint: number
+  /** state.seq of the step that recorded it */
+  seq: number
+  /** a `scored` record whose operative has since been removed */
+  removedLater?: boolean
 }
 
 /** M9 prep: one stack of tokens of one kind, owned by one player, on an operative (tokens.ts). */
@@ -411,6 +436,8 @@ export interface Marker {
   equipmentId?: string
   /** an operative may use Pick Up Marker on it (R-4.5); no v1 marker is pickable */
   pickable?: boolean
+  /** batch D prep: only this seat's operatives may Pick Up the marker (Bloody Cadaver) */
+  pickableBy?: Seat
   /** Mines are hidden from the opponent until they trigger (view.ts) */
   hidden?: boolean
   /** Breach / Smoke markers: the operative that placed it */
@@ -423,7 +450,7 @@ export interface Marker {
   featureId?: string
 }
 
-export type SetupStep = 'rollOff' | 'decideInitiative' | 'objectives' | 'dropZones' | 'equipment' | 'deploy' | 'done'
+export type SetupStep = 'rollOff' | 'decideInitiative' | 'objectives' | 'dropZones' | 'equipment' | 'deploy' | 'preBattle' | 'done'
 
 export interface SetupState {
   step: SetupStep
@@ -432,7 +459,15 @@ export interface SetupState {
   setupInitiative: Seat | null
   /** seat to choose the next drop zone */
   dropZoneTurn: Seat | null
-  deploy: { turn: Seat; left: number }
+  /**
+   * `aside` (batch D prep, setAsideBatches): this batch is being set aside (true) or deployed (false); unset until its
+   * first answer
+   */
+  deploy: { turn: Seat; left: number; aside?: boolean }
+  /** batch D prep (setAsideBatches): deploy batches each seat has started so far */
+  batches?: Partial<Record<Seat, number>>
+  /** batch D prep (preBattleChoices): whose turn it is to choose, and the seats that are finished */
+  preBattle?: { turn: Seat; done: Seat[] }
 }
 
 export interface StrategyState {
@@ -588,6 +623,8 @@ export interface GameState {
   windowStack?: PloyWindowState[]
   /** counter for ActiveEffect ids */
   nextEffect: number
+  /** batch D prep (killLog): every removal from the killzone, any cause, in order (kills.ts) */
+  kills?: KillRecord[]
 }
 
 export interface TeamConfig {
@@ -744,6 +781,11 @@ export interface AttackSequence {
   coverMode?: string
   /** answered weapon.choice requests */
   choices: Record<string, string>
+  /**
+   * batch D prep: the unblocked successes about to inflict damage, set once blocks are allocated; the
+   * shoot.beforeResolve window (Drag) may lower them (discard) before damage reads them
+   */
+  unblocked?: { normal: number; crit: number }
 }
 
 export type AttackStage =
@@ -858,6 +900,8 @@ export type TimingWindowId =
   | 'shoot.defenderAttackRolled'
   // batch C shared: the Fall Back mover between its move and the end of the action (Cover Retreat)
   | 'firefight.fallBackMoved'
+  | 'firefight.chargeMoved'
+  | 'shoot.beforeResolve'
   | 'operative.incapacitated'
   | 'firefight.activationEnded'
   | 'turningPoint.end'

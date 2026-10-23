@@ -255,7 +255,9 @@ export function validateAll(options: ValidateOptions = {}): ValidationResult {
   for (const t of teams) {
     const cards = datacards.filter((d) => d.team === t.id)
     const inSlots = new Set(t.selection.slots.flatMap((s) => s.from))
-    for (const c of cards) if (!inSlots.has(c.id)) errors.push(`${where(t.id)}: datacard ${c.id} is in no selection slot of ${t.id}`)
+    // batch D prep: a `selectable: false` card is reached only by changing datacard mid-battle, never from a slot
+    for (const c of cards) if (!inSlots.has(c.id) && c.selectable !== false) errors.push(`${where(t.id)}: datacard ${c.id} is in no selection slot of ${t.id}`)
+    for (const c of cards) if (inSlots.has(c.id) && c.selectable === false) errors.push(`${where(t.id)}: datacard ${c.id} is selectable: false but sits in a selection slot`)
     for (const s of t.selection.slots) {
       for (const id of s.from) if (index.byId[id] && (index.byId[id] as DatacardData).team !== t.id) errors.push(`${where(t.id)}: slot ${s.id} lists ${id} from another team`)
       for (const id of s.repeatable ?? []) if (!s.from.includes(id)) errors.push(`${where(t.id)}: slot ${s.id} repeatable ${id} is not in from`)

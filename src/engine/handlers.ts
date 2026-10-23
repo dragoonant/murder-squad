@@ -3,7 +3,7 @@
 // live `data` object of that hook, as documented there. Declarative effects (grantWeaponRule,
 // removeWeaponRule, modifyStat) are interpreted generically; the rest belong to a named rule.
 import { inflict } from './attack-common'
-import { providerStealthy, registerTeamRules } from './team-rules'
+import { providerExtraCoverSaves, providerStealthy, registerTeamRules } from './team-rules'
 import { ruleName } from './bundle'
 import { bodyOf, targetVerdict } from './los'
 import { distanceBetween, enemiesInControlRange } from './measure'
@@ -412,6 +412,17 @@ registerHook(
         used = extra() || crit()
       }
       if (used) markFired('ctStealthy')
+    }
+    // batch D prep (extraCoverSaves): retain more cover saves, never as crits (Camo Cloak, extra-only versions)
+    const moreCover = providerExtraCoverSaves(state, op)
+    if (moreCover > 0 && dice.some((d) => d.tag === 'cover')) {
+      for (let i = 0; i < moreCover; i++) {
+        const f = fails(dice)[0]
+        if (!f) break
+        f.value = null
+        f.kind = 'normal'
+        f.tag = 'cover'
+      }
     }
     // Indomitus: with two or more failures discard one and retain another as a normal success
     if (hasKeyword(state, op, 'ANGEL OF DEATH') && state.effects.some((e) => e.source === ID.indomitus && e.seat === op.seat)) {

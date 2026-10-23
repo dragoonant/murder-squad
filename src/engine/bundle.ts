@@ -74,7 +74,10 @@ export function snapshotData(bundle: EngineBundle, datacardIds: Iterable<string>
     const def = bundle.weapons[w]
     if (def) weapons[w] = def
   }
-  for (const id of datacardIds) {
+  // batch D prep: datacards an operative can only change into (selectable: false) come with their team
+  const ids = [...datacardIds]
+  for (const c of Object.values(bundle.datacards)) if (c.selectable === false && teamSet.has(c.teamId)) ids.push(c.id)
+  for (const id of ids) {
     const card = bundle.datacards[id]
     if (!card || datacards[id]) continue
     datacards[id] = card
@@ -282,6 +285,7 @@ function adaptDatacard(c: DatacardData, groups: Record<string, string[]>): Runti
   }
   if (c.expendable) out.expendable = true
   if (c.nonOperativeForSelection) out.nonOperativeForSelection = true
+  if (c.selectable === false) out.selectable = false
   if (c.extraEquipment) out.extraEquipment = c.extraEquipment
   if (c.ovalBase) out.ovalBase = { long: c.ovalBase.long, short: c.ovalBase.short, ...(c.ovalBase.weapons ? { weapons: [...c.ovalBase.weapons] } : {}) }
   return out

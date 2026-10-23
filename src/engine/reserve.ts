@@ -16,7 +16,9 @@ import { onOperativeReturned } from './missions'
 import type { Ctx } from './registry'
 import { getOp } from './state'
 import { axisOf } from './footprint'
-import { placementProblem } from './terrain'
+import { placementProblem, terrainOf } from './terrain'
+import { pointInPolygon } from './geometry'
+import { baseUnderVantage, bodyOf } from './los'
 import type { GameState, Operative, Order, Vec3 } from './types'
 
 export function isOffboard(op: Operative): boolean {
@@ -95,6 +97,20 @@ export interface SpotOpts {
   /** only sample within this distance of `around` (horizontal) */
   around?: { x: number; z: number }
   radius?: number
+  /** batch D prep: also sample the floors of terrain (Vantage tops) at each point, not only the killzone floor */
+  levels?: boolean
+  /** batch D prep: skip spots whose base would be under a Vantage floor (los.baseUnderVantage) */
+  notUnderVantage?: boolean
+}
+
+/** batch D prep: the heights an operative could stand at over `p`: the killzone floor and every terrain floor above it. */
+function levelsAt(state: GameState, p: { x: number; z: number }): number[] {
+  const out = [0]
+  for (const sol of terrainOf(state.map).solids) {
+    if (!pointInPolygon(p, sol.polygon)) continue
+    for (const f of sol.floors) if (f > 0 && !out.some((y) => Math.abs(y - f) < 1e-3)) out.push(f)
+  }
+  return out.sort((a, b) => a - b)
 }
 
 /**
@@ -108,11 +124,15 @@ export function placementSpots(state: GameState, op: Operative, o: SpotOpts = {}
   const cands: Vec3[] = []
   for (let x = -hx + op.baseRadius; x <= hx - op.baseRadius + 1e-9; x += step) {
     for (let z = -hz + op.baseRadius; z <= hz - op.baseRadius + 1e-9; z += step) {
-      const pos = { x: Math.round(x * 1000) / 1000, y: 0, z: Math.round(z * 1000) / 1000 }
-      if (o.around && Math.hypot(pos.x - o.around.x, pos.z - o.around.z) > (o.radius ?? Infinity) + 1e-9) continue
-      if (o.test && !o.test(pos)) continue
-      if (placementProblem(state, { id: op.id, pos, radius: op.baseRadius, height: op.height, ...axisOf(op) })) continue
-      cands.push(pos)
+      const flat = { x: Math.round(x * 1000) / 1000, z: Math.round(z * 1000) / 1000 }
+      if (o.around && Math.hypot(flat.x - o.around.x, flat.z - o.around.z) > (o.radius ?? Infinity) + 1e-9) continue
+      for (const y of o.levels ? levelsAt(state, flat) : [0]) {
+        const pos = { x: flat.x, y, z: flat.z }
+        if (o.test && !o.test(pos)) continue
+        if (placementProblem(state, { id: op.id, pos, radius: op.baseRadius, height: op.height, ...axisOf(op) })) continue
+        if (o.notUnderVantage && baseUnderVantage(state, bodyOf({ ...op, pos }))) continue
+        cands.push(pos)
+      }
     }
   }
   const max = o.max ?? 16

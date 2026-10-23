@@ -1,0 +1,45 @@
+{
+  "id": "chaos-cult",
+  "name": "Chaos Cult",
+  "factionKeyword": "CHAOS CULT",
+  "archetypes": [
+    "infiltration",
+    "seek-and-destroy"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "cc.demagogue"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "cc.demagogue"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.0,
+      "s": 0.45,
+      "l": 0.25
+    },
+    "minor": {
+      "h": 0.1,
+      "s": 0.3,
+      "l": 0.55
+    }
+  },
+  "text": "A ragged congregation of heretics led by a preacher of the dark gods, whose rank and file twist mid-battle into mutants and daemon-bound horrors.",
+  "source": "team-chaos-cult.pdf (Jul '25); docs/spec/13-teams.md section 20"
+}

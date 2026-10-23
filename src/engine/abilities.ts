@@ -11,9 +11,10 @@ import { cancelAction, noteReaction, reactionDone } from './firefight'
 import { markerOffers, performMarkerAction, PICK_UP, PLACE } from './markers'
 import { missionActionIds } from './missions'
 import { reject, type Ctx, type Handled, type ModuleDef } from './registry'
-import { EngineInvariantError, getOp } from './state'
+import { EngineInvariantError, effectiveApl, getOp } from './state'
 import { initEquipment } from './equipment'
 import { readyChoiceDone } from './strategy'
+import { preBattleChoiceDone } from './setup'
 import { isPsychicAbility, psychicAllowed } from './psychic'
 import type { Activation, Condition, GameSetup, GameState, Operative, Order, Rejection, RuntimeAbility, Seat } from './types'
 import {
@@ -270,7 +271,7 @@ export function abilityOffers(state: GameState, op: Operative, act: Activation |
       if (act) {
         if (act.counteract && cost !== 1) continue
         if (!act.counteract && !act.frame) {
-          const apl = op.apl + (op.flags.ignoreApl ? 0 : Math.max(-1, Math.min(1, op.aplMods)))
+          const apl = effectiveApl(op)
           if (act.apSpent + cost > Math.max(0, apl)) continue
         }
       }
@@ -292,7 +293,7 @@ export function abilityOffers(state: GameState, op: Operative, act: Activation |
     const delta = actionCostDelta(state, op, m.action === PICK_UP ? 'pick-up-marker' : 'place-marker', act) + providerCostDelta(state, op, m.action)
     const cost = Math.max(0, m.cost + delta)
     if (act && !act.counteract && !act.frame) {
-      const apl = op.apl + (op.flags.ignoreApl ? 0 : Math.max(-1, Math.min(1, op.aplMods)))
+      const apl = effectiveApl(op)
       if (act.apSpent + cost > Math.max(0, apl)) continue
     }
     if (act?.counteract && cost !== 1) continue
@@ -366,6 +367,16 @@ function handleChoice(state: GameState, action: { type: string; payload?: unknow
       },
     }
   }
+  // batch D prep: a pre-battle choice (setup.nextPreBattleChoice): pass ends the seat's choices
+  if (context.preBattle === true) {
+    if (action.type === 'pass') return { run: (ctx) => preBattleChoiceDone(ctx, true) }
+    if (action.type !== 'ability.choice') return reject('E_WRONG_DECISION', 'expected a pre-battle choice')
+    const offers = (context.offers as ReactionOffer[] | undefined) ?? []
+    const offer = offers[Number((action.payload as { option: string }).option)]
+    const hook = offer ? getCodeHook(offer.hook) : undefined
+    if (!offer || !hook?.choice || !state.operatives[offer.operativeId]) return reject('E_NOT_AN_OPTION', 'unknown pre-battle choice')
+    return { run: (ctx) => hook.choice!(ctx, getOp(ctx.state, offer.operativeId), offer.option, context) }
+  }
   // batch C shared: a Ready-step choice (strategy.nextReadyChoice): pass ends the seat's choices
   if (context.readyStep === true) {
     if (action.type === 'pass') return { run: (ctx) => readyChoiceDone(ctx, true) }
@@ -420,6 +431,9 @@ export function refreshFlags(state: GameState): void {
       hasKeyword(state, op, 'ANGEL OF DEATH') && state.effects.some((e) => e.source === 'aod.p.and-they-shall-know-no-fear' && e.seat === op.seat)
     if (atsknf || team.ignoreInjured) op.flags.ignoreInjured = true
     else delete op.flags.ignoreInjured
+    // batch D prep: APL decreases ignored, increases kept (Mirror-visor, Toxic Blessings)
+    if (team.ignoreAplDecreases) op.flags.ignoreAplDecreases = true
+    else delete op.flags.ignoreAplDecreases
   }
 }
 

@@ -1,0 +1,45 @@
+{
+  "id": "blooded",
+  "name": "Blooded",
+  "factionKeyword": "BLOODED",
+  "archetypes": [
+    "seek-and-destroy",
+    "infiltration"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "bl.chieftain"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "bl.chieftain"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.0,
+      "s": 0.45,
+      "l": 0.28
+    },
+    "minor": {
+      "h": 0.1,
+      "s": 0.45,
+      "l": 0.5
+    }
+  },
+  "text": "Turncoat guardsmen who chase the notice of dark powers: they bank tokens of blood-won favour, hand them out before each turning point and fight harder while marked.",
+  "source": "team-blooded.pdf (Apr '26); docs/spec/13-teams.md section 18"
+}

@@ -75,6 +75,8 @@ M9 batch B (additive): a datacard may carry `ovalBase: { long, short, weapons? }
 
 M9 batch C (additive): `selection.caps[]` may give `min` instead of or with `max` (at least one SORCERER); `selection.requires` lists `{ id, needs }` (a datacard allowed only when one of `needs` is on the roster: Gheistskull needs Void-Jammer); `operativeChoices[]` may set `unique` (no two operatives of the roster share a pick: Boons of Tzeentch), `distinctFrom` (choice ids the same operative's pick must differ from: Custom weapon rules) and `keyword: false` (the pick is a tag for team code, not a keyword). A unique action whose `keywords` include PSYCHIC is a PSYCHIC action; a weapon rule ability named PSYCHIC (`<p>.a.wr-psychic`) marks PSYCHIC weapons for every team's rules (`src/engine/psychic.ts`).
 
+M10 batch D (additive): a datacard may set `selectable: false`: it is never offered for a roster and sits in no selection slot (validate-data refuses it in one), but its record is snapshotted into every game that has its team so an operative can change into it mid-battle (`src/engine/transform.ts`; Chaos Cult Mutant and Torment).
+
 ## 9. Mission and killzone layout
 Mission: `{ id, pack: "preliminary-ops", critOp: secure|loot|transmission, turningPoints: 4, killOp: { gradeTable: {startingOperatives: thresholds[]} }, actions: [mission action ids], scoring: [ScoringRule], objectiveSetup: {...}, source }`. Killzone layout: `{ id, name, size: {x:30,z:22}, maps: [{ id, dropZones: {A: Polygon, B: Polygon}, territories, centreline, objectiveSpots?, pieces: [{ model: slug, pos, yaw, parts: [{ footprint: Polygon, height, traits: [TerrainTrait], vantageFloors?: number[] }] }] }], source }`.
 

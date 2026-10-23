@@ -420,6 +420,11 @@ export function describeEvent(ev: GameEvent, state: GameState | null): string | 
       return `${who(ev.operativeId)} regains ${ev.amount} wound${ev.amount === 1 ? '' : 's'} (${ev.wounds} now).`
     case 'OperativeSetAside':
       return `${who(ev.operativeId)} is set aside, out of the killzone.`
+    case 'OperativeTransformed': {
+      // batch D prep: an operative changed datacard (Mutation)
+      const card = (n: string) => state?.data.datacards[n]?.name ?? humanize(n)
+      return `${who(ev.operativeId)} changes: ${card(ev.from)} becomes ${card(ev.to)}.`
+    }
     case 'OperativePickChanged':
       return `${who(ev.operativeId)} is now ${humanize(ev.to.toLowerCase())}${ev.from ? ` (was ${humanize(ev.from.toLowerCase())})` : ''}.`
     case 'PoolChanged': {

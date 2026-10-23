@@ -191,7 +191,7 @@ function attackOutcomes(stats: ReturnType<typeof attackStats>, obscured: boolean
     stats.accurate,
     stats.need,
     stats.lethal,
-    stats.grants.map((g) => `${g.id}${g.mode}${g.used ? 'u' : ''}`).join(','),
+    stats.grants.map((g) => `${g.id}${g.mode}${g.used ? 'u' : ''}${g.values ? `v${g.values.join('')}` : ''}`).join(','),
     stats.rules.punishing ? 'P' : '',
     stats.rules.rending ? 'R' : '',
     stats.rules.severe ? 'S' : '',

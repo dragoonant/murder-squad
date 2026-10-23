@@ -1,0 +1,201 @@
+[
+  {
+    "id": "bl.w.autopistol",
+    "name": "Autopistol",
+    "team": "blooded",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 2,
+      "crit": 3
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      }
+    ],
+    "text": "Autopistol carried by the Traitor Chieftain.",
+    "source": "team-blooded.pdf (Apr '26); docs/spec/13-teams.md section 18.3"
+  },
+  {
+    "id": "bl.w.bolt-pistol",
+    "name": "Bolt pistol",
+    "team": "blooded",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      }
+    ],
+    "text": "Bolt pistol carried by the Traitor Chieftain.",
+    "source": "team-blooded.pdf (Apr '26); docs/spec/13-teams.md section 18.3"
+  },
+  {
+    "id": "bl.w.boltgun",
+    "name": "Boltgun",
+    "team": "blooded",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [],
+    "text": "Boltgun carried by the Traitor Chieftain.",
+    "source": "team-blooded.pdf (Apr '26); docs/spec/13-teams.md section 18.3"
+  },
+  {
+    "id": "bl.w.laspistol",
+    "name": "Laspistol",
+    "team": "blooded",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 2,
+      "crit": 3
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      }
+    ],
+    "text": "Laspistol carried by the Traitor Chieftain.",
+    "source": "team-blooded.pdf (Apr '26); docs/spec/13-teams.md section 18.3"
+  },
+  {
+    "id": "bl.w.plasma-pistol-standard",
+    "name": "Plasma pistol",
+    "team": "blooded",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      }
+    ],
+    "profileGroup": "bl.wg.plasma-pistol",
+    "profile": "standard",
+    "text": "Plasma pistol carried by the Traitor Chieftain. This is the standard profile.",
+    "source": "team-blooded.pdf (Apr '26); docs/spec/13-teams.md section 18.3"
+  },
+  {
+    "id": "bl.w.plasma-pistol-supercharge",
+    "name": "Plasma pistol",
+    "team": "blooded",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.hot"
+      },
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      }
+    ],
+    "profileGroup": "bl.wg.plasma-pistol",
+    "profile": "supercharge",
+    "text": "Plasma pistol carried by the Traitor Chieftain. This is the supercharge profile.",
+    "source": "team-blooded.pdf (Apr '26); docs/spec/13-teams.md section 18.3"
+  },
+  {
+    "id": "bl.w.bayonet-chieftain",
+    "name": "Bayonet",
+    "team": "blooded",
+    "type": "melee",
+    "atk": 3,
+    "hit": "3+",
+    "dmg": {
+      "normal": 2,
+      "crit": 3
+    },
+    "rules": [],
+    "text": "Bayonet carried by the Traitor Chieftain.",
+    "source": "team-blooded.pdf (Apr '26); docs/spec/13-teams.md section 18.3"
+  },
+  {
+    "id": "bl.w.chainsword",
+    "name": "Chainsword",
+    "team": "blooded",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [],
+    "text": "Chainsword carried by the Traitor Chieftain.",
+    "source": "team-blooded.pdf (Apr '26); docs/spec/13-teams.md section 18.3"
+  },
+  {
+    "id": "bl.w.improvised-blade",
+    "name": "Improvised blade",
+    "team": "blooded",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 2,
+      "crit": 3
+    },
+    "rules": [],
+    "text": "Improvised blade carried by the Traitor Chieftain.",
+    "source": "team-blooded.pdf (Apr '26); docs/spec/13-teams.md section 18.3"
+  },
+  {
+    "id": "bl.w.power-weapon",
+    "name": "Power weapon",
+    "team": "blooded",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 6
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "Power weapon carried by the Traitor Chieftain.",
+    "source": "team-blooded.pdf (Apr '26); docs/spec/13-teams.md section 18.3"
+  }
+]

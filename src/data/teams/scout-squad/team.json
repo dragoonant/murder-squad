@@ -1,0 +1,45 @@
+{
+  "id": "scout-squad",
+  "name": "Scout Squad",
+  "factionKeyword": "SCOUT SQUAD",
+  "archetypes": [
+    "infiltration",
+    "recon"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "ss.sergeant"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "ss.sergeant"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.25,
+      "s": 0.18,
+      "l": 0.32
+    },
+    "minor": {
+      "h": 0.6,
+      "s": 0.35,
+      "l": 0.4
+    }
+  },
+  "text": "Space Marine neophytes in light armour and camo cloaks who scout the ground before the battle, lay traps and alarms, and strike from cover under a veteran sergeant.",
+  "source": "team-scout-squad.pdf (Apr '26); docs/spec/13-teams.md section 22"
+}

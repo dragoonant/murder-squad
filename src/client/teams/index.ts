@@ -16,6 +16,13 @@ import { PRESENTATION as corsairVoidscarred } from './corsair-voidscarred'
 import { PRESENTATION as warpcoven } from './warpcoven'
 import { PRESENTATION as farstalkerKinband } from './farstalker-kinband'
 import { PRESENTATION as imperialNavyBreachers } from './imperial-navy-breachers'
+import { PRESENTATION as blooded } from './blooded'
+import { PRESENTATION as fellgorRavagers } from './fellgor-ravagers'
+import { PRESENTATION as chaosCult } from './chaos-cult'
+import { PRESENTATION as goremongers } from './goremongers'
+import { PRESENTATION as scoutSquad } from './scout-squad'
+import { PRESENTATION as tempestusAquilons } from './tempestus-aquilons'
+import { PRESENTATION as exactionSquad } from './exaction-squad'
 
 export const TEAM_PRESENTATION: Record<string, TeamPresentation> = {
   pathfinders,
@@ -33,6 +40,13 @@ export const TEAM_PRESENTATION: Record<string, TeamPresentation> = {
   warpcoven,
   'farstalker-kinband': farstalkerKinband,
   'imperial-navy-breachers': imperialNavyBreachers,
+  blooded,
+  'fellgor-ravagers': fellgorRavagers,
+  'chaos-cult': chaosCult,
+  goremongers,
+  'scout-squad': scoutSquad,
+  'tempestus-aquilons': tempestusAquilons,
+  'exaction-squad': exactionSquad,
 }
 
 type TableKey = 'flavour' | 'vfx' | 'sound' | 'attachments'

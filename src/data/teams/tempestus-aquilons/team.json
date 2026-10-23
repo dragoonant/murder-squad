@@ -1,0 +1,45 @@
+{
+  "id": "tempestus-aquilons",
+  "name": "Tempestus Aquilons",
+  "factionKeyword": "TEMPESTUS AQUILON",
+  "archetypes": [
+    "recon",
+    "seek-and-destroy"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "ta.tempestor"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "ta.tempestor"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.6,
+      "s": 0.12,
+      "l": 0.22
+    },
+    "minor": {
+      "h": 0.1,
+      "s": 0.3,
+      "l": 0.5
+    }
+  },
+  "text": "Grav-chute storm troopers who hold most of the squad in the sky and drop it onto the enemy's flanks once the shooting starts.",
+  "source": "team-tempestus-aquilons.pdf (Aug '26); docs/spec/13-teams.md section 23"
+}

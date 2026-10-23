@@ -1,0 +1,55 @@
+[
+  {
+    "id": "ex.proctor-exactant",
+    "name": "Arbites Proctor-exactant",
+    "team": "exaction-squad",
+    "stats": {
+      "apl": 2,
+      "move": 6,
+      "save": "4+",
+      "wounds": 9
+    },
+    "base": 28,
+    "keywords": [
+      "EXACTION SQUAD",
+      "IMPERIUM",
+      "ADEPTUS ARBITES",
+      "LEADER",
+      "PROCTOR-EXACTANT"
+    ],
+    "weapons": {
+      "fixed": [],
+      "options": [
+        {
+          "id": "loadout",
+          "label": "Loadout",
+          "sets": [
+            {
+              "id": "combat-shotgun-repression-baton",
+              "name": "Combat shotgun and repression baton",
+              "fixed": [
+                "ex.wg.combat-shotgun-proctor",
+                "ex.w.repression-baton-proctor"
+              ]
+            },
+            {
+              "id": "shotpistol-dominator-maul",
+              "name": "Shotpistol, dominator maul and assault shield",
+              "fixed": [
+                "ex.w.shotpistol-proctor",
+                "ex.w.dominator-maul-assault-shield"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "ex-proctor-exactant"
+    },
+    "text": "The squad's commander: a veteran enforcer whose broadcast drone makes enemies near it slow to grab objectives and weak at holding them.",
+    "source": "team-exaction-squad.pdf (Jun '26); docs/spec/13-teams.md section 24.2"
+  }
+]

@@ -110,6 +110,48 @@ import nbWeapons from './teams/imperial-navy-breachers/weapons.json'
 import nbAbilities from './teams/imperial-navy-breachers/abilities.json'
 import nbPloys from './teams/imperial-navy-breachers/ploys.json'
 import nbEquipment from './teams/imperial-navy-breachers/equipment.json'
+import blTeam from './teams/blooded/team.json'
+import blOperatives from './teams/blooded/operatives.json'
+import blWeapons from './teams/blooded/weapons.json'
+import blAbilities from './teams/blooded/abilities.json'
+import blPloys from './teams/blooded/ploys.json'
+import blEquipment from './teams/blooded/equipment.json'
+import fgTeam from './teams/fellgor-ravagers/team.json'
+import fgOperatives from './teams/fellgor-ravagers/operatives.json'
+import fgWeapons from './teams/fellgor-ravagers/weapons.json'
+import fgAbilities from './teams/fellgor-ravagers/abilities.json'
+import fgPloys from './teams/fellgor-ravagers/ploys.json'
+import fgEquipment from './teams/fellgor-ravagers/equipment.json'
+import ccTeam from './teams/chaos-cult/team.json'
+import ccOperatives from './teams/chaos-cult/operatives.json'
+import ccWeapons from './teams/chaos-cult/weapons.json'
+import ccAbilities from './teams/chaos-cult/abilities.json'
+import ccPloys from './teams/chaos-cult/ploys.json'
+import ccEquipment from './teams/chaos-cult/equipment.json'
+import gmTeam from './teams/goremongers/team.json'
+import gmOperatives from './teams/goremongers/operatives.json'
+import gmWeapons from './teams/goremongers/weapons.json'
+import gmAbilities from './teams/goremongers/abilities.json'
+import gmPloys from './teams/goremongers/ploys.json'
+import gmEquipment from './teams/goremongers/equipment.json'
+import ssTeam from './teams/scout-squad/team.json'
+import ssOperatives from './teams/scout-squad/operatives.json'
+import ssWeapons from './teams/scout-squad/weapons.json'
+import ssAbilities from './teams/scout-squad/abilities.json'
+import ssPloys from './teams/scout-squad/ploys.json'
+import ssEquipment from './teams/scout-squad/equipment.json'
+import taTeam from './teams/tempestus-aquilons/team.json'
+import taOperatives from './teams/tempestus-aquilons/operatives.json'
+import taWeapons from './teams/tempestus-aquilons/weapons.json'
+import taAbilities from './teams/tempestus-aquilons/abilities.json'
+import taPloys from './teams/tempestus-aquilons/ploys.json'
+import taEquipment from './teams/tempestus-aquilons/equipment.json'
+import exTeam from './teams/exaction-squad/team.json'
+import exOperatives from './teams/exaction-squad/operatives.json'
+import exWeapons from './teams/exaction-squad/weapons.json'
+import exAbilities from './teams/exaction-squad/abilities.json'
+import exPloys from './teams/exaction-squad/ploys.json'
+import exEquipment from './teams/exaction-squad/equipment.json'
 import f17 from './missions/preliminary-ops-secure.json'
 import f18 from './missions/preliminary-ops-loot.json'
 import f19 from './missions/preliminary-ops-transmission.json'
@@ -238,6 +280,48 @@ const FILES: Record<string, unknown> = {
   'teams/imperial-navy-breachers/abilities.json': nbAbilities,
   'teams/imperial-navy-breachers/ploys.json': nbPloys,
   'teams/imperial-navy-breachers/equipment.json': nbEquipment,
+  'teams/blooded/team.json': blTeam,
+  'teams/blooded/operatives.json': blOperatives,
+  'teams/blooded/weapons.json': blWeapons,
+  'teams/blooded/abilities.json': blAbilities,
+  'teams/blooded/ploys.json': blPloys,
+  'teams/blooded/equipment.json': blEquipment,
+  'teams/fellgor-ravagers/team.json': fgTeam,
+  'teams/fellgor-ravagers/operatives.json': fgOperatives,
+  'teams/fellgor-ravagers/weapons.json': fgWeapons,
+  'teams/fellgor-ravagers/abilities.json': fgAbilities,
+  'teams/fellgor-ravagers/ploys.json': fgPloys,
+  'teams/fellgor-ravagers/equipment.json': fgEquipment,
+  'teams/chaos-cult/team.json': ccTeam,
+  'teams/chaos-cult/operatives.json': ccOperatives,
+  'teams/chaos-cult/weapons.json': ccWeapons,
+  'teams/chaos-cult/abilities.json': ccAbilities,
+  'teams/chaos-cult/ploys.json': ccPloys,
+  'teams/chaos-cult/equipment.json': ccEquipment,
+  'teams/goremongers/team.json': gmTeam,
+  'teams/goremongers/operatives.json': gmOperatives,
+  'teams/goremongers/weapons.json': gmWeapons,
+  'teams/goremongers/abilities.json': gmAbilities,
+  'teams/goremongers/ploys.json': gmPloys,
+  'teams/goremongers/equipment.json': gmEquipment,
+  'teams/scout-squad/team.json': ssTeam,
+  'teams/scout-squad/operatives.json': ssOperatives,
+  'teams/scout-squad/weapons.json': ssWeapons,
+  'teams/scout-squad/abilities.json': ssAbilities,
+  'teams/scout-squad/ploys.json': ssPloys,
+  'teams/scout-squad/equipment.json': ssEquipment,
+  'teams/tempestus-aquilons/team.json': taTeam,
+  'teams/tempestus-aquilons/operatives.json': taOperatives,
+  'teams/tempestus-aquilons/weapons.json': taWeapons,
+  'teams/tempestus-aquilons/abilities.json': taAbilities,
+  'teams/tempestus-aquilons/ploys.json': taPloys,
+  'teams/tempestus-aquilons/equipment.json': taEquipment,
+  'teams/exaction-squad/team.json': exTeam,
+  'teams/exaction-squad/operatives.json': exOperatives,
+  'teams/exaction-squad/weapons.json': exWeapons,
+  'teams/exaction-squad/abilities.json': exAbilities,
+  'teams/exaction-squad/ploys.json': exPloys,
+  'teams/exaction-squad/equipment.json': exEquipment,
   'missions/preliminary-ops-secure.json': f17,
   'missions/preliminary-ops-loot.json': f18,
   'missions/preliminary-ops-transmission.json': f19,

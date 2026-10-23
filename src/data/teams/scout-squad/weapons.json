@@ -1,0 +1,87 @@
+[
+  {
+    "id": "ss.w.astartes-shotgun",
+    "name": "Astartes shotgun",
+    "team": "scout-squad",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "2+",
+    "dmg": {
+      "normal": 4,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 6
+      }
+    ],
+    "text": "Short-ranged scattergun carried by Scout Squad operatives.",
+    "source": "team-scout-squad.pdf (Apr '26); docs/spec/13-teams.md section 22.3"
+  },
+  {
+    "id": "ss.w.bolt-pistol",
+    "name": "Bolt pistol",
+    "team": "scout-squad",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      }
+    ],
+    "text": "Sidearm carried by Scout Squad operatives.",
+    "source": "team-scout-squad.pdf (Apr '26); docs/spec/13-teams.md section 22.3"
+  },
+  {
+    "id": "ss.w.boltgun",
+    "name": "Boltgun",
+    "team": "scout-squad",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [],
+    "text": "Standard rifle carried by Scout Squad operatives.",
+    "source": "team-scout-squad.pdf (Apr '26); docs/spec/13-teams.md section 22.3"
+  },
+  {
+    "id": "ss.w.chainsword",
+    "name": "Chainsword",
+    "team": "scout-squad",
+    "type": "melee",
+    "atk": 5,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [],
+    "text": "Chainsword carried by the Scout Sergeant.",
+    "source": "team-scout-squad.pdf (Apr '26); docs/spec/13-teams.md section 22.3"
+  },
+  {
+    "id": "ss.w.fists-sergeant",
+    "name": "Fists",
+    "team": "scout-squad",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [],
+    "text": "The Scout Sergeant's bare-handed strikes.",
+    "source": "team-scout-squad.pdf (Apr '26); docs/spec/13-teams.md section 22.3"
+  }
+]

@@ -458,3 +458,159 @@ Same method as the first ten teams (one Gemini chat per team, standalone prompts
 | nb-hatchcutter | lunging forward, chainfist swung up in an arc, sparks flying |
 | nb-surveyor | standing with weight forward, left arm pointing ahead with the scanner, shotgun held low |
 | nb-void-jammer | standing braced, left arm raised pressing the button, shotgun held low |
+
+## v2 batch D: seven more teams (2026-10-23)
+
+Same method as batch C (one Gemini chat per team, standalone prompts, in-page JSON bundle decoded with python) and the same proportion wording: two and a half heads tall, head about 40% of the height and as wide as the shoulders, chunky limbs, oversized hands and feet, hard-surface panel detail, painted tabletop-miniature finish. One body per operative and loadout variant (weapons held in the pose; -b and -c are pose variants). Prompts were written from the datacards without Gemini testing yet: wording avoids faction names, symbols and gore ("renegade", "cultist", "blood-red"), and every prompt forbids text, logos and emblems. Large figures (Ogryn, Torment, Servo-Sentry) use a "wide plain round black base" framing; the Mindwitch uses the floating-on-a-rod framing. The full standalone prompt per body is in `art/unit-concepts/v2/prompts/<code>-prompts-gemini.json`; the tables list the slug and the pose line. Height (inches) and base (mm) per body go into `tools/local-gen/v2_units.json`.
+
+### Blooded v2 (21 bodies, prompts in `bl-prompts-gemini.json`)
+
+Palette: scuffed olive-drab fatigues with dull maroon paint and rusty iron plates. Scale notes: the Ogryn is the tallest figure of the team (1.9 in on a 40 mm base, about 1.8 times a Trooper) with a mutated left claw arm, prompted as a colossal hulking brute on a wide base; the Enforcer is a tall officer (1.25 in on a 32 mm base, about 1.2 times a Trooper). The Chieftain has five bodies (the laspistol variants reuse the autopistol bodies); the Trooper has a second pose body.
+
+| Slug | Pose | Height in | Base mm |
+|---|---|---|---|
+| bl-chieftain-autopistol-chainsword | charging forward, chainsword swung high overhead, pistol aimed ahead | 1.1 | 25 |
+| bl-chieftain-autopistol-power-weapon | lunging forward with the sword thrust ahead, pistol aimed over it | 1.1 | 25 |
+| bl-chieftain-bolt-pistol | mid-stride, chainsword swept back, pistol levelled with a snarl | 1.1 | 25 |
+| bl-chieftain-boltgun | advancing, boltgun shouldered and firing, head turned to bellow an order | 1.1 | 25 |
+| bl-chieftain-plasma-pistol | mid-stride, blade held low, plasma pistol levelled | 1.1 | 25 |
+| bl-brimstone-grenadier | mid-throw, right arm swinging forward to lob the bomb, knees bent | 1.05 | 25 |
+| bl-butcher | charging with both blades crossed, mid-roar, apron flapping | 1.1 | 25 |
+| bl-commsman | standing with weight forward, shouting into the handset, rifle pointed down and ahead | 1.05 | 25 |
+| bl-corpseman | running low, injector thrust forward as if about to jab an ally, vials rattling | 1.05 | 25 |
+| bl-enforcer | striding forward with a menacing swagger, power fist raised, pistol aimed ahead | 1.25 | 32 |
+| bl-flenser | crouched low and stalking forward, the two blades scraped together, shoulders hunched | 1.0 | 25 |
+| bl-gunner-flamer | firing a jet of flame from the hip while turning, torso twisted | 1.05 | 25 |
+| bl-gunner-grenade-launcher | kneeling on one knee, launcher aimed up at a high angle | 1.05 | 25 |
+| bl-gunner-meltagun | crouched forward on one foot, gun aimed straight ahead | 1.05 | 25 |
+| bl-gunner-plasma-gun | advancing, gun shouldered and firing, one foot forward | 1.05 | 25 |
+| bl-ogryn | charging with a roar, maul swung back over the shoulder, claw reaching ahead | 1.9 | 40 |
+| bl-sharpshooter | kneeling sniper, one knee down, rifle aimed straight ahead, cheek to the stock | 1.05 | 25 |
+| bl-thug | swinging the club overhead mid-stride, jaw clenched | 1.1 | 25 |
+| bl-trench-sweeper | advancing behind the shield, shoulder forward, shotgun aimed over the shield rim | 1.05 | 25 |
+| bl-trooper | advancing, rifle shouldered and aimed straight ahead, one foot forward | 1.05 | 25 |
+| bl-trooper-b | charging forward with the bayonet thrust ahead, mouth open in a yell | 1.05 | 25 |
+
+### Fellgor Ravagers v2 (15 bodies, prompts in `fg-prompts-gemini.json`)
+
+Palette: earth-brown fur and bone-white horns, dull green cloth, rusty plates. Notes: every operative is a goat-horned beastman on a 32 mm base (Warrior 1.35 in, Ironhorn, Gorehorn, Vandal and Mangler 1.45 to 1.5 in). The Warrior has a bludgeon and a cleaver body, each with a -b pose variant.
+
+| Slug | Pose | Height in | Base mm |
+|---|---|---|---|
+| fg-ironhorn-corrupted-pistol-chainsword | charging, chainsword raised high, pistol aimed ahead, mouth bellowing | 1.5 | 32 |
+| fg-ironhorn-plasma-pistol-bludgeon | mid-stride, bludgeon swept back, plasma pistol levelled | 1.5 | 32 |
+| fg-deathknell | striding forward bellowing, bludgeon raised high, pistol aimed ahead, gong swinging on the back | 1.4 | 32 |
+| fg-fluxbray | spinning mid-leap with all three cleavers slashing in a fan | 1.4 | 32 |
+| fg-gnarlscar | punching forward with the bionic fist, pistol aimed with the other hand | 1.4 | 32 |
+| fg-gorehorn | charging furiously, the huge cleaver swung back over the shoulder | 1.45 | 32 |
+| fg-herd-goad | cracking the whip overhead, tail curling through the air, pistol aimed ahead | 1.4 | 32 |
+| fg-mangler | pouncing forward, both claws slashing in front, jaws wide | 1.5 | 32 |
+| fg-shaman | braying with the head thrown back, staff raised, energy crackling around the clawed hand | 1.4 | 32 |
+| fg-toxhorn | mid-throw, left arm swinging forward, cleaver held low | 1.4 | 32 |
+| fg-vandal | swinging the crusher in a wide arc, body twisted, one hoof off the ground | 1.5 | 32 |
+| fg-warrior-bludgeon | charging, bludgeon raised, pistol aimed ahead | 1.35 | 32 |
+| fg-warrior-bludgeon-b | leaping forward, bludgeon swung down from overhead, pistol held back | 1.35 | 32 |
+| fg-warrior-cleaver | sprinting forward, cleaver swung back, pistol aimed | 1.35 | 32 |
+| fg-warrior-cleaver-b | crouched low and stalking forward, cleaver held out to the side | 1.35 | 32 |
+
+### Chaos Cult v2 (12 bodies, prompts in `cc-prompts-gemini.json`)
+
+Palette: bruise-purple robes and sickly ochre wrappings; mutants and torments keep the same two hues in shredded robes over yellow-green flesh. Mutation: the engine swaps the miniature when a Devotee becomes a Mutant and a Mutant becomes a Torment, so each stage has its own body with the same cult hues (Devotee x3 poses, Mutant x2, Torment x2, picked by operative-id hash like other pose variants). Scale: Devotee 1.0 in on 25 mm, Mutant 1.1 in on 25 mm (hunched, one swollen arm), Torment 1.9 in on a 40 mm base, a towering daemon-possessed bulk. Accursed Gifts (wings, horns, chitin and so on) are not baked into the meshes; the Mutant -b body already carries wing stubs and extra arms as generic mutation detail. The Mindwitch is a floating armature (thin clear rod under the base).
+
+| Slug | Pose | Height in | Base mm |
+|---|---|---|---|
+| cc-cult-demagogue | preaching with the left arm flung wide, stave raised, mid-stride | 1.15 | 32 |
+| cc-blessed-blade | lunging forward, the blade thrust ahead, cloak flaring | 1.05 | 28 |
+| cc-blessed-blade-b | mid-leap, blade slashing down from overhead, cloak streaming | 1.05 | 28 |
+| cc-iconarch | raising the censer pole high, fire pouring, pistol aimed ahead | 1.2 | 32 |
+| cc-mindwitch | hovering forward, head tilted down, eyes beaming light, fists clenched | 1.2 | 32 |
+| cc-devotee | charging forward, hatchet raised, pistol aimed ahead | 1.0 | 25 |
+| cc-devotee-b | leaping forward, cudgel swung down from overhead | 1.0 | 25 |
+| cc-devotee-c | advancing hunched, pistol levelled in both hands, one foot forward | 1.0 | 25 |
+| cc-mutant | lurching forward, the huge clawed arm swung back to strike, head low | 1.1 | 25 |
+| cc-mutant-b | mid-leap, both arms slashing, extra arms flailing, mouth wide | 1.1 | 25 |
+| cc-torment | charging forward, both huge claws raised high, jaw wide in a roar | 1.9 | 40 |
+| cc-torment-b | pouncing low, front limbs reaching, bone blades splayed | 1.9 | 40 |
+
+### Goremongers v2 (9 bodies, prompts in `gm-prompts-gemini.json`)
+
+Palette: blood-red plates over scarred skin, tarnished brass, bone-white trophy straps; a backpack tank of dark fluid on every body. Notes: Aspirants are the repeatable body (3 poses). The Gore Tank is the visible backpack tank on every body; its fill level is not modelled.
+
+| Slug | Pose | Height in | Base mm |
+|---|---|---|---|
+| gm-blood-herald | charging forward, chainblade swung back, standard pole thrust ahead | 1.3 | 32 |
+| gm-aspirant | advancing fast, chainglaive raised to strike, one foot forward | 1.2 | 32 |
+| gm-aspirant-b | lunging forward, the glaive thrust ahead, tank swinging on the back | 1.2 | 32 |
+| gm-aspirant-c | sprinting forward, glaive trailing behind, pistol aimed ahead | 1.2 | 32 |
+| gm-bloodtaker | slashing forward, the ritual blade swept across, flasks swinging | 1.2 | 32 |
+| gm-impaler | hurling stance, the fleshskewer drawn back over the shoulder, the other arm pointing at the target | 1.25 | 32 |
+| gm-inciter | dashing sideways, both pistols firing in different directions, ribbons flaring | 1.2 | 32 |
+| gm-skullclaimer | swinging the axe in a wide overhead arc, mouth roaring | 1.3 | 32 |
+| gm-stalker | mid-leap dropping from above, both picks raised ready to strike | 1.2 | 32 |
+
+### Scout Squad v2 (14 bodies, prompts in `ss-prompts-gemini.json`)
+
+Palette: moss-green plates with sandy-tan leather, bare cropped heads. Notes: Scouts are smaller than full battle-brothers (1.0 in Warrior, 1.1 in Sergeant on 28 mm bases) and bare-headed. The Warrior has shotgun, boltgun and pistol-and-blade loadouts, each with a -b pose variant.
+
+| Slug | Pose | Height in | Base mm |
+|---|---|---|---|
+| ss-sergeant-astartes-shotgun | advancing, shotgun shouldered and firing, head turned to call an order | 1.1 | 28 |
+| ss-sergeant-boltgun | striding forward, boltgun angled up across the chest, shouting an order | 1.1 | 28 |
+| ss-sergeant-bolt-pistol-chainsword | charging, chainsword swung back, pistol aimed ahead | 1.1 | 28 |
+| ss-heavy-gunner-heavy-bolter | braced with a wide stance, leaning back into the recoil, firing | 1.05 | 28 |
+| ss-heavy-gunner-missile-launcher | kneeling on one knee, launcher on the shoulder and aimed up | 1.05 | 28 |
+| ss-hunter | mid-leap swinging in, the line trailing from the grapnel, blade drawn back | 1.0 | 28 |
+| ss-sniper | kneeling sniper, one knee down, rifle aimed straight ahead, cheek to the stock | 1.0 | 28 |
+| ss-tracker | sneaking low, scanner held out ahead, boltgun ready | 1.0 | 28 |
+| ss-warrior-shotgun | advancing, shotgun shouldered and aimed straight ahead, one foot forward | 1.0 | 28 |
+| ss-warrior-shotgun-b | sprinting forward, shotgun held across the chest, leaning into the run | 1.0 | 28 |
+| ss-warrior-boltgun | kneeling on one knee, boltgun aimed forward | 1.0 | 28 |
+| ss-warrior-boltgun-b | advancing in a crouch, boltgun shouldered and firing | 1.0 | 28 |
+| ss-warrior-bolt-pistol-blade | charging, blade raised, pistol aimed ahead | 1.0 | 28 |
+| ss-warrior-bolt-pistol-blade-b | pouncing forward, blade drawn back, pistol aimed | 1.0 | 28 |
+
+### Tempestus Aquilons v2 (15 bodies, prompts in `ta-prompts-gemini.json`)
+
+Palette: glossy storm-blue carapace with silver-white trim and amber visors. Scale notes: the Servo-Sentry is a squat mechanoid on a 40 mm base (1.2 in, sensor-dome head, no face), three bodies for the flamer, grenade launcher and volley gun options. The Trooper has three pose bodies.
+
+| Slug | Pose | Height in | Base mm |
+|---|---|---|---|
+| ta-tempestor-laspistol-power-weapon | lunging forward with the sword thrust ahead, pistol aimed over it | 1.1 | 28 |
+| ta-tempestor-relic-bolt-pistol-chainsword | charging, chainsword swung high, pistol aimed ahead | 1.1 | 28 |
+| ta-tempestor-lascarbine | striding forward, carbine shouldered and firing, head turned to call an order | 1.1 | 28 |
+| ta-servo-sentry-flamer | planted wide, torso turning, a jet of flame streaming from the nozzle | 1.2 | 40 |
+| ta-servo-sentry-grenade-launcher | planted wide, launcher raised at a high angle, head tilted up | 1.2 | 40 |
+| ta-servo-sentry-volley-gun | planted wide, leaning back into the recoil, firing | 1.2 | 40 |
+| ta-grenadier | mid-throw, left arm swinging forward to lob the bomb, knees bent | 1.05 | 28 |
+| ta-gunfighter | dashing sideways, both pistols firing in different directions, cloak flaring | 1.05 | 28 |
+| ta-gunner-melta-carbine | crouched forward on one foot, carbine aimed straight ahead | 1.05 | 28 |
+| ta-gunner-plasma-carbine | advancing, carbine shouldered and firing, one foot forward | 1.05 | 28 |
+| ta-marksman | kneeling sniper, one knee down, rifle aimed straight ahead, cheek to the stock | 1.05 | 28 |
+| ta-precursor | landing from a drop in a deep low crouch, knife drawn back, pistol aimed | 1.05 | 28 |
+| ta-trooper | advancing, carbine shouldered and aimed straight ahead, one foot forward | 1.05 | 28 |
+| ta-trooper-b | sprinting forward, carbine held across the chest, leaning into the run | 1.05 | 28 |
+| ta-trooper-c | kneeling on one knee, carbine aimed forward, cloak draped behind | 1.05 | 28 |
+
+### Exaction Squad v2 (15 bodies, prompts in `ex-prompts-gemini.json`)
+
+Palette: matte black armour with amber-yellow warning stripes. Scale notes: the R-VR Cyber-mastiff is a heavy robotic hound, bulkier than the Farstalker hound or the Navy cat, 0.95 in tall on a 25 mm base, roughly waist-high to a 1.05 in Arbitrator; its length overhangs the base. The Gunner has grenade launcher, heavy stubber and webber bodies.
+
+| Slug | Pose | Height in | Base mm |
+|---|---|---|---|
+| ex-proctor-exactant-combat-shotgun-baton | commanding, one foot forward, baton pointing at the target, shotgun aimed | 1.1 | 28 |
+| ex-proctor-exactant-shotpistol-maul-shield | advancing behind the shield, maul swung back, shotpistol aimed over the shield rim | 1.1 | 28 |
+| ex-castigator | swinging the maul in a wide overhead arc, stepping forward | 1.05 | 28 |
+| ex-chirurgant | running low, injector held out ahead as if reaching a wounded ally | 1.05 | 28 |
+| ex-gunner-grenade-launcher | kneeling on one knee, launcher aimed up at a high angle | 1.05 | 28 |
+| ex-gunner-heavy-stubber | braced with a wide stance, leaning back into the recoil, firing | 1.05 | 28 |
+| ex-gunner-webber | crouched forward on one foot, the webber aimed straight ahead, strands of webbing flying | 1.05 | 28 |
+| ex-leashmaster | standing with weight forward, left arm pointing ahead and tugging the leash, shotgun held low | 1.05 | 28 |
+| ex-cyber-mastiff | mid-run, jaws open, low and fast, legs driving | 0.95 | 25 |
+| ex-malocator | crouched forward, probe held out ahead, shotgun ready | 1.05 | 28 |
+| ex-marksman | kneeling sniper, one knee down, shotgun aimed straight ahead, cheek to the stock | 1.05 | 28 |
+| ex-revelatum | sneaking low, shotpistol aimed ahead, baton held back | 1.05 | 28 |
+| ex-subductor | advancing behind the big shield, shoulder forward, pistol aimed over the shield rim | 1.05 | 28 |
+| ex-vigilant | advancing, shotgun shouldered and aimed straight ahead, one foot forward | 1.05 | 28 |
+| ex-vox-signifier | standing with weight forward, shouting into the handset, shotgun pointed down and ahead | 1.05 | 28 |
+
+Batch D total: 101 bodies.

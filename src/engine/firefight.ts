@@ -592,6 +592,7 @@ export function firefightResume(ctx: Ctx, token: string): void {
       if (ctx.state.firefight.activation?.declared) dispatchDeclared(ctx)
       return
     case 'fallBack.moved':
+    case 'charge.moved':
       if (ctx.state.firefight.activation?.declared) finishAction(ctx)
       return
     case 'actionEnded.guard':

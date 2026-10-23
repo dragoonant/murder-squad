@@ -1,0 +1,44 @@
+[
+  {
+    "id": "gm.w.icon-of-khorne",
+    "name": "Icon of Khorne",
+    "team": "goremongers",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "2+",
+    "dmg": {
+      "normal": 4,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.saturate"
+      }
+    ],
+    "text": "Unholy icon of the war god borne by the Blood Herald, lashing nearby foes with baleful power.",
+    "source": "team-goremongers.pdf (Aug '26); docs/spec/13-teams.md section 21.3"
+  },
+  {
+    "id": "gm.w.chainblade",
+    "name": "Chainblade",
+    "team": "goremongers",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.rending"
+      }
+    ],
+    "text": "Chainblade carried by the Blood Herald.",
+    "source": "team-goremongers.pdf (Aug '26); docs/spec/13-teams.md section 21.3"
+  }
+]

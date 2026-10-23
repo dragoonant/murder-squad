@@ -1,0 +1,45 @@
+{
+  "id": "fellgor-ravagers",
+  "name": "Fellgor Ravagers",
+  "factionKeyword": "FELLGOR RAVAGER",
+  "archetypes": [
+    "recon",
+    "seek-and-destroy"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "fg.ironhorn"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "fg.ironhorn"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.07,
+      "s": 0.35,
+      "l": 0.3
+    },
+    "minor": {
+      "h": 0.11,
+      "s": 0.6,
+      "l": 0.5
+    }
+  },
+  "text": "A pack of horned, warp-twisted hunters that stalk prey through the dark and keep swinging long after a lesser warrior would have dropped.",
+  "source": "team-fellgor-ravagers.pdf (Aug '26); docs/spec/13-teams.md section 19"
+}

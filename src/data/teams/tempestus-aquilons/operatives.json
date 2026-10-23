@@ -1,0 +1,62 @@
+[
+  {
+    "id": "ta.tempestor",
+    "name": "Tempestus Aquilon Tempestor",
+    "team": "tempestus-aquilons",
+    "stats": {
+      "apl": 3,
+      "move": 6,
+      "save": "4+",
+      "wounds": 9
+    },
+    "base": 28,
+    "keywords": [
+      "TEMPESTUS AQUILON",
+      "IMPERIUM",
+      "LEADER",
+      "TEMPESTOR"
+    ],
+    "weapons": {
+      "fixed": [],
+      "options": [
+        {
+          "id": "loadout",
+          "label": "Loadout",
+          "sets": [
+            {
+              "id": "hot-shot-laspistol-power-weapon",
+              "name": "Hot-shot laspistol and power weapon",
+              "fixed": [
+                "ta.w.hot-shot-laspistol",
+                "ta.w.power-weapon"
+              ]
+            },
+            {
+              "id": "relic-bolt-pistol-chainsword",
+              "name": "Relic bolt pistol and chainsword",
+              "fixed": [
+                "ta.w.relic-bolt-pistol",
+                "ta.w.chainsword"
+              ]
+            },
+            {
+              "id": "hot-shot-lascarbine-fists",
+              "name": "Hot-shot lascarbine and fists",
+              "fixed": [
+                "ta.w.hot-shot-lascarbine",
+                "ta.w.fists-tempestor"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "ta-tempestor"
+    },
+    "text": "The drop commander: once a battle it gets a ploy or a re-roll for free, and it can push one nearby trooper into an extra action.",
+    "source": "team-tempestus-aquilons.pdf (Aug '26); docs/spec/13-teams.md section 23.2"
+  }
+]

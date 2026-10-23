@@ -1,0 +1,36 @@
+[
+  {
+    "id": "cc.demagogue",
+    "name": "Cult Demagogue",
+    "team": "chaos-cult",
+    "stats": {
+      "apl": 2,
+      "move": 6,
+      "save": "5+",
+      "wounds": 8
+    },
+    "base": 32,
+    "keywords": [
+      "CHAOS CULT",
+      "CHAOS",
+      "LEADER",
+      "DARK COMMUNE",
+      "CULT DEMAGOGUE"
+    ],
+    "weapons": {
+      "fixed": [
+        "cc.w.diabolical-stave-ranged",
+        "cc.w.pistol",
+        "cc.w.diabolical-stave-melee"
+      ],
+      "options": []
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "cc-cult-demagogue"
+    },
+    "text": "The cult's preacher: a fiery speaker who goads a nearby follower into a sudden attack or a desperate rush.",
+    "source": "team-chaos-cult.pdf (Jul '25); docs/spec/13-teams.md section 20.2"
+  }
+]

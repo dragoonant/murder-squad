@@ -9,7 +9,7 @@ import { getWindowOpener, runHook } from './hooks'
 import type { OptionInput, Ctx } from './registry'
 import { enemiesOf, getOp, hasInjuredPenalty, isInjured, otherSeat } from './state'
 import { terrainOf } from './terrain'
-import { providerAny, providerCommandRerollCost, providerOnCommandReroll, providerRerollsBanned, providerWeaponForbidden } from './team-rules'
+import { providerAny, providerCommandRerollCost, providerOnCommandReroll, providerRerollBannedValues, providerRerollsBanned, providerWeaponForbidden } from './team-rules'
 import { isPsychicWeapon, psychicAllowed } from './psychic'
 import type {
   Action,
@@ -373,7 +373,8 @@ export function attackStats(
     need: clampTarget(weapon.hit + data.hitDelta + Math.max(0, lost)),
     lethal: data.lethal,
     accurate: Math.min(atk, accurateTotal(data.accurate)),
-    grants: data.rerolls,
+    // batch D prep: results a team rule bars from re-rolls narrow every grant (odds and policy included)
+    grants: banGrantValues(data.rerolls, providerRerollBannedValues(state, { kind: o.kind, rollerId: opId, opponentId: targetId, defence: false })),
     rules,
     rawRules,
     assists: data.assists,
@@ -410,8 +411,33 @@ export function defenceStats(
   return {
     collected: Math.max(0, data.dice - reduce),
     need: clampTarget(target.save + data.saveDelta),
-    grants: data.rerolls,
+    grants: banGrantValues(data.rerolls, providerRerollBannedValues(state, { kind: 'shoot', rollerId: targetId, opponentId: attackerId, defence: true })),
   }
+}
+
+/** batch D prep: grants limited to the results not in `banned` (a grant left with no result is dropped). */
+export function banGrantValues(grants: RerollGrant[], banned: number[]): RerollGrant[] {
+  if (banned.length === 0) return grants
+  const out: RerollGrant[] = []
+  for (const g of grants) {
+    const values = (g.values ?? [1, 2, 3, 4, 5, 6]).filter((v) => !banned.includes(v))
+    if (values.length > 0) out.push({ ...g, values })
+  }
+  return out
+}
+
+/**
+ * batch D prep (rerollBannedValues): the die results no re-roll may touch for `side` of the attack in progress: the
+ * roller is the side's operative, the opponent the other operative of the sequence.
+ */
+export function rerollBannedFor(state: GameState, side: DiceSide): number[] {
+  const a = state.attack
+  if (!a) return []
+  const defender = a.seq?.targetId ?? a.fight?.targetId ?? a.targets?.[a.index]
+  if (!defender) return []
+  const isAttacker = side.operativeId === a.operativeId
+  const defence = a.kind === 'shoot' && !isAttacker
+  return providerRerollBannedValues(state, { kind: a.kind, rollerId: side.operativeId, opponentId: isAttacker ? defender : a.operativeId, defence })
 }
 
 // ---------------------------------------------------------------------------
@@ -493,7 +519,9 @@ export interface RerollOptions {
 export function rerollOptions(state: GameState, side: DiceSide): RerollOptions {
   // M9 prep: a rule can bar every re-roll of a side (Nightmare Shroud, Suppressing Fire)
   const banned = side.noRerolls === true || (state.attack ? providerRerollsBanned(state, side, state.attack) : false)
-  const eligAll = banned ? [] : eligibleDice(side)
+  // batch D prep: results a team rule bars from any re-roll (Sinister Trophies: 1s)
+  const barred = banned ? [] : rerollBannedFor(state, side)
+  const eligAll = banned ? [] : eligibleDice(side).filter((i) => !barred.includes(side.dice[i]!.value!))
   const grants: OptionInput[] = []
   const command: OptionInput[] = []
   if (eligAll.length === 0) return { grants, command }
@@ -589,6 +617,10 @@ export function parseReroll(
   const elig = new Set(eligibleDice(side))
   if (!(dice as number[]).every((i) => elig.has(i))) {
     return { rejection: { code: 'E_NOT_AN_OPTION', reason: 'only dice that were rolled and not yet re-rolled can be re-rolled' } }
+  }
+  const barred = rerollBannedFor(state, side)
+  if ((dice as number[]).some((i) => barred.includes(side.dice[i]!.value!))) {
+    return { rejection: { code: 'E_NOT_AN_OPTION', reason: `dice showing ${barred.join(' or ')} cannot be re-rolled` } }
   }
   if (payload.command === true) {
     if (side.commandUsed) return { rejection: { code: 'E_PLOY_USED', reason: 'Command Re-roll was already used on this roll' } }
@@ -1049,6 +1081,8 @@ export function inflict(
     const save = { source: o.source, attackerId: o.attackerId, weaponId: o.weaponId, wounds: 0 }
     runHook('beforeIncapacitated', { seat: target.seat, state: s, engine: ctx, operativeId: target.id, targetId: o.attackerId, ...(o.weaponId ? { weaponId: o.weaponId } : {}), data: save })
     if (save.wounds > 0) target.wounds = Math.min(target.maxWounds, Math.floor(save.wounds))
+    // batch D prep (killLog): the damage that took it to 0 names the killer, whatever the cause
+    else target.incapacitatedBy = { id: o.attackerId, source: o.source }
   }
   ctx.emit({ type: 'DamageInflicted', operativeId: target.id, sourceId: o.attackerId, amount, source: o.source, wounds: target.wounds })
   // M9 prep: wounds actually lost, for rules that react to it (Grandfather's Blessing)

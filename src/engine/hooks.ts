@@ -32,7 +32,20 @@ export const HOOK_NAMES = [
   'action.declared',
   // M9 batch B: a seat passed in the Gambit step (explicitly or with nothing usable); see GambitPassedData (Cunning)
   'gambit.passed',
+  // batch D prep: an operative left the killzone for good, any cause (killLog); see OperativeRemovedData
+  'operative.removed',
 ] as const
+
+/**
+ * operative.removed (batch D prep): `operativeId` was removed from the killzone (attack, direct damage, mines, a
+ * deadline out of the killzone) or scored as incapacitated while still in it (kills.scoreAsIncapacitated, Frenzy).
+ * Runs once per operative and removal, after the step's action, with `engine` (no decisions: a rule that needs a
+ * choice offers it at the next reaction point, reading kills.killsSince). `targetId` is the killer when known.
+ */
+export interface OperativeRemovedData {
+  killerId: string | null
+  cause: 'attack' | 'direct' | 'offboard' | 'scored'
+}
 
 /**
  * gambit.passed (M9 batch B): `seat` passed in the Gambit step. `explicit` is false for the implicit pass of a seat

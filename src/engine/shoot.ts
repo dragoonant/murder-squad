@@ -813,8 +813,6 @@ function applyBlock(ctx: Ctx, plan: { unblockedNormal: number; unblockedCrit: nu
   const s = ctx.state
   const a = attackOf(ctx)
   const seq = seqOf(ctx)
-  const weapon = weaponOf(s, a.weaponId!)
-  const dmg = weaponDamage(s, a.operativeId, weapon.id, seq.targetId, 'shoot', ctx)
   ctx.emit(
     {
       type: 'DiceBlocked',
@@ -826,10 +824,22 @@ function applyBlock(ctx: Ctx, plan: { unblockedNormal: number; unblockedCrit: nu
     },
     seq.def?.seat ?? null,
   )
-  for (let i = 0; i < plan.unblockedCrit; i++) {
+  // batch D prep: a window after blocks and before any damage (Drag); ploys there may lower seq.unblocked
+  seq.unblocked = { normal: plan.unblockedNormal, crit: plan.unblockedCrit }
+  proceed(ctx, 'resolve', 'shoot.beforeResolve')
+}
+
+STEPS.resolve = (ctx) => {
+  const s = ctx.state
+  const a = attackOf(ctx)
+  const seq = seqOf(ctx)
+  const weapon = weaponOf(s, a.weaponId!)
+  const dmg = weaponDamage(s, a.operativeId, weapon.id, seq.targetId, 'shoot', ctx)
+  const left = seq.unblocked ?? { normal: 0, crit: 0 }
+  for (let i = 0; i < left.crit; i++) {
     inflict(ctx, { targetId: seq.targetId, attackerId: a.operativeId, weaponId: weapon.id, amount: dmg.crit, source: 'crit' })
   }
-  for (let i = 0; i < plan.unblockedNormal; i++) {
+  for (let i = 0; i < left.normal; i++) {
     inflict(ctx, { targetId: seq.targetId, attackerId: a.operativeId, weaponId: weapon.id, amount: dmg.normal, source: 'normal' })
   }
   a.seq = null

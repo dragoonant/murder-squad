@@ -1,0 +1,94 @@
+[
+  {
+    "id": "bl.chieftain",
+    "name": "Traitor Chieftain",
+    "team": "blooded",
+    "stats": {
+      "apl": 2,
+      "move": 6,
+      "save": "5+",
+      "wounds": 8
+    },
+    "base": 25,
+    "keywords": [
+      "BLOODED",
+      "CHAOS",
+      "LEADER",
+      "CHIEFTAIN"
+    ],
+    "weapons": {
+      "fixed": [],
+      "options": [
+        {
+          "id": "loadout",
+          "label": "Loadout",
+          "sets": [
+            {
+              "id": "autopistol-chainsword",
+              "name": "Autopistol and chainsword",
+              "fixed": [
+                "bl.w.autopistol",
+                "bl.w.chainsword"
+              ]
+            },
+            {
+              "id": "autopistol-power-weapon",
+              "name": "Autopistol and power weapon",
+              "fixed": [
+                "bl.w.autopistol",
+                "bl.w.power-weapon"
+              ]
+            },
+            {
+              "id": "laspistol-chainsword",
+              "name": "Laspistol and chainsword",
+              "fixed": [
+                "bl.w.laspistol",
+                "bl.w.chainsword"
+              ]
+            },
+            {
+              "id": "laspistol-power-weapon",
+              "name": "Laspistol and power weapon",
+              "fixed": [
+                "bl.w.laspistol",
+                "bl.w.power-weapon"
+              ]
+            },
+            {
+              "id": "bolt-pistol-chainsword",
+              "name": "Bolt pistol and chainsword",
+              "fixed": [
+                "bl.w.bolt-pistol",
+                "bl.w.chainsword"
+              ]
+            },
+            {
+              "id": "boltgun-bayonet",
+              "name": "Boltgun and bayonet",
+              "fixed": [
+                "bl.w.boltgun",
+                "bl.w.bayonet-chieftain"
+              ]
+            },
+            {
+              "id": "plasma-pistol-improvised-blade",
+              "name": "Plasma pistol and improvised blade",
+              "fixed": [
+                "bl.wg.plasma-pistol",
+                "bl.w.improvised-blade"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "bl-chieftain"
+    },
+    "text": "The warband's tyrant: keeps hold of favour when a marked follower falls nearby, and fights as if the dark gods watch whenever it carries a token or stands deep in enemy ground.",
+    "source": "team-blooded.pdf (Apr '26); docs/spec/13-teams.md section 18.2"
+  }
+]

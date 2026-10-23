@@ -631,6 +631,10 @@ function handleMovePath(state: GameState, action: Action): Handled {
       if (a.declared?.action === 'fallBack' && o.status === 'active') {
         if (openFirefightWindow(ctx, 'firefight.fallBackMoved', { subjectId: o.id, counteracting: a.counteract, action: 'fallBack' }, 'fallBack.moved')) return
       }
+      // batch D prep: the same window between a Charge's move and the end of the action (Rake)
+      if (a.declared?.action === 'charge' && o.status === 'active') {
+        if (openFirefightWindow(ctx, 'firefight.chargeMoved', { subjectId: o.id, counteracting: a.counteract, action: 'charge' }, 'charge.moved')) return
+      }
       finishAction(ctx)
     },
   }

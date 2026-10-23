@@ -82,6 +82,8 @@ export type TimingWindowId =
   // batch C shared: the defender before attack re-rolls; the Fall Back mover after its move
   | 'shoot.defenderAttackRolled'
   | 'firefight.fallBackMoved'
+  | 'firefight.chargeMoved'
+  | 'shoot.beforeResolve'
   | 'operative.incapacitated'
   | 'firefight.activationEnded'
   | 'turningPoint.end'
@@ -337,6 +339,8 @@ export interface DatacardData {
   figure: { archetype: string; variant?: Slug }
   expendable?: boolean
   nonOperativeForSelection?: boolean
+  /** batch D prep: false = never on a roster; reached only by changing datacard mid-battle (transformOperative) */
+  selectable?: boolean
   text: string
   source: Source
 }

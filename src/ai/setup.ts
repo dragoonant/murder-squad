@@ -176,6 +176,9 @@ export function deploy(ctx: AiCtx): Action | null {
   const aside = hideChoice(ctx)
   if (aside) return aside
   const c = pending.constraints
+  // batch D prep (setAsideBatches): a batch being set aside as a whole offers only set-aside answers
+  const asideOnly = Array.isArray(pending.context.setAsideIds) ? (pending.context.setAsideIds as string[]) : []
+  if (pending.context.wholeBatchAside === true && asideOnly.length > 0) return act.setAside(pending, asideOnly[0]!)
   if (!c?.region || !c.operativeIds?.length) return null
   // guns first into the best cover; blades later nearer the front
   const ids = [...c.operativeIds].sort((a, b) => rangedRating(view, view.operatives[b]!) - rangedRating(view, view.operatives[a]!))

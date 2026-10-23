@@ -56,14 +56,22 @@ export function isInjured(op: Operative): boolean {
 export function effectiveApl(op: Operative): number {
   // M2b-game: Resolute and Shake It Off make an operative ignore every APL change.
   if (op.flags.ignoreApl) return Math.max(0, op.apl)
-  const value = op.apl + Math.max(-1, Math.min(1, op.aplMods))
+  // batch D prep: only the increases count while APL decreases are ignored
+  const mods = op.flags.ignoreAplDecreases ? increasesOf(op) : op.aplMods
+  const value = op.apl + Math.max(-1, Math.min(1, mods))
   // batch C shared (aplCeiling): an increase "to a maximum of N" cannot bring the APL above N, though other changes may
   const capped = op.aplFx?.filter((f) => f.ceiling !== undefined && f.delta > 0)
   if (!capped || capped.length === 0) return Math.max(0, value)
-  const rest = op.aplMods - capped.reduce((n, f) => n + f.delta, 0)
+  const rest = mods - capped.reduce((n, f) => n + f.delta, 0)
   const without = op.apl + Math.max(-1, Math.min(1, rest))
   const ceiling = Math.min(...capped.map((f) => f.ceiling!))
   return Math.max(0, Math.min(value, Math.max(ceiling, without)))
+}
+
+/** batch D prep: the APL increases on an operative (its recorded changes above 0; all of aplMods when none are recorded). */
+function increasesOf(op: Operative): number {
+  if (!op.aplFx || op.aplFx.length === 0) return Math.max(0, op.aplMods)
+  return op.aplFx.reduce((n, f) => n + Math.max(0, f.delta), 0)
 }
 
 /** batch C shared: the APL an increase "to a maximum of `ceiling`" would leave the operative at now (aplCeiling odds). */

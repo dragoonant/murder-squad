@@ -1,0 +1,45 @@
+{
+  "id": "exaction-squad",
+  "name": "Exaction Squad",
+  "factionKeyword": "EXACTION SQUAD",
+  "archetypes": [
+    "security",
+    "seek-and-destroy"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "ex.proctor-exactant"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "ex.proctor-exactant"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.62,
+      "s": 0.08,
+      "l": 0.14
+    },
+    "minor": {
+      "h": 0.12,
+      "s": 0.85,
+      "l": 0.5
+    }
+  },
+  "text": "Imperial lawkeepers in black carapace who name one quarry each turning point, pin it in place with shields, mauls and a cyber-hound, and refuse to let it walk away.",
+  "source": "team-exaction-squad.pdf (Jun '26); docs/spec/13-teams.md section 24"
+}

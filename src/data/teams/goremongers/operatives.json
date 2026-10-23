@@ -1,0 +1,33 @@
+[
+  {
+    "id": "gm.blood-herald",
+    "name": "Goremonger Blood Herald",
+    "team": "goremongers",
+    "stats": {
+      "apl": 2,
+      "move": 7,
+      "save": "5+",
+      "wounds": 11
+    },
+    "base": 32,
+    "keywords": [
+      "GOREMONGER",
+      "CHAOS",
+      "LEADER",
+      "BLOOD HERALD"
+    ],
+    "weapons": {
+      "fixed": [
+        "gm.w.icon-of-khorne",
+        "gm.w.chainblade"
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "gm-blood-herald"
+    },
+    "text": "The pack leader: a horned zealot who refills an emptied gore tank once per activation and can shrug off a single blow once per battle.",
+    "source": "team-goremongers.pdf (Aug '26); docs/spec/13-teams.md section 21.2"
+  }
+]

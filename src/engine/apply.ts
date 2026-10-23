@@ -1,5 +1,6 @@
 // step(): envelope checks -> dispatch to the owner of pending.kind -> afterAction -> log + hash.
 // Rejections never throw and return the SAME state reference.
+import { refreshFlags } from './abilities'
 import { endGame } from './firefight'
 import { updateControl } from './markers'
 import { moduleFor } from './modules'
@@ -68,6 +69,8 @@ export function validate(state: GameState, action: Action): Rejection | null {
 /** Hook point for rules that react after every accepted action. TODO(M2b): guard interrupts, ploy windows. */
 function afterAction(ctx: Ctx): void {
   updateControl(ctx)
+  // batch D prep: team flags that depend on positions or state (ignoreInjured within 6") are kept current every step
+  refreshFlags(ctx.state)
 }
 
 export function step(state: GameState, action: Action, rng?: Rng): StepResult {

@@ -1,0 +1,63 @@
+[
+  {
+    "id": "ss.sergeant",
+    "name": "Scout Sergeant",
+    "team": "scout-squad",
+    "stats": {
+      "apl": 3,
+      "move": 6,
+      "save": "4+",
+      "wounds": 11
+    },
+    "base": 28,
+    "keywords": [
+      "SCOUT SQUAD",
+      "IMPERIUM",
+      "ADEPTUS ASTARTES",
+      "LEADER",
+      "SERGEANT"
+    ],
+    "weapons": {
+      "fixed": [],
+      "options": [
+        {
+          "id": "loadout",
+          "label": "Loadout",
+          "sets": [
+            {
+              "id": "astartes-shotgun-fists",
+              "name": "Astartes shotgun and fists",
+              "fixed": [
+                "ss.w.astartes-shotgun",
+                "ss.w.fists-sergeant"
+              ]
+            },
+            {
+              "id": "boltgun-fists",
+              "name": "Boltgun and fists",
+              "fixed": [
+                "ss.w.boltgun",
+                "ss.w.fists-sergeant"
+              ]
+            },
+            {
+              "id": "bolt-pistol-chainsword",
+              "name": "Bolt pistol and chainsword",
+              "fixed": [
+                "ss.w.bolt-pistol",
+                "ss.w.chainsword"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "ss-sergeant"
+    },
+    "text": "A full battle-brother who trains the neophytes: he can shoot or fight twice in an activation and spurs one other scout to act with an extra action point.",
+    "source": "team-scout-squad.pdf (Apr '26); docs/spec/13-teams.md section 22.2"
+  }
+]

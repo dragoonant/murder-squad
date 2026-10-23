@@ -1,0 +1,122 @@
+[
+  {
+    "id": "fg.w.corrupted-pistol",
+    "name": "Corrupted pistol",
+    "team": "fellgor-ravagers",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 3,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.rending"
+      }
+    ],
+    "text": "Warp-tainted pistol carried by the Fellgor Ironhorn.",
+    "source": "team-fellgor-ravagers.pdf (Aug '26); docs/spec/13-teams.md section 19.3"
+  },
+  {
+    "id": "fg.w.plasma-pistol-standard",
+    "name": "Plasma pistol",
+    "team": "fellgor-ravagers",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 3,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      }
+    ],
+    "profileGroup": "fg.wg.plasma-pistol",
+    "profile": "standard",
+    "text": "Plasma pistol carried by the Fellgor Ironhorn.",
+    "source": "team-fellgor-ravagers.pdf (Aug '26); docs/spec/13-teams.md section 19.3"
+  },
+  {
+    "id": "fg.w.plasma-pistol-supercharge",
+    "name": "Plasma pistol",
+    "team": "fellgor-ravagers",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.hot"
+      },
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      }
+    ],
+    "profileGroup": "fg.wg.plasma-pistol",
+    "profile": "supercharge",
+    "text": "Plasma pistol carried by the Fellgor Ironhorn.",
+    "source": "team-fellgor-ravagers.pdf (Aug '26); docs/spec/13-teams.md section 19.3"
+  },
+  {
+    "id": "fg.w.bludgeon",
+    "name": "Bludgeon",
+    "team": "fellgor-ravagers",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.brutal"
+      }
+    ],
+    "text": "Heavy club; the Ironhorn, Deathknell and Warriors carry the same profile.",
+    "source": "team-fellgor-ravagers.pdf (Aug '26); docs/spec/13-teams.md section 19.3"
+  },
+  {
+    "id": "fg.w.corrupted-chainsword",
+    "name": "Corrupted chainsword",
+    "team": "fellgor-ravagers",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.rending"
+      }
+    ],
+    "text": "Warp-tainted chainsword carried by the Fellgor Ironhorn.",
+    "source": "team-fellgor-ravagers.pdf (Aug '26); docs/spec/13-teams.md section 19.3"
+  }
+]
