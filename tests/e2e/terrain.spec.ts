@@ -1,13 +1,15 @@
-// Terrain GLBs on the board: every manifest terrain slug used by the layout loads, no console errors, pieces sit on
-// the mat (overview + three-quarter close-up screenshots for the eyeball check).
+// Terrain on the board: every manifest terrain slug used by a single-part piece of the layout loads (buildings are
+// built from their parts), no console errors, pieces sit on the mat (overview + three-quarter close-up screenshots
+// for the eyeball check).
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { screenshotRendered } from './helpers'
 
-const layout = JSON.parse(readFileSync(resolve(process.cwd(), 'src/data/killzones/volkus-ao25-1.json'), 'utf8')) as { pieces: { model: string }[] }
+const layout = JSON.parse(readFileSync(resolve(process.cwd(), 'src/data/killzones/volkus-ao25-1.json'), 'utf8')) as { pieces: { model: string; parts: unknown[] }[] }
 const manifest = JSON.parse(readFileSync(resolve(process.cwd(), 'public/assets/models/manifest.json'), 'utf8')) as { terrain: Record<string, unknown> }
-const slugs = [...new Set(layout.pieces.map((p) => p.model))].filter((s) => s in manifest.terrain)
+// buildings (more than one part) are drawn from their rules parts; only single-part pieces load a GLB
+const slugs = [...new Set(layout.pieces.filter((p) => p.parts.length === 1).map((p) => p.model))].filter((s) => s in manifest.terrain)
 
 test.use({ viewport: { width: 1600, height: 900 } })
 test.describe.configure({ mode: 'serial' }) // the demand-driven canvases need a foreground page each
@@ -29,7 +31,7 @@ test('terrain GLBs load, fit and draw on the mat', async ({ page }) => {
   )
   const stats = await page.evaluate(() => (window.__ms as unknown as { glbTerrainStats(): { loaded: number; failed: number; maxMs: number } }).glbTerrainStats())
   console.log(`terrain glbs: ${JSON.stringify(stats)}`)
-  expect(slugs.length).toBeGreaterThanOrEqual(6)
+  expect(slugs.length).toBeGreaterThanOrEqual(3)
   expect(stats.loaded).toBe(slugs.length)
   expect(stats.failed).toBe(0)
 
@@ -58,7 +60,10 @@ test('a piece between the camera and a selected operative fades to 35%', async (
     undefined,
     { timeout: 60_000, polling: 5 },
   )
-  await page.waitForFunction(() => ((window.__ms as unknown as { glbTerrainLoaded?: () => number }).glbTerrainLoaded?.() ?? 0) >= 6)
+  await page.waitForFunction(
+    (n) => ((window.__ms as unknown as { glbTerrainLoaded?: () => number }).glbTerrainLoaded?.() ?? 0) >= n,
+    slugs.length,
+  )
   const faded = await page.evaluate(async () => {
     const ms = window.__ms as unknown as { getState(): { operatives: Record<string, { id: string; status: string }> }; ui(): { set(p: object): void }; terrainFade(): Record<string, number>; camera: { current: { repaint(): void } } }
     const frame = () => new Promise<void>((r) => setTimeout(() => requestAnimationFrame(() => r()), 80))

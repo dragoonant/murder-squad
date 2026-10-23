@@ -23,6 +23,7 @@ import { effectiveMove, enemiesOf, friendsOf, getOp } from './state'
 import {
   discBlockedBy,
   insideKillzone,
+  obstructs,
   placementProblem,
   sameLevel,
   terrainOf,
@@ -228,7 +229,7 @@ export function planMove(
   }
 
   /** bounds, enemy bases and terrain for the disc centred on p at the given level */
-  const checkSample = (p: Vec2, level: number, skip: Set<string> | undefined): Rejection | null => {
+  const checkSample = (p: Vec2, level: number, skip: Set<string> | undefined, prev?: Vec2): Rejection | null => {
     const discs = discsAt(p)
     if (!discs.every((c) => insideKillzone(idx, c, r))) return { code: 'E_OUT_OF_RANGE', reason: 'the path crosses the killzone edge' }
     for (const e of enemies) {
@@ -246,7 +247,15 @@ export function planMove(
     let skipSet = skip
     if (doorFeatures) {
       skipSet = new Set(skip ?? [])
-      for (const s of idx.solids) if (doorFeatures.has(s.featureId)) skipSet.add(s.partId)
+      for (const s of idx.solids) {
+        if (!doorFeatures.has(s.featureId)) continue
+        // the base may overlap the walls beside the doorway, but its centre must go through the doorway itself
+        if (!s.accessible && obstructs(s, level, r, h) && !skip?.has(s.partId)) {
+          const crossed = pointInPolygon(p, s.polygon) || (prev !== undefined && segmentPolygonIntervals(prev, p, s.polygon).some(([t0, t1]) => t1 - t0 > EPS))
+          if (crossed) return { code: 'E_OVERLAP', reason: 'the centre of the base must pass through the doorway, not the wall beside it', details: { part: s.partId } }
+        }
+        skipSet.add(s.partId)
+      }
     }
     // Breach: thin parts of the marked feature are Accessible while the base is within 1" of the marker
     const bm = nearBreach(p)
@@ -306,7 +315,7 @@ export function planMove(
       const skip = solidsContaining(idx, cur)
       for (let k = 1; k <= n; k++) {
         const p = lerp2(cur, next, k / n)
-        const rej = checkSample(p, y0, skip) ?? crCheck({ x: p.x, y: y0, z: p.z })
+        const rej = checkSample(p, y0, skip, lerp2(cur, next, (k - 1) / n)) ?? crCheck({ x: p.x, y: y0, z: p.z })
         if (rej) return { ok: false, rejection: rej }
       }
       if (y1 <= 0.01) {
@@ -332,7 +341,7 @@ export function planMove(
         if (!upper && pointInPolygon(p, s1.polygon)) upper = true
         const level = upper ? y1 : y0
         if (level > 0.01 && !walkableSolidAt(idx, p, level)) return fail('E_NO_PATH', 'the path leaves the surface it is walking on')
-        const rej = checkSample(p, level, upper ? undefined : skip) ?? crCheck({ x: p.x, y: level, z: p.z })
+        const rej = checkSample(p, level, upper ? undefined : skip, lerp2(cur, next, (k - 1) / n)) ?? crCheck({ x: p.x, y: level, z: p.z })
         if (rej) return { ok: false, rejection: rej }
       }
       if (!insignificantClimb) {
@@ -370,11 +379,11 @@ export function planMove(
         if (!air && walkableSolidAt(idx, p, y0)) {
           lastSupportedT = t
           skipAir = solidsContaining(idx, p)
-          const rej = checkSample(p, y0, undefined) ?? crCheck({ x: p.x, y: y0, z: p.z })
+          const rej = checkSample(p, y0, undefined, lerp2(cur, next, (k - 1) / n)) ?? crCheck({ x: p.x, y: y0, z: p.z })
           if (rej) return { ok: false, rejection: rej }
         } else {
           air = true
-          const rej = checkSample(p, y1, skipAir) ?? crCheck({ x: p.x, y: y1, z: p.z })
+          const rej = checkSample(p, y1, skipAir, lerp2(cur, next, (k - 1) / n)) ?? crCheck({ x: p.x, y: y1, z: p.z })
           if (rej) return { ok: false, rejection: rej }
         }
       }
@@ -390,7 +399,7 @@ export function planMove(
       for (let k = 1; k <= n; k++) {
         const p = lerp2(cur, next, k / n)
         if (y0 > 0.01 && !walkableSolidAt(idx, p, y0)) return fail('E_NO_PATH', 'the path leaves the surface it is walking on')
-        const rej = checkSample(p, y0, undefined) ?? crCheck({ x: p.x, y: y0, z: p.z })
+        const rej = checkSample(p, y0, undefined, lerp2(cur, next, (k - 1) / n)) ?? crCheck({ x: p.x, y: y0, z: p.z })
         if (rej) return { ok: false, rejection: rej }
       }
       if (blockedAt(next, y0)) return fail('E_OVERLAP', 'the path ends inside terrain')

@@ -132,6 +132,8 @@ describe('TERR movement over terrain', () => {
     const through = path(s, [wp(0, -6.5)])
     expect(moved(through).cost).toBe(4) // 3" + 1" Accessible
     expect(code(path(s, [wp(1.2, -3.5), wp(1.2, -6.5)]))).toBe('E_OVERLAP') // through the wall instead
+    // the base touches the doorway but its centre crosses the wall beside it
+    expect(code(path(s, [wp(0.75, -3.5), wp(0.75, -6.5)]))).toBe('E_OVERLAP')
   })
 
   it('TERR-008 Insignificant terrain does not count as a climb or a drop', () => {

@@ -11,6 +11,7 @@ import k3 from '@/data/killzones/volkus-ao25-3.json'
 import k4 from '@/data/killzones/volkus-ao25-4.json'
 import k5 from '@/data/killzones/volkus-ao25-5.json'
 import k6 from '@/data/killzones/volkus-ao25-6.json'
+import type { Solid } from '@/engine/terrain'
 import { useGlbInstance } from '../figures/glbLoader'
 
 export interface TerrainEntry {
@@ -66,6 +67,24 @@ export function pieceFootprint(piece: { pos: { x: number; z: number }; yaw: numb
     cx: r((Math.max(...xs) + Math.min(...xs)) / 2),
     cz: r((Math.max(...zs) + Math.min(...zs)) / 2),
   }
+}
+
+/** Single-part pieces (rubble slabs, crates) keep the stretched GLB; buildings with more than one part are drawn from
+ *  their rules parts, because a generic GLB's walls never line up with the card's wall strips. */
+export function usesGlb(parts: { footprint: { x: number; z: number }[] }[]): boolean {
+  return parts.length === 1
+}
+
+export type PartStyle = 'door' | 'window' | 'floor' | 'wall' | 'rampart' | 'block'
+
+/** How a rules part is drawn when its piece is built from parts (see Terrain.tsx). */
+export function partStyle(s: Pick<Solid, 'accessible' | 'barred' | 'ceiling' | 'vantage' | 'heavy' | 'light' | 'thickness'>): PartStyle {
+  if (s.accessible) return 'door'
+  if (s.barred) return 'window'
+  if (s.ceiling) return 'floor'
+  if (s.heavy && s.thickness != null) return 'wall'
+  if (s.light && s.thickness != null) return 'rampart'
+  return 'block'
 }
 
 /** Scale that fits a finalised GLB onto a piece's rules footprint (1,1,1 when the manifest already matches). */
