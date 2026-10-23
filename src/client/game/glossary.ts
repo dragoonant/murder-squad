@@ -159,7 +159,7 @@ function actionEntries(): GlossaryEntry[] {
 interface RecordLike { id: string; name?: string; text?: string; kind?: string; param?: string; ap?: number; cost?: number; type?: string; scope?: string; count?: number; critsVariant?: boolean; team?: string; stats?: unknown; keywords?: string[]; choiceGroup?: string }
 
 const ROLE_KEYWORD: Record<string, string> = {
-  LEADER: 'Role keyword: the one commander each kill team must include. Angels of Death take a Captain or a Sergeant, Kommandos the Boss Nob, Pathfinders the Shas\'ui, Plague Marines the Champion, Wyrmblade the Neophyte Leader. Leader abilities such as Heroic Leader build on it.',
+  LEADER: 'Role keyword: the commander a kill team must include when its rules call for one, and what Leader abilities such as Heroic Leader build on. Not every team has one; each team\'s own card names who fills the slot.',
   SERGEANT: 'Squad-leader role. Angels of Death Sergeants can fill the Leader slot and carry Doctrine Warfare and Chapter Veteran.',
   'SPACE MARINE CAPTAIN': 'The Angels of Death Captain: a Leader with Iron Halo and Heroic Leader, able to bend the team\'s ploys.',
   GRENADIER: 'Role keyword of the Assault Intercessor Grenadier, whose Grenadier ability sharpens frag and krak grenades.',
@@ -170,8 +170,9 @@ const ROLE_KEYWORD: Record<string, string> = {
   INTERCESSOR: 'Operative type: bolt-rifle Intercessors. Identifies the datacard for roster selection; no rule refers to it directly.',
   'HEAVY INTERCESSOR': 'Operative type: Heavy Intercessors. Identifies the datacard for roster selection; no rule refers to it directly.',
   ELIMINATOR: 'Operative type: Eliminators, stealthy marksmen. Identifies the datacard for roster selection; no rule refers to it directly.',
-  IMPERIUM: 'Allegiance keyword carried by every Angels of Death operative. Rules naming it would apply to all of them; no current rule does, so it only identifies the operative.',
-  'ADEPTUS ASTARTES': 'Space Marine keyword carried by every Angels of Death operative. Rules naming it would apply to all of them; no current rule does, so it only identifies the operative.',
+  IMPERIUM: 'Allegiance keyword carried by the operatives of Imperial teams. Rules naming it would apply to all of them; no current rule does, so it only identifies the operative.',
+  MEDIC: 'Healer role keyword, carried by the medics of several teams. Rules that heal, save or revive a friend look for it; each team\'s own cards say what its medic does.',
+  'ADEPTUS ASTARTES': 'Space Marine keyword carried by every operative of the Space Marine teams. Rules naming it would apply to all of them; no current rule does, so it only identifies the operative.',
   ORK: 'Species keyword carried by every Kommando operative. Rules naming it would apply to all of them; no current rule does, so it only identifies the operative.',
   'BOSS NOB': 'The Kommando Leader. Krumpin\' Time lets it Fight twice in one activation, and Get It Dun! pushes another Kommando on.',
   'BOMB SQUIG': 'A walking explosive. It cannot take Conceal, is left out of Throat Slittas, is ignored by the opponent\'s kill op (Expendable), and can blow up (Boom!, Explosive).',

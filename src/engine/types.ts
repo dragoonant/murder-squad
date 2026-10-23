@@ -144,6 +144,8 @@ export interface RuntimeTeam {
     distinctFrom?: string[]
     /** M9 batch C: false makes the pick a tag read by team code, not a keyword (`hasKeyword` ignores it); default true */
     keyword?: boolean
+    /** batch C shared: display label per pick (keywords stay uppercase; a label may read "ACCURATE 1 + PIERCING 1") */
+    labels?: Record<string, string>
   }[]
 }
 
@@ -344,7 +346,8 @@ export interface Operative {
   usedLimited: Record<string, number>
   oncePerBattleUsed: string[]
   /** timed APL effects folded into aplMods; removed at the end of the operative's next activation (Stun); M2b-attack */
-  aplFx?: { delta: number; source: string }[]
+  /** batch C shared: `ceiling` caps the APL this change can bring the operative to (Battle Comms: "to a maximum of 3") */
+  aplFx?: { delta: number; source: string; ceiling?: number }[]
   /** M2b-game: Chapter Veteran tactic ids this operative has in addition to the team's */
   extraTactics?: string[]
   /** M9 prep: tokens other rules put on this operative (Markerlight, Poison, Chronometron...); see tokens.ts */
@@ -439,6 +442,8 @@ export interface StrategyState {
   rerollAsked?: Seat[]
   /** `order` (M9 batch B): the gambits used in this step so far, in order (gambit.passed hook) */
   gambit: { turn: Seat; passes: number; used: Record<Seat, string[]>; order?: { seat: Seat; gambitId: string }[] }
+  /** batch C shared: seats still to be asked for Ready-step choices (team-rules readyStepChoices), in order */
+  readyChoices?: Seat[]
 }
 
 export interface Activation {
@@ -469,6 +474,11 @@ export interface Activation {
   chained?: boolean
   /** M9 prep: performed.length when reactions were last offered (one reaction window per action) */
   reactedAt?: number
+  /**
+   * batch C shared: the reaction round of the action at `reactedAt`: whose turn it is to react (the active seat's
+   * ownReactions first, then the other seat's reactions), the operatives that have reacted, and whether that seat passed
+   */
+  reacted?: { seat: Seat; ids: string[]; closed?: boolean }
   /** M9 shared: a rule ended the activation early (Medic!): it ends once the current action is done, AP untouched */
   endsAfterAction?: boolean
   /**
@@ -843,6 +853,11 @@ export type TimingWindowId =
   // M9 batch B shared: the attacker once the defence dice are final, before blocking (Siphon Life: shoot.defenceRolled
   // is the defender's)
   | 'shoot.attackerDefenceRolled'
+  // batch C shared: the defender on the fresh attack roll of a Shoot, after the attacker's shoot.beforeAttackRerolls
+  // and before attack re-rolls (Fate Itself is My Weapon edits seq.atk.dice)
+  | 'shoot.defenderAttackRolled'
+  // batch C shared: the Fall Back mover between its move and the end of the action (Cover Retreat)
+  | 'firefight.fallBackMoved'
   | 'operative.incapacitated'
   | 'firefight.activationEnded'
   | 'turningPoint.end'

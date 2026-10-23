@@ -8,6 +8,7 @@ import { findOffer } from '@/engine/abilities'
 import { windowsOf } from '@/engine/ploys'
 import { fightOutcome, hitOdds, type FightMove, type FightPosition, type FightSideState } from '@/engine/query'
 import { dataBundle } from './adapter'
+import { ployParamLabel } from '../teams'
 import { decisionInfo, humanize, opName, rulesLine, SEAT_NAME, weaponName } from './labels'
 
 export const pct = (v: number): string => `${Math.round(v * 100)}%`
@@ -469,7 +470,7 @@ export function ployCard(opt: DecisionOption, state: GameState, seat: Seat): Plo
     name,
     cost,
     text: ployText(state, ployId),
-    param: param ? (state.operatives[param] ? opName(state, param) : (paramRec?.name ?? humanize(param))) : null,
+    param: param ? (state.operatives[param] ? opName(state, param) : (ployParamLabel(ployId, param) ?? paramRec?.name ?? humanize(param))) : null,
     paramText: paramRec?.text ?? null,
     replaces,
     affordable: cost === null || cost <= state.players[seat].cp,
@@ -559,13 +560,44 @@ export function abilityChoiceOption(opt: DecisionOption): ChoiceOptionInfo {
   const spot = x !== null && z !== null ? { x, z } : null
   return {
     id: opt.id,
-    label: CHOICE_LABELS[key] ?? (spot ? `Spot ${spot.x.toFixed(1)}, ${spot.z.toFixed(1)}` : humanize(opt.labelKey || key)),
+    // a named option (a free Dash for one operative, a Skill at Arms) reads by its name even when it also carries a position
+    label: CHOICE_LABELS[key] ?? str(d.name) ?? (spot ? `Spot ${spot.x.toFixed(1)}, ${spot.z.toFixed(1)}` : humanize(opt.labelKey || key)),
     detail: spot ? 'Click the ringed spot on the board, or pick it here.' : '',
     spot,
   }
 }
 
+/** What a team hook's choice decides, in one sentence (M10 batch C hooks); null for hooks the default wording covers. */
+function hookHeadline(pending: PendingDecision, state: GameState | null): string | null {
+  const c = pending.context
+  const op = opName(state, str(c.operativeId))
+  switch (str(c.hook)) {
+    case 'ksTacticalCommand':
+      return c.mode === 'sweep' ? `${op}'s Tactical Command: choose where the Clearance Sweep marker goes.` : `${op}'s Tactical Command: choose the extra Skill at Arms for ${opName(state, str(c.targetId))}.`
+    case 'ksPlaceMine':
+      return `${op} places the Melta Mine: choose a spot. Any other operative that comes within its control range, friend or foe, sets it off.`
+    case 'ksRelocate':
+      return 'Relocate: choose who takes a free Dash next, or finish.'
+    case 'nvAutoBroadcaster':
+      return `${op}'s Auto-broadcaster: choose where the marker goes.`
+    case 'nvRighteousAdvance':
+      return 'Righteous Advance: choose which Novitiate takes a free Dash next, or stop.'
+    case 'cvPlunderers':
+      return 'Plunderers: choose which Voidscarred takes a free Dash next, or finish.'
+    case 'fkReadyStep':
+      return 'Farstalker: change an operative\'s order before the Strategy phase goes on, or finish.'
+    case 'fkMarkedForTheHunt':
+      return `${op} drops the Pech'ra marker: choose a spot.`
+    case 'fkGather':
+      return `${op} has finished the first move of GATHER: place the carried marker here, or keep carrying it.`
+    default:
+      return null
+  }
+}
+
 export function abilityChoiceHeadline(pending: PendingDecision, state: GameState | null): string {
+  const named = hookHeadline(pending, state)
+  if (named) return named
   const op = opName(state, str(pending.context.operativeId))
   const ability = str(pending.context.abilityId)
   const name = ability ? (state?.data.abilities[ability]?.name ?? humanize(ability)) : 'an ability'

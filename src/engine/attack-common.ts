@@ -9,7 +9,7 @@ import { getWindowOpener, runHook } from './hooks'
 import type { OptionInput, Ctx } from './registry'
 import { enemiesOf, getOp, hasInjuredPenalty, isInjured, otherSeat } from './state'
 import { terrainOf } from './terrain'
-import { providerAny, providerRerollsBanned, providerWeaponForbidden } from './team-rules'
+import { providerAny, providerCommandRerollCost, providerOnCommandReroll, providerRerollsBanned, providerWeaponForbidden } from './team-rules'
 import { isPsychicWeapon, psychicAllowed } from './psychic'
 import type {
   Action,
@@ -66,6 +66,8 @@ export interface RuleSet {
   piercing: number
   piercingCrits: number
   heavy: { only: 'dash' | 'reposition' | null } | null
+  /** batch C shared: the weapon the rules belong to (ruleSetFor), so target.status hooks know it */
+  weaponId?: string
 }
 
 export function parseRules(rules: WeaponRuleRef[]): RuleSet {
@@ -244,7 +246,7 @@ export function weaponDamage(
 }
 
 export function ruleSetFor(state: GameState, op: Operative, weaponId: string, kind: 'shoot' | 'fight', targetId?: string, ctx?: Ctx): RuleSet {
-  return parseRules(effectiveRules(state, op, weaponOf(state, weaponId), kind, targetId, ctx))
+  return { ...parseRules(effectiveRules(state, op, weaponOf(state, weaponId), kind, targetId, ctx)), weaponId }
 }
 
 // ---------------------------------------------------------------------------
@@ -520,9 +522,10 @@ export function rerollOptions(state: GameState, side: DiceSide): RerollOptions {
       }
     }
   }
-  if (!side.commandUsed && state.players[side.seat].cp >= 1) {
+  const cost = commandRerollCost(state, side)
+  if (!side.commandUsed && state.players[side.seat].cp >= cost) {
     for (const i of firstOfEachValue(side, eligAll)) {
-      command.push({ id: `command:${i}`, labelKey: 'reroll.command', type: 'dice.commandReroll', payload: { command: true, dice: [i] }, data: { value: side.dice[i]!.value, cost: 1 } })
+      command.push({ id: `command:${i}`, labelKey: 'reroll.command', type: 'dice.commandReroll', payload: { command: true, dice: [i] }, data: { value: side.dice[i]!.value, cost } })
     }
   }
   return { grants, command }
@@ -589,7 +592,8 @@ export function parseReroll(
   }
   if (payload.command === true) {
     if (side.commandUsed) return { rejection: { code: 'E_PLOY_USED', reason: 'Command Re-roll was already used on this roll' } }
-    if (state.players[side.seat].cp < 1) return { rejection: { code: 'E_INSUFFICIENT_CP', reason: 'Command Re-roll costs 1 CP' } }
+    const cost = commandRerollCost(state, side)
+    if (state.players[side.seat].cp < cost) return { rejection: { code: 'E_INSUFFICIENT_CP', reason: `Command Re-roll costs ${cost} CP` } }
     if (dice.length !== 1) return { rejection: { code: 'E_NOT_AN_OPTION', reason: 'Command Re-roll re-rolls one die' } }
     return { grantId: null, command: true, dice: dice as number[] }
   }
@@ -599,6 +603,11 @@ export function parseReroll(
     return { rejection: { code: 'E_NOT_AN_OPTION', reason: `that re-roll only re-rolls dice showing ${grant.values.join(' or ')}` } }
   }
   return { grantId: grant.id, command: false, dice: dice as number[] }
+}
+
+/** batch C shared: what a Command Re-roll of `side` costs now (team providers may make it free). */
+export function commandRerollCost(state: GameState, side: DiceSide): number {
+  return providerCommandRerollCost(state, side, state.attack ?? null)
 }
 
 /** Perform a validated re-roll: roll the dice, mark them, spend CP for a Command Re-roll. */
@@ -613,10 +622,14 @@ export function applyReroll(
   const dice = parsed.dice
   const before = dice.map((i) => side.dice[i]!.value)
   if (parsed.command) {
+    const cost = commandRerollCost(s, side)
     side.commandUsed = true
-    s.players[side.seat].cp -= 1
-    ctx.emit({ type: 'CpChanged', delta: -1, cp: s.players[side.seat].cp, reason: 'commandReroll' }, side.seat)
+    if (cost > 0) {
+      s.players[side.seat].cp -= cost
+      ctx.emit({ type: 'CpChanged', delta: -cost, cp: s.players[side.seat].cp, reason: 'commandReroll' }, side.seat)
+    }
     ctx.emit({ type: 'PloyUsed', ployId: 'core.command-reroll' }, side.seat)
+    providerOnCommandReroll(ctx, side, cost)
   } else {
     const grant = side.grants.find((g) => g.id === parsed.grantId)
     if (grant) grant.used = true
@@ -675,6 +688,15 @@ export interface RetainOutcome {
   obscuredDiscarded: boolean
 }
 
+/** batch C shared: tags of dice a rule has fixed in place (Warpcoven's set-aside Fate dice): Severe skips them. */
+const FIXED_DIE_TAGS = new Set<string>()
+export function registerFixedDieTag(tag: string): void {
+  FIXED_DIE_TAGS.add(tag)
+}
+export function isFixedDie(d: { tag?: string }): boolean {
+  return d.tag !== undefined && FIXED_DIE_TAGS.has(d.tag)
+}
+
 /**
  * Apply Punishing, Rending, Severe and the obscured effect to a rolled attack pool (mutates `dice`).
  * Dice are classified first (Hit and Lethal); retained-without-rolling dice are already normal.
@@ -723,7 +745,8 @@ export function retainAttack(side: DiceSide, rules: RuleSet, obscured: boolean):
       }
     }
   } else if (rules.severe) {
-    const n = dice.find((d) => d.kind === 'normal')
+    // batch C shared: a die a rule has fixed (registerFixedDieTag: Fate Itself) is never converted
+    const n = dice.find((d) => d.kind === 'normal' && !isFixedDie(d))
     if (n) {
       n.kind = 'crit'
       n.tag = n.tag ?? 'severe'
@@ -833,9 +856,10 @@ export function coverForSelection(state: GameState, verdict: TargetVerdict, rule
  * shooter-target pair after the terrain verdict. A forced cover-or-obscured choice that loses its
  * obscured half stops being a choice; a status set by a hook is final for both choices.
  */
-function applyTargetStatus(state: GameState, shooter: Operative, target: Operative, verdict: TargetVerdict): TargetVerdict {
+function applyTargetStatus(state: GameState, shooter: Operative, target: Operative, verdict: TargetVerdict, weaponId?: string): TargetVerdict {
   const data = { obscured: verdict.obscured, inCover: verdict.inCover }
-  runHook('target.status', { seat: shooter.seat, state, operativeId: shooter.id, targetId: target.id, data })
+  // batch C shared: the weapon is named when known (Long-Sight odds), as HookContext.weaponId
+  runHook('target.status', { seat: shooter.seat, state, operativeId: shooter.id, targetId: target.id, ...(weaponId ? { weaponId } : {}), data })
   if (data.obscured === verdict.obscured && data.inCover === verdict.inCover) return verdict
   const both = { inCover: data.inCover, obscured: data.obscured }
   return { ...verdict, inCover: data.inCover, obscured: data.obscured, forcedChoice: false, ifCover: { ...both }, ifObscured: { ...both } }
@@ -848,7 +872,7 @@ function applyTargetStatus(state: GameState, shooter: Operative, target: Operati
 export function targetInfo(state: GameState, shooter: Operative, target: Operative, rules: RuleSet, viewpoint?: Operative): TargetInfo {
   if (shooter.id === target.id) return selfInfo(state, shooter)
   const from = viewpoint ?? shooter
-  const verdict = applyTargetStatus(state, shooter, target, targetVerdict(state, bodyOf(from), { ...bodyOf(target), order: target.order }))
+  const verdict = applyTargetStatus(state, shooter, target, targetVerdict(state, bodyOf(from), { ...bodyOf(target), order: target.order }), rules.weaponId)
   const coverBlocks = target.order === 'conceal' && coverForSelection(state, verdict, rules)
   return {
     id: target.id,
@@ -1127,11 +1151,12 @@ export function continueRemovals(ctx: Ctx): void {
 }
 
 /** Reduce an operative's APL by `delta` until the end of its next activation (Stun, R-10.22). */
-export function applyAplEffect(ctx: Ctx, operativeId: string, delta: number, source: string): void {
+export function applyAplEffect(ctx: Ctx, operativeId: string, delta: number, source: string, opts: { ceiling?: number } = {}): void {
   const op = getOp(ctx.state, operativeId)
   if (op.flags.ignoreApl) return
   op.aplMods += delta
-  op.aplFx = [...(op.aplFx ?? []), { delta, source }]
+  // batch C shared: a change "to a maximum of N" (aplCeiling) keeps its ceiling; effectiveApl applies it
+  op.aplFx = [...(op.aplFx ?? []), { delta, source, ...(opts.ceiling !== undefined ? { ceiling: opts.ceiling } : {}) }]
   ctx.emit({ type: 'AplModified', operativeId, delta, reason: source })
 }
 

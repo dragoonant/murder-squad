@@ -27,4 +27,6 @@ export interface TeamPresentation {
   loadoutBodies?: Record<string, { weapons: string[]; archetype: string }[]>
   /** M9 batch C: display names of the team's resource pools (engine pools.ts kind -> label, e.g. `nv.faith` -> Faith) */
   pools?: Record<string, string>
+  /** M10 batch C: wording of a ploy option's `param` that is not an operative or a data record, keyed `<ployId>:<param>` */
+  ployParams?: Record<string, string>
 }

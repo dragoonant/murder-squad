@@ -280,6 +280,8 @@ export function validateAll(options: ValidateOptions = {}): ValidationResult {
     for (const c of t.selection.caps ?? []) for (const id of c.from ?? []) if (!byId[id]) errors.push(`${where(t.id)}: selection cap lists ${id}, not a datacard of ${t.id}`)
     for (const c of t.selection.loadoutCaps ?? []) for (const id of c.weapons) if (!index.byId[id] && !index.groups[id]) errors.push(`${where(t.id)}: loadout cap lists unknown weapon ${id}`)
     for (const oc of t.operativeChoices ?? []) for (const e of oc.exclude ?? []) for (const id of e.datacards) if (!byId[id]) errors.push(`${where(t.id)}: operative choice ${oc.id} excludes unknown datacard ${id}`)
+    // batch C shared: display labels name picks the choice offers
+    for (const oc of t.operativeChoices ?? []) for (const k of Object.keys(oc.labels ?? {})) if (!oc.keywords.includes(k)) errors.push(`${where(t.id)}: operative choice ${oc.id} labels unknown pick ${k}`)
     // M9 batch B: the default roster honours the team caps, loadout caps and operative choices
     const d = t.defaults
     if (d?.roster) {

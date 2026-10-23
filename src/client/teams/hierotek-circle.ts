@@ -78,7 +78,6 @@ export const PRESENTATION: TeamPresentation = {
     { term: 'PLASMACYTE', kind: 'keyword', body: 'Small Canoptek helper. Its Scuttler ability keeps it from being targeted while concealed in cover unless the shooter is very close.' },
     { term: 'ACCELERATOR', kind: 'keyword', body: 'The Plasmacyte whose Accelerate action gives a Deathmark or Immortal 1 extra APL for its next activation.' },
     { term: 'REANIMATOR', kind: 'keyword', body: 'The Plasmacyte whose Reanimate action can bring an incapacitated friend back to the fight when a Reanimation marker is in reach.' },
-    { term: 'MEDIC', kind: 'keyword', body: 'Healer role keyword, carried by the Pathfinder Medical Technician and the Hierotek Plasmacyte Reanimator. Rules that heal or revive look for it.' },
     { term: 'APPRENTEK', kind: 'keyword', body: 'Junior Cryptek. It can use one unique action of your Cryptek per turning point (Apprentek Assistance) and can lend its weapon the Magnify rule.' },
     { term: 'DEATHMARK', kind: 'keyword', body: 'Phase-sniper. Each Shoot it finishes can leave your Deathmarked token on the target, and Deathmarks shoot Deathmarked enemies with Seek. Repeatable.' },
     { term: 'IMMORTAL', kind: 'keyword', body: 'Necron infantry type. Immortal Guardians and Despoteks share it; its Steadfast ability lets them hold objectives as if their APL were 3.' },

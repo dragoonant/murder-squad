@@ -1,6 +1,7 @@
 // Ploys and re-rolls (docs/spec/40-ai section 2): Command Re-roll when a die is worth the point, strategic gambits
 // from a per-ploy table, firefight ploys by per-ploy heuristics. Unknown ploys get a modest default score and are used
 // only with spare command points. Never spends the last point on a marginal gain.
+import { autoBlock } from '@/engine/attack-common'
 import { dieOdds } from '@/engine/dice'
 import { answerDecision } from '@/engine/query'
 import { hasKeyword } from '@/engine/conditions'
@@ -96,7 +97,20 @@ export function ruleReroll(ctx: AiCtx): Action | null {
 // ---------------------------------------------------------------------------
 
 const GAMBIT_SCORE: Record<string, number> = {
+  // Farstalker Kinband (the Ready-step order change is a human convenience: the planner never wants it)
+  'fk.p.call-the-kill': 2.0,
+  'fk.p.farstalker-orders': 0,
+  'fk.p.cut-throats': 1.3,
+  'fk.p.rogue': 1.2,
+  'fk.p.prey': 1.8,
+  'fk.p.bound': 0.6,
   'aod.p.combat-doctrine': 2.6,
+  // Phobos Strike Team
+  'ph.p.deadly-shots': 2.0,
+  'ph.p.lethal-assaults': 1.4,
+  'ph.p.and-they-shall-know-no-fear': 0.9,
+  'ph.p.guerrilla-warfare': 0.6,
+  'ph.p.omni-scrambler': 1.8,
   'aod.p.indomitus': 1.4,
   'aod.p.and-they-shall-know-no-fear': 0.9,
   'aod.p.adaptive-tactics': 0.2,
@@ -111,6 +125,17 @@ const GAMBIT_SCORE: Record<string, number> = {
   'lg.p.fickle-fates': 1.7,
   'lg.p.warded-armour': 1.6,
   'lg.p.chaos-talismans': 1.2,
+  // Warpcoven
+  'wc.p.aetherial-warding': 1.4,
+  'wc.p.fate-itself-is-my-weapon': 1.8,
+  'wc.p.brotherhood-of-sorcerers': 1.4,
+  'wc.p.savage-herd': 1.5,
+  // Kasrkin
+  'ks.p.skill-at-arms': 1.8,
+  'ks.p.elimination-pattern': 1.5,
+  'ks.p.engage-from-cover': 1.2,
+  'ks.p.clearance-sweep': 1.3,
+  'ks.p.relocate': 0.9,
   // Hand of the Archon
   'ha.p.blade-artists': 2.0,
   'ha.p.merciless-sadists': 1.8,
@@ -130,6 +155,23 @@ const GAMBIT_SCORE: Record<string, number> = {
   'hk.p.toil-earns': 1.1,
   'hk.p.wrought-defence': 1.4,
   'hk.p.proximate-firepower': 2.0,
+  // Novitiates
+  'nv.p.ardent-vengeance': 1.3,
+  'nv.p.defenders-of-the-faith': 1.2,
+  'nv.p.blessed-rejuvenation': 1.0,
+  'nv.p.righteous-advance': 1.5,
+  // Corsair Voidscarred
+  'cv.p.plunderers': 1.1,
+  'cv.p.piratical-profiteers': 1.3,
+  'cv.p.mobile-engagement': 1.2,
+  'cv.p.outcasts': 1.0,
+  'cv.p.erudite-hunter': 1.0,
+  'cv.p.star-charts': 1.0,
+  // Imperial Navy Breachers
+  'nb.p.attack-order': 1.9,
+  'nb.p.defence-order': 1.3,
+  'nb.p.close-assault': 1.5,
+  'nb.p.brace-for-counterattack': 1.4,
 }
 
 function nearestEnemyDistances(view: GameState, seat: string): number[] {
@@ -201,6 +243,26 @@ function gambitScore(view: GameState, seat: string, gambitId: string, param: str
   if (gambitId === 'hc.p.doctrina' && param) return imperativeScore(view, seat, param) + 0.8
   const { ranged, melee } = mix(view, seat)
   switch (gambitId) {
+    case 'fk.p.call-the-kill': {
+      // the mark: the enemy nearest to our team (it will be shot and fought), a little more for a big one
+      const e = param ? view.operatives[param] : undefined
+      if (!e) return s
+      const near = Math.min(99, ...liveOps(view, seat).map((m) => distanceBetween(bodyOf(m), bodyOf(e))))
+      return s - Math.min(near, 20) * 0.03 + e.maxWounds * 0.02
+    }
+    case 'fk.p.cut-throats':
+      return melee >= 3 ? s : 0.7
+    case 'fk.p.prey':
+      return ranged >= 3 ? s : 0.8
+    case 'ph.p.deadly-shots':
+      return ranged >= 3 ? s : 1.0
+    case 'ph.p.omni-scrambler': {
+      // jam the enemy that is closest to our team and still ready: the longer it sits out, the more it is worth
+      const e = param ? view.operatives[param] : undefined
+      if (!e) return s
+      const near = Math.min(99, ...liveOps(view, seat).map((m) => distanceBetween(bodyOf(m), bodyOf(e))))
+      return s - Math.min(near, 20) * 0.03 + e.wounds * 0.02 + (e.ready ? 0.3 : 0)
+    }
     case 'lg.p.blood-for-the-blood-god':
       return countKeyword(view, seat, 'KHORNE') > 0 || melee >= 2 ? s : 0.3
     case 'lg.p.implacable':
@@ -218,6 +280,32 @@ function gambitScore(view: GameState, seat: string, gambitId: string, param: str
     }
     case 'lg.p.chaos-talismans':
       return s + (param ? countKeyword(view, seat, param) * 0.15 : 0)
+    case 'wc.p.brotherhood-of-sorcerers':
+      // Balanced, or Ceaseless with a second Sorcerer near: only worth a point with two Sorcerers
+      return countKeyword(view, seat, 'SORCERER') >= 2 ? s + 0.3 : 0.7
+    case 'wc.p.savage-herd':
+      return countKeyword(view, seat, 'TZAANGOR') >= 2 ? s : 0.6
+    case 'wc.p.aetherial-warding':
+      return ranged + melee >= 4 ? s : 0.9
+    case 'ks.p.skill-at-arms': {
+      // a free gambit: one or two skills (Veteran Leadership), each worth what the squad's weapons make of it
+      const weight: Record<string, number> = { 'light-em-up': 0.9 + 0.1 * ranged, 'ice-in-your-veins': 0.7, 'strike-fast': 0.45, 'for-cadia': 0.2 + 0.2 * melee }
+      return 0.4 + (param ?? '').split('+').reduce((n, k) => n + (weight[k] ?? 0), 0)
+    }
+    case 'ks.p.clearance-sweep': {
+      // the marker pays off where our shooters and their targets both stand within 5 inches of it
+      const [px, pz] = (param ?? '').split(',').map(Number)
+      if (px === undefined || pz === undefined || !Number.isFinite(px) || !Number.isFinite(pz)) return s
+      const near = (o: Operative): boolean => Math.hypot(o.pos.x - px, o.pos.z - pz) <= 5
+      const own = liveOps(view, seat).filter((o) => near(o) && o.weapons.some((w) => view.data.weapons[w]?.type === 'ranged')).length
+      const foes = enemiesOf(view, { seat: seat as 'A' | 'B' }).filter((e) => e.status === 'active' && e.wounds > 0 && near(e)).length
+      return own > 0 && foes > 0 ? s + 0.3 * Math.min(own, 3) + 0.2 * Math.min(foes, 3) : 0.3
+    }
+    case 'ks.p.relocate': {
+      // a free group move toward the objectives: worth it from turning point 2 while nothing blocks it
+      const pick = param ? view.operatives[param] : undefined
+      return pick ? s + Math.min(1, (countKeyword(view, seat, 'KASRKIN') - 3) * 0.1) : s
+    }
     case 'ha.p.blade-artists':
       return melee >= 2 ? s : 0.8
     case 'ha.p.merciless-sadists':
@@ -233,6 +321,13 @@ function gambitScore(view: GameState, seat: string, gambitId: string, param: str
       return liveOps(view, seat).some((o) => hasKeyword(view, o, 'INFILTRATOR')) ? s : 0.3
     case 'hk.p.tactician':
       return param === 'defence' ? s - 0.3 : s
+    case 'nv.p.blessed-rejuvenation':
+      // it heals only on Faith spends: worth the point once the pool can pay for a few
+      return (view.players[seat as 'A' | 'B'].pools?.['nv.faith'] ?? 0) >= 4 ? s + 0.4 : 0.2
+    case 'nv.p.ardent-vengeance':
+      return countKeyword(view, seat, 'NOVITIATE') >= 4 ? s : 0.6
+    case 'nv.p.defenders-of-the-faith':
+      return view.markers.some((m) => m.kind === 'objective') ? s : 0.3
     case 'hk.p.eye-of-the-ancestors': {
       // a Grudge token on the enemy nearest to us (the mark is wasted on one that never meets us)
       const first = (param ?? '').split('+')[0] ?? ''
@@ -241,6 +336,16 @@ function gambitScore(view: GameState, seat: string, gambitId: string, param: str
       const near = Math.min(99, ...liveOps(view, seat).map((m) => distanceBetween(bodyOf(m), bodyOf(e))))
       return s - Math.min(near, 20) * 0.03 + (param?.includes('+') ? 0.3 : 0)
     }
+    case 'nb.p.attack-order':
+    case 'nb.p.defence-order': {
+      // the marker covers the Breachers within 3": put it where most of them are
+      const [x, z] = (param ?? '').split(',').map(Number)
+      if (x === undefined || z === undefined || !Number.isFinite(x) || !Number.isFinite(z)) return s
+      const covered = liveOps(view, seat).filter((o) => Math.hypot(o.pos.x - x, o.pos.z - z) - o.baseRadius <= 3).length
+      return s + 0.3 * Math.min(covered, 5) - 0.6
+    }
+    case 'nb.p.close-assault':
+      return ranged >= 2 ? s : 0.8
     case 'hk.p.need-keeps':
     case 'hk.p.toil-earns': {
       const m = param ? view.markers.find((k) => k.id === param) : undefined
@@ -279,7 +384,33 @@ export function gambit(ctx: AiCtx): Action {
 // ---------------------------------------------------------------------------
 
 const PLOY_SCORE: Record<string, number> = {
+  // Farstalker Kinband: firefight ploys and the free (0 CP) offers
+  'fk.p.savage-ambush': 2.0,
+  'fk.p.slip-away': 1.2,
+  'fk.p.poach': 1.2,
+  'fk.p.vengeance-for-the-kinband': 1.8,
+  'fk.x.repick': 2.0,
+  'fk.x.shriek': 1.8,
+  'fk.x.assault': 2.2,
+  'fk.x.force': 1.8,
+  'fk.x.quick-draw': 2.0,
+  'fk.e.piercing-shot': 1.5,
+  'fk.e.toxin-shot': 1.5,
+  'fk.e.meat': 1.4,
+  'fk.e.trophy': 1.2,
+  'fk.x.rfa-piercing-shot': 1.4,
+  'fk.x.rfa-toxin-shot': 1.3,
+  'fk.x.rfa-meat': 1.2,
   'aod.p.wrath-of-vengeance': 3,
+  // Phobos Strike Team: Patient Ambush and the Comms Array swaps of the four strategy ploys are scored in ployScore
+  // (they depend on the board); the rest are cheap and good
+  'ph.p.critical-shot': 2.0,
+  'ph.p.transhuman-physiology': 2.0,
+  'ph.p.stealth-assault': 2.2,
+  'ph.e.purity-seals': 1.6,
+  'ph.e.special-issue-ammunition': 1.5,
+  'ph.medicDash': 1.0,
+  'ph.plantDash': 0.2,
   'aod.p.transhuman-physiology': 2,
   'kom.p.just-a-scratch': 2,
   'aod.p.shock-assault': 2.2,
@@ -287,11 +418,28 @@ const PLOY_SCORE: Record<string, number> = {
   'kom.p.krump-em': 2.4,
   'aod.p.adjust-doctrine': 0,
   'kom.p.shake-it-off': 0.4,
+  // Warpcoven: paid ploys; the free offers (reserved dice, boons, Savage Brutality) are scored per option below
+  'wc.p.all-is-dust': 1.9,
+  'wc.p.capricious-plan': 0.9,
+  'wc.p.psychic-cabal': 1.5,
+  'wc.p.mutant-herd': 1.3,
+  'wc.a.fate-reserve': 0,
+  'wc.a.boon-echoes-from-the-warp': 1.7,
+  'wc.a.boon-astral-bombardment': 0.6,
+  'wc.a.savage-brutality': 2.0,
+  'wc.e.sorcerous-scrolls': 0,
   // Legionaries
   'lg.p.unending-bloodshed': 2.0,
   'lg.p.mutability-and-change': 1.5,
   'lg.p.malignant-aura': 1.6,
   'lg.p.sickening-captivation': 1.6,
+  // Kasrkin
+  'ks.p.seize-the-initiative': 1.2,
+  'ks.p.cover-retreat': 1.4,
+  'ks.p.neutralise-target': 1.8,
+  'ks.p.give-no-ground': 1.6,
+  'ks.medicDash': 1.0,
+  'ks.e.relics-of-cadia': 1.6,
   // Hand of the Archon: paid ploys
   'ha.p.cruel-deception': 0.7,
   'ha.p.devious-scheme': 1.2,
@@ -323,10 +471,142 @@ const PLOY_SCORE: Record<string, number> = {
   'hk.p.sturdy': 2.0,
   'hk.p.engage-to-acquire': 2.0,
   'hk.medicDash': 1.0,
+  // Novitiates: the Faith acts are scored by faithScore, the rest are cheap and good when offered
+  'nv.p.glorious-martyrdom': 1.7,
+  'nv.p.blazing-inferno': 1.9,
+  'nv.p.blinding-aura': 1.5,
+  'nv.p.guided-by-faith': 0.8,
+  'nv.a.absolution-through-destruction': 2.2,
+  'nv.a.medic': 1.0,
+  'nv.a.blaze-token': 0.8,
+  // Corsair Voidscarred: 2D3 per Corsair is a lot of damage; the activation ploys are rarely worth their CP, free ones are cheap
+  'cv.p.opportunistic-fighters': 1.7,
+  'cv.p.light-fingers': 0.6,
+  'cv.p.capricious-flight': 0.5,
+  'cv.p.contemptuous-adventurer': 1.3,
+  // free offers: Slicing Attack is D3+2 damage; Mistfield only comes up when the shot has Piercing
+  'cv.a.slicing-attack': 1.9,
+  'cv.e.mistfield': 1.4,
+  // Imperial Navy Breachers
+  'nb.p.overwhelm-target': 1.6,
+  'nb.p.blitz': 1.8,
+  'nb.p.lock-it-down': 1.1,
+  'nb.p.deck-hand': 0.5,
+  // free offers: the Breach and Clear pairing and Slugs are cheap and good; the order redirect is never worth the prompt
+  'nb.bc': 1.7,
+  'nb.e.slugs': 1.4,
+  'nb.redirect': 0.2,
+}
+
+// ---------------------------------------------------------------------------
+// Novitiates: ACTS OF FAITH. Faith points are a public pool, so an act is worth the wounds it is expected to change in the
+// open sequence less what its points are worth; the last points are kept before turning point 4 unless the act decides
+// whether an operative is incapacitated.
+// ---------------------------------------------------------------------------
+
+const NV_ACT_COST: Record<string, number> = { 'nv.a.guidance': 1, 'nv.a.blessing': 2, 'nv.a.intervention': 3 }
+
+function faithScore(view: GameState, seat: string, p: { ployId: string; param?: string; operativeId?: string }): number {
+  const a = view.attack
+  const seq = a?.seq
+  const op = p.operativeId ? view.operatives[p.operativeId] : undefined
+  if (!a || !seq || !op) return 0
+  const pool = view.players[seat as 'A' | 'B'].pools?.['nv.faith'] ?? 0
+  // Sanctified Rounds on its own: Piercing Crits 1 only matters when a crit is kept
+  if (p.ployId === 'nv.e.sanctified-rounds') {
+    const crits = seq.atk.dice.filter((d) => d.kind === 'crit' && !d.used).length
+    return crits > 0 ? 0.9 : 0.1
+  }
+  const costFaith = NV_ACT_COST[p.ployId]
+  if (costFaith === undefined) return 0
+  const free = p.param === 'free'
+  const side = seq.atk.operativeId === op.id ? seq.atk : seq.def
+  if (!side) return 0
+  const fails = side.dice.filter((d) => d.kind === 'fail' && !d.used && d.value !== null).length
+  const normals = side.dice.filter((d) => d.kind === 'normal' && !d.used).length
+  const crits = side.dice.filter((d) => d.kind === 'crit' && !d.used).length
+  const weapon = a.weaponId ? view.data.weapons[a.weaponId] : undefined
+  let gain = 0
+  let decisive = false
+  if (a.kind === 'shoot' && side === seq.def) {
+    // a Novitiate being shot: how much damage does one more save (or a crit save) prevent?
+    const attacker = seq.atk.dice.filter((d) => !d.used)
+    const an = attacker.filter((d) => d.kind === 'normal').length
+    const ac = attacker.filter((d) => d.kind === 'crit').length
+    if (!weapon) return 0
+    const brutal = weapon.rules.some((r) => r.rule === 'brutal')
+    const before = autoBlock(an, ac, normals, crits, weapon.dmg, brutal).damage
+    const q = 1 - dieOdds(op.save).fail
+    let after = before
+    if (p.ployId === 'nv.a.intervention') after = autoBlock(an, ac, normals + 1, crits, weapon.dmg, brutal).damage
+    else if (p.ployId === 'nv.a.blessing' && normals > 0) after = autoBlock(an, ac, normals - 1, crits + 1, weapon.dmg, brutal).damage
+    else if (p.ployId === 'nv.a.guidance' && fails > 0) after = before - q * (before - autoBlock(an, ac, normals + 1, crits, weapon.dmg, brutal).damage)
+    gain = before - after
+    decisive = before >= op.wounds && after < op.wounds
+  } else if (a.kind === 'shoot') {
+    // a Novitiate shooting: the extra damage that gets through the target's expected saves
+    const target = view.operatives[seq.targetId]
+    if (!target || !weapon) return 0
+    const defSucc = 3 * (1 - dieOdds(target.save).fail) + (seq.cover ? 0.5 : 0)
+    const k = normals + crits
+    const hit = 1 - dieOdds(side.need, side.lethal ?? undefined).fail
+    const lev = (extra: number) => Math.max(0.15, Math.min(1, (k + extra - defSucc + 1.5) / 2))
+    const avg = weapon.dmg.normal * 0.7 + weapon.dmg.crit * 0.3
+    if (p.ployId === 'nv.a.guidance') gain = fails > 0 ? hit * avg * lev(0.5) : 0
+    else if (p.ployId === 'nv.a.intervention') gain = fails > 0 ? weapon.dmg.normal * lev(1) : 0
+    else if (p.ployId === 'nv.a.blessing' && normals > 0 && !seq.obscured) {
+      const rule = (name: string) => weapon.rules.find((r) => r.rule === name)
+      gain = Math.max(0, weapon.dmg.crit - weapon.dmg.normal) * lev(0) + (crits === 0 && (rule('rending') || rule('punishing')) ? 0.9 : 0) + (rule('devastating')?.x ?? 0) * 0.8
+    }
+    decisive = gain > 0 && target.wounds <= weapon.dmg.normal * (k + 1) && target.wounds > weapon.dmg.normal * k * 0.8
+  } else {
+    // a fight: every extra success is an extra strike or block
+    const w = side.weaponId ? view.data.weapons[side.weaponId] : undefined
+    if (!w) return 0
+    const hit = 1 - dieOdds(side.need, side.lethal ?? undefined).fail
+    if (p.ployId === 'nv.a.guidance') gain = fails > 0 ? hit * (w.dmg.normal * 0.7 + w.dmg.crit * 0.3) * 0.8 : 0
+    else if (p.ployId === 'nv.a.intervention') gain = fails > 0 ? w.dmg.normal * 0.8 : 0
+    else if (p.ployId === 'nv.a.blessing' && normals > 0) gain = Math.max(0, w.dmg.crit - w.dmg.normal) * 0.8 + (crits === 0 && w.rules.some((r) => r.rule === 'rending') ? 0.9 : 0)
+  }
+  if (gain <= 0) return 0
+  if (free) {
+    // the price is wounds: only above half, and only for a clear gain
+    if (op.wounds - costFaith <= op.maxWounds / 2) return 0
+    return Math.max(0, gain - 0.45 * costFaith)
+  }
+  // keep the last points for later turning points unless this decides an incapacitation
+  if (view.turningPoint < 4 && pool - costFaith < 2 && !decisive) return 0
+  return Math.max(0, gain + (decisive ? 2 : 0) - 0.35 * costFaith)
+}
+
+const PH_STRATEGY = ['ph.p.guerrilla-warfare', 'ph.p.and-they-shall-know-no-fear', 'ph.p.deadly-shots', 'ph.p.lethal-assaults']
+
+/** What a Phobos strategy ploy is worth on the board now (for a Comms Array swap): the friends it would help this turning point. */
+function phStrategyValue(view: GameState, seat: string, id: string): number {
+  const mine = seatOps(view, seat as 'A' | 'B').filter((o) => o.status === 'active' && o.wounds > 0)
+  const foes = enemiesOf(view, { seat: seat as 'A' | 'B' }).filter((e) => e.status === 'active')
+  const near = (o: Operative, r: number): boolean => foes.some((e) => distanceBetween(bodyOf(o), bodyOf(e)) <= r)
+  switch (id) {
+    case 'ph.p.deadly-shots':
+      return 0.25 * mine.filter((o) => o.weapons.some((w) => view.data.weapons[w]?.type === 'ranged') && near(o, 18)).length
+    case 'ph.p.lethal-assaults':
+      return 0.35 * mine.filter((o) => o.weapons.some((w) => view.data.weapons[w]?.type === 'melee' && !/fists$/.test(w)) && near(o, 9)).length
+    case 'ph.p.and-they-shall-know-no-fear':
+      return 0.5 * mine.filter((o) => o.wounds * 2 < o.maxWounds).length
+    case 'ph.p.guerrilla-warfare':
+      return 0.2
+    default:
+      return 0
+  }
 }
 
 /** Value of one offered firefight ploy, from the id and the operative or parameter it names. */
 function ployScore(view: GameState, seat: string, p: { ployId: string; param?: string; operativeId?: string }, windowId: string): number {
+  // Comms Array: swap a strategy ploy already used for one not yet used; worth the difference on this board
+  if (PH_STRATEGY.includes(p.ployId) && p.param && PH_STRATEGY.includes(p.param)) {
+    const gain = phStrategyValue(view, seat, p.ployId) - phStrategyValue(view, seat, p.param)
+    return gain >= 0.25 ? 0.3 + gain : 0
+  }
   const s = PLOY_SCORE[p.ployId] ?? (p.ployId.startsWith('ha.inv.') ? 1.4 : 0.9)
   const op = p.operativeId ? view.operatives[p.operativeId] : undefined
   switch (p.ployId) {
@@ -341,9 +621,64 @@ function ployScore(view: GameState, seat: string, p: { ployId: string; param?: s
     }
     case 'ha.flay':
       return p.param && view.operatives[p.param]?.seat === seat ? 1.2 : 0.2
+    case 'wc.a.fate-reserve': {
+      // param slot:side:rolled value. Trade a rolled die for the reserved one only when it swings the sequence our way:
+      // a fail of ours made a success, or a success of the enemy's made a fail
+      const [slot, side, rolled] = (p.param ?? '').split(':')
+      const fx = view.effects.find((e) => e.source === 'wc.fate' && e.seat === seat)
+      const reserved = Array.isArray(fx?.data?.dice) ? (fx!.data!.dice as number[])[Number(slot)] : undefined
+      const seq = view.attack?.seq
+      const dside = side === 'a' ? seq?.atk : seq?.def
+      if (!dside || reserved === undefined) return 0
+      const wins = (x: number): number => (x !== 1 && (x >= dside.need || (dside.lethal !== null && x >= dside.lethal)) ? 1 : 0)
+      const crits = (x: number): number => (x === 6 || (dside.lethal !== null && x >= dside.lethal) ? 1 : 0)
+      const r = Number(rolled)
+      const swing = wins(reserved) - wins(r) + 0.4 * (crits(reserved) - crits(r))
+      const gain = dside.seat === seat ? swing : -swing
+      return gain > 0.3 ? 1.2 + gain : 0
+    }
+    case 'wc.e.sorcerous-scrolls': {
+      // once per battle: swap only for a clearly better boon than the Sorcerer's own
+      const value: Record<string, number> = { 'ASTRAL BOMBARDMENT': 1.4, 'ECHOES FROM THE WARP': 1.1, 'INCORPOREAL SIGHT': 1, 'TWIST OF FATE': 1, 'MASTER OF THE IMMATERIUM': 1, 'IMMATERIAL FLIGHT': 0.9, 'TIME-WALK': 0.8, 'MUTANT APPENDAGE': 0.7, 'WARP SWELL': 0.6 }
+      const gain = (value[p.param ?? ''] ?? 0) - (value[op?.picks?.boon ?? ''] ?? 0)
+      return gain >= 0.5 ? 0.3 + gain : 0
+    }
+    case 'wc.p.capricious-plan':
+      // the flux options also bring the Sorcerer's friend back first, so they are worth a little more than the plain ones
+      return p.param === 'order' ? 0.4 : p.param === 'both' ? 1.0 : p.param === 'flux-dash' ? 1.0 : p.param === 'flux-both' ? 1.1 : 0.9
+    case 'ph.p.patient-ambush': {
+      // skip this activation: sensible when the enemy has more operatives ready, so the order of activations stays level and
+      // they commit first; pointless while we hold the numbers
+      const mine = seatOps(view, seat as 'A' | 'B').filter((o) => o.status === 'active' && o.ready).length
+      const theirs = enemiesOf(view, { seat: seat as 'A' | 'B' }).filter((o) => o.status === 'active' && o.ready).length
+      const diff = theirs - mine
+      return diff >= 1 ? 0.9 + 0.2 * Math.min(diff, 3) : diff === 0 && view.turningPoint >= 2 ? 0.5 : 0
+    }
+    case 'wc.p.psychic-cabal':
+      // a second PSYCHIC gun beats a borrowed action
+      return (p.param ?? '').includes(':w:') ? s + 0.3 : s - 0.3
     case 'ha.fdd': {
       const t = p.param ? view.operatives[p.param] : undefined
       return t ? 1.2 + t.wounds * 0.03 : s
+    }
+    case 'nb.p.lock-it-down': {
+      // the objective nearest the operative that will hold it
+      const m = p.param ? view.markers.find((k) => k.id === p.param) : undefined
+      if (!m || !op) return s
+      return s - Math.min(Math.hypot(op.pos.x - m.pos.x, op.pos.z - m.pos.z), 20) * 0.05
+    }
+    case 'nv.a.guidance':
+    case 'nv.a.blessing':
+    case 'nv.a.intervention':
+    case 'nv.e.sanctified-rounds':
+      return faithScore(view, seat, p)
+    case 'nv.a.blaze-token':
+      // shedding the burn costs 1 APL for the activation: not worth it in the last turning point
+      return view.turningPoint >= 4 ? 0 : s
+    case 'nv.p.glorious-martyrdom': {
+      // 1 Faith and D3 damage for every enemy beside the fallen operative
+      const near = op ? enemiesOf(view, op).filter((e) => e.status === 'active' && distanceBetween(bodyOf(op), bodyOf(e)) <= 2).length : 0
+      return near > 0 ? s + near * 0.4 : 0
     }
     case 'hc.p.omnissiahs-imperative':
       // the extra rule helps most once the dice are in play

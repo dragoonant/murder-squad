@@ -116,6 +116,21 @@ function value(ctx: AiCtx, v: GameState, op: Operative, offer: AbilityOffer): nu
       const beside = objectives.some((m) => Math.hypot(m.pos.x - op.pos.x, m.pos.z - op.pos.z) <= 4)
       return beside && enemiesOf(v, op).some((e) => e.status === 'active') ? 1.3 : 0
     }
+    // ---- Kasrkin
+    case 'ks.a.tactical-command':
+      // a free extra skill for one operative: best for a ready shooter; moving the Clearance Sweep marker is a small gain
+      if (offer.params.param === 'sweep') return 0.3
+      return target && target.seat === op.seat ? (target.ready ? 1.1 : 0.4) + (hasRanged(v, target) ? 0.2 : 0) : 0
+    case 'ks.a.medikit':
+      return target && target.seat === op.seat ? Math.min(wounded(target), 5) * 0.6 : 0
+    case 'ks.a.auspex-scan':
+      // strips obscuring and feeds Elimination Pattern: worth it while enemies stand within 8 inches
+      return enemiesOf(v, op).some((e) => e.status === 'active' && distanceBetween(bodyOf(e), bodyOf(op)) <= 8) ? 0.9 : 0
+    case 'ks.a.battle-comms':
+      return target && target.seat === op.seat && target.ready ? 1.2 : 0
+    case 'ks.a.place-melta-mine':
+      // 2D6+3 to whoever walks into it: worth placing while enemies are close enough to come to it
+      return enemiesOf(v, op).some((e) => e.status === 'active' && distanceBetween(bodyOf(e), bodyOf(op)) <= 10) ? 1.2 : 0.4
     // ---- Hunter Clade
     case 'hc.a.signal':
       // +1 APL for a ready friend is worth most when that friend is close to the fight
@@ -156,6 +171,18 @@ function value(ctx: AiCtx, v: GameState, op: Operative, offer: AbilityOffer): nu
       const placed = v.markers.some((m) => m.equipmentId === 'hk.pan-spectral-scan' && m.owner === op.seat)
       return placed ? 0 : 0.8
     }
+    // ---- Phobos Strike Team
+    case 'ph.a.helix-gauntlet':
+      return target && target.seat === op.seat ? Math.min(wounded(target), 6) * 0.55 : 0
+    case 'ph.a.auspex-scan': {
+      // worth an AP while enemies stand within 8" of the Voxbreaker and friends can shoot them
+      const foes = enemiesOf(v, op).filter((e) => e.status === 'active' && distanceBetween(bodyOf(e), bodyOf(op)) <= 8)
+      const shooters = friendsOf(v, op).filter((f) => f.ready && hasRanged(v, f)).length
+      return foes.length > 0 ? 0.3 + 0.25 * Math.min(shooters, 3) + (hasRanged(v, op) ? 0.2 : 0) : 0
+    }
+    // Guerrilla Warfare only changes an order: never worth the AP to the planner
+    case 'ph.a.guerrilla-warfare':
+      return 0
     // ---- Hand of the Archon
     case 'ha.a.torment-grenade': {
       // the target and everyone within 1" of it (friends too) test: D6 plus 1 for a Save of 4+ or worse, D3 damage and a Poison token on a 3+
@@ -176,6 +203,129 @@ function value(ctx: AiCtx, v: GameState, op: Operative, offer: AbilityOffer): nu
     case 'ha.a.mark':
       // Seek Light and no obscuring help most against a Conceal enemy hiding in cover
       return target && target.seat !== op.seat ? (target.order === 'conceal' ? 1 : 0.35) : 0
+    // ---- Imperial Navy Breachers
+    case 'nb.a.spot': {
+      // Seek Light and no obscuring for the friends that can shoot the marked enemy; best against a Conceal enemy in cover
+      if (!target || target.seat === op.seat) return 0
+      const shooters = shootersFor(v, op, target)
+      return 0.35 + 0.3 * shooters + (target.order === 'conceal' ? 0.4 : 0)
+    }
+    case 'nb.a.wayfind':
+      return target && target.seat === op.seat && target.ready ? 1.2 : 0
+    case 'nb.a.interference-pulse':
+      // 3+ for 1 less APL on an enemy that has not acted yet
+      return target && target.seat !== op.seat ? (target.ready ? 0.9 : 0.2) : 0
+    case 'nb.a.boost': {
+      // a 12" Charge is worth an AP only when an enemy sits just beyond the normal 10" reach
+      const far = enemiesOf(v, op).some((e) => {
+        const d = distanceBetween(bodyOf(op), bodyOf(e))
+        return d > 10 && d <= 12.5
+      })
+      return far ? 0.8 : 0
+    }
+    // ---- Corsair Voidscarred
+    case 'cv.a.soul-channel':
+      // +1 APL for a ready friend; worth most when that friend is close to the fight
+      return target && target.seat === op.seat && target.ready ? 1.2 : 0
+    case 'cv.a.soul-heal':
+      return target && target.seat === op.seat ? Math.min(wounded(target), 6) * 0.5 : 0
+    case 'cv.a.warding-shield': {
+      // ignores the next Normal Dmg die: worth an AP on a friend that will be shot at soon
+      if (!target || target.seat !== op.seat || tokenCount(v, target.id, 'cv.shield', op.seat) > 0) return 0
+      const near = enemiesOf(v, target).some((e) => distanceBetween(bodyOf(e), bodyOf(target)) <= 14)
+      return near ? (target.ready ? 0.9 : 0.6) : 0.2
+    }
+    case 'cv.a.warp-fold': {
+      // swap two friends: worth it when a ready one lands much nearer the enemy (or an objective) than it stood
+      const [a, b] = String(offer.params.param ?? '').split('+').map((id) => v.operatives[id])
+      if (!a || !b) return 0
+      const gapOf = (o: Operative, at: Operative): number => Math.min(99, ...enemiesOf(v, o).map((e) => Math.hypot(e.pos.x - at.pos.x, e.pos.z - at.pos.z)))
+      const gain = (o: Operative, at: Operative): number => (o.ready ? gapOf(o, o) - gapOf(o, at) : 0)
+      return Math.max(0, Math.max(gain(a, b), gain(b, a)) - 3) * 0.12
+    }
+    case 'cv.a.pistol-barrage': {
+      // two free Shoots: worth about one and a half Shoot actions when an enemy is in pistol reach
+      const reach = enemiesOf(v, op).some((e) => distanceBetween(bodyOf(op), bodyOf(e)) <= 8 && visible(v, bodyOf(op), bodyOf(e)))
+      return reach ? 2.4 : 0
+    }
+    case 'cv.a.blademaster':
+      // a free Dash after a Charge: worth a little, to get clear or reach cover
+      return 0.4
+    // ---- Warpcoven
+    case 'wc.a.protected-by-fate': {
+      // re-rolls of any defence dice for the friend most likely to be shot next; one live token per team
+      if (!target || target.seat !== op.seat || tokenCount(v, target.id, 'wc.protected', op.seat) > 0) return 0
+      const exposed = enemiesOf(v, target).some((e) => e.status === 'active' && distanceBetween(bodyOf(e), bodyOf(target)) <= 14 && visible(v, bodyOf(e), bodyOf(target)))
+      return exposed ? 0.7 + 0.05 * Math.min(wounded(target), 5) + (target.ready ? 0 : 0.1) : 0.1
+    }
+    case 'wc.a.ravage-destiny': {
+      // the enemy best placed to shoot or to hold a marker loses its 6s and 1 APL of control
+      if (!target || target.seat === op.seat || tokenCount(v, target.id, 'wc.ravaged', op.seat) > 0) return 0
+      const atk = target.weapons.reduce((m, w) => Math.max(m, v.data.weapons[w]?.atk ?? 0), 0)
+      const onObjective = v.markers.some((m) => m.kind === 'objective' && Math.hypot(m.pos.x - target.pos.x, m.pos.z - target.pos.z) <= 3)
+      return 0.45 + 0.1 * atk + (onObjective ? 0.4 : 0) + (target.ready ? 0.2 : 0)
+    }
+    case 'wc.a.reconstitution-ritual':
+      // 2D3 averages 4 wounds
+      return target && target.seat === op.seat ? Math.min(wounded(target), 4) * 0.7 : 0
+    case 'wc.a.temporal-flux': {
+      // the marker snaps a friend back beside it after that friend's next activation: shoot-and-scoot. Worth most for a
+      // ready friend with enemies about to be in reach; the marker spot (param "x,z") is best on the far side from them
+      if (!target || target.seat !== op.seat || target.wounds <= 0) return 0
+      const foes = enemiesOf(v, op).filter((e) => e.status === 'active')
+      if (!foes.some((e) => distanceBetween(bodyOf(e), bodyOf(target)) <= 16)) return 0
+      const [x, z] = String(offer.params.param ?? '').split(',').map(Number)
+      const away = x !== undefined && z !== undefined && Number.isFinite(x) && Number.isFinite(z) ? Math.min(...foes.map((e) => Math.hypot(e.pos.x - x, e.pos.z - z)), 14) : 0
+      return (target.ready ? 0.95 : 0.35) + (hasRanged(v, target) ? 0.15 : 0) + 0.02 * away
+    }
+    case 'wc.a.alight': {
+      // Ceaseless for every friendly weapon against it: worth more the more of the coven can reach it
+      if (!target || target.seat === op.seat || tokenCount(v, target.id, 'wc.alight', op.seat) > 0) return 0
+      return 0.4 + 0.25 * shootersFor(v, op, target) + (hasRanged(v, op) ? 0.2 : 0)
+    }
+    case 'wc.a.brayhorn':
+      // free: +1" Move for every ready Tzaangor
+      return friendsOf(v, op).some((f) => f.ready && v.data.datacards[f.datacardId]?.keywords.includes('TZAANGOR')) ? 0.4 : 0
+    // ---- Farstalker Kinband
+    case 'fk.a.energise':
+      // Lethal 5+ on every arrow is worth the AP only with a target in sight and not already in force
+      return !v.effects.some((e) => e.source === 'fk.energise' && e.operativeId === op.id) && enemiesOf(v, op).some((e) => e.status === 'active' && visible(v, bodyOf(op), bodyOf(e))) ? 0.9 : 0
+    case 'fk.a.long-sight':
+      return !v.effects.some((e) => e.source === 'fk.longSight' && e.operativeId === op.id) && enemiesOf(v, op).some((e) => e.status === 'active' && visible(v, bodyOf(op), bodyOf(e))) ? 0.8 : 0
+    case 'fk.a.stealth-attack':
+      // a free Charge, a free Fight and a bonus strike for 2 AP: worth it whenever an enemy is within reach
+      return enemiesOf(v, op).some((e) => e.status === 'active' && distanceBetween(bodyOf(op), bodyOf(e)) <= 7) ? 2.8 : 0
+    case 'fk.a.marked-for-the-hunt':
+      return v.markers.some((m) => m.equipmentId === 'fk.pechra' && m.owner === op.seat) ? 0 : 0.5
+    case 'fk.a.from-the-eye-above':
+      return target && target.seat === op.seat && target.ready ? 1.2 : 0
+    case 'fk.a.gather':
+      // two moves around a marker that no v1 mission uses: the planner never spends the AP
+      return 0
+    // ---- Novitiates
+    case 'nv.a.stirring-rhetoric': {
+      // +1 APL for a ready friend, worth more when that friend is close to the enemy
+      if (!target || target.seat !== op.seat || !target.ready) return 0
+      return 1.1 + (enemiesOf(v, target).some((e) => e.status === 'active' && distanceBetween(bodyOf(target), bodyOf(e)) <= 10) ? 0.3 : 0)
+    }
+    case 'nv.a.auto-broadcaster': {
+      // a 0 AP action: it stops enemy re-rolls where the fight will be, so place or move it once the enemy is near
+      const mine = v.markers.some((m) => m.equipmentId === 'nv.auto-broadcaster' && m.owner === op.seat)
+      const near = enemiesOf(v, op).some((e) => e.status === 'active' && distanceBetween(bodyOf(e), bodyOf(op)) <= 11)
+      return near ? (mine ? 0.3 : 0.9) : 0.1
+    }
+    case 'nv.a.whip-into-frenzy': {
+      // two Fights (the first free) and +1 APL: worth it for a friend that can reach an enemy
+      if (!target || target.seat !== op.seat || !target.ready) return 0
+      return enemiesOf(v, target).some((e) => e.status === 'active' && distanceBetween(bodyOf(target), bodyOf(e)) <= 8) ? 1.9 : 0
+    }
+    case 'nv.a.chirurgeons-tools':
+      return target && target.seat === op.seat ? Math.min(wounded(target), 5) * 0.6 : 0
+    case 'nv.a.raise-icon': {
+      // 1 Faith, plus the turning point number while standing on an objective
+      const holds = v.markers.some((m) => m.kind === 'objective' && Math.hypot(m.pos.x - op.pos.x, m.pos.z - op.pos.z) <= 2)
+      return holds ? 0.9 + 0.35 * v.turningPoint : 0.5
+    }
     default:
       return 0
   }

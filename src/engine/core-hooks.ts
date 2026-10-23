@@ -101,13 +101,15 @@ registerCodeHook({ name: 'razorWire' })
 registerCodeHook({ name: 'ladders' })
 
 /** Comms Device (M-5.1): +3" to SUPPORT distances while a friendly operative controls the team's own marker. */
-export function commsBonus(state: GameState, seat: Seat): number {
+export function commsBonus(state: GameState, seat: Seat, user?: Operative): number {
   const p = state.data.abilities['core.e.comms-device']
   void p
   for (const m of state.markers) {
     if (m.equipmentId !== 'core.e.comms-device' || m.owner !== seat) continue
     for (const op of Object.values(state.operatives)) {
       if (op.seat !== seat || op.status !== 'active') continue
+      // batch C shared: "add 3" to ITS SUPPORT rules": only the operative that controls the marker benefits (M-5.1)
+      if (user && op.id !== user.id) continue
       if (controlledBy(state, op, (k) => k.id === m.id).length > 0) {
         markFired('commsDevice')
         return codeParamsFromEquipment(state, 'core.e.comms-device', 'supportRangeBonus', 3)

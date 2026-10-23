@@ -11,7 +11,7 @@ import { runHook } from './hooks'
 import { restoreTurningPointWeapons } from './equipment'
 import { onTurningPointStart } from './missions'
 import { findGambit, gambitOffers, openOpponentUsedWindow, usePloy } from './ploys'
-import { providerInitiativeReroll } from './team-rules'
+import { providerInitiativeReroll, providerReadyStepChoices } from './team-rules'
 
 export const TURNING_POINTS = 4
 
@@ -165,9 +165,53 @@ function readyStep(ctx: Ctx): void {
   }
   ctx.emit({ type: 'OperativesReadied', operativeIds: ids }, null)
   smokeReady(ctx)
+  // batch C shared: Ready-step choices of team rules (orders, picks), the initiative holder first
+  s.strategy.readyChoices = [holder, otherSeat(holder)]
+  nextReadyChoice(ctx)
+}
+
+/**
+ * batch C shared: ask the next seat for its Ready-step choices (team-rules `readyStepChoices`) as one ability.choice
+ * (context.readyStep). A chosen offer's code hook `choice` runs and then calls readyChoiceDone; the same seat is asked
+ * again until it has no offer or passes. Then the Gambit step starts.
+ */
+function nextReadyChoice(ctx: Ctx): void {
+  const s = ctx.state
+  const queue = s.strategy.readyChoices ?? []
+  while (queue.length > 0) {
+    const seat = queue[0]!
+    const offers = providerReadyStepChoices(s, seat)
+    if (offers.length > 0) {
+      ctx.raise({
+        kind: 'ability.choice',
+        seat,
+        window: 'turningPoint.start',
+        context: { hook: 'readyStep', readyStep: true, offers },
+        options: offers.map((r, i) => ({
+          id: `ready:${i}`,
+          labelKey: r.labelKey,
+          type: 'ability.choice' as const,
+          payload: { option: String(i) },
+          data: { hook: r.hook, operativeId: r.operativeId, ...(r.data ?? {}) },
+        })),
+        canPass: true,
+      })
+      return
+    }
+    queue.shift()
+  }
+  delete s.strategy.readyChoices
+  const holder = s.initiative!
   s.strategy.step = 'gambit'
   s.strategy.gambit = { turn: holder, passes: 0, used: { A: [], B: [] } }
   advanceGambit(ctx)
+}
+
+/** batch C shared: a Ready-step choice is finished (`passed`: the seat declined, so it is not asked again). */
+export function readyChoiceDone(ctx: Ctx, passed = false): void {
+  const queue = ctx.state.strategy.readyChoices
+  if (passed && queue) queue.shift()
+  nextReadyChoice(ctx)
 }
 
 /** Strategic gambits the seat can use now: affordable, not already used this TP (R-2.4). */

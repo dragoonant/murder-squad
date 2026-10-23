@@ -376,7 +376,8 @@ describe('code hooks', () => {
         }
       }
       expect(failures).toEqual([])
-    })
+      // every team's scenarios run here: give a loaded machine (full suite in parallel) room
+    }, 120_000)
     it.each(names)('%s', (name) => {
       expect(hookFireCount(name), `${name} never fired`).toBeGreaterThan(0)
     })

@@ -276,6 +276,19 @@ GEN-082 | ownGrenades tpActions | A seat-wide per-TP grenade allowance is the 'o
 GEN-083 | operativeChoices unique, distinctFrom, keyword | Missing picks fill around picks other entries hold and the operative's own; illegal repeats are reasons; tag picks are not keywords; alternatives skip what friends hold; roster-aware data defaults and the roster check.
 GEN-084 | selection caps min, requires | A roster without the minimum keyword, or with a datacard missing the one it needs, has a reason for each.
 GEN-085 | repeatSurcharge | Repeating a weapon with another profile of the same profile group still pays the ASTARTES surcharge.
+GEN-086 | effects.aplChangeNextActivation | An APL change "until the end of its next activation" taken in the operative's own activation is held over (core.aplNext) and applies for its next activation; otherwise it applies at once (Pathfinders and Hearthkyn Medic!).
+GEN-087 | shoot.defenderAttackRolled | The defender is offered ploys on the fresh attack roll, after the attacker's shoot.beforeAttackRerolls and before attack re-rolls; the attacker is not.
+GEN-088 | commandRerollCost | A provider makes a Command Re-roll free: offered at 0 CP to a seat with no CP, no CP spent, onCommandReroll told the cost.
+GEN-089 | ownReactions, ReactionOffer.repeat | After an action the active seat's ownReactions come first, then the other seat's reactions; `repeat` offers come again for operatives that have not reacted; a pass ends that seat's turn.
+GEN-090 | Fall Back windows | Fall Back opens firefight.actionDeclared, and firefight.fallBackMoved between its move and the end of the action.
+GEN-091 | placeMarkerProblem, checkMines | A team spot filter lists the accepted spots on marker.place, refuses others with its reason and removes Place Marker when nothing is legal; checkMines sees forced moves outside actions.
+GEN-092 | move breakdown, moveProblem | moveSurcharge receives `climbs` (each climb's cost) and `obstructing` (Razor Wire share of `accessible`); moveProblem refuses a move with its own reason.
+GEN-093 | viewpoints | A provider's extra eye bodies make core `visible` (and so control range) succeed where the head cannot see.
+GEN-094 | target.status weaponId, readyStepChoices | target.status names the weapon; Ready-step choices are asked after readying, before the Gambit step.
+GEN-095 | aplCeiling, fixed dice, pick labels | An increase "to a maximum of N" stops at N unless other changes go higher; Severe skips dice with a registered fixed tag; operativeChoices labels map picks to display text.
+GEN-096 | Siphon Life effective rules | Siphon Life is offered from the weapon's current rules, so a rule that strips it (Null Rod) removes the pick.
+GEN-097 | commsBonus user | The Comms Device adds 3" only to the SUPPORT rules of the operative that controls the marker.
+GEN-098 | ReactionOffer.freeActions, freeShootInControlRange | A free action inside the actor's own activation is a reaction point for offers marked freeActions only; freeShootInControlRange lets a free Shoot start in an enemy control range.
 ## TEAM-PF - Pathfinders
 
 TEAM-PF-000 | registration | The team is registered with the engine and the data, is `playable`, and every code hook its data names is registered and fires in a real game (the scenarios in `tests/engine/teams/pathfinders.hooks.ts`).
@@ -510,7 +523,7 @@ TEAM-HK-029 | T-HK.37, T-HK.38, T-HK.39, T-HK.40 | Plasma Knives gives every Hea
 
 ## TEAM-KS - Kasrkin
 
-TEAM-KS-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-KS-000 | registration | Built: the team is registered with the engine and the data, is `playable`, its default roster (Sergeant plus nine, two Gunners with different weapons) is legal and starts a game, and every code hook its data names is registered and fires in a real game (the scenarios in `tests/engine/teams/kasrkin.hooks.ts`); rules verified against the April '26 sources.
 TEAM-KS-001 | T-KS.1, T-KS.2 | Sergeant plus 9 validates with four Troopers, three Gunners with different weapons and the Sharpshooter; a fifth Gunner-or-Sharpshooter, two Gunners with the same weapon, a second Combat Medic, or an 11th operative is rejected; five Troopers plus four Gunners and no Sharpshooter is legal.
 TEAM-KS-002 | T-KS.3, 11.3 | The Sergeant accepts only the four printed sets (plasma pistol brings both profiles); the Gunner takes exactly one of the five weapons plus gun butt, and grenade launcher, volley gun and plasma gun bring both profiles; the Sergeant's gun butt rolls at 3+, a Trooper's at 4+; the Sergeant's power weapon has Lethal 5+; the meltagun is 6/3.
 TEAM-KS-003 | T-KS.20, T-KS.8 | The SKILL AT ARMS gambit is offered in the Strategy phase, the pick shows in `view` for both seats and lasts until the next Ready step; with the Sergeant in the killzone two different picks are asked for, with the Sergeant incapacitated only one; the gambit cannot be used twice in a TP.
@@ -546,7 +559,7 @@ TEAM-KS-032 | T-KS.5 | The hot-shot name test marks the lasgun, laspistol, both 
 
 ## TEAM-NV - Novitiates
 
-TEAM-NV-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-NV-000 | built (M9 batch C) | The team is registered with the engine and the data, `playable: true`, its 28 code hooks each fire in a real game (tests/engine/code-hooks.test.ts) and every row below has a test in tests/engine/teams/novitiates.test.ts.
 TEAM-NV-001 | T-NV.1, T-NV.2 | A roster is 1 Superior plus 9: three Militants and two Purgatus are legal; a third Purgatus, a second copy of any other entry, or an 11th operative is rejected.
 TEAM-NV-002 | T-NV.3, T-NV.5 | The Superior offers exactly its three weapon pairs (the plasma pistol brings both profiles), the Militant its two; every other card is fixed (Preceptor has only the mace); the Superior's gun butt is Hit 3+ and the others' 4+; every operative has NOVITIATE and the Hospitaller has MEDIC.
 TEAM-NV-003 | T-NV.29 | In the Ready step the Faith pool gains ceil(alive NOVITIATE / 2): 5 in TP1 with ten operatives, 4 after three are incapacitated; the pool carries over with no cap and each change emits PoolChanged.
@@ -584,7 +597,7 @@ TEAM-NV-034 | T-NV.45 | With Holy Embrocations an injured Novitiate keeps its fu
 
 ## TEAM-PH - Phobos Strike Team
 
-TEAM-PH-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-PH-000 | registration | Built: the team is registered with the engine and the data, is `playable`, its default roster (Infiltrator Sergeant plus Commsman, Veteran with two Custom picks, Helix Adept, Saboteur and Marksman) is legal and starts a game, and every code hook its data names is registered and fires in a real game (the scenarios in `tests/engine/teams/phobos-strike-team.hooks.ts`); rules verified against the November '25 sources.
 TEAM-PH-001 | T-PH.1, T-PH.2 | One Sergeant plus 5 picks validates with two Infiltrator Warriors, an Incursor Warrior and two Reiver Warriors; a second Saboteur, two Sergeants, a 7th operative or a 5-operative roster is rejected.
 TEAM-PH-002 | T-PH.3 | A Reiver (Sergeant or Warrior) takes either pistol and combat knife or bolt carbine and fists, never a mix; the Incursor Sergeant has the occulus bolt carbine (Saturate); every other card has its fixed weapons.
 TEAM-PH-003 | T-PH.25, T-PH.5 | A Phobos operative may Shoot twice in one activation with the same marksman bolt carbine and Fight twice; it counteracts with a Conceal order; the remote detonator is not a bolt weapon and frag grenades are not either.
@@ -622,7 +635,7 @@ TEAM-PH-034 | T-PH.37, T-PH.38 | Every Phobos operative may fight with the comba
 
 ## TEAM-CV - Corsair Voidscarred
 
-TEAM-CV-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-CV-000 | built (M10) | The team is registered with the engine and the data, flagged `playable: true`, and every code hook its data names fires in a real game (tests/engine/teams/corsair-voidscarred.test.ts).
 TEAM-CV-001 | T-CV.1, T-CV.2 | A roster of the Felarch plus 8 main-list picks validates; several WARRIORs are accepted; a second copy of any other main-list operative, a 10th operative or a missing Felarch is rejected.
 TEAM-CV-002 | T-CV.2 | A roster with a blaster Gunner and a wraithcannon Heavy Gunner is rejected by the loadout cap; either one alone validates, and the default roster is cap-legal.
 TEAM-CV-003 | T-CV.3, T-CV.5 | Loadouts: the Felarch offers exactly the two printed options; the Warrior offers pistol + power weapon or rifle + fists; the shuriken cannon option brings both profiles; fixed cards show no picker; PSYKER is on the Soul Weaver and Way Seeker, MEDIC on the Soul Weaver.
@@ -661,7 +674,7 @@ TEAM-CV-035 | T-CV.4, T-CV.24, T-CV.23 | A full simulated game with the default 
 
 ## TEAM-WC - Warpcoven
 
-TEAM-WC-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-WC-000 | registration | Built: the team is registered with the engine and the data, is `playable`, its default roster (two Sorcerers with different boons, a Rubric Marine Gunner and Warrior, a Tzaangor Champion and Warrior for five selections) is legal and starts a game, and every code hook its data names is registered and fires in a real game (the scenarios in `tests/engine/teams/warpcoven.hooks.ts`); rules verified against the April '26 sources.
 TEAM-WC-001 | T-WC.1, T-WC.2 | A roster is exactly 5 selections with no leader slot: two Tzaangors cost one selection (a lone Tzaangor costs a whole one), both WARRIOR cards repeat, every other card at most once, and a roster with no SORCERER is rejected.
 TEAM-WC-002 | T-WC.3 | Loadouts: every Sorcerer has its force stave and card PSYCHIC weapons plus one of inferno bolt pistol, khopesh or warpflame pistol; a second warpflame pistol is rejected; the soulreaper cannon brings both profiles and is capped at one; Champion and Tzaangor Warrior options resolve.
 TEAM-WC-003 | T-WC.21, T-WC.5 | Each Sorcerer takes exactly one boon, two Sorcerers cannot share one, the boon is not a keyword (`hasKeyword` false), it is visible to both seats, and defaults give each default Sorcerer a different boon.
@@ -699,7 +712,7 @@ TEAM-WC-034 | T-WC.42, T-WC.43 | Arcane Robes downgrades the first damaging enem
 
 ## TEAM-FK - Farstalker Kinband
 
-TEAM-FK-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-FK-000 | built | The team is registered with the engine and the data and flagged `playable: true`; all eleven datacards, nineteen weapon profiles, both team-local weapon rules, the ten ploys and four equipment options are built (tests/engine/teams/farstalker-kinband.test.ts covers TEAM-FK-001 to TEAM-FK-033; tests/engine/teams/farstalker-kinband.hooks.ts fires every code hook).
 TEAM-FK-001 | T-FK.1, T-FK.2 | Kill-Broker plus 11 picks validates with two Hounds and several Warriors; a third Hound, a second Stalker (or any other single card twice), or a 13th operative is rejected.
 TEAM-FK-002 | T-FK.3, T-FK.5 | The Kill-Broker takes the 3+ Kroot rifle or the pulse weapon plus the ritual blade; the Heavy Gunner takes skinner or tribalest plus blade; the Warrior takes the 4+ Kroot rifle or the scattergun plus blade; the bow, hunting rifle and pistols bring every profile; every operative has FARSTALKER KINBAND, T'AU EMPIRE and KROOT.
 TEAM-FK-003 | T-FK.27 | At the FK seat's first gambit-step turn a 0 CP offer flips the orders of up to three FK operatives not in an enemy's control range; an operative in an enemy's control range is not offered; the offer is gone after that turn.
@@ -736,7 +749,7 @@ TEAM-FK-033 | T-FK.39, T-FK.40 | Meat heals D3+1 at activation start once per TP
 
 ## TEAM-NB - Imperial Navy Breachers
 
-TEAM-NB-000 | scaffold | The team is registered with the engine and the data and flagged `playable: false` until complete (replace when the team is done).
+TEAM-NB-000 | registration | Built: the team is registered with the engine and the data, is `playable`, its default roster (Sergeant-at-Arms plus ten selections, both Machines included) is legal and starts a game, and every code hook its data names is registered and fires in a real game (the scenarios in `tests/engine/teams/imperial-navy-breachers.hooks.ts`); rules verified against the August '26 sources.
 TEAM-NB-001 | T-NB.1, T-NB.2 | A roster is the Sergeant-at-Arms plus 10 selections; ARMSMAN may repeat; a second Axejack (or any other non-repeatable entry) is rejected.
 TEAM-NB-002 | T-NB.2 | Two Gunners are legal, including two with the same weapon card (errata); a third Gunner is rejected.
 TEAM-NB-003 | T-NB.3, T-NB.2 | C.A.T. Unit and Gheistskull together use one selection, one alone uses a whole one; a C.A.T. Unit without a Surveyor or a Gheistskull without a Void-Jammer is rejected.
@@ -784,3 +797,4 @@ SIM-006 | R-9.2 | The same seed and the same action list reproduce the same stat
 SIM-007 | R-8.1 | After every action no two bases overlap and none lies outside the killzone or inside terrain.
 SIM-008 | R-8.x kill op, R-3.4 | VP falls only by the kill op VP a returning operative takes back; a Conceal shooter firing a non-Silent weapon without a viewpoint or team rule is flagged.
 SIM-009 | R-4.x forced moves | The MOVE invariant exempts forced moves (pushes, Timesplinter) that end in an enemy control range.
+SIM-010 | sim coverage | `--teams real` rotates every playable team into at least 4 of any 40 games.

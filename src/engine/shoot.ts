@@ -523,8 +523,11 @@ function rollAttack(ctx: Ctx, cover: boolean, obscured: boolean, improvedCover: 
   )
   // M9 batch B: rules acting on the fresh roll (Omen), then the attacker's window before any re-roll (Engage to Acquire)
   runDiceRolled(ctx, 'shoot', 'attack', side, target.id)
-  proceed(ctx, 'attackRerolls', 'shoot.beforeAttackRerolls')
+  proceed(ctx, 'attackDefenderWindow', 'shoot.beforeAttackRerolls')
 }
+
+// batch C shared: the defender on the fresh attack roll, before any attack re-roll (Fate Itself is My Weapon)
+STEPS.attackDefenderWindow = (ctx) => proceed(ctx, 'attackRerolls', 'shoot.defenderAttackRolled')
 
 STEPS.attackRerolls = (ctx) => advanceWindow(ctx, 'atk')
 

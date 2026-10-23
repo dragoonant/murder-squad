@@ -488,7 +488,7 @@ function refine(ctx: AiCtx, pool: Node[], counteract: boolean, start: Start): No
         const top = [...ests].sort((a, b) => b.score - a.score).slice(0, 3)
         let bestExact: ShotEst | null = null
         for (const e of top) {
-          const ex = exactShot(ctx, n.v, n.op.id, e.weaponId, e.targetId)
+          const ex = e.fixed ? e : exactShot(ctx, n.v, n.op.id, e.weaponId, e.targetId)
           if (!bestExact || ex.score > bestExact.score) bestExact = ex
         }
         if (bestExact) {

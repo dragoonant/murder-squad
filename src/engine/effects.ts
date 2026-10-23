@@ -1,7 +1,7 @@
 // Shared bookkeeping for the rules modules: CP accounting, the once-per-TP / once-per-battle ledger,
 // timed effects, and damage that does not come from an attack sequence (mines, Dat All You Got?).
 // Damage that does come from an attack goes through attack-common.inflict so hooks see it.
-import { inflict } from './attack-common'
+import { applyAplEffect, inflict } from './attack-common'
 import { runHook } from './hooks'
 import type { Ctx } from './registry'
 import { getOp } from './state'
@@ -171,4 +171,44 @@ export function regainWounds(ctx: Ctx, operativeId: string, amount: number, sour
   if (op.flags.injured && op.wounds * 2 >= op.maxWounds) op.flags.injured = false
   ctx.emit({ type: 'WoundsRegained', operativeId: op.id, amount: gain, wounds: op.wounds, source }, op.seat)
   return gain
+}
+
+// ---------------------------------------------------------------------------
+// APL changes "until the end of its next activation" (batch C shared)
+// ---------------------------------------------------------------------------
+
+/** Effect kind holding an APL change deferred to the operative's next activation. */
+export const APL_NEXT_FX = 'core.aplNext'
+
+/** True when `operativeId` is in its own activation now (not a counteraction); frames over it count. */
+export function inOwnActivation(state: GameState, operativeId: string): boolean {
+  const ff = state.firefight
+  for (const a of [ff.activation, ...[...(ff.stack ?? [])].reverse()]) {
+    if (!a || a.frame) continue
+    if (a.counteract) return false
+    return a.operativeId === operativeId || a.partner?.operativeId === operativeId
+  }
+  return false
+}
+
+/**
+ * "Change its APL by `delta` until the end of its next activation" (Medic!, Proximity Mine). Timed APL effects end
+ * with the operative's activation, so a change taken in the middle of its own activation would vanish when that
+ * activation ends: it is held over and applied when the next activation starts (applyDeferredApl). Otherwise it
+ * applies now and ends with the operative's next activation.
+ */
+export function aplChangeNextActivation(ctx: Ctx, operativeId: string, delta: number, source: string): void {
+  const op = ctx.state.operatives[operativeId]
+  if (!op) return
+  if (inOwnActivation(ctx.state, operativeId)) {
+    addEffect(ctx, { source, seat: op.seat, kind: APL_NEXT_FX, operativeId, expires: APL_NEXT_FX, data: { source, delta } })
+  } else applyAplEffect(ctx, operativeId, delta, source)
+}
+
+/** Called as an operative's activation starts: deferred APL changes take effect for this activation. */
+export function applyDeferredApl(ctx: Ctx, operativeId: string): void {
+  for (const fx of ctx.state.effects.filter((e) => e.kind === APL_NEXT_FX && e.operativeId === operativeId)) {
+    removeEffects(ctx, (e) => e.id === fx.id)
+    applyAplEffect(ctx, operativeId, Number(fx.data?.delta ?? -1), String(fx.data?.source ?? fx.source))
+  }
 }

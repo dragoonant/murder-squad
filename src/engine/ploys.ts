@@ -337,7 +337,7 @@ export function findGambit(state: GameState, seat: Seat, gambitId: string, param
 // ---------------------------------------------------------------------------
 
 const ATTACKER_ONLY: string[] = ['shoot.attackRolled', 'shoot.beforeDefenceRerolls', 'shoot.beforeAttackRerolls', 'shoot.attackerDefenceRolled']
-const DEFENDER_ONLY: string[] = ['shoot.defenceRolled', 'shoot.beforeDefenceRoll', 'shoot.defenderBeforeRerolls']
+const DEFENDER_ONLY: string[] = ['shoot.defenceRolled', 'shoot.beforeDefenceRoll', 'shoot.defenderBeforeRerolls', 'shoot.defenderAttackRolled']
 
 function infoForSeat(state: GameState, window: string, base: PloyWindowInfo, seat: Seat): PloyWindowInfo | null {
   // M9 batch B: an action was declared; only the declaring operative's opponent is asked (actorId = that enemy)

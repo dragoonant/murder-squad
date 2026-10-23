@@ -19,7 +19,7 @@ export interface TokenDef {
   term: string
   /** fallback body when the glossary has no entry */
   body: string
-  /** extra line read from the token's engine `data` (the drug an operative has, the Imperative it took); null when none */
+  /** extra line read from the token\'s engine `data` (the drug an operative has, the Imperative it took); null when none */
   detail?: (data: Record<string, unknown> | undefined) => string | null
 }
 
@@ -73,6 +73,38 @@ const DEFS: Record<string, TokenDef> = {
   'hk.system-jam': { label: 'System Jam', glyph: { sides: 6, color: '#7fa6ff' }, term: 'System Jam token', body: 'Jammed: it cannot be activated while its player still has a ready operative without a token.' },
   'hk.spot': { label: 'Spot', glyph: { sides: 24, ring: true, color: '#7be0a0' }, term: 'Spot token', body: 'Spotted by a Lokatr: Hearthkyn Salvagers near it shoot this enemy with Seek Light.' },
   'wyr.soulsight': { label: 'Soulsight', glyph: { sides: 6, color: '#ff7ad9' }, term: 'Soulsight token', body: 'Seen by the cult\'s familiar: the Sanctus operatives fight and shoot it with extra rules.' },
+  // batch C: Kasrkin
+  'ks.tacticalCommand': {
+    label: 'Tactical Command',
+    glyph: { sides: 5, color: '#6fd08c' },
+    term: 'Tactical Command token',
+    body: 'Tactical Command gave this operative an extra Skill at Arms until the next Ready step.',
+    detail: (d) => (typeof d?.skill === 'string' ? `Skill: ${cap(d.skill.replace(/-/g, ' '))}.` : null),
+  },
+  'ks.auspexScan': { label: 'Auspex scan', glyph: { sides: 24, ring: true, color: '#58d0ff' }, term: 'Recon Auspex Scan token', body: 'The Recon-Trooper is scanning: nearby enemies cannot be obscured against friendly Kasrkin shooters.' },
+  // batch C: Novitiates
+  'nv.whip': { label: 'Whip', glyph: { sides: 4, color: '#e0457b' }, term: 'Whip token', body: 'Whip Into Frenzy: +1 APL, +1 inch of Move and two Fights in its next activation.' },
+  'nv.blaze': { label: 'Blaze', glyph: { sides: 3, color: '#ff7a2a' }, term: 'Blaze token', body: 'Burning: it takes D3 damage whenever it activates.' },
+  // batch C: Phobos Strike Team
+  'ph.auspex': { label: 'Auspex scan', glyph: { sides: 24, ring: true, color: '#7be0ff' }, term: 'Voxbreaker Auspex Scan token', body: 'The Voxbreaker is scanning: enemies within 8 inches cannot be obscured against Phobos shooters.' },
+  'ph.omni': { label: 'Omni-Scrambler', glyph: { sides: 6, color: '#b36bff' }, term: 'Omni-Scrambler token', body: 'Jammed: it cannot be activated until enough other operatives have activated.' },
+  // batch C: Corsair Voidscarred
+  'cv.osa': { label: 'One Step Ahead', glyph: { sides: 5, ring: true, color: '#7fe0ff' }, term: 'One Step Ahead token', body: 'The Felarch has not yet used One Step Ahead this battle.' },
+  'cv.faolchu': { label: 'Faolchú\'s Bond', glyph: { sides: 3, color: '#9be03a' }, term: 'Faolchú\'s Bond token', body: 'The Kurnite Hunter has not yet retaliated this turning point.' },
+  'cv.shield': { label: 'Warding Shield', glyph: { sides: 6, ring: true, color: '#c9a6ff' }, term: 'Warding Shield token', body: 'The next Normal Dmg attack die on this operative is ignored.' },
+  'cv.erudite': { label: 'Erudite Hunter', glyph: { sides: 4, color: '#ff9a5a' }, term: 'Erudite Hunter token', body: 'Marked by the Erudite Hunter gambit: the Kurnite Hunter may pounce when it moves.' },
+  'cv.runes': { label: 'Runes of Guidance', glyph: { sides: 5, color: '#a6ffd5' }, term: 'Runes of Guidance token', body: 'This psyker\'s PSYCHIC actions may reach 3 inches further, once this turning point.' },
+  // batch C: Warpcoven
+  'wc.protected': { label: 'Protected', glyph: { sides: 6, ring: true, color: '#7ab8ff' }, term: 'Protected token', body: 'Protected by Fate: its player may re-roll any of its defence dice when it is shot.' },
+  'wc.ravaged': { label: 'Ravaged', glyph: { sides: 3, color: '#c0405a' }, term: 'Ravaged token', body: 'Ravage Destiny: it must re-roll attack dice showing 6 and counts 1 less APL for marker control.' },
+  'wc.alight': { label: 'Alight', glyph: { sides: 5, color: '#ff8a3a' }, term: 'Alight token', body: 'Set alight: friendly Warpcoven weapons have Ceaseless against it.' },
+  'wc.mindburn': { label: 'Mindburn', glyph: { sides: 4, ring: true, color: '#d06bff' }, term: 'Mindburn token', body: 'Scorched by mindburn: the Hit of its weapons is 1 worse until its next activation ends.' },
+  // batch C: Farstalker Kinband
+  'fk.victoryShriek': { label: 'Victory Shriek', glyph: { sides: 5, ring: true, color: '#e8c34d' }, term: 'Victory Shriek token', body: 'Picked by Victory Shriek: its weapons have Balanced for the rest of the battle.' },
+  'fk.vengeance': { label: 'Vengeance', glyph: { sides: 4, color: '#d0873a' }, term: 'Vengeance token', body: 'Vengeance for the Kinband: Farstalker weapons have Relentless against it for the rest of the battle.' },
+  // batch C: Imperial Navy Breachers
+  'nb.spotted': { label: 'Spot', glyph: { sides: 24, ring: true, color: '#ffd24d' }, term: 'C.A.T. Spot token', body: 'Spotted by a C.A.T. Unit: friendly Breachers shoot it with Seek Light and it cannot be obscured.' },
+  'nb.emboldened': { label: 'Emboldened', glyph: { sides: 3, ring: true, color: '#ff5a4a' }, term: 'Emboldened token', body: 'The Axejack has Charged: big attack dice may do 1 less damage to it.' },
 }
 
 const FALLBACK_GLYPH: TokenGlyph = { sides: 24, color: '#d4d6e2' }

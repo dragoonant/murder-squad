@@ -75,6 +75,8 @@
             "shoot.beforeDefenceRoll",
             "shoot.defenderBeforeRerolls",
             "shoot.attackerDefenceRolled",
+            "shoot.defenderAttackRolled",
+            "firefight.fallBackMoved",
             "operative.incapacitated",
             "firefight.activationEnded",
             "turningPoint.end",

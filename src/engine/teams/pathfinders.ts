@@ -20,7 +20,7 @@ import {
 import { getCodeHook, markFired, registerCodeHook, type OfferSeed, type PloyOfferSeed } from '../code-hooks'
 import { codeOf, codeParams, evalCondition, hasAbility, hasKeyword, inEnemyCr, normAction } from '../conditions'
 import { commsBonus } from '../core-hooks'
-import { addEffect, addTpUse, markUsedBattle, markUsedTp, regainWounds, removeEffects, tpUsesOf, usedThisBattle, usedThisTp } from '../effects'
+import { addEffect, aplChangeNextActivation, addTpUse, markUsedBattle, markUsedTp, regainWounds, removeEffects, tpUsesOf, usedThisBattle, usedThisTp } from '../effects'
 import { cancelAction, finishAction, REACTION_DONE, reactionDone, startDelegatedAction, startFreeAction } from '../firefight'
 import { registerFrameResume, registerHook, type HookContext } from '../hooks'
 import { bodyOf, visible } from '../los'
@@ -315,7 +315,7 @@ registerCodeHook({
   name: 'pfSignal',
   action: {
     offers(state, op): OfferSeed[] {
-      const range = 6 + commsBonus(state, op.seat)
+      const range = 6 + commsBonus(state, op.seat, op)
       const out: OfferSeed[] = []
       for (const f of friendsOf(state, op)) {
         if (f.wounds <= 0 || !isPf(state, f)) continue
@@ -537,8 +537,9 @@ registerHook(
     // the free Dash after the action: a reaction when the other player is active, a 0 CP offer in the
     // action-ended window when the Pathfinder player is (pfPloyRule.extraOffers)
     addEffect(ctx, { source: 'pf.a.medic', seat: victim.seat, kind: 'pf.medicDash', operativeId: victim.id, expires: 'activation', data: { medicId: medic.id } })
-    applyAplEffect(ctx, victim.id, -1, 'pf.a.medic')
-    applyAplEffect(ctx, medic.id, -1, 'pf.a.medic')
+    // "until the end of its next activation": held over when used in the operative's own activation
+    aplChangeNextActivation(ctx, victim.id, -1, 'pf.a.medic')
+    aplChangeNextActivation(ctx, medic.id, -1, 'pf.a.medic')
     ctx.emit({ type: 'AbilityUsed', operativeId: medic.id, abilityId: 'pf.a.medic', detail: victim.id }, medic.seat)
     markFired('medic')
     return null

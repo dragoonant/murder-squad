@@ -3,7 +3,7 @@
 import type { CSSProperties } from 'react'
 import type { Seat } from '@/engine'
 import { dataBundle } from '../game/adapter'
-import { poolLabel } from '../teams'
+import { poolLabel, TEAM_PRESENTATION } from '../teams'
 import { humanize } from '../game/labels'
 import { useDisplayState } from '../presentation/presentedStore'
 import { useGame } from '../store/game'
@@ -29,6 +29,14 @@ const barStyle: CSSProperties = {
   pointerEvents: 'auto',
   fontFamily: fontStack,
   zIndex: 20,
+}
+
+/** The seat's team pools (Faith...) as [kind, value]: the kinds the team declares show from the start, even at 0. */
+export function poolEntries(teamId: string, pools: Record<string, number> | undefined): [string, number][] {
+  const out = new Map<string, number>()
+  for (const kind of Object.keys(TEAM_PRESENTATION[teamId]?.pools ?? {})) out.set(kind, 0)
+  for (const [kind, value] of Object.entries(pools ?? {})) out.set(kind, value)
+  return [...out]
 }
 
 function SeatBlock({ seat }: { seat: Seat }) {
@@ -60,7 +68,7 @@ function SeatBlock({ seat }: { seat: Seat }) {
           <span data-testid={`hud-vp-${seat}`} style={{ color: colors.text, fontWeight: 700 }}>
             <Keyword term="VP" /> {p.vp}
           </span>
-          {Object.entries(p.pools ?? {}).map(([kind, value]) => (
+          {poolEntries(p.teamId, p.pools).map(([kind, value]) => (
             <span key={kind} data-testid={`hud-pool-${seat}-${kind}`} style={{ color: colors.text, fontWeight: 700 }}>
               {' · '}
               <Keyword term={poolLabel(kind)} /> {value}

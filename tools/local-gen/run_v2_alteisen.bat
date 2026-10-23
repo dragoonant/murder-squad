@@ -2,6 +2,10 @@
 rem v2 dynamic-pose bodies on Alteisen (weapons baked into the body). Usage: run_v2_alteisen.bat <picks.json> <slug> [<slug> ...]. Launch detached with schtasks.
 set W=E:\AI\work\murder-squad\v2
 set PYTHONIOENCODING=utf-8
+rem C: on this box can fill up (OSError 28 killed two shapes earlier), so keep temp files on E:
+if not exist E:\AI\tmp mkdir E:\AI\tmp
+set TEMP=E:\AI\tmp
+set TMP=E:\AI\tmp
 set PICKS=%1
 shift
 set BSLUGS=

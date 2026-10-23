@@ -7,12 +7,13 @@ import './handlers'
 import './teams'
 import { activeTactics, codeOf, codeParams, effectList, evalCondition, hasKeyword, inEnemyCr, normAction, rulesOf } from './conditions'
 import { getCodeHook, markFired } from './code-hooks'
-import { cancelAction, reactionDone } from './firefight'
+import { cancelAction, noteReaction, reactionDone } from './firefight'
 import { markerOffers, performMarkerAction, PICK_UP, PLACE } from './markers'
 import { missionActionIds } from './missions'
 import { reject, type Ctx, type Handled, type ModuleDef } from './registry'
 import { EngineInvariantError, getOp } from './state'
 import { initEquipment } from './equipment'
+import { readyChoiceDone } from './strategy'
 import { isPsychicAbility, psychicAllowed } from './psychic'
 import type { Activation, Condition, GameSetup, GameState, Operative, Order, Rejection, RuntimeAbility, Seat } from './types'
 import {
@@ -344,12 +345,35 @@ export function performOffer(ctx: Ctx, op: Operative, offer: AbilityOffer): void
 function handleChoice(state: GameState, action: { type: string; payload?: unknown }, context: Record<string, unknown>): Handled {
   // M9 prep: a reaction offered after an action (firefight.offerReactions): pass declines it
   if (context.reaction === true) {
-    if (action.type === 'pass') return { run: (ctx) => reactionDone(ctx) }
+    if (action.type === 'pass') {
+      return {
+        run: (ctx) => {
+          noteReaction(ctx.state, null)
+          reactionDone(ctx)
+        },
+      }
+    }
     if (action.type !== 'ability.choice') return reject('E_WRONG_DECISION', 'expected a reaction choice')
     const offers = (context.offers as ReactionOffer[] | undefined) ?? []
     const offer = offers[Number((action.payload as { option: string }).option)]
     const hook = offer ? getCodeHook(offer.hook) : undefined
     if (!offer || !hook?.choice || !state.operatives[offer.operativeId]) return reject('E_NOT_AN_OPTION', 'unknown reaction')
+    return {
+      run: (ctx) => {
+        // batch C shared: this operative has reacted to the action (repeat offers skip it)
+        noteReaction(ctx.state, offer.operativeId)
+        hook.choice!(ctx, getOp(ctx.state, offer.operativeId), offer.option, context)
+      },
+    }
+  }
+  // batch C shared: a Ready-step choice (strategy.nextReadyChoice): pass ends the seat's choices
+  if (context.readyStep === true) {
+    if (action.type === 'pass') return { run: (ctx) => readyChoiceDone(ctx, true) }
+    if (action.type !== 'ability.choice') return reject('E_WRONG_DECISION', 'expected a Ready-step choice')
+    const offers = (context.offers as ReactionOffer[] | undefined) ?? []
+    const offer = offers[Number((action.payload as { option: string }).option)]
+    const hook = offer ? getCodeHook(offer.hook) : undefined
+    if (!offer || !hook?.choice || !state.operatives[offer.operativeId]) return reject('E_NOT_AN_OPTION', 'unknown Ready-step choice')
     return { run: (ctx) => hook.choice!(ctx, getOp(ctx.state, offer.operativeId), offer.option, context) }
   }
   const hookName = context.hook as string | undefined

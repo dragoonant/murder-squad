@@ -14,6 +14,7 @@ import {
   operativeChoicesFor,
   expandWeaponRef,
   capProblems,
+  teamCapProblems,
   slotCost,
   type DatacardData,
   type LoadoutChoice,
@@ -25,7 +26,7 @@ import {
 import type { Seat } from '@/engine'
 import { dataBundle, flattenRoster, type SeatBuild } from '../game/adapter'
 import { archetypeFor } from '../teams'
-import { buildProblems, choiceOptions, defaultBuild, defaultEquipmentPicks, equipmentFor, equipmentLimitOf, teamList } from '../game/defaults'
+import { buildProblems, choiceOptions, randomBuildLoadouts, defaultBuild, defaultEquipmentPicks, equipmentFor, equipmentLimitOf, teamList } from '../game/defaults'
 import { humanize } from '../game/labels'
 import { isRangeRule, weaponReach } from '../game/glossary'
 import { Figure, seatColor as figureSeatColor } from '../figures/Operative'
@@ -53,12 +54,29 @@ const ENGINE_HEIGHT = (baseMm: number) => Math.round(((baseMm / 25.4) * 1.15 + 0
 
 // ---------------------------------------------------------------- helpers
 
-export function addProblem(slot: SelectionSlot, current: string[], id: string): string | null {
+/**
+ * Why `id` cannot be added to `slot` (null when it can). With `team`, the team-wide maximum caps count too (Kasrkin's
+ * Gunners and Sharpshooter, the Farstalker Hounds), over `others`: the operatives already taken in the other slots.
+ * Minimums and requirements (a Sorcerer, a Void-Jammer) cannot block an add; the roster check reports them.
+ */
+export function addProblem(
+  slot: SelectionSlot,
+  current: string[],
+  id: string,
+  team?: Pick<TeamData, 'selection'>,
+  others: string[] = [],
+  datacards: Record<string, Partial<Pick<DatacardData, 'name' | 'keywords'>>> = {},
+): string | null {
   const repeatable = new Set(slot.repeatable ?? [])
   if (current.includes(id) && !repeatable.has(id)) return 'Only one of this operative is allowed.'
   if (slotCost(slot, [...current, id]) > slot.count) return `${slot.label ?? slot.id} is full (${slotCost(slot, current)}/${slot.count}).`
   const cap = capProblems(slot, [...current, id])[0]
   if (cap) return `${cap}.`
+  if (team) {
+    const maxOnly = { selection: { ...team.selection, caps: (team.selection.caps ?? []).filter((c) => c.max !== undefined).map((c) => ({ ...c, min: undefined })), requires: [] } }
+    const teamCap = teamCapProblems(maxOnly, [...others, ...current, id], datacards)[0]
+    if (teamCap) return `Roster: ${teamCap}.`
+  }
   return null
 }
 
@@ -294,9 +312,10 @@ export function TeamBuilder() {
     }
     return n
   }
+  const othersOf = (slot: SelectionSlot): string[] => team.selection.slots.filter((sl) => sl.id !== slot.id).flatMap((sl) => build.roster[sl.id] ?? [])
   const add = (slot: SelectionSlot, id: string) => {
     const cur = build.roster[slot.id] ?? []
-    if (addProblem(slot, cur, id)) return
+    if (addProblem(slot, cur, id, team, othersOf(slot), b.byId as Record<string, DatacardData>)) return
     const at = slotOffset(slot.id) + cur.length
     const loadouts = [...build.loadouts]
     loadouts.splice(at, 0, defaultLoadout(b.byId[id] as DatacardData))
@@ -353,8 +372,8 @@ export function TeamBuilder() {
         <Btn onClick={() => set(defaultBuild(b, team))} data-testid="builder-reset">
           Reset to default
         </Btn>
-        <Tooltip title="Randomise loadouts" body="Rolls a legal weapon loadout for every operative on this roster. The roster itself does not change.">
-          <Btn data-testid="builder-randomise" onClick={() => set({ ...build, loadouts: ids.map((id) => randomLoadout(b.byId[id] as DatacardData)) })}>
+        <Tooltip title="Randomise loadouts" body="Rolls a legal weapon loadout for every operative on this roster, keeping the team's weapon limits. The roster itself does not change.">
+          <Btn data-testid="builder-randomise" onClick={() => set({ ...build, loadouts: randomBuildLoadouts(b, team, build) })}>
             Randomise loadouts
           </Btn>
         </Tooltip>
@@ -402,7 +421,7 @@ export function TeamBuilder() {
                 <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {slot.from.map((id) => {
                     const c = b.byId[id] as DatacardData
-                    const why = addProblem(slot, cur, id)
+                    const why = addProblem(slot, cur, id, team, othersOf(slot), b.byId as Record<string, DatacardData>)
                     const btn = (
                       <Btn key={id} data-testid={`add-${id}`} disabled={!!why} style={{ padding: '3px 8px', fontSize: 12 }} onClick={() => add(slot, id)}>
                         + {c.name}

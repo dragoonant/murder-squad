@@ -7,7 +7,7 @@ import { abilityOffers, actionForbidden, canCounteractWithOrder, maxRepeats, ref
 import { attackStats, effectiveRules, inflict, weaponDamage } from '@/engine/attack-common'
 import { hasKeyword } from '@/engine/conditions'
 import { usedThisTp } from '@/engine/effects'
-import { runHook } from '@/engine/hooks'
+import { registerHook, runHook, unregisterHook } from '@/engine/hooks'
 import { resolvePicks } from '@/engine/operative-picks'
 import { offersFor } from '@/engine/ploys'
 import { markerControl } from '@/engine/query'
@@ -300,6 +300,19 @@ describe('TEAM-LG Legionaries', () => {
     expect(optionIds(rolled)).toContain(`lg.a.wr-siphon-life:${friend}`)
     const at = (st: GameState, w: string) => offersFor(st, 'A', w, { window: w, attackerId: acolyte, targetId: boy, subjectId: acolyte }).some((o) => o.id.startsWith('lg.a.wr-siphon-life'))
     expect(at(rolled, 'shoot.attackRolled')).toBe(false)
+    // GEN-096: the rules the weapon has now count (a rule that strips Siphon Life, as the Null Rod does, removes the pick)
+    const strip = (c: { data?: Record<string, unknown> }) => {
+      const rules = (c.data as { rules: { rule: string }[] }).rules
+      for (let i = rules.length - 1; i >= 0; i--) if (rules[i]!.rule.toLowerCase().replace(/[^a-z]/g, '').endsWith('siphonlife')) rules.splice(i, 1)
+      return null
+    }
+    registerHook('modifyWeaponRules', strip, 'test.strip-siphon')
+    try {
+      expect(at(rolled, 'shoot.attackerDefenceRolled')).toBe(false)
+    } finally {
+      unregisterHook('modifyWeaponRules', 'test.strip-siphon')
+    }
+    expect(at(rolled, 'shoot.attackerDefenceRolled')).toBe(true)
     const r = play(rolled, dice(6), takePloy(`lg.a.wr-siphon-life:${friend}`))
     expect(r.state.operatives[friend]!.wounds).toBe(8 + 3 + 1 + 1)
     expect(usedThisTp(r.state, 'A', 'lg.siphon.tp')).toBe(true)

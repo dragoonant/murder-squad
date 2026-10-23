@@ -7,6 +7,15 @@
     "recon"
   ],
   "selection": {
+    "caps": [
+      {
+        "label": "Hounds",
+        "from": [
+          "fk.hound"
+        ],
+        "max": 2
+      }
+    ],
     "slots": [
       {
         "id": "leader",
@@ -15,18 +24,73 @@
         "from": [
           "fk.kill-broker"
         ]
+      },
+      {
+        "id": "main",
+        "label": "Selections",
+        "count": 11,
+        "from": [
+          "fk.bow-hunter",
+          "fk.cold-blood",
+          "fk.cut-skin",
+          "fk.heavy-gunner",
+          "fk.hound",
+          "fk.long-sight",
+          "fk.pistolier",
+          "fk.stalker",
+          "fk.tracker",
+          "fk.warrior"
+        ],
+        "repeatable": [
+          "fk.hound",
+          "fk.warrior"
+        ]
       }
     ]
   },
-  "factionRules": [],
-  "ploys": [],
-  "equipment": [],
-  "playable": false,
+  "factionRules": [
+    "fk.a.farstalker"
+  ],
+  "ploys": [
+    "fk.p.call-the-kill",
+    "fk.p.farstalker-orders",
+    "fk.p.cut-throats",
+    "fk.p.rogue",
+    "fk.p.prey",
+    "fk.p.bound",
+    "fk.p.savage-ambush",
+    "fk.p.slip-away",
+    "fk.p.poach",
+    "fk.p.vengeance-for-the-kinband"
+  ],
+  "equipment": [
+    "fk.e.piercing-shot",
+    "fk.e.toxin-shot",
+    "fk.e.meat",
+    "fk.e.trophy"
+  ],
+  "playable": true,
   "defaults": {
     "roster": [
-      "fk.kill-broker"
+      "fk.kill-broker",
+      "fk.bow-hunter",
+      "fk.cold-blood",
+      "fk.cut-skin",
+      "fk.heavy-gunner",
+      "fk.hound",
+      "fk.long-sight",
+      "fk.pistolier",
+      "fk.stalker",
+      "fk.tracker",
+      "fk.warrior",
+      "fk.warrior"
     ],
-    "equipment": []
+    "equipment": [
+      "fk.e.piercing-shot",
+      "fk.e.meat",
+      "core.e.ladders",
+      "core.e.utility-grenades"
+    ]
   },
   "paint": {
     "major": {

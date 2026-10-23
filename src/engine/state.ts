@@ -56,7 +56,20 @@ export function isInjured(op: Operative): boolean {
 export function effectiveApl(op: Operative): number {
   // M2b-game: Resolute and Shake It Off make an operative ignore every APL change.
   if (op.flags.ignoreApl) return Math.max(0, op.apl)
-  return Math.max(0, op.apl + Math.max(-1, Math.min(1, op.aplMods)))
+  const value = op.apl + Math.max(-1, Math.min(1, op.aplMods))
+  // batch C shared (aplCeiling): an increase "to a maximum of N" cannot bring the APL above N, though other changes may
+  const capped = op.aplFx?.filter((f) => f.ceiling !== undefined && f.delta > 0)
+  if (!capped || capped.length === 0) return Math.max(0, value)
+  const rest = op.aplMods - capped.reduce((n, f) => n + f.delta, 0)
+  const without = op.apl + Math.max(-1, Math.min(1, rest))
+  const ceiling = Math.min(...capped.map((f) => f.ceiling!))
+  return Math.max(0, Math.min(value, Math.max(ceiling, without)))
+}
+
+/** batch C shared: the APL an increase "to a maximum of `ceiling`" would leave the operative at now (aplCeiling odds). */
+export function aplWithCeiling(op: Operative, delta: number, ceiling: number): number {
+  const probe = { ...op, aplMods: op.aplMods + delta, aplFx: [...(op.aplFx ?? []), { delta, source: 'probe', ceiling }] }
+  return effectiveApl(probe)
 }
 
 /** Injured stat penalties apply (injured and not ignoring them, e.g. And They Shall Know No Fear). */

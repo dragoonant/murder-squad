@@ -300,7 +300,7 @@ function adaptTeam(t: TeamData): RuntimeTeam {
   }
   if (t.playable === false) out.playable = false
   if (t.teamChoices) out.teamChoices = t.teamChoices.map((c) => ({ ...c, ...(c.distinctFrom ? { distinctFrom: [...c.distinctFrom] } : {}) }))
-  if (t.operativeChoices) out.operativeChoices = t.operativeChoices.map((c) => ({ ...c, keywords: [...c.keywords], ...(c.exclude ? { exclude: c.exclude.map((e) => ({ datacards: [...e.datacards], keywords: [...e.keywords] })) } : {}), ...(c.distinctFrom ? { distinctFrom: [...c.distinctFrom] } : {}) }))
+  if (t.operativeChoices) out.operativeChoices = t.operativeChoices.map((c) => ({ ...c, keywords: [...c.keywords], ...(c.exclude ? { exclude: c.exclude.map((e) => ({ datacards: [...e.datacards], keywords: [...e.keywords] })) } : {}), ...(c.distinctFrom ? { distinctFrom: [...c.distinctFrom] } : {}), ...(c.labels ? { labels: { ...c.labels } } : {}) }))
   return out
 }
 

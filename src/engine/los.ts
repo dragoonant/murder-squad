@@ -4,6 +4,7 @@
 import { distToPolygonBoundary, pointInPolygon, segmentBBoxOverlaps, segmentPolygonIntervals } from './geometry'
 import { discCentres, footprintDistToPolygon, footprintGap2D, footprintRing, ovalAxis, segmentFootprintIntervals } from './footprint'
 import { activeOps } from './state'
+import { providerViewpointBodies } from './team-rules'
 import { sameLevel, standingSolid, terrainOf, type Solid, type TerrainIndex } from './terrain'
 import type { GameState, Order, Vec2, Vec3 } from './types'
 
@@ -70,8 +71,19 @@ function blockedByOperative(a: Vec3, b: Vec3, o: Body): boolean {
   return false
 }
 
-/** Visible: an unobstructed straight line from the viewer's head to any part of the target (bases excluded). */
+/**
+ * Visible: an unobstructed straight line from the viewer's head to any part of the target (bases excluded).
+ * batch C shared: an operative with extra viewpoints (team-rules `viewpoints`: wide view) also sees from those.
+ */
 export function visible(state: GameState, viewer: Body, target: Body, opts: LosOptions = {}): boolean {
+  if (visibleFromHead(state, viewer, target, opts)) return true
+  const op = state.operatives[viewer.id]
+  if (!op) return false
+  for (const eye of providerViewpointBodies(state, op, viewer)) if (visibleFromHead(state, eye, target, opts)) return true
+  return false
+}
+
+function visibleFromHead(state: GameState, viewer: Body, target: Body, opts: LosOptions): boolean {
   if (viewer.id === target.id) return true
   const idx = terrainOf(state.map)
   const head = headPoint(viewer)

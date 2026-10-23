@@ -15,18 +15,80 @@
         "from": [
           "cv.felarch"
         ]
+      },
+      {
+        "id": "main",
+        "label": "Selections",
+        "count": 8,
+        "from": [
+          "cv.fate-dealer",
+          "cv.gunner",
+          "cv.heavy-gunner",
+          "cv.kurnathi",
+          "cv.kurnite-hunter",
+          "cv.shade-runner",
+          "cv.soul-weaver",
+          "cv.starstorm-duellist",
+          "cv.warrior",
+          "cv.way-seeker"
+        ],
+        "repeatable": [
+          "cv.warrior"
+        ]
+      }
+    ],
+    "loadoutCaps": [
+      {
+        "label": "blaster or wraithcannon",
+        "weapons": [
+          "cv.w.blaster",
+          "cv.w.wraithcannon"
+        ],
+        "max": 1
       }
     ]
   },
-  "factionRules": [],
-  "ploys": [],
-  "equipment": [],
-  "playable": false,
+  "factionRules": [
+    "cv.a.rifles",
+    "cv.a.aeldari-raiders"
+  ],
+  "ploys": [
+    "cv.p.plunderers",
+    "cv.p.piratical-profiteers",
+    "cv.p.mobile-engagement",
+    "cv.p.outcasts",
+    "cv.p.opportunistic-fighters",
+    "cv.p.light-fingers",
+    "cv.p.capricious-flight",
+    "cv.p.contemptuous-adventurer",
+    "cv.p.erudite-hunter",
+    "cv.p.star-charts"
+  ],
+  "equipment": [
+    "cv.e.diuturnal-mantles",
+    "cv.e.mistfield",
+    "cv.e.runes-of-guidance",
+    "cv.e.star-charts"
+  ],
+  "playable": true,
   "defaults": {
     "roster": [
-      "cv.felarch"
+      "cv.felarch",
+      "cv.fate-dealer",
+      "cv.gunner",
+      "cv.heavy-gunner",
+      "cv.kurnathi",
+      "cv.kurnite-hunter",
+      "cv.shade-runner",
+      "cv.starstorm-duellist",
+      "cv.warrior"
     ],
-    "equipment": []
+    "equipment": [
+      "cv.e.mistfield",
+      "cv.e.star-charts",
+      "core.e.ladders",
+      "core.e.utility-grenades"
+    ]
   },
   "paint": {
     "major": {
@@ -35,7 +97,7 @@
       "l": 0.25
     },
     "minor": {
-      "h": 0.0,
+      "h": 0,
       "s": 0.7,
       "l": 0.45
     }

@@ -2,7 +2,7 @@
 // run after every accepted action: control changes, Mines, removals feeding the mission, and the
 // activating operative being removed (R-4.5, R-4.6, R-5.18, R-8.5, R-8.6, M-5.2).
 import { tokensOnRemoval } from './tokens'
-import { providerIgnoresMine, providerMarkerActionRelief } from './team-rules'
+import { placeMarkerFiltered, providerCheckMines, providerIgnoresMine, providerMarkerActionRelief, providerPlaceMarkerProblem } from './team-rules'
 import { markerInControlRange, enemiesInControlRange } from './measure'
 import { bodyOf } from './los'
 import { footprintOf, pointGapToFootprint } from './footprint'
@@ -15,7 +15,7 @@ import { onOperativeRemoved } from './missions'
 import { markerControl } from './query'
 import { reject, type Ctx, type Handled, type ModuleDef } from './registry'
 import { activeOps, getOp } from './state'
-import type { Activation, Marker, Operative, GameState } from './types'
+import type { Activation, Marker, Operative, GameState, Vec2, Vec3 } from './types'
 
 /** Markers whose control matters and is tracked with ControlChanged events. */
 export function tracksControl(m: Marker): boolean {
@@ -88,7 +88,10 @@ export function markerOffers(state: GameState, op: Operative, act: Activation | 
   const inCr = enemiesInControlRange(state, op, op.seat).length > 0
   const performed = act?.performed ?? []
   if (carrying) {
-    if (!performed.includes(PICK_UP) && !performed.includes(PLACE)) out.push({ id: `${PLACE}:${carrying}`, action: PLACE, markerId: carrying, cost: 1 })
+    const m = state.markers.find((x) => x.id === carrying)
+    // batch C shared: a team spot filter (placeMarkerProblem) may leave nowhere to put it
+    const placeable = !m || !placeMarkerFiltered() || placeMarkerSpots(state, op, m).length > 0
+    if (!performed.includes(PICK_UP) && !performed.includes(PLACE) && placeable) out.push({ id: `${PLACE}:${carrying}`, action: PLACE, markerId: carrying, cost: 1 })
     return out
   }
   // M9 batch C: team relief (Light Fingers: an enemy in control range does not stop it; Poach: contesting suffices)
@@ -120,13 +123,41 @@ export function performMarkerAction(ctx: Ctx, op: Operative, action: string, mar
     finishAction(ctx)
     return
   }
+  // batch C shared: with a team spot filter the decision lists the spots it accepts (bots pick from them)
+  const spots = placeMarkerFiltered() ? placeMarkerSpots(s, op, m) : null
+  if (spots && spots.length === 0) {
+    cancelAction(ctx)
+    return
+  }
   ctx.raise({
     kind: 'marker.place',
     seat: op.seat,
     window: 'firefight.actionDeclared',
-    context: { operativeId: op.id, markerId: m.id, maxDistance: 1 },
+    context: { operativeId: op.id, markerId: m.id, maxDistance: 1, ...(spots ? { spots } : {}) },
     canPass: true,
   })
+}
+
+/**
+ * batch C shared: sample spots within the operative's control range (1") a Place Marker of `marker` may use: the
+ * centre first, then rings; those a team rule refuses (placeMarkerProblem) are left out.
+ */
+export function placeMarkerSpots(state: GameState, op: Operative, marker: Marker): Vec2[] {
+  const fp = footprintOf(op)
+  const out: Vec2[] = []
+  const cands: Vec2[] = [{ x: op.pos.x, z: op.pos.z }]
+  for (const d of [op.baseRadius + 0.5, op.baseRadius + 0.95]) {
+    for (let i = 0; i < 12; i++) {
+      const a = (Math.PI * 2 * i) / 12
+      cands.push({ x: Math.round((op.pos.x + Math.cos(a) * d) * 1000) / 1000, z: Math.round((op.pos.z + Math.sin(a) * d) * 1000) / 1000 })
+    }
+  }
+  for (const c of cands) {
+    if (pointGapToFootprint(c, fp) > 1 + 1e-6) continue
+    if (providerPlaceMarkerProblem(state, op, marker, c)) continue
+    out.push(c)
+  }
+  return out
 }
 
 /** Drop a carried marker where its carrier stands (an incapacitated carrier performs Place Marker first, R-4.6). */
@@ -155,6 +186,9 @@ function handlePlace(state: GameState, action: { type: string; payload?: unknown
   if (gap > 1 + 1e-6) return reject('E_OUT_OF_RANGE', 'a marker is placed within the operative control range (1")')
   const id = op.flags.carrying
   if (!id) return reject('E_ACTION_RESTRICTED', 'the operative carries no marker')
+  const carried = markerById(state, id)
+  const refused = carried ? providerPlaceMarkerProblem(state, op, carried, { x: p.x, z: p.z }) : null
+  if (refused) return reject('E_ACTION_RESTRICTED', refused)
   return {
     run(ctx) {
       const o = ctx.state.operatives[op.id]!
@@ -223,6 +257,20 @@ function triggerMines(ctx: Ctx): void {
   }
 }
 
+/** Increment end points of every move in this step, then every active operative where it stands (as triggerMines). */
+function movedPoints(ctx: Ctx): { operativeId: string; pos: Vec3 }[] {
+  const s = ctx.state
+  const out: { operativeId: string; pos: Vec3 }[] = []
+  for (const ev of ctx.events) {
+    if (ev.type !== 'OperativeMoved') continue
+    const op = s.operatives[ev.operativeId]
+    if (!op || op.status !== 'active') continue
+    for (const seg of ev.segments) out.push({ operativeId: op.id, pos: seg.to })
+  }
+  for (const op of activeOps(s)) out.push({ operativeId: op.id, pos: op.pos })
+  return out
+}
+
 /** Carried markers move with the carrier. */
 function syncCarried(state: GameState): void {
   for (const m of state.markers) {
@@ -260,6 +308,8 @@ export function updateControl(ctx: Ctx): void {
   syncCarried(s)
   const before = ctx.events.length
   triggerMines(ctx)
+  // batch C shared: team mines see the same moves (forced moves outside actions included)
+  providerCheckMines(ctx, movedPoints(ctx))
   if (ctx.events.length > before) processRemovals(ctx, seen)
   const act = s.firefight.activation
   if (act && s.operatives[act.operativeId]?.status === 'removed' && !act.frame) afterActiveOperativeRemoved(ctx)

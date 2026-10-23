@@ -114,7 +114,7 @@ describe('M9 teams: glossary', () => {
     const linked = linkTerms('It gains a Poison token and is hiding.').filter((s) => typeof s !== 'string').map((s) => (s as { text: string }).text)
     expect(linked).toContain('Poison token')
     // shared role keywords read for every team that uses them
-    expect(lookupTerm('LEADER')!.body).toMatch(/Shas.ui/)
+    expect(lookupTerm('LEADER')!.body).toMatch(/Not every team has one/)
     expect(allEntries().filter((e) => e.term === 'HIDING').length).toBe(1)
   })
 })

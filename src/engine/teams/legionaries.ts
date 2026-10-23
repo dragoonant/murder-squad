@@ -14,7 +14,7 @@
 //  - The ploys: strategy flags read by the hooks, and firefight ploys with their own code hooks.
 //  - Warded Armour and Chaos Talismans are strategic gambits: strategy ploy records at 0 CP whose hooks offer them only
 //    while the equipment is taken.
-import { applyAplEffect, hasRule, ruleKey } from '../attack-common'
+import { applyAplEffect, effectiveRules, hasRule, ruleKey } from '../attack-common'
 import { markFired, registerCodeHook, type OfferSeed, type PloyOfferSeed } from '../code-hooks'
 import { codeParams, hasAbility, hasKeyword, inEnemyCr } from '../conditions'
 import { addEffect, directDamage, gainCp, markUsedBattle, markUsedTp, regainWounds, usedThisBattle, usedThisTp } from '../effects'
@@ -945,7 +945,9 @@ const LG_RULE = {
     if ((window === 'shoot.attackerDefenceRolled' || window === 'fight.rolled') && a && !usedThisTp(state, seat, SIPHON_TP) && !opEffect(state, SIPHON, subject.id)) {
       const weaponId = a.kind === 'shoot' ? (a.operativeId === subject.id ? a.weaponId : null) : (sideOf(state, subject.id)?.weaponId ?? null)
       const w = weaponId ? state.data.weapons[weaponId] : undefined
-      if (w && hasRule(w.rules, 'siphonlife')) {
+      // the rules the weapon has right now (a Null Rod strips a PSYCHIC melee weapon's rules), not the printed ones
+      const foeId = a.kind === 'shoot' ? a.seq?.targetId : a.operativeId === subject.id ? a.fight?.targetId : a.operativeId
+      if (w && hasRule(effectiveRules(state, subject, w, a.kind, foeId), 'siphonlife')) {
         for (const f of lgsOf(state, seat).sort((x, y) => (x.id < y.id ? -1 : 1))) {
           if (f.id !== subject.id && !(within(subject, f, 6) && visible(state, bodyOf(subject), bodyOf(f)))) continue
           out.push(offer(`${SIPHON}:${f.id}`, `Siphon Life: heal ${f.name}`, 'lg.siphon', subject, f.id))

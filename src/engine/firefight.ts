@@ -34,8 +34,8 @@ import {
   type AbilityOffer,
 } from './abilities'
 import { smokeActivation, smokeTurningPointEnd } from './core-hooks'
-import { expireEffects, removeEffects } from './effects'
-import { providerActivationBarred, providerAny, providerCanActivate, providerChain, providerCostDelta, providerCounteractAlternatives, providerGate, providerReactions, type ReactionOffer } from './team-rules'
+import { applyDeferredApl, expireEffects, removeEffects } from './effects'
+import { providerActivationBarred, providerAny, providerCanActivate, providerChain, providerCostDelta, providerCounteractAlternatives, providerGate, providerOwnReactions, providerReactions, type ReactionOffer } from './team-rules'
 import { getFrameResume, registerFrameResume, runHook, type ActionDeclaredData } from './hooks'
 import { tokensOnActivationEnd, tokensOnActivationStart, tokensOnTurningPointEnd } from './tokens'
 import { PICK_UP, PLACE } from './markers'
@@ -591,6 +591,9 @@ export function firefightResume(ctx: Ctx, token: string): void {
     case 'declared.opponent':
       if (ctx.state.firefight.activation?.declared) dispatchDeclared(ctx)
       return
+    case 'fallBack.moved':
+      if (ctx.state.firefight.activation?.declared) finishAction(ctx)
+      return
     case 'actionEnded.guard':
       afterActionStages(ctx, 'guard')
       return
@@ -656,7 +659,8 @@ function freeActionProblem(state: GameState, op: Operative, o: FreeActionOpts): 
       return fightAvailability(state, op, null)
     case 'shoot':
       if (o.pointBlank) return inCr ? null : bad('point-blank needs an enemy in control range')
-      return inCr && !hasExplosive(state, op) ? bad('cannot Shoot while in an enemy control range') : shootAvailability(state, op, null)
+      // batch C shared: freeShootInControlRange lets a free Shoot in an enemy control range be an ordinary one
+      return inCr && !hasExplosive(state, op) && !providerAny(state, op, 'freeShootInControlRange') ? bad('cannot Shoot while in an enemy control range') : shootAvailability(state, op, null)
   }
 }
 
@@ -772,15 +776,23 @@ const MOVE_KINDS = ['reposition', 'dash', 'fallBack', 'charge']
 function frameReaction(ctx: Ctx, actor: Operative, kind: string, frame: NonNullable<Activation['frame']>, data: Record<string, unknown>): boolean {
   const s = ctx.state
   if (s.firefight.reactionAfter || frame.resume === REACTION_DONE || actor.status !== 'active') return false
-  const strategy = s.phase === 'strategy' && !s.firefight.activation && MOVE_KINDS.includes(kind)
+  const outside = s.phase === 'strategy' && !s.firefight.activation
+  const strategy = outside && MOVE_KINDS.includes(kind)
   const interrupt = frame.kind === 'interrupt' && s.phase === 'firefight'
-  if (!strategy && !interrupt) return false
+  // batch C shared: any other free action in the Strategy phase, and a free action an operative took inside its own
+  // seat's activation (Savage Brutality's Fight), are reaction points for offers marked `freeActions` only
+  const strategyOther = outside && !strategy && kind !== ''
+  const under = s.firefight.activation
+  const ownFree = !interrupt && s.phase === 'firefight' && !!under && !under.frame && under.seat === actor.seat && kind !== ''
+  if (!strategy && !interrupt && !strategyOther && !ownFree) return false
   const seat = otherSeat(actor.seat)
-  const info = { actorId: actor.id, action: kind, activeSeat: actor.seat, moved: MOVE_KINDS.includes(kind), ...(strategy ? { strategy: true } : { interrupt: true }) }
-  const offers = providerReactions(s, seat, info)
+  const flag = strategy || strategyOther ? { strategy: true } : interrupt ? { interrupt: true } : { freeAction: true }
+  const info = { actorId: actor.id, action: kind, activeSeat: actor.seat, moved: MOVE_KINDS.includes(kind), ...flag, ...(strategyOther ? { freeAction: true } : {}) }
+  let offers = providerReactions(s, seat, info)
+  if (strategyOther || ownFree) offers = offers.filter((o) => o.freeActions === true)
   if (offers.length === 0) return false
   s.firefight.reactionAfter = { resume: frame.resume, outcome: 'finished', data }
-  raiseReaction(ctx, seat, actor.id, kind, offers, strategy ? 'strategy.gambit' : 'firefight.actionEnded')
+  raiseReaction(ctx, seat, actor.id, kind, offers, strategy || strategyOther ? 'strategy.gambit' : 'firefight.actionEnded')
   return true
 }
 
@@ -815,6 +827,7 @@ export function joinActivation(ctx: Ctx, partnerId: string, order: Order): boole
   ctx.emit({ type: 'OperativeActivated', operativeId: p.id })
   tokensOnActivationStart(ctx, p.id)
   removeEffects(ctx, (e) => e.expires === `startOfActivation:${p.id}`)
+  applyDeferredApl(ctx, p.id)
   const previousOrder = p.order
   if (p.order !== order) clearGuard(ctx, p, 'order')
   p.order = order
@@ -961,15 +974,50 @@ function offerReactions(ctx: Ctx): boolean {
   if (!act || act.frame) return false
   if (act.reactedAt === act.performed.length) return false
   act.reactedAt = act.performed.length
+  act.reacted = { seat: act.seat, ids: [] }
+  return nextReactions(ctx, act)
+}
+
+/**
+ * batch C shared: the reaction round after an action. The active seat's ownReactions come first, then the other
+ * seat's reactions. After a reaction is over the same seat is asked again for offers marked `repeat` from operatives
+ * that have not reacted yet; a pass ends that seat's turn to react. True when a decision was raised.
+ */
+function nextReactions(ctx: Ctx, act: Activation): boolean {
+  const s = ctx.state
+  const r = act.reacted
   const actor = s.operatives[act.operativeId]
   const last = act.performed[act.performed.length - 1]
-  if (!actor || !last) return false
+  if (!r || !actor || !last) return false
   const moved = ['reposition', 'dash', 'fallBack', 'charge'].includes(last) || (actor.actionsThisTp ?? []).slice(-1)[0] === 'reposition'
-  const seat = otherSeat(act.seat)
-  const offers = providerReactions(s, seat, { actorId: actor.id, action: last, activeSeat: act.seat, moved })
-  if (offers.length === 0) return false
-  raiseReaction(ctx, seat, actor.id, last, offers, 'firefight.actionEnded')
-  return true
+  const info = { actorId: actor.id, action: last, activeSeat: act.seat, moved }
+  if (!r.closed) {
+    const all = r.seat === act.seat ? providerOwnReactions(s, r.seat, info) : providerReactions(s, r.seat, info)
+    const offers = r.ids.length === 0 ? all : all.filter((o) => o.repeat === true && !r.ids.includes(o.operativeId))
+    if (offers.length > 0) {
+      raiseReaction(ctx, r.seat, actor.id, last, offers, 'firefight.actionEnded')
+      return true
+    }
+  }
+  if (r.seat !== act.seat) return false
+  // the active seat is done reacting: the other seat's turn
+  act.reacted = { seat: otherSeat(act.seat), ids: [] }
+  return nextReactions(ctx, act)
+}
+
+/** The activation whose after-action reaction round is open (never a frame), or null. */
+function reactingActivation(state: GameState): Activation | null {
+  const act = state.firefight.activation
+  if (!act || act.frame || !act.reacted || act.reactedAt !== act.performed.length) return null
+  return act
+}
+
+/** batch C shared: a reaction was chosen (`operativeId` reacts) or passed (null) in the after-action round. */
+export function noteReaction(state: GameState, operativeId: string | null): void {
+  const act = reactingActivation(state)
+  if (!act) return
+  if (operativeId === null) act.reacted!.closed = true
+  else if (!act.reacted!.ids.includes(operativeId)) act.reacted!.ids.push(operativeId)
 }
 
 function raiseReaction(ctx: Ctx, seat: Seat, actorId: string, last: string, offers: ReactionOffer[], window: TimingWindowId): void {
@@ -1008,6 +1056,9 @@ export function reactionDone(ctx: Ctx): void {
     advance(ctx)
     return
   }
+  // batch C shared: more reactions to the same action (a second Hound), then the other seat's
+  const act = reactingActivation(s)
+  if (act && nextReactions(ctx, act)) return
   if (s.firefight.activation) afterActionStages(ctx, 'guard')
 }
 
@@ -1131,6 +1182,8 @@ function handleActivate(state: GameState, action: Action): Handled {
       tokensOnActivationStart(ctx, o.id)
       // effects that last "until the start of its next activation" (OPTICS) end now
       removeEffects(ctx, (e) => e.expires === `startOfActivation:${o.id}`)
+      // batch C shared: APL changes held over from the operative's previous activation (Medic!)
+      applyDeferredApl(ctx, o.id)
       ctx.raise({
         kind: 'firefight.order',
         seat: o.seat,
@@ -1299,8 +1352,8 @@ function handleAction(state: GameState, action: Action): Handled {
       a.declaredSeq = s.seq
       consumeDiscounts(s, o, a, id, false)
       if (declaredVeto(ctx, o, id, a.frame !== undefined)) return
-      // firefight.actionDeclared ploy window for attacks (Adjust Doctrine)
-      if ((id === 'shoot' || id === 'fight') && openFirefightWindow(ctx, 'firefight.actionDeclared', { subjectId: o.id, counteracting: a.counteract, action: id }, 'declared')) return
+      // firefight.actionDeclared ploy window for attacks (Adjust Doctrine) and, batch C shared, Fall Back (Cover Retreat)
+      if ((id === 'shoot' || id === 'fight' || id === 'fallBack') && openFirefightWindow(ctx, 'firefight.actionDeclared', { subjectId: o.id, counteracting: a.counteract, action: id }, 'declared')) return
       declaredOpponentWindow(ctx)
     },
   }

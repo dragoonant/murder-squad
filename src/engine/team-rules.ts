@@ -10,7 +10,20 @@
 // Members taking `ctx` run inside a step only and may roll dice and change state through `ctx`, but never
 // raise decisions. Providers run in registration order (src/engine/teams/index.ts import order).
 import type { Ctx } from './registry'
-import type { AttackState, DiceSide, GameState, Marker, Operative, Order, Seat, Vec3 } from './types'
+import type { Body } from './los'
+import type { AttackState, DiceSide, GameState, Marker, Operative, Order, Seat, Vec2, Vec3 } from './types'
+
+/** The move costs so far a moveSurcharge sees (batch C shared: `obstructing` and `climbs` added). */
+export interface MoveSurchargeBreakdown {
+  horizontal: number
+  accessible: number
+  climb: number
+  drop: number
+  /** Obstructing crossings (Razor Wire) included in `accessible` */
+  obstructing?: number
+  /** cost charged for each climb in order */
+  climbs?: number[]
+}
 
 /** One answer a team gives to "may this player react to that action?" (Quicksilver Strike). */
 export interface ReactionOffer {
@@ -22,6 +35,17 @@ export interface ReactionOffer {
   option: string
   labelKey: string
   data?: Record<string, unknown>
+  /**
+   * batch C shared: once another reaction to the same action is over, offer this again (each operative still reacts
+   * once per action): two Hounds answering one Charge
+   */
+  repeat?: boolean
+  /**
+   * batch C shared: also offer after free actions that are not otherwise reaction points: a free action an operative
+   * takes inside its own seat's activation (info.freeAction) and a non-move free action in the Strategy phase
+   * (info.strategy with info.freeAction). Offers without it are dropped there, so older providers are unaffected.
+   */
+  freeActions?: boolean
 }
 
 /** What happened, for `reactions`. */
@@ -43,6 +67,8 @@ export interface ReactionInfo {
    */
   activationEnded?: boolean
   counteract?: boolean
+  /** batch C shared: the action was a free action (see ReactionOffer.freeActions) */
+  freeAction?: boolean
 }
 
 export interface TeamRuleProvider {
@@ -62,6 +88,11 @@ export interface TeamRuleProvider {
   chargeFromControlRange?(state: GameState, op: Operative): boolean
   /** the operative may Shoot while in an enemy control range */
   shootInControlRange?(state: GameState, op: Operative): boolean
+  /**
+   * batch C shared: free Shoots (startFreeAction) and Guard interrupt Shoots of this operative in an enemy's control
+   * range are ordinary Shoots, not point-blank ones (Quick on the Trigger); without it they stay point-blank
+   */
+  freeShootInControlRange?(state: GameState, op: Operative): boolean
   /** the operative may Shoot with non-Silent weapons while it has a Conceal order (Magnify through a proxy) */
   shootUnderConceal?(state: GameState, op: Operative): boolean
   /** the operative may perform Guard while it has a Conceal order (Dimensional Ambush) */
@@ -123,10 +154,21 @@ export interface TeamRuleProvider {
   onInitiativeReroll?(ctx: Ctx, seat: Seat): void
   /** reactions the non-active `seat` may take after an action (Quicksilver Strike), offered as one ability.choice */
   reactions?(state: GameState, seat: Seat, info: ReactionInfo): ReactionOffer[]
+  /**
+   * batch C shared: reactions the ACTIVE `seat` may take after its own operative's action (Savage Brutality's free
+   * Fight), offered before the other seat's `reactions`; same ReactionOffer contract
+   */
+  ownReactions?(state: GameState, seat: Seat, info: ReactionInfo): ReactionOffer[]
 
   // ---- attacks -------------------------------------------------------------------------------
   /** no die of `side` may be re-rolled (Nightmare Shroud, Suppressing Fire) */
   rerollsBanned?(state: GameState, side: DiceSide, attack: AttackState): boolean
+  /**
+   * batch C shared: the CP a Command Re-roll of `side` costs (core 1). The lowest answer wins (never below 0);
+   * `onCommandReroll` runs when the re-roll is made at that cost (spend a once-per-battle use: Tactical Advantage).
+   */
+  commandRerollCost?(state: GameState, side: DiceSide, attack: AttackState | null): number | null
+  onCommandReroll?(ctx: Ctx, side: DiceSide, cost: number): void
   /** extra weapons the operative may fight or retaliate with, e.g. a ranged profile used as melee (Point-Blank Fusillade) */
   extraFightWeapons?(state: GameState, op: Operative, retaliating: boolean): string[]
   /** once per fight sequence, before the first strike or block: who resolves first, owed resolutions, seats that cannot block */
@@ -145,8 +187,10 @@ export interface TeamRuleProvider {
    * inches added to a move's cost (Grav-inhibitor: +2" once when the path comes visible to and within 6");
    * `points` are the increment end points in order, `breakdown` the costs so far (return a negative
    * amount to cancel Accessible or Obstructing extras). Summed; the move fails if it then exceeds its limit.
+   * batch C shared: `breakdown.obstructing` is the Obstructing share of `accessible`; `breakdown.climbs` the cost of
+   * each climb in order (absent for a direct cost query that has no path).
    */
-  moveSurcharge?(state: GameState, op: Operative, kind: string, points: Vec3[], breakdown: { horizontal: number; accessible: number; climb: number; drop: number }): number
+  moveSurcharge?(state: GameState, op: Operative, kind: string, points: Vec3[], breakdown: MoveSurchargeBreakdown): number
   /**
    * M9 batch B: grenades this operative carries on its own, apart from the team's picks and totals (Hearthkyn
    * Grenadier): weapon ids (frag, krak) and grenade action ability ids (smoke, stun) to uses per battle. The weapons
@@ -213,6 +257,34 @@ export interface TeamRuleProvider {
   markerActionRelief?(state: GameState, op: Operative, actionId: string): { ignoreEnemyControlRange?: boolean; contestSuffices?: boolean } | null
   /** M9 batch C: the enemies `attacker` may fight, filtered (Bad-tempered: the Hound when it forces itself); never empties */
   fightTargets?(state: GameState, attacker: Operative, foes: string[]): string[] | null
+
+  // ---- batch C shared ------------------------------------------------------------------------
+  /**
+   * Extra eye points the operative sees from, besides its head (C.A.T. Unit wide view): bodies whose head point is an
+   * eye, built around `body` (the operative where it stands, or a ghost of it on a planned path). Core `visible`, and so
+   * control range, tries them when the head cannot see. Pure; never calls `visible` for the same operative.
+   * (Magnify's shootViewpoints are other operatives standing in for the shooter, so they stay separate.)
+   */
+  viewpoints?(state: GameState, op: Operative, body: Body): Body[] | null
+  /** Place Marker (the shared action) cannot put `marker` at `pos`: the reason, or null (Melta Mine: no enemy control range) */
+  placeMarkerProblem?(state: GameState, op: Operative, marker: Marker, pos: Vec2): string | null
+  /**
+   * After every accepted step with no action in progress (as core Mines): `moved` lists each operative's increment end
+   * points from this step, forced moves outside actions included, then every active operative's position. Team mines
+   * check here. Runs in a step only; may roll and change state through `ctx`, never raises decisions.
+   */
+  checkMines?(ctx: Ctx, moved: { operativeId: string; pos: Vec3 }[]): void
+  /**
+   * Choices the seat makes in the Ready step, after operatives are readied and before the Gambit step (Farstalker and
+   * Hierotek order picks). Offered as one ability.choice (context.readyStep); the offer's code hook `choice` runs and
+   * must call strategy.readyChoiceDone(ctx) once finished. The seat is asked again until it has no offer or passes.
+   */
+  readyStepChoices?(state: GameState, seat: Seat): ReactionOffer[]
+  /**
+   * A move (not a forced one) cannot end like this: the reason shown to the player, or null. `points` are the increment
+   * end points in order (a FLY set-up: just its end). Use instead of pricing a move out of reach with moveSurcharge.
+   */
+  moveProblem?(state: GameState, op: Operative, kind: string, points: Vec3[]): string | null
 }
 
 /** M9 batch C: what `fixedTargets` answers. */
@@ -228,12 +300,60 @@ export interface FixedTargets {
 
 const providers = new Map<string, TeamRuleProvider>()
 
+// batch C shared: the providers answering `viewpoints`, cached because core `visible` asks on every line of sight
+let viewpointProviders: TeamRuleProvider[] = []
+function cacheProviders(): void {
+  viewpointProviders = [...providers.values()].filter((p) => typeof p.viewpoints === 'function')
+}
+
 export function registerTeamRules(p: TeamRuleProvider): void {
   providers.set(p.id, p)
+  cacheProviders()
 }
 
 export function unregisterTeamRules(id: string): void {
   providers.delete(id)
+  cacheProviders()
+}
+
+/** batch C shared: extra eye bodies of `op` standing as `body` (wide view); empty for nearly everyone. */
+export function providerViewpointBodies(state: GameState, op: Operative, body: Body): Body[] {
+  if (viewpointProviders.length === 0) return []
+  const out: Body[] = []
+  for (const p of viewpointProviders) out.push(...(p.viewpoints?.(state, op, body) ?? []))
+  return out
+}
+
+export function providerPlaceMarkerProblem(state: GameState, op: Operative, marker: Marker, pos: Vec2): string | null {
+  for (const p of providers.values()) {
+    const r = p.placeMarkerProblem?.(state, op, marker, pos)
+    if (r) return r
+  }
+  return null
+}
+
+/** True when some provider filters Place Marker spots (the decision then lists candidate spots). */
+export function placeMarkerFiltered(): boolean {
+  for (const p of providers.values()) if (p.placeMarkerProblem) return true
+  return false
+}
+
+export function providerReadyStepChoices(state: GameState, seat: Seat): ReactionOffer[] {
+  const out: ReactionOffer[] = []
+  for (const p of providers.values()) out.push(...(p.readyStepChoices?.(state, seat) ?? []))
+  return out
+}
+
+export function providerMoveProblem(state: GameState, op: Operative, kind: string, points: Vec3[]): string | null {
+  for (const p of providers.values()) {
+    const r = p.moveProblem?.(state, op, kind, points)
+    if (r) return r
+  }
+  return null
+}
+
+export function providerCheckMines(ctx: Ctx, moved: { operativeId: string; pos: Vec3 }[]): void {
+  for (const p of providers.values()) p.checkMines?.(ctx, moved)
 }
 
 export function teamRuleProviders(): TeamRuleProvider[] {
@@ -270,7 +390,7 @@ export function providerOrders(state: GameState, op: Operative): Order[] | null 
   return out
 }
 
-type BoolKey = 'chargeUnderConceal' | 'chargeFromControlRange' | 'shootInControlRange' | 'shootUnderConceal' | 'guardUnderConceal' | 'killOpIgnored' | 'setAsideAtSetup' | 'injuredEquivalent'
+type BoolKey = 'chargeUnderConceal' | 'chargeFromControlRange' | 'shootInControlRange' | 'freeShootInControlRange' | 'shootUnderConceal' | 'guardUnderConceal' | 'killOpIgnored' | 'setAsideAtSetup' | 'injuredEquivalent'
 
 export function providerAny(state: GameState, op: Operative, key: BoolKey): boolean {
   for (const p of providers.values()) if (p[key]?.(state, op)) return true
@@ -384,9 +504,29 @@ export function providerReactions(state: GameState, seat: Seat, info: ReactionIn
   return out
 }
 
+export function providerOwnReactions(state: GameState, seat: Seat, info: ReactionInfo): ReactionOffer[] {
+  const out: ReactionOffer[] = []
+  for (const p of providers.values()) out.push(...(p.ownReactions?.(state, seat, info) ?? []))
+  return out
+}
+
 export function providerRerollsBanned(state: GameState, side: DiceSide, attack: AttackState): boolean {
   for (const p of providers.values()) if (p.rerollsBanned?.(state, side, attack)) return true
   return false
+}
+
+/** batch C shared: the CP the Command Re-roll of `side` costs now (1 unless a provider lowers or raises it). */
+export function providerCommandRerollCost(state: GameState, side: DiceSide, attack: AttackState | null): number {
+  let cost: number | null = null
+  for (const p of providers.values()) {
+    const c = p.commandRerollCost?.(state, side, attack)
+    if (c !== null && c !== undefined) cost = cost === null ? c : Math.min(cost, c)
+  }
+  return Math.max(0, cost ?? 1)
+}
+
+export function providerOnCommandReroll(ctx: Ctx, side: DiceSide, cost: number): void {
+  for (const p of providers.values()) p.onCommandReroll?.(ctx, side, cost)
 }
 
 export function providerFightWeapons(state: GameState, op: Operative, retaliating: boolean): string[] {
@@ -430,7 +570,7 @@ export function providerStealthy(state: GameState, op: Operative): number {
   return n
 }
 
-export function providerMoveSurcharge(state: GameState, op: Operative, kind: string, points: Vec3[], breakdown: { horizontal: number; accessible: number; climb: number; drop: number }): number {
+export function providerMoveSurcharge(state: GameState, op: Operative, kind: string, points: Vec3[], breakdown: MoveSurchargeBreakdown): number {
   let n = 0
   for (const p of providers.values()) n += p.moveSurcharge?.(state, op, kind, points, breakdown) ?? 0
   return n

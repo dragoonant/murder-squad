@@ -14,6 +14,11 @@ export function choicesForCard(team: RuntimeTeam | undefined, card: Pick<Runtime
   return (team?.operativeChoices ?? []).filter((c) => !c.forKeyword || card.keywords.includes(c.forKeyword))
 }
 
+/** batch C shared: how a pick reads in the UI (the choice's `labels`, else the keyword itself). */
+export function pickLabel(choice: Pick<RuntimeOperativeChoice, 'labels'>, keyword: string): string {
+  return choice.labels?.[keyword] ?? keyword
+}
+
 /** Keywords the datacard may take for the choice, in data order. */
 export function allowedPicks(choice: RuntimeOperativeChoice, card: Pick<RuntimeDatacard, 'id'>): string[] {
   const barred = new Set((choice.exclude ?? []).filter((e) => e.datacards.includes(card.id)).flatMap((e) => e.keywords))

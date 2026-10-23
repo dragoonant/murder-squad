@@ -13,7 +13,7 @@ import { abilityOffers, maxRepeats } from '../abilities'
 import { applyAplEffect, continueRemovals, countKinds, hasRule, heavyBlocksMove, retainAttack, ruleSetFor, targetInfo, type RuleSet } from '../attack-common'
 import { markFired, registerCodeHook, type OfferSeed, type PloyOfferSeed } from '../code-hooks'
 import { canBeTargetedBy, hasAbility, hasKeyword, inEnemyCr } from '../conditions'
-import { addEffect, directDamage, gainCp, markUsedBattle, markUsedTp, regainWounds, removeEffects, usedThisBattle, usedThisTp } from '../effects'
+import { addEffect, aplChangeNextActivation, directDamage, gainCp, markUsedBattle, markUsedTp, regainWounds, removeEffects, usedThisBattle, usedThisTp } from '../effects'
 import { extraStrike } from '../fight'
 import { canStartFreeAction, cancelAction, finishAction, REACTION_DONE, reactionDone, startDelegatedAction, startFreeAction } from '../firefight'
 import { pointGapToFootprint, footprintOf } from '../footprint'
@@ -450,8 +450,9 @@ function medicSave(s: GameState, ctx: Ctx, victim: Operative, data: { wounds: nu
   // the free Dash after the action: a reaction when the other player is active, a 0 CP offer in the action-ended
   // window when the Hearthkyn player is (medicRule.extraOffers)
   addEffect(ctx, { source: ID.medic, seat: victim.seat, kind: 'hk.medicDash', operativeId: victim.id, expires: 'activation', data: { medicId: medic.id } })
-  applyAplEffect(ctx, victim.id, -1, ID.medic)
-  applyAplEffect(ctx, medic.id, -1, ID.medic)
+  // "until the end of its next activation": held over when used in the operative's own activation
+  aplChangeNextActivation(ctx, victim.id, -1, ID.medic)
+  aplChangeNextActivation(ctx, medic.id, -1, ID.medic)
   ctx.emit({ type: 'AbilityUsed', operativeId: medic.id, abilityId: ID.medic, detail: victim.id }, medic.seat)
   markFired('hkMedic')
 }

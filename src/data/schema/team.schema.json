@@ -141,6 +141,12 @@
           "unique": { "type": "boolean", "description": "M9 batch C: no two operatives of the roster take the same pick (Boons of Tzeentch)." },
           "distinctFrom": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Slug" }, "description": "M9 batch C: other operativeChoices ids the same operative's pick must differ from (two different Custom weapon rules)." },
           "keyword": { "type": "boolean", "description": "M9 batch C: false makes the pick a tag read by team code, not a keyword (keyword tests ignore it). Default true." },
+          "labels": {
+            "type": "object",
+            "description": "batch C shared: display label per pick, keyed by one of `keywords` (a label may contain '+' and lower case).",
+            "propertyNames": { "$ref": "common.schema.json#/$defs/Keyword" },
+            "additionalProperties": { "type": "string", "minLength": 1 }
+          },
           "exclude": {
             "type": "array",
             "description": "Keywords these datacards can never take (a BALEFIRE ACOLYTE is never KHORNE).",

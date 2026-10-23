@@ -2,7 +2,7 @@
 // continuous `move.path` decision: waypoints are straight-line increments validated one by one
 // (sampled every half inch) against the killzone edge, terrain, bases and control range rules.
 import type { MoveSegmentEvent } from './events'
-import { cancelAction, finishAction } from './firefight'
+import { cancelAction, finishAction, openFirefightWindow } from './firefight'
 import {
   EPS,
   bearing,
@@ -16,7 +16,7 @@ import {
 import { bodyOf, enemiesInControlRange, inControlRange, type Body } from './measure'
 import { angleDelta, axisOf, discCentres, footprintDistToPolygon, footprintOf, footprintsOverlap, ovalAxis, rotationCost, type Footprint } from './footprint'
 import { chargeFromControlRange } from './abilities'
-import { providerCanFly, providerFlyLimit, providerMoveLimitDelta, providerMoveRestrictions, providerMoveSurcharge } from './team-rules'
+import { providerMoveProblem, providerCanFly, providerFlyLimit, providerMoveLimitDelta, providerMoveRestrictions, providerMoveSurcharge } from './team-rules'
 import { getCodeHook, markFired } from './code-hooks'
 import { reject, type Ctx, type Handled, type ModuleDef } from './registry'
 import { effectiveMove, enemiesOf, friendsOf, getOp } from './state'
@@ -53,6 +53,10 @@ export interface MoveBreakdown {
   drop: number
   /** M9 batch B: inches an oval base spent turning in place at the end of the move */
   rotation?: number
+  /** batch C shared: the Obstructing crossings (Razor Wire) among `accessible`, which still counts them for older readers */
+  obstructing?: number
+  /** batch C shared: the cost charged for each climb in order (a run of climb increments, R-12.2; a Ladder climb is 1) */
+  climbs?: number[]
 }
 
 export interface MovePlan {
@@ -170,6 +174,7 @@ export function planMove(
   const ladders = idx.solids.filter((s) => s.equipmentId === 'core.e.ladders')
   let ladderUsed = false
   /** +1" for every Accessible part the centre line passes through (R-11.6) */
+  let obsCost = 0
   const countAccessible = (a: Vec2, b: Vec2, level: number): number => {
     let n = 0
     for (const s of accessibles) {
@@ -190,6 +195,7 @@ export function planMove(
       if (level + 0.01 >= w.top) continue
       if (segmentPolygonIntervals(a, b, w.polygon).length > 0) {
         n++
+        obsCost++
         markFired('razorWire')
       }
     }
@@ -278,6 +284,7 @@ export function planMove(
   let inAir = false
   let climbGroup = 0
   let climbCost = 0
+  const climbs: number[] = []
   let dropTotal = 0
   let horizCost = 0
   let accCost = 0
@@ -285,7 +292,9 @@ export function planMove(
   const segments: MoveSegmentEvent[] = []
   const closeClimb = () => {
     if (climbGroup > 0) {
-      climbCost += Math.max(MIN_CLIMB, Math.ceil(climbGroup - EPS))
+      const c = Math.max(MIN_CLIMB, Math.ceil(climbGroup - EPS))
+      climbCost += c
+      climbs.push(c)
       climbGroup = 0
     }
   }
@@ -365,6 +374,7 @@ export function planMove(
           ladderUsed = true
           closeClimb()
           climbCost += 1
+          climbs.push(1)
           markFired('ladders')
         } else climbGroup += y1 - y0
       }
@@ -451,7 +461,7 @@ export function planMove(
 
   const dropCost = Math.ceil(Math.max(0, dropTotal - FREE_DROP) - EPS)
   // M9 prep: team rules may add to (or cancel extras of) a move's cost (Grav-inhibitor)
-  const surcharge = providerMoveSurcharge(state, op, kind, segments.map((sg) => sg.to), { horizontal: horizCost, accessible: accCost, climb: climbCost, drop: Math.max(0, dropCost) })
+  const surcharge = providerMoveSurcharge(state, op, kind, segments.map((sg) => sg.to), { horizontal: horizCost, accessible: accCost, climb: climbCost, drop: Math.max(0, dropCost), obstructing: obsCost, climbs: [...climbs] })
   const total = horizCost + accCost + climbCost + Math.max(0, dropCost) + surcharge + rotation
   if (total > maxInches + EPS) {
     return fail('E_OUT_OF_RANGE', `the move costs ${total}" but only ${maxInches}" is allowed`, {
@@ -466,6 +476,9 @@ export function planMove(
 
   const placement = placementProblem(state, axis ? { id: op.id, pos: cur, radius: r, height: h, axis } : { id: op.id, pos: cur, radius: r, height: h })
   if (placement) return { ok: false, rejection: placement }
+  // batch C shared: a team rule may refuse where (or how) the move ends, with its own reason (Recon Sweep's edge zone)
+  const veto = forced ? null : providerMoveProblem(state, op, kind, segments.map((sg) => sg.to))
+  if (veto) return fail('E_ACTION_RESTRICTED', veto)
 
   const endCr = forced ? new Set<string>() : crOf(cur)
   if (kind === 'charge') {
@@ -486,7 +499,7 @@ export function planMove(
     segments,
     cost: total,
     maxInches,
-    breakdown: { horizontal: horizCost, accessible: accCost, climb: climbCost, drop: Math.max(0, dropCost), ...(rotation > 0 ? { rotation: round3(rotation) } : {}) },
+    breakdown: { horizontal: horizCost, accessible: accCost, climb: climbCost, drop: Math.max(0, dropCost), obstructing: obsCost, climbs: [...climbs], ...(rotation > 0 ? { rotation: round3(rotation) } : {}) },
   }
 }
 
@@ -521,6 +534,8 @@ export function planFly(
   const spec = { id: op.id, pos: end, radius: op.baseRadius, height: op.height, ...axisOf(op, facing) }
   const placement = placementProblem(state, spec)
   if (placement) return { ok: false, rejection: placement }
+  const veto = providerMoveProblem(state, op, kind, [end])
+  if (veto) return fail('E_ACTION_RESTRICTED', veto)
   const me: Body = { id: op.id, pos: end, baseRadius: op.baseRadius, height: op.height, ...(spec.axis ? { axis: spec.axis } : {}) }
   const endCr = new Set(enemiesOf(state, op).filter((e) => inControlRange(state, me, bodyOf(e))).map((e) => e.id))
   if (kind === 'charge') {
@@ -611,6 +626,11 @@ function handleMovePath(state: GameState, action: Action): Handled {
       })
       const after = params?.afterMove
       if (typeof after === 'string') getCodeHook(after)?.afterMove?.(ctx, o, from, params ?? {})
+      // batch C shared: the mover's ploy window between a Fall Back's move and the end of the action (Cover Retreat)
+      const a = ctx.state.firefight.activation!
+      if (a.declared?.action === 'fallBack' && o.status === 'active') {
+        if (openFirefightWindow(ctx, 'firefight.fallBackMoved', { subjectId: o.id, counteracting: a.counteract, action: 'fallBack' }, 'fallBack.moved')) return
+      }
       finishAction(ctx)
     },
   }

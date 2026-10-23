@@ -79,6 +79,9 @@ export type TimingWindowId =
   | 'shoot.defenderBeforeRerolls'
   // M9 batch B shared: the attacker once the defence dice are final (Siphon Life)
   | 'shoot.attackerDefenceRolled'
+  // batch C shared: the defender before attack re-rolls; the Fall Back mover after its move
+  | 'shoot.defenderAttackRolled'
+  | 'firefight.fallBackMoved'
   | 'operative.incapacitated'
   | 'firefight.activationEnded'
   | 'turningPoint.end'
@@ -400,6 +403,8 @@ export interface OperativeChoice {
   distinctFrom?: Slug[]
   /** M9 batch C: false makes the pick a tag for team code instead of a keyword (hasKeyword ignores it); default true */
   keyword?: boolean
+  /** batch C shared: display label per pick, keyed by keyword (labels may hold "+" and lower case; keywords may not) */
+  labels?: Record<Keyword, string>
 }
 export interface TeamData {
   id: Id

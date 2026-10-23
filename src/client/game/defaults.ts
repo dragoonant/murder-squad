@@ -2,6 +2,9 @@
 // legal default rosters, first-legal loadouts, equipment candidates.
 import {
   capAwareLoadouts,
+  defaultLoadout,
+  enumerateLoadouts,
+  type LoadoutChoice,
   defaultRosterPicks,
   enumerateRosters,
   loadoutCapProblems,
@@ -178,6 +181,28 @@ export function defaultLoadouts(b: DataBundle, team: TeamData, roster: RosterSel
   if (!isDataDefault(team, roster)) return auto
   const answers = team.defaults?.loadouts ?? []
   return auto.map((l, i) => (answers[i] && Object.keys(answers[i]!).length > 0 ? answers[i]! : l))
+}
+
+/**
+ * A random legal loadout for every operative of a build's roster that also keeps the team's loadout caps (Kasrkin's
+ * Gunner and Sharpshooter limit, the Corsair blaster / wraithcannon exclusion, the Breachers Gunner errata): each operative
+ * takes a random option among those that keep every cap given the ones before it, the first legal one when none does.
+ */
+export function randomBuildLoadouts(b: DataBundle, team: TeamData, build: Pick<SeatBuild, 'roster'>, rnd: () => number = Math.random): LoadoutChoice[] {
+  const carried: Id[][] = []
+  return flattenRoster(team, build.roster).map((id) => {
+    const card = datacard(b, id)
+    const all = enumerateLoadouts(card)
+    const fits = (o: LoadoutChoice): Id[] | null => {
+      const w = resolveLoadout(card, o, b.weaponGroups)
+      return loadoutCapProblems(team, [...carried, w], b.weaponGroups).length === 0 ? w : null
+    }
+    const legal = all.filter((o) => fits(o) !== null)
+    const pool = legal.length > 0 ? legal : all
+    const pick = pool.length > 0 ? pool[Math.floor(rnd() * pool.length)]! : defaultLoadout(card)
+    carried.push(resolveLoadout(card, pick, b.weaponGroups))
+    return pick
+  })
 }
 
 /** M9 batch B: the first allowed keyword of every operative choice, per operative in flattened roster order. */

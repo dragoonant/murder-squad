@@ -62,6 +62,15 @@ export function archetypeFor(datacardId: string, fallback: string, weaponIds: re
   return fallback
 }
 
+/** M10 batch C: the wording of a ploy option's param when a team names it (Capricious Plan's `flux-dash`), else null. */
+export function ployParamLabel(ployId: string, param: string): string | null {
+  for (const p of Object.values(TEAM_PRESENTATION)) {
+    const l = p.ployParams?.[`${ployId}:${param}`]
+    if (l) return l
+  }
+  return null
+}
+
 /** M9 batch C: the display name of a team resource pool (engine pools.ts), from the team files or the kind itself. */
 export function poolLabel(kind: string): string {
   for (const p of Object.values(TEAM_PRESENTATION)) {

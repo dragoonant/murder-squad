@@ -101,7 +101,10 @@ export class RandomBot {
   private place(state: GameState, pending: PendingDecision): Action {
     const op = state.operatives[String(pending.context.operativeId)]
     if (!op || this.float() < 0.3) return act.pass(pending)
-    return { type: 'marker.place', seat: pending.seat, decisionId: pending.id, payload: { x: op.pos.x, z: op.pos.z } }
+    // batch C shared: a team spot filter lists the spots it accepts
+    const spots = pending.context.spots as { x: number; z: number }[] | undefined
+    const at = spots && spots.length > 0 ? spots[Math.floor(this.float() * spots.length)]! : { x: op.pos.x, z: op.pos.z }
+    return { type: 'marker.place', seat: pending.seat, decisionId: pending.id, payload: at }
   }
 
   private deploy(state: GameState, pending: PendingDecision): Action {
@@ -452,12 +455,15 @@ export function setupFor(game: number): GameSetup {
 export function realSetupFor(bundle: EngineBundle): (game: number) => GameSetup {
   const layouts = Object.keys(bundle.layouts ?? {}).sort()
   const teams = playableTeams(bundle)
-  const pairs: [string, string][] = []
-  for (let i = 0; i < teams.length; i++) for (let j = i + 1; j < teams.length; j++) pairs.push([teams[i]!, teams[j]!])
-  if (pairs.length === 0) pairs.push([teams[0]!, teams[0]!])
+  const n = teams.length
+  // batch C shared: rotate so every playable team plays early and often. Game g pits team g mod n against the team
+  // 1 + floor(g / n) places on (cycling through every gap), so each team appears twice in every n games and every
+  // pairing comes up within n(n-1) games; seats alternate.
   return (game) => {
     const swap = game % 2 === 1
-    const [a, b] = pairs[Math.floor(game / 2) % pairs.length]!
+    const gap = n > 1 ? 1 + (Math.floor(game / n) % (n - 1)) : 0
+    const a = teams[game % n]!
+    const b = teams[(game + gap) % n]!
     return realSetup(bundle, {
       teams: swap ? [b, a] : [a, b],
       layoutId: layouts[game % layouts.length]!,

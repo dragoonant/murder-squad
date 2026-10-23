@@ -805,6 +805,36 @@ describe('pathfinders rules verification fixes', () => {
     expect(guard.firefight.activation!.apSpent).toBe(0)
   })
 
+  it("GEN-086 TEAM-PF-007 Medic! in the saved operative's own activation: its -1 APL is held over and lasts for its next activation; the medic's applies at once", () => {
+    const base = pfOpen()
+    const v = A(base, 'pf.shasla')
+    const m = A(base, 'pf.medical-technician')
+    const boy = B(base, 'kom.boy')
+    const s = activateOp(place(place(place(base, v, 0, 0), m, 2.2, 0), boy, 8, 0), v)
+    const own = withCtx(s, (ctx) => inflict(ctx, { targetId: v, attackerId: boy, weaponId: null, amount: 99, source: 'direct' })).state
+    expect(own.operatives[v]!.wounds).toBe(1)
+    // the saved operative is mid-activation: nothing yet, a deferred change instead; the medic is not, so -1 now
+    expect(own.operatives[v]!.aplMods).toBe(0)
+    expect(own.effects.some((e) => e.kind === 'core.aplNext' && e.operativeId === v)).toBe(true)
+    expect(own.operatives[m]!.aplMods).toBe(-1)
+    // the activation ends, B plays, then (made ready again) the saved operative's next activation starts at -1 APL
+    let u = clear(take(clear(own), 'end').state)
+    expect(u.operatives[v]!.aplMods).toBe(0)
+    if (u.pending?.seat === 'B') u = clear(take(activateOp(u, boy), 'end').state)
+    u = edit(u, (st) => {
+      st.operatives[v]!.ready = true
+      st.firefight.chain = null
+      const o = st.pending!.options![0]!
+      st.pending!.options!.push({ ...o, id: v, action: { ...o.action, payload: { ...(o.action.payload as object), operativeId: v } } as typeof o.action })
+    })
+    u = activateOp(u, v)
+    expect(u.operatives[v]!.aplMods).toBe(-1)
+    expect(u.effects.some((e) => e.kind === 'core.aplNext')).toBe(false)
+    // and it ends with that activation
+    u = clear(take(clear(u), 'end').state)
+    expect(u.operatives[v]!.aplMods).toBe(0)
+  })
+
   it('TEAM-PF-017 SIGNAL: may be done in a counteraction (no such ban is printed), needs sight of the friend and stays within 6"', () => {
     let s = pfOpen()
     expect(s.data.abilities['pf.a.signal']!.conditions).toEqual({ notInEnemyControlRange: true })

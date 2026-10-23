@@ -5,7 +5,7 @@ import { step, view } from '@/engine'
 import { act } from '@/engine/actions'
 import { abilityOffers } from '@/engine/abilities'
 import { attackStats, defenceStats, effectiveRules, inflict, parseRules, validTargets } from '@/engine/attack-common'
-import { queueRemoval, usedThisTp, markUsedTp } from '@/engine/effects'
+import { APL_NEXT_FX, applyDeferredApl, queueRemoval, usedThisTp, markUsedTp } from '@/engine/effects'
 import { equipmentLimitFor } from '@/engine/equipment'
 import { runHook } from '@/engine/hooks'
 import { planFly, planMove } from '@/engine/movement'
@@ -288,6 +288,22 @@ describe('TEAM-HK Hearthkyn Salvagers: Dôzr, Field Medic, Grenadier', () => {
     expect(ids).toContain(`ability:hk.a.medikit:${m}`)
     expect(ids).not.toContain(`ability:hk.a.medikit:${v}`)
     expect(usedThisTp(savedThisTp, 'A', `hk.medic.saved:${v}`)).toBe(true)
+  })
+
+  it("GEN-086 TEAM-HK-009 Medic! in the saved operative's own activation holds its -1 APL over to its next activation", () => {
+    const s = hkOpen()
+    const v = A(s, 'hk.warrior')
+    const m = A(s, 'hk.field-medic')
+    const boy = B(s, 'kom.boy')
+    const lay = activateOp(place(place(place(s, v, 0, 0), m, 2, 1), boy, 8, 0), v)
+    const r = withCtx(lay, (ctx) => void inflict(ctx, { targetId: v, attackerId: boy, weaponId: null, amount: 99, source: 'direct' })).state
+    expect(r.operatives[v]!.wounds).toBe(1)
+    expect([r.operatives[v]!.aplMods, r.operatives[m]!.aplMods]).toEqual([0, -1])
+    expect(r.effects.find((e) => e.kind === APL_NEXT_FX && e.operativeId === v)?.data).toMatchObject({ delta: -1, source: 'hk.a.medic' })
+    // its next activation starts with the penalty
+    const next = withCtx(r, (ctx) => applyDeferredApl(ctx, v)).state
+    expect(next.operatives[v]!.aplMods).toBe(-1)
+    expect(next.effects.some((e) => e.kind === APL_NEXT_FX)).toBe(false)
   })
 
   it('TEAM-HK-011 TEAM-HK-012 the Grenadier throws its own frag grenade at Hit 3+ and smoke and stun without team picks; a Utility Grenade marker taxes mission actions for either side and clears after D3 activations', () => {
