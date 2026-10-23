@@ -1,0 +1,135 @@
+[
+  {
+    "id": "nb.w.bolt-pistol",
+    "name": "Bolt pistol",
+    "team": "imperial-navy-breachers",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      }
+    ],
+    "text": "Bolt pistol carried by the Navis Sergeant-at-Arms.",
+    "source": "team-imperial-navy-breachers.pdf (Aug '26); docs/spec/13-teams.md section 17.3"
+  },
+  {
+    "id": "nb.w.heirloom-autopistol",
+    "name": "Heirloom autopistol",
+    "team": "imperial-navy-breachers",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 2,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "Heirloom autopistol carried by the Navis Sergeant-at-Arms.",
+    "source": "team-imperial-navy-breachers.pdf (Aug '26); docs/spec/13-teams.md section 17.3"
+  },
+  {
+    "id": "nb.w.navis-shotgun-close",
+    "name": "Navis shotgun",
+    "team": "imperial-navy-breachers",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 3
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 6
+      }
+    ],
+    "profileGroup": "nb.wg.navis-shotgun",
+    "profile": "close range",
+    "text": "Navis shotgun carried by the Navis Sergeant-at-Arms.",
+    "source": "team-imperial-navy-breachers.pdf (Aug '26); docs/spec/13-teams.md section 17.3"
+  },
+  {
+    "id": "nb.w.navis-shotgun-long",
+    "name": "Navis shotgun",
+    "team": "imperial-navy-breachers",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "5+",
+    "dmg": {
+      "normal": 1,
+      "crit": 2
+    },
+    "rules": [],
+    "profileGroup": "nb.wg.navis-shotgun",
+    "profile": "long range",
+    "text": "Navis shotgun carried by the Navis Sergeant-at-Arms.",
+    "source": "team-imperial-navy-breachers.pdf (Aug '26); docs/spec/13-teams.md section 17.3"
+  },
+  {
+    "id": "nb.w.chainsword",
+    "name": "Chainsword",
+    "team": "imperial-navy-breachers",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [],
+    "text": "Chainsword carried by the Navis Sergeant-at-Arms.",
+    "source": "team-imperial-navy-breachers.pdf (Aug '26); docs/spec/13-teams.md section 17.3"
+  },
+  {
+    "id": "nb.w.navis-hatchet",
+    "name": "Navis hatchet",
+    "team": "imperial-navy-breachers",
+    "type": "melee",
+    "atk": 3,
+    "hit": "4+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [],
+    "text": "Navis hatchet carried by the Navis Sergeant-at-Arms.",
+    "source": "team-imperial-navy-breachers.pdf (Aug '26); docs/spec/13-teams.md section 17.3"
+  },
+  {
+    "id": "nb.w.power-weapon",
+    "name": "Power weapon",
+    "team": "imperial-navy-breachers",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 6
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "Power weapon carried by the Navis Sergeant-at-Arms.",
+    "source": "team-imperial-navy-breachers.pdf (Aug '26); docs/spec/13-teams.md section 17.3"
+  }
+]

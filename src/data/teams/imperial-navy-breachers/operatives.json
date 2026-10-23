@@ -1,0 +1,68 @@
+[
+  {
+    "id": "nb.sergeant-at-arms",
+    "name": "Navis Sergeant-at-Arms",
+    "team": "imperial-navy-breachers",
+    "stats": {
+      "apl": 2,
+      "move": 6,
+      "save": "4+",
+      "wounds": 9
+    },
+    "base": 25,
+    "keywords": [
+      "IMPERIAL NAVY BREACHER",
+      "IMPERIUM",
+      "LEADER",
+      "SERGEANT-AT-ARMS"
+    ],
+    "weapons": {
+      "fixed": [],
+      "options": [
+        {
+          "id": "loadout",
+          "label": "Loadout",
+          "sets": [
+            {
+              "id": "shotgun-hatchet",
+              "name": "Navis shotgun and Navis hatchet",
+              "fixed": [
+                "nb.wg.navis-shotgun",
+                "nb.w.navis-hatchet"
+              ]
+            },
+            {
+              "id": "pistol-melee",
+              "name": "A pistol and a melee weapon",
+              "options": [
+                {
+                  "id": "pistol",
+                  "label": "Pistol",
+                  "from": [
+                    "nb.w.bolt-pistol",
+                    "nb.w.heirloom-autopistol"
+                  ]
+                },
+                {
+                  "id": "melee",
+                  "label": "Melee weapon",
+                  "from": [
+                    "nb.w.chainsword",
+                    "nb.w.power-weapon"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "nb-sergeant-at-arms"
+    },
+    "text": "Directs the boarding party: its attack and defence orders cost nothing, and it can move or swap them on the fly.",
+    "source": "team-imperial-navy-breachers.pdf (Aug '26); docs/spec/13-teams.md section 17.2"
+  }
+]

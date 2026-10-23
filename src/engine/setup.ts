@@ -12,7 +12,7 @@ import { placementProblem } from './terrain'
 // M2b-game
 import { allowedOrders, initTeamState } from './abilities'
 import { setAside } from './reserve'
-import { resolvePicks } from './operative-picks'
+import { notePicks, resolvePicks } from './operative-picks'
 import { providerAny, providerSetAsideCap } from './team-rules'
 import { handleEquipMarker, nextPlacer, placeItem, selectionProblem, suggestEquipPlacement, territoryOf, DEFAULT_EQUIPMENT_LIMIT, equipmentLimitFor } from './equipment'
 import { chooseMission, missionDef, objectiveOptions, objectiveSeat, placeObjective } from './missions'
@@ -61,14 +61,16 @@ function validateSetup(setup: GameSetup, bundle: EngineBundle): void {
     if (!bundle.teams[teamId]) fail(`unknown team ${teamId}`)
     const roster = setup.rosters[seat]
     if (roster.length === 0) fail(`seat ${seat} has an empty roster`)
+    const taken: Record<string, string[]> = {}
     for (const entry of roster) {
       const card = bundle.datacards[entry.datacardId]
       if (!card) fail(`unknown datacard ${entry.datacardId}`)
       else {
         if (card.teamId !== teamId) fail(`${card.id} does not belong to team ${teamId}`)
         // M9 batch B: per-operative keyword picks (Marks of Chaos)
-        const picked = resolvePicks(bundle.teams[teamId], card, entry.picks)
+        const picked = resolvePicks(bundle.teams[teamId], card, entry.picks, taken)
         if (picked.problem) fail(picked.problem)
+        notePicks(taken, picked.picks)
         const chosen = entry.loadout?.weaponIds ?? defaultLoadout(card).weaponIds
         if (card.legalLoadouts) {
           // cards from the data adapter list every legal loadout (sets and profile groups included)
@@ -93,6 +95,7 @@ export function createGame(setup: GameSetup, seed: string, bundle: EngineBundle)
   const operatives: Record<string, Operative> = {}
   const cardIds: string[] = []
   for (const seat of SEATS) {
+    const taken: Record<string, string[]> = {}
     setup.rosters[seat].forEach((entry, i) => {
       const card = bundle.datacards[entry.datacardId]!
       cardIds.push(card.id)
@@ -127,7 +130,8 @@ export function createGame(setup: GameSetup, seed: string, bundle: EngineBundle)
         oncePerBattleUsed: [],
       }
       if (oval && oval.long > oval.short) operatives[id]!.ovalHalfAxis = round3((oval.long - oval.short) / 25.4 / 2)
-      const { picks } = resolvePicks(bundle.teams[seat === 'A' ? setup.teams.A : setup.teams.B], card, entry.picks)
+      const { picks } = resolvePicks(bundle.teams[seat === 'A' ? setup.teams.A : setup.teams.B], card, entry.picks, taken)
+      notePicks(taken, picks)
       if (Object.keys(picks).length > 0) operatives[id]!.picks = picks
     })
   }

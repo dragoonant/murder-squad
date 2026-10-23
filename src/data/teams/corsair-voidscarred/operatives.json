@@ -1,0 +1,56 @@
+[
+  {
+    "id": "cv.felarch",
+    "name": "Voidscarred Felarch",
+    "team": "corsair-voidscarred",
+    "stats": {
+      "apl": 2,
+      "move": 7,
+      "save": "4+",
+      "wounds": 9
+    },
+    "base": 28,
+    "keywords": [
+      "CORSAIR VOIDSCARRED",
+      "AELDARI",
+      "ANHRATHE",
+      "LEADER",
+      "FELARCH"
+    ],
+    "weapons": {
+      "fixed": [],
+      "options": [
+        {
+          "id": "loadout",
+          "label": "Loadout",
+          "sets": [
+            {
+              "id": "shuriken-rifle-pistol-power-weapon",
+              "name": "Shuriken rifle, shuriken pistol and power weapon",
+              "fixed": [
+                "cv.w.shuriken-rifle",
+                "cv.w.shuriken-pistol",
+                "cv.w.power-weapon"
+              ]
+            },
+            {
+              "id": "neuro-disruptor-power-weapon",
+              "name": "Neuro disruptor and power weapon",
+              "fixed": [
+                "cv.w.neuro-disruptor",
+                "cv.w.power-weapon"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "cv-felarch"
+    },
+    "text": "A veteran corsair captain whose free action can be anything, and who once per battle may strike first when an enemy acts.",
+    "source": "team-corsair-voidscarred.pdf (Jan '26); docs/spec/13-teams.md section 14.2"
+  }
+]

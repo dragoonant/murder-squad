@@ -16,7 +16,7 @@ import {
 import { bodyOf, enemiesInControlRange, inControlRange, type Body } from './measure'
 import { angleDelta, axisOf, discCentres, footprintDistToPolygon, footprintOf, footprintsOverlap, ovalAxis, rotationCost, type Footprint } from './footprint'
 import { chargeFromControlRange } from './abilities'
-import { providerCanFly, providerMoveSurcharge } from './team-rules'
+import { providerCanFly, providerFlyLimit, providerMoveLimitDelta, providerMoveRestrictions, providerMoveSurcharge } from './team-rules'
 import { getCodeHook, markFired } from './code-hooks'
 import { reject, type Ctx, type Handled, type ModuleDef } from './registry'
 import { effectiveMove, enemiesOf, friendsOf, getOp } from './state'
@@ -71,6 +71,8 @@ export type PlanResult = MovePlan | { ok: false; rejection: Rejection }
 export function moveLimit(op: Operative, kind: MoveKind, counteract: boolean, state?: GameState): number {
   const move = effectiveMove(op, state)
   let limit = kind === 'dash' ? Math.min(DASH_MAX, move) : kind === 'charge' ? move + CHARGE_BONUS : move
+  // M9 batch C: a change to one move kind only (Strike Fast: Reposition +1"; Boost: Charge +2" more)
+  if (state) limit = Math.max(0, limit + providerMoveLimitDelta(state, op, kind))
   if (counteract) limit = Math.min(limit, COUNTERACT_CAP)
   return limit
 }
@@ -288,6 +290,7 @@ export function planMove(
     }
   }
 
+  const restrictions = providerMoveRestrictions(state, op)
   for (let i = 0; i < wps.length; i++) {
     const w = wps[i]!
     const y0 = cur.y
@@ -297,6 +300,9 @@ export function planMove(
     const isJump = w.jump === true
     const isClimb = !isJump && y1 > y0 + 0.001
     const isDrop = !isJump && y1 < y0 - 0.001
+    // M9 batch C: movement a team rule rules out (C.A.T. Unit: no climbing, no jumping)
+    if (isJump && restrictions.noJump) return fail('E_NO_PATH', `${op.name} cannot jump`)
+    if (isClimb && restrictions.noClimb && walkableSolidAt(idx, next, y1)?.insignificant !== true) return fail('E_NO_PATH', `${op.name} cannot climb`)
     // M9 batch B: an oval base may turn on the spot (one waypoint at its own position plus a facing)
     const turnOnly = oval && endFacing !== undefined && wps.length === 1
     if (len < EPS && !isClimb && !isDrop && !turnOnly) return fail('E_SCHEMA', 'a zero-length increment moves nothing')
@@ -504,7 +510,9 @@ export function planFly(
   if (!wps || wps.length !== 1) return fail('E_SCHEMA', 'a FLY move names exactly one set-up point')
   if (!providerCanFly(state, op, kind)) return fail('E_ACTION_RESTRICTED', `${op.name} cannot FLY`)
   const w = wps[0]!
-  const base = moveLimit(op, kind === 'charge' ? 'reposition' : kind, counteract, state)
+  // M9 batch C: a team rule may set its own FLY distance (Blink Pack 7"); a counteraction still caps it at 2"
+  const flyOwn = providerFlyLimit(state, op, kind)
+  const base = flyOwn === null ? moveLimit(op, kind === 'charge' ? 'reposition' : kind, counteract, state) : counteract ? Math.min(flyOwn, COUNTERACT_CAP) : flyOwn
   const maxInches = limitOverride === undefined ? base : Math.min(limitOverride, base)
   const end: Vec3 = { x: w.x, y: w.y ?? 0, z: w.z }
   const d = dist2(op.pos, end)

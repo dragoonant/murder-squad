@@ -132,7 +132,19 @@ export interface RuntimeTeam {
   /** M9 prep: false while the team is scaffolded (left out of the picker, sims and bench) */
   playable?: boolean
   /** M9 batch B: per-operative keyword picks made at selection (Legionaries Marks of Chaos); data OperativeChoice */
-  operativeChoices?: { id: string; label: string; keywords: string[]; forKeyword?: string; exclude?: { datacards: string[]; keywords: string[] }[] }[]
+  operativeChoices?: {
+    id: string
+    label: string
+    keywords: string[]
+    forKeyword?: string
+    exclude?: { datacards: string[]; keywords: string[] }[]
+    /** M9 batch C: no two operatives of the roster take the same pick (Boons of Tzeentch) */
+    unique?: boolean
+    /** M9 batch C: the pick must differ from the same operative's picks for these choices (Custom: two different rules) */
+    distinctFrom?: string[]
+    /** M9 batch C: false makes the pick a tag read by team code, not a keyword (`hasKeyword` ignores it); default true */
+    keyword?: boolean
+  }[]
 }
 
 /** M2b-game: strategy and firefight ploys, equipment and missions are the data records themselves. */
@@ -378,6 +390,8 @@ export interface PlayerState {
   vp: number
   equipment: string[]
   dropZoneId: string | null
+  /** M9 batch C: team resource pools (pools.ts: Novitiates Faith points), kind -> value; public */
+  pools?: Record<string, number>
 }
 
 export type MarkerKind = 'objective' | 'equipment'
@@ -757,6 +771,10 @@ export interface AttackState {
   stunned: string[]
   /** inherited cover/obscured for Blast secondaries */
   inherit: { cover: boolean; obscured: boolean; improvedCover: boolean } | null
+  /** M9 batch C: the targets were fixed by a team rule (Detonate); forced statuses for every sequence */
+  fixed?: { noCover?: boolean; noObscured?: boolean }
+  /** M9 batch C: the most extra primary targets a team rule allows on top of the first (Salvo) */
+  extraMax?: number
   /** window ids already offered for ploys during this action */
   windows: string[]
   /** step to continue with when a ploy window decision hands control back (resumeAttack) */
@@ -773,7 +791,7 @@ export interface AttackState {
     passes: number
     shockUsed: Record<Seat, boolean>
     /** M9 prep: resolutions owed out of the normal alternation (Bladed Stance, Assassinate), consumed first */
-    queue?: { seat: Seat; blockOnly?: boolean; resume?: Seat }[]
+    queue?: { seat: Seat; blockOnly?: boolean; strikeOnly?: boolean; resume?: Seat }[]
     /** M9 prep: seats that cannot block in this sequence (Point-Blank Fusillade) */
     noBlock?: Seat[]
     /** M9 prep: fightResolveStart providers have run for this sequence */
@@ -884,7 +902,7 @@ export interface ActionPayloadMap {
   'strategy.initiative': { reroll?: boolean }
   'strategy.decideInitiative': { seat: Seat }
   'strategy.gambit': { gambitId: string; param?: string }
-  'firefight.activate': { operativeId: string; counteract?: boolean }
+  'firefight.activate': { operativeId: string; counteract?: boolean; /** M9 batch C: index of a counteract alternative (team-rules counteractAlternatives) */ alternative?: number }
   'firefight.order': { order: Order }
   /** `action` is a universal action id, or `ability:<id>` / `marker:pickUp` / `marker:place` for the rest; the other fields pick targets */
   'firefight.action': { action: string; markerId?: string; targetId?: string; param?: string; x?: number; z?: number; y?: number }

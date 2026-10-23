@@ -9,6 +9,7 @@ import { Color, DoubleSide, Euler, type Group } from 'three'
 import type { Operative as EngineOperative, OperativeToken, Order } from '@/engine'
 import { effectiveApl } from '@/engine/state'
 import { dataBundle, engineBundle } from '../game/adapter'
+import { archetypeFor } from '../teams'
 import { animPosition } from '../presentation/animStore'
 import { AP_DARK, AP_LIT, ORDER_COLOR, apTip, orderTip, useBoardTip, woundTip, type MarkerTip } from '../ui/markerInfo'
 import { tokenDef } from '../ui/tokenDefs'
@@ -383,7 +384,8 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
   const phase = useMemo(() => (op.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 63) / 10, [op.id])
   const team = dataBundle().teams[teamOf(op)]
   const paint = team?.paint ?? { major: { h: 0.6, s: 0.5, l: 0.4 }, minor: { h: 0.1, s: 0.6, l: 0.4 } }
-  const archetype = (dataBundle().byId[op.datacardId] as { figure?: { archetype: string } } | undefined)?.figure?.archetype ?? op.datacardId
+  // M9 batch C: a body per loadout where the team lists one (v2 bodies hold their weapons)
+  const archetype = archetypeFor(op.datacardId, (dataBundle().byId[op.datacardId] as { figure?: { archetype: string } } | undefined)?.figure?.archetype ?? op.datacardId, op.weapons, dataBundle().weaponGroups)
   const spec: FigureSpec = useMemo(
     () => ({ archetype, height: op.height, baseRadius: op.baseRadius, ...(op.ovalHalfAxis ? { ovalHalfAxis: op.ovalHalfAxis } : {}), major: paint.major, minor: paint.minor, weaponIds: op.weapons, seatColor: seatColor(op.seat), dim: !op.ready, variantKey: op.id }),
     // eslint-disable-next-line react-hooks/exhaustive-deps

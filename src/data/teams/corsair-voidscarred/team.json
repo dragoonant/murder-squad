@@ -1,0 +1,45 @@
+{
+  "id": "corsair-voidscarred",
+  "name": "Corsair Voidscarred",
+  "factionKeyword": "CORSAIR VOIDSCARRED",
+  "archetypes": [
+    "infiltration",
+    "recon"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "cv.felarch"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "cv.felarch"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.75,
+      "s": 0.35,
+      "l": 0.25
+    },
+    "minor": {
+      "h": 0.0,
+      "s": 0.7,
+      "l": 0.45
+    }
+  },
+  "text": "Aeldari void pirates: quick raiders who dash in, snatch the prize and vanish before the foe can answer.",
+  "source": "team-corsair-voidscarred.pdf (Jan '26); docs/spec/13-teams.md section 14"
+}

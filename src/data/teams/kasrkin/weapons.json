@@ -1,0 +1,166 @@
+[
+  {
+    "id": "ks.w.bolt-pistol",
+    "name": "Bolt pistol",
+    "team": "kasrkin",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      }
+    ],
+    "text": "Bolt pistol carried by the Kasrkin Sergeant.",
+    "source": "team-kasrkin.pdf (Apr '26); docs/spec/13-teams.md section 11.3"
+  },
+  {
+    "id": "ks.w.hot-shot-lasgun",
+    "name": "Hot-shot lasgun",
+    "team": "kasrkin",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [],
+    "text": "Hot-shot lasgun carried by the Kasrkin Sergeant.",
+    "source": "team-kasrkin.pdf (Apr '26); docs/spec/13-teams.md section 11.3"
+  },
+  {
+    "id": "ks.w.hot-shot-laspistol",
+    "name": "Hot-shot laspistol",
+    "team": "kasrkin",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      }
+    ],
+    "text": "Hot-shot laspistol carried by the Kasrkin Sergeant.",
+    "source": "team-kasrkin.pdf (Apr '26); docs/spec/13-teams.md section 11.3"
+  },
+  {
+    "id": "ks.w.plasma-pistol-standard",
+    "name": "Plasma pistol",
+    "team": "kasrkin",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      }
+    ],
+    "profileGroup": "ks.wg.plasma-pistol",
+    "profile": "standard",
+    "text": "Plasma pistol carried by the Kasrkin Sergeant.",
+    "source": "team-kasrkin.pdf (Apr '26); docs/spec/13-teams.md section 11.3"
+  },
+  {
+    "id": "ks.w.plasma-pistol-supercharge",
+    "name": "Plasma pistol",
+    "team": "kasrkin",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.hot"
+      },
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      }
+    ],
+    "profileGroup": "ks.wg.plasma-pistol",
+    "profile": "supercharge",
+    "text": "Plasma pistol carried by the Kasrkin Sergeant.",
+    "source": "team-kasrkin.pdf (Apr '26); docs/spec/13-teams.md section 11.3"
+  },
+  {
+    "id": "ks.w.chainsword",
+    "name": "Chainsword",
+    "team": "kasrkin",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [],
+    "text": "Chainsword carried by the Kasrkin Sergeant.",
+    "source": "team-kasrkin.pdf (Apr '26); docs/spec/13-teams.md section 11.3"
+  },
+  {
+    "id": "ks.w.power-weapon",
+    "name": "Power weapon",
+    "team": "kasrkin",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 6
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "Power weapon carried by the Kasrkin Sergeant.",
+    "source": "team-kasrkin.pdf (Apr '26); docs/spec/13-teams.md section 11.3"
+  },
+  {
+    "id": "ks.w.gun-butt-sergeant",
+    "name": "Gun butt",
+    "team": "kasrkin",
+    "type": "melee",
+    "atk": 3,
+    "hit": "3+",
+    "dmg": {
+      "normal": 2,
+      "crit": 3
+    },
+    "rules": [],
+    "text": "Gun butt carried by the Kasrkin Sergeant.",
+    "source": "team-kasrkin.pdf (Apr '26); docs/spec/13-teams.md section 11.3"
+  }
+]

@@ -3,6 +3,7 @@
 import type { CSSProperties } from 'react'
 import type { Seat } from '@/engine'
 import { dataBundle } from '../game/adapter'
+import { poolLabel } from '../teams'
 import { humanize } from '../game/labels'
 import { useDisplayState } from '../presentation/presentedStore'
 import { useGame } from '../store/game'
@@ -59,6 +60,12 @@ function SeatBlock({ seat }: { seat: Seat }) {
           <span data-testid={`hud-vp-${seat}`} style={{ color: colors.text, fontWeight: 700 }}>
             <Keyword term="VP" /> {p.vp}
           </span>
+          {Object.entries(p.pools ?? {}).map(([kind, value]) => (
+            <span key={kind} data-testid={`hud-pool-${seat}-${kind}`} style={{ color: colors.text, fontWeight: 700 }}>
+              {' · '}
+              <Keyword term={poolLabel(kind)} /> {value}
+            </span>
+          ))}
           {' · '}
           <span data-testid={`hud-ops-${seat}`}>
             {alive}/{ops.length} ops

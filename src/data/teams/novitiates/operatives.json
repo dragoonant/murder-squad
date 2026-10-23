@@ -1,0 +1,63 @@
+[
+  {
+    "id": "nv.superior",
+    "name": "Novitiate Superior",
+    "team": "novitiates",
+    "stats": {
+      "apl": 3,
+      "move": 6,
+      "save": "3+",
+      "wounds": 9
+    },
+    "base": 32,
+    "keywords": [
+      "NOVITIATE",
+      "IMPERIUM",
+      "ADEPTA SORORITAS",
+      "LEADER",
+      "SUPERIOR"
+    ],
+    "weapons": {
+      "fixed": [],
+      "options": [
+        {
+          "id": "loadout",
+          "label": "Loadout",
+          "sets": [
+            {
+              "id": "plasma-pistol-power-weapon",
+              "name": "Plasma pistol and power weapon",
+              "fixed": [
+                "nv.wg.plasma-pistol",
+                "nv.w.power-weapon"
+              ]
+            },
+            {
+              "id": "relic-boltgun-gun-butt",
+              "name": "Relic boltgun and gun butt",
+              "fixed": [
+                "nv.w.relic-boltgun",
+                "nv.w.gun-butt-superior"
+              ]
+            },
+            {
+              "id": "relic-bolt-pistol-power-weapon",
+              "name": "Relic bolt pistol and power weapon",
+              "fixed": [
+                "nv.w.relic-bolt-pistol",
+                "nv.w.power-weapon"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "nv-superior"
+    },
+    "text": "A full battle sister leading the novices; each enemy she brings down feeds the team more faith.",
+    "source": "team-novitiates.pdf (Aug '26); docs/spec/13-teams.md section 12.2"
+  }
+]

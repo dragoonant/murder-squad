@@ -28,7 +28,7 @@ import type {
 import { MANIFEST, SCHEMA_NAMES } from './manifest'
 import { TYPE_OF_SCHEMA, buildIndex, checkRefs, recordCodes, type RecordIndex, type RecordType } from './refs'
 import { defaultLoadout, enumerateLoadouts, resolveLoadout, validateLoadout } from './loadout'
-import { defaultOperativePicks, enumerateRosters, loadoutCapProblems, teamCapProblems, validateOperativePicks, validateRoster } from './roster'
+import { defaultRosterPicks, enumerateRosters, loadoutCapProblems, rosterPickProblems, teamCapProblems, validateOperativePicks, validateRoster } from './roster'
 import { dist, distToPolygon, distToPolygonBoundary, pointInPolygon, polygonArea, polygonDistance, polygonSegmentDistance, segDist } from './geometry'
 
 const DATA_ROOT = path.dirname(fileURLToPath(import.meta.url))
@@ -294,10 +294,15 @@ export function validateAll(options: ValidateOptions = {}): ValidationResult {
         return resolveLoadout(c, choice, index.groups)
       })
       for (const r of loadoutCapProblems(t, carried, index.groups)) errors.push(`${where(t.id)}: default loadouts: ${r}`)
+      // M9 batch C: roster-aware defaults (unique choices kept apart), then the roster-wide pick check
+      const allPicks = defaultRosterPicks(t, defCards, d.operativePicks ?? [])
       defCards.forEach((c, i) => {
-        const picks = { ...defaultOperativePicks(t, c), ...(d.operativePicks?.[i] ?? {}) }
-        for (const r of validateOperativePicks(t, c, picks)) errors.push(`${where(t.id)}: default picks: ${r}`)
+        for (const r of validateOperativePicks(t, c, allPicks[i])) errors.push(`${where(t.id)}: default picks: ${r}`)
       })
+      for (const r of rosterPickProblems(t, allPicks)) errors.push(`${where(t.id)}: default picks: ${r}`)
+    }
+    for (const r of t.selection.requires ?? []) {
+      for (const id of [r.id, ...r.needs]) if (!byId[id]) errors.push(`${where(t.id)}: roster requirement lists ${id}, not a datacard of ${t.id}`)
     }
     for (const tc of t.teamChoices ?? []) {
       const offered = abilities.filter((a) => a.choiceGroup === tc.group && a.team === t.id)

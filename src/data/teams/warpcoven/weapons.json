@@ -1,0 +1,123 @@
+[
+  {
+    "id": "wc.w.doombolt",
+    "name": "Doombolt",
+    "team": "warpcoven",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 2
+    },
+    "rules": [
+      {
+        "rule": "wc.a.wr-psychic"
+      },
+      {
+        "rule": "core.wr.devastating",
+        "x": 2
+      },
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "Doombolt carried by the Sorcerer of Destiny.",
+    "source": "team-warpcoven.pdf (Apr '26); docs/spec/13-teams.md section 15.3"
+  },
+  {
+    "id": "wc.w.inferno-bolt-pistol",
+    "name": "Inferno bolt pistol",
+    "team": "warpcoven",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      }
+    ],
+    "text": "Inferno bolt pistol carried by the Sorcerer of Destiny.",
+    "source": "team-warpcoven.pdf (Apr '26); docs/spec/13-teams.md section 15.3"
+  },
+  {
+    "id": "wc.w.warpflame-pistol",
+    "name": "Warpflame pistol",
+    "team": "warpcoven",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "2+",
+    "dmg": {
+      "normal": 3,
+      "crit": 3
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 6
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      },
+      {
+        "rule": "core.wr.torrent",
+        "inches": 1
+      }
+    ],
+    "text": "Warpflame pistol carried by the Sorcerer of Destiny.",
+    "source": "team-warpcoven.pdf (Apr '26); docs/spec/13-teams.md section 15.3"
+  },
+  {
+    "id": "wc.w.force-stave",
+    "name": "Force stave",
+    "team": "warpcoven",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 6
+    },
+    "rules": [
+      {
+        "rule": "wc.a.wr-psychic"
+      },
+      {
+        "rule": "core.wr.shock"
+      }
+    ],
+    "text": "Force stave carried by the Sorcerer of Destiny.",
+    "source": "team-warpcoven.pdf (Apr '26); docs/spec/13-teams.md section 15.3"
+  },
+  {
+    "id": "wc.w.prosperine-khopesh",
+    "name": "Prosperine khopesh",
+    "team": "warpcoven",
+    "type": "melee",
+    "atk": 5,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 6
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "Prosperine khopesh carried by the Sorcerer of Destiny.",
+    "source": "team-warpcoven.pdf (Apr '26); docs/spec/13-teams.md section 15.3"
+  }
+]

@@ -1,0 +1,140 @@
+[
+  {
+    "id": "nv.w.plasma-pistol-standard",
+    "name": "Plasma pistol",
+    "team": "novitiates",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      }
+    ],
+    "profileGroup": "nv.wg.plasma-pistol",
+    "profile": "standard",
+    "text": "Plasma pistol carried by the Novitiate Superior.",
+    "source": "team-novitiates.pdf (Aug '26); docs/spec/13-teams.md section 12.3"
+  },
+  {
+    "id": "nv.w.plasma-pistol-supercharge",
+    "name": "Plasma pistol",
+    "team": "novitiates",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.hot"
+      },
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      }
+    ],
+    "profileGroup": "nv.wg.plasma-pistol",
+    "profile": "supercharge",
+    "text": "Plasma pistol carried by the Novitiate Superior.",
+    "source": "team-novitiates.pdf (Aug '26); docs/spec/13-teams.md section 12.3"
+  },
+  {
+    "id": "nv.w.relic-bolt-pistol",
+    "name": "Relic bolt pistol",
+    "team": "novitiates",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "Relic bolt pistol carried by the Novitiate Superior.",
+    "source": "team-novitiates.pdf (Aug '26); docs/spec/13-teams.md section 12.3"
+  },
+  {
+    "id": "nv.w.relic-boltgun",
+    "name": "Relic boltgun",
+    "team": "novitiates",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "Relic boltgun carried by the Novitiate Superior.",
+    "source": "team-novitiates.pdf (Aug '26); docs/spec/13-teams.md section 12.3"
+  },
+  {
+    "id": "nv.w.gun-butt-superior",
+    "name": "Gun butt",
+    "team": "novitiates",
+    "type": "melee",
+    "atk": 3,
+    "hit": "3+",
+    "dmg": {
+      "normal": 2,
+      "crit": 3
+    },
+    "rules": [],
+    "text": "Gun butt carried by the Novitiate Superior.",
+    "source": "team-novitiates.pdf (Aug '26); docs/spec/13-teams.md section 12.3"
+  },
+  {
+    "id": "nv.w.power-weapon",
+    "name": "Power weapon",
+    "team": "novitiates",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 6
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "Power weapon carried by the Novitiate Superior.",
+    "source": "team-novitiates.pdf (Aug '26); docs/spec/13-teams.md section 12.3"
+  }
+]

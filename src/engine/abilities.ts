@@ -13,6 +13,7 @@ import { missionActionIds } from './missions'
 import { reject, type Ctx, type Handled, type ModuleDef } from './registry'
 import { EngineInvariantError, getOp } from './state'
 import { initEquipment } from './equipment'
+import { isPsychicAbility, psychicAllowed } from './psychic'
 import type { Activation, Condition, GameSetup, GameState, Operative, Order, Rejection, RuntimeAbility, Seat } from './types'
 import {
   providerActionForbidden,
@@ -20,6 +21,7 @@ import {
   providerCounteract,
   providerExtraActions,
   providerFlags,
+  providerMarkerActionRelief,
   providerMaxRepeats,
   providerCostDelta,
   providerOffboardActions,
@@ -72,7 +74,9 @@ export function repeatSurcharge(state: GameState, op: Operative, act: Activation
   const names = ((p.repeatSurcharge as { nameContains?: string[] } | undefined)?.nameContains ?? []).map((s) => s.toLowerCase())
   const w = state.data.weapons[weaponId]
   if (!w || !names.some((n) => w.name.toLowerCase().includes(n))) return 0
-  const prior = (act.weaponsUsed ?? []).includes(weaponId)
+  // M9 batch C fix: switching profiles of the same weapon (focused / sweeping) is still the same weapon
+  const group = w.profileGroup
+  const prior = (act.weaponsUsed ?? []).some((u) => u === weaponId || (!!group && state.data.weapons[u]?.profileGroup === group))
   if (!prior) return 0
   markFired('astartes')
   return (p.repeatSurcharge as { ap?: number }).ap ?? 1
@@ -230,7 +234,14 @@ function offerCost(state: GameState, op: Operative, def: RuntimeAbility, seed: {
 
 /** Why the generic conditions of a unique action fail, or null. */
 function genericProblem(state: GameState, op: Operative, def: RuntimeAbility, act: Activation | null): string | null {
-  const cond = def.conditions as Condition | undefined
+  let cond = def.conditions as Condition | undefined
+  // M9 batch C: a MISSION action a team rule lets the operative take with an enemy in control range (Light Fingers)
+  if (cond?.notInEnemyControlRange && (def.keywords ?? []).includes('MISSION') && providerMarkerActionRelief(state, op, `${ABILITY_PREFIX}${def.id}`).ignoreEnemyControlRange) {
+    const { notInEnemyControlRange: _drop, ...rest } = cond
+    cond = rest
+  }
+  // M9 batch C: PSYCHIC actions do not work while a rule blocks them (Null Rod)
+  if (isPsychicAbility(state, def.id) && !psychicAllowed(state, op)) return `${def.name} is PSYCHIC and cannot be used here`
   if (cond && !evalCondition(cond, { state, seat: op.seat, subjectId: op.id, actorId: op.id, activation: act, counteracting: act?.counteract })) {
     return `conditions of ${def.name} are not met`
   }

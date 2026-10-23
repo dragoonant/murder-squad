@@ -1,0 +1,13 @@
+[
+  {
+    "id": "wc.a.wr-psychic",
+    "kind": "weaponRule",
+    "name": "PSYCHIC",
+    "team": "warpcoven",
+    "weaponRule": {
+      "param": "none"
+    },
+    "text": "A tag with no effect of its own. Rules of other teams read it (the Null Rod switches PSYCHIC weapons off nearby).",
+    "source": "team-warpcoven.pdf (Apr '26); docs/spec/13-teams.md section 15.3"
+  }
+]

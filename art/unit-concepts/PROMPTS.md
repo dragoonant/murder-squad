@@ -301,3 +301,160 @@ Pathfinders v2 notes: chat gemini.google.com/app/c747b545433b1e7a; four prompts 
 The full standalone prompt per body (the exact text sent to Gemini) is kept in `art/unit-concepts/v2/prompts/<team>-prompts-gemini.json`; the tables above summarise the Angels of Death, Kommando, Pathfinder and Hierotek ones. The six remaining teams (Plague Marines 8, Wyrmblade 11, Legionaries 11, Hand of the Archon 10, Hunter Clade 18, Hearthkyn 13, variants included) reuse the M9 base descriptions and per-slug changes above with the weapons in hand and the pose line from `docs/spec/30-figures.md` section 7. Wording changes for Gemini: "chaos soldier" became "plague-ridden soldier"; the Kelermorph has two pistols; the Hunter Clade Gunners are the arquebus stance on the oval base; the Plague Marine heavy gunner carries the plague spewer in the flamer pose. Hierotek: the Gemini image limit stopped the chat after 4 of 10 (Immortal Guardian, Despotek, Deathmark, Chronomancer landed; Guardian b, Apprentek, Psychomancer, Technomancer returned text only); the rest are resent after the reset.
 Status at the end of 2026-10-18: all ten teams have their v2 concepts (122 images; the Gemini image limit cleared at 18:34 and about 100 images went through after it). QC notes: `wb-locus` shows two armed arms clearly and the lower pair only faintly; `ha-agent-b` came out standing rather than kneeling; `lg-anointed` reads the clawed gauntlet as a large hand. All accepted for the first body pass.
 Bodies (2026-10-19 01:30): all 122 v2 bodies generated and on main. Alteisen rendered aod, kom, pf, ht, pm and ten Wyrmblade bodies; this PC rendered lg, ha, hc, hk and the Wyrmblade Kelermorph (its Alteisen attempt failed with a CUDA error while another session's job shared that GPU). Nothing was re-prompted.
+
+## v2 batch C: seven new teams (2026-10-22)
+
+Same method as the first ten teams (one Gemini chat per team, standalone prompts, in-page JSON bundle decoded with python), with the owner's proportion wording: two and a half heads tall, head about 40% of the height and as wide as the shoulders, chunky limbs, oversized hands and feet, hard-surface panel detail, painted tabletop-miniature finish. One body per operative and loadout variant (weapons held in the pose; -b is a pose variant). The full standalone prompt per body is in `art/unit-concepts/v2/prompts/<code>-prompts-gemini.json`; the tables list the slug and the pose line.
+
+### Kasrkin v2 (16 bodies, prompts in `ks-prompts-gemini.json`)
+
+| Slug | Pose |
+|---|---|
+| ks-sergeant-bolt-pistol | charging forward, sword raised back over the shoulder, pistol aimed ahead |
+| ks-sergeant-lasgun | advancing, rifle shouldered and firing, head turned to call an order |
+| ks-sergeant-laspistol | lunging forward with the sword thrust ahead, pistol aimed over it |
+| ks-sergeant-plasma-pistol | mid-stride, chainsword swung high overhead, plasma pistol levelled |
+| ks-combat-medic | running low, rifle tucked under the arm, injector held out ahead |
+| ks-demo-trooper | mid-throw, left arm swinging forward to place the mine, knees bent |
+| ks-gunner-flamer | firing a jet of flame from the hip while turning, torso twisted |
+| ks-gunner-grenade-launcher | kneeling on one knee, launcher aimed up at a high angle |
+| ks-gunner-volley-gun | braced with a wide stance, leaning back into the recoil, firing |
+| ks-gunner-meltagun | crouched forward on one foot, gun aimed straight ahead |
+| ks-gunner-plasma-gun | advancing, gun shouldered and firing, one foot forward |
+| ks-recon-trooper | sneaking low, scanner held out ahead, rifle ready |
+| ks-sharpshooter | kneeling sniper, one knee down, rifle aimed straight ahead, cheek to the stock |
+| ks-trooper | advancing, rifle shouldered and aimed straight ahead, one foot forward |
+| ks-trooper-b | sprinting forward, rifle held across the chest, leaning into the run |
+| ks-vox-trooper | standing with weight forward, shouting into the handset, rifle pointed down and ahead |
+
+### Novitiates v2 (16 bodies, prompts in `nv-prompts-gemini.json`)
+
+| Slug | Pose |
+|---|---|
+| nv-superior-plasma-pistol | commanding, weight forward, sword raised high, pistol aimed ahead |
+| nv-superior-relic-boltgun | advancing, boltgun shouldered and firing, cape flaring |
+| nv-superior-relic-bolt-pistol | charging, sword swung back, pistol aimed ahead |
+| nv-condemnor | mid-stride, launcher aimed ahead, rod held out to the side |
+| nv-dialogus | preaching, left arm raised high with the staff, pistol pointing forward |
+| nv-duellist | a deep fencing lunge, one blade thrust forward, the other held back |
+| nv-exactor | cracking both whips overhead mid-stride, whip tails curling through the air |
+| nv-hospitaller | running forward in a crouch, saw raised, pistol out to the side |
+| nv-militant-autopistol-blade | charging, sword raised, pistol aimed ahead |
+| nv-militant-autogun | advancing, rifle shouldered and aimed straight ahead, one foot forward |
+| nv-penitent | charging furiously, the huge blade swung back over the shoulder |
+| nv-preceptor | striding forward, mace raised high over the head |
+| nv-pronatus | dashing forward in a crouch, pistol aimed, box tucked under the arm |
+| nv-purgatus | firing a jet of flame from the hip while turning, torso twisted |
+| nv-purgatus-b | kneeling on one knee, flamer aimed forward, flames streaming |
+| nv-reliquarius | raising the banner high, pistol aimed forward, cloth streaming |
+
+### Phobos Strike Team v2 (17 bodies, prompts in `ph-prompts-gemini.json`)
+
+| Slug | Pose |
+|---|---|
+| ph-infiltrator-sergeant | advancing at a crouch, free left hand raised to signal a halt, carbine aimed ahead |
+| ph-incursor-sergeant | low crouched advance, carbine aimed ahead |
+| ph-reiver-sergeant-pistol-knife | pouncing forward, knife drawn back, pistol aimed ahead |
+| ph-reiver-sergeant-carbine | sprinting forward, carbine held across the chest |
+| ph-infiltrator-commsman | crouched forward, speaking into the handset, carbine aimed low |
+| ph-infiltrator-helix-adept | running low, gauntlet extended ahead as if reaching a wounded ally |
+| ph-infiltrator-saboteur | sneaking low, detonator held up, carbine pointed ahead |
+| ph-infiltrator-veteran | firing from the hip while advancing, one foot forward |
+| ph-infiltrator-voxbreaker | crouched, left arm held out scanning, carbine aimed forward |
+| ph-infiltrator-warrior | advancing, carbine shouldered and aimed straight ahead, one foot forward |
+| ph-infiltrator-warrior-b | kneeling on one knee, carbine aimed forward, cloak draped behind |
+| ph-incursor-marksman | kneeling sniper, one knee down, rifle aimed straight ahead, cheek to the stock |
+| ph-incursor-minelayer | stooping forward on one knee, planting the mine, carbine pointed ahead |
+| ph-incursor-warrior | advancing, carbine shouldered and aimed straight ahead, one foot forward |
+| ph-incursor-warrior-b | sneaking forward in a crouch, carbine pointed ahead |
+| ph-reiver-warrior-pistol-knife | mid-leap, knife stabbing downward, pistol aimed |
+| ph-reiver-warrior-carbine | advancing in a crouch, carbine shouldered and firing |
+
+### Corsair Voidscarred v2 (15 bodies, prompts in `cv-prompts-gemini.json`)
+
+| Slug | Pose |
+|---|---|
+| cv-felarch-shuriken-rifle | commanding, one foot forward, blade raised, rifle aimed ahead |
+| cv-felarch-neuro-disruptor | lunging forward, blade swept back, disruptor aimed ahead |
+| cv-fate-dealer | kneeling sniper, one knee down, rifle aimed straight ahead |
+| cv-gunner-blaster | crouched forward, blaster aimed straight ahead |
+| cv-gunner-shredder | firing from the hip while advancing, torso twisted |
+| cv-heavy-gunner-shuriken-cannon | braced with a wide stance, leaning back into the recoil, firing |
+| cv-heavy-gunner-wraithcannon | braced with a wide stance, cannon levelled, a pale glow at the muzzle |
+| cv-kurnathi | mid-leap, both blades slashing in a cross, coat flaring |
+| cv-kurnite-hunter | mid-stride beside the hound, blade held low, pistol aimed ahead |
+| cv-shade-runner | mid-leap, thrown blades flying, body twisted in the air |
+| cv-soul-weaver | casting, one hand raised with glowing wisps, other hand holding the blade low |
+| cv-starstorm-duellist | dashing sideways, both pistols firing in different directions, coat flaring |
+| cv-warrior-pistol-power-weapon | charging forward, blade swung back, pistol aimed ahead |
+| cv-warrior-rifle-fists | advancing, rifle shouldered and aimed straight ahead, one foot forward |
+| cv-way-seeker | right hand thrust forward unleashing a crackle of blue lightning, staff held to the side |
+
+### Warpcoven v2 (21 bodies, prompts in `wc-prompts-gemini.json`)
+
+| Slug | Pose |
+|---|---|
+| wc-sorcerer-destiny-inferno-pistol | walking forward, staff raised, shards circling |
+| wc-sorcerer-destiny-khopesh | walking forward, staff raised, shards circling |
+| wc-sorcerer-destiny-warpflame-pistol | walking forward, staff raised, shards circling |
+| wc-sorcerer-tempyrion-inferno-pistol | striding forward, staff swept to the side, light rippling |
+| wc-sorcerer-tempyrion-khopesh | striding forward, staff swept to the side, light rippling |
+| wc-sorcerer-tempyrion-warpflame-pistol | striding forward, staff swept to the side, light rippling |
+| wc-sorcerer-warpfire-inferno-pistol | advancing, free hand clenched, flames licking up the sleeve |
+| wc-sorcerer-warpfire-khopesh | advancing, free hand clenched, flames licking up the sleeve |
+| wc-sorcerer-warpfire-warpflame-pistol | advancing, free hand clenched, flames licking up the sleeve |
+| wc-rubric-marine-gunner-warpflamer | firing a jet of magenta flame ahead from the hip, stiff upright posture |
+| wc-rubric-marine-gunner-soulreaper-cannon | braced with a wide stance, cannon levelled and firing |
+| wc-rubric-marine-icon-bearer | marching forward, the icon raised, boltgun aimed ahead |
+| wc-rubric-marine-warrior | marching forward with a stiff upright posture, boltgun shouldered and firing |
+| wc-rubric-marine-warrior-b | standing with a wide stance, boltgun aimed with deliberate calm |
+| wc-tzaangor-champion-greataxe | charging furiously, greataxe swung back over the shoulder |
+| wc-tzaangor-champion-greatblade | mid-leap, greatblade slashing down from above |
+| wc-tzaangor-horn-bearer | blowing the horn with the head thrown back, dagger held out |
+| wc-tzaangor-icon-bearer | striding forward, banner pole raised, dagger ready |
+| wc-tzaangor-warrior-blades | charging, both blades crossed and swinging |
+| wc-tzaangor-warrior-blade-shield | advancing behind the shield, blade drawn back |
+| wc-tzaangor-warrior-autopistol-chainsword | charging, chainsword raised, autopistol aimed ahead |
+
+### Farstalker Kinband v2 (15 bodies, prompts in `fk-prompts-gemini.json`)
+
+| Slug | Pose |
+|---|---|
+| fk-kill-broker-kroot-rifle | commanding, one hand pointing at the target with the blade, rifle aimed ahead |
+| fk-kill-broker-pulse-weapon | striding forward, carbine aimed ahead, blade held out to the side |
+| fk-bow-hunter | kneeling on one knee, drawing the bow, aimed straight ahead |
+| fk-cold-blood | advancing steadily, rifle shouldered and firing, head level and calm |
+| fk-cut-skin | mid-leap, both blades slashing in a cross |
+| fk-hound | mid-run, jaws open, low and fast |
+| fk-hound-b | pouncing, front legs reaching, jaws wide |
+| fk-long-sight | kneeling sniper, one knee down, rifle aimed straight ahead |
+| fk-pistolier | dashing sideways, both pistols firing, one forward and one to the side |
+| fk-stalker | sneaking low, scattergun aimed ahead, blade held back |
+| fk-tracker | crouched, left hand pointing ahead with the device, rifle aimed low |
+| fk-heavy-gunner-dvorgite-skinner | braced with a wide stance, leaning into the recoil, firing |
+| fk-heavy-gunner-londaxi-tribalest | kneeling braced on one knee, cannon aimed straight ahead |
+| fk-warrior-kroot-rifle | advancing, rifle shouldered and aimed straight ahead, one foot forward |
+| fk-warrior-kroot-scattergun | sprinting forward, scattergun held across the chest |
+
+### Imperial Navy Breachers v2 (18 bodies, prompts in `nb-prompts-gemini.json`)
+
+| Slug | Pose |
+|---|---|
+| nb-sergeant-at-arms-shotgun-hatchet | commanding, weight forward, hatchet pointing ahead, shotgun raised |
+| nb-sergeant-at-arms-bolt-pistol-chainsword | charging, chainsword swung back, pistol aimed ahead |
+| nb-sergeant-at-arms-bolt-pistol-power-weapon | lunging forward with the sword thrust ahead, pistol aimed over it |
+| nb-sergeant-at-arms-autopistol-chainsword | striding forward, chainsword raised high, pistol aimed ahead |
+| nb-sergeant-at-arms-autopistol-power-weapon | mid-stride, sword swung wide, pistol aimed ahead |
+| nb-armsman | advancing, shotgun shouldered and aimed straight ahead, one foot forward |
+| nb-armsman-b | kicking forward into a charge, hatchet raised, shotgun aimed |
+| nb-axejack | mid-leap, axe swung down from overhead |
+| nb-cat-unit | mid-stride, head up and scanning ahead, one paw raised |
+| nb-endurant | advancing behind the shield, shoulder forward, shotgun aimed over the shield rim |
+| nb-gheistskull | tilted forward and speeding ahead, lenses glowing |
+| nb-grenadier | mid-throw, left arm swinging forward, body twisted |
+| nb-gunner-las-volley | braced with a wide stance, leaning back into the recoil, firing |
+| nb-gunner-meltagun | crouched forward on one foot, gun aimed straight ahead |
+| nb-gunner-plasma-gun | advancing, gun shouldered and firing, one foot forward |
+| nb-hatchcutter | lunging forward, chainfist swung up in an arc, sparks flying |
+| nb-surveyor | standing with weight forward, left arm pointing ahead with the scanner, shotgun held low |
+| nb-void-jammer | standing braced, left arm raised pressing the button, shotgun held low |

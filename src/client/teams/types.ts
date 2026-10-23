@@ -19,4 +19,12 @@ export interface TeamPresentation {
   standIns?: string[]
   /** keyword and rule-term entries for this team (game/glossary.ts merges them over the generic ones) */
   glossary?: GlossaryEntry[]
+  /**
+   * M9 batch C: v2 bodies hold their weapons, so a datacard whose loadouts look different gets one body per loadout:
+   * datacard id -> bodies in order, the first whose `weapons` are all carried wins (else the datacard's
+   * figure.archetype). Archetypes follow the concept slugs `<prefix><operative>[-<loadout>]`.
+   */
+  loadoutBodies?: Record<string, { weapons: string[]; archetype: string }[]>
+  /** M9 batch C: display names of the team's resource pools (engine pools.ts kind -> label, e.g. `nv.faith` -> Faith) */
+  pools?: Record<string, string>
 }

@@ -2,6 +2,7 @@
 // only (no Games Workshop text). Unknown decision kinds and label keys degrade to a readable generic form,
 // never a crash, so decision kinds added by the engine later still render as an option list.
 import { tokenDef } from '../ui/tokenDefs'
+import { poolLabel } from '../teams'
 import type { DecisionKind, DecisionOption, GameEvent, GameState, PendingDecision, Rejection, Seat } from '@/engine'
 
 export const SEAT_NAME: Record<Seat, string> = { A: 'Seat A', B: 'Seat B' }
@@ -151,6 +152,8 @@ export function optionLabel(opt: DecisionOption, state: GameState | null, pendin
   switch (opt.action.type) {
     case 'firefight.activate': {
       const who = opName(state, String(payload.operativeId ?? opt.id))
+      // M9 batch C: a team's alternative to counteracting (Farstalker order change)
+      if (payload.alternative !== undefined) return `Instead of counteracting: ${who}${typeof data.option === 'string' ? ` (${humanize(data.option)})` : ''}`
       return payload.counteract ? `Counteract with ${who}` : `Activate ${who}`
     }
     case 'setup.dropZone':
@@ -419,6 +422,12 @@ export function describeEvent(ev: GameEvent, state: GameState | null): string | 
       return `${who(ev.operativeId)} is set aside, out of the killzone.`
     case 'OperativePickChanged':
       return `${who(ev.operativeId)} is now ${humanize(ev.to.toLowerCase())}${ev.from ? ` (was ${humanize(ev.from.toLowerCase())})` : ''}.`
+    case 'PoolChanged': {
+      if (ev.delta === 0) return null
+      const name = poolLabel(ev.kind)
+      const side = ev.seat ? SEAT_NAME[ev.seat] : 'A seat'
+      return ev.delta > 0 ? `${side} gains ${ev.delta} ${name} (${humanize(ev.reason)}), now ${ev.value}.` : `${side} spends ${-ev.delta} ${name} (${humanize(ev.reason)}), ${ev.value} left.`
+    }
     case 'OperativeReturned':
       return `${who(ev.operativeId)} ${ev.kind === 'emerge' ? 'emerges from hiding' : ev.kind === 'reanimated' ? 'is reanimated' : 'returns to the killzone'}.`
     case 'ActivationChained':

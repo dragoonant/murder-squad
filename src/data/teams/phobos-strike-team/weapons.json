@@ -1,0 +1,37 @@
+[
+  {
+    "id": "ph.w.marksman-bolt-carbine",
+    "name": "Marksman bolt carbine",
+    "team": "phobos-strike-team",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "Marksman bolt carbine carried by the Infiltrator Sergeant.",
+    "source": "team-phobos-strike-team.pdf (Nov '25); docs/spec/13-teams.md section 13.3"
+  },
+  {
+    "id": "ph.w.fists",
+    "name": "Fists",
+    "team": "phobos-strike-team",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [],
+    "text": "Fists carried by the Infiltrator Sergeant.",
+    "source": "team-phobos-strike-team.pdf (Nov '25); docs/spec/13-teams.md section 13.3"
+  }
+]

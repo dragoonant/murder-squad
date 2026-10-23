@@ -1,0 +1,91 @@
+[
+  {
+    "id": "cv.w.neuro-disruptor",
+    "name": "Neuro disruptor",
+    "team": "corsair-voidscarred",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.piercing",
+        "x": 1
+      },
+      {
+        "rule": "core.wr.stun"
+      }
+    ],
+    "text": "Neuro disruptor carried by the Voidscarred Felarch.",
+    "source": "team-corsair-voidscarred.pdf (Jan '26); docs/spec/13-teams.md section 14.3"
+  },
+  {
+    "id": "cv.w.shuriken-pistol",
+    "name": "Shuriken pistol",
+    "team": "corsair-voidscarred",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.range",
+        "inches": 8
+      },
+      {
+        "rule": "core.wr.rending"
+      }
+    ],
+    "text": "Shuriken pistol carried by the Voidscarred Felarch.",
+    "source": "team-corsair-voidscarred.pdf (Jan '26); docs/spec/13-teams.md section 14.3"
+  },
+  {
+    "id": "cv.w.shuriken-rifle",
+    "name": "Shuriken rifle",
+    "team": "corsair-voidscarred",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [
+      {
+        "rule": "core.wr.rending"
+      }
+    ],
+    "text": "Shuriken rifle carried by the Voidscarred Felarch.",
+    "source": "team-corsair-voidscarred.pdf (Jan '26); docs/spec/13-teams.md section 14.3"
+  },
+  {
+    "id": "cv.w.power-weapon",
+    "name": "Power weapon",
+    "team": "corsair-voidscarred",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 6
+    },
+    "rules": [
+      {
+        "rule": "core.wr.lethal",
+        "target": "5+"
+      }
+    ],
+    "text": "Power weapon carried by the Voidscarred Felarch.",
+    "source": "team-corsair-voidscarred.pdf (Jan '26); docs/spec/13-teams.md section 14.3"
+  }
+]

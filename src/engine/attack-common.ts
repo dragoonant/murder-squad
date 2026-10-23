@@ -9,7 +9,8 @@ import { getWindowOpener, runHook } from './hooks'
 import type { OptionInput, Ctx } from './registry'
 import { enemiesOf, getOp, hasInjuredPenalty, isInjured, otherSeat } from './state'
 import { terrainOf } from './terrain'
-import { providerAny, providerRerollsBanned } from './team-rules'
+import { providerAny, providerRerollsBanned, providerWeaponForbidden } from './team-rules'
+import { isPsychicWeapon, psychicAllowed } from './psychic'
 import type {
   Action,
   AttackDie,
@@ -265,6 +266,12 @@ export function weaponUnusable(
   const rules = parseRules(w.rules)
   if (rules.limited !== null && (op.usedLimited[weaponId] ?? 0) >= rules.limited) {
     return { code: 'E_ACTION_RESTRICTED', reason: `${w.name} has been used ${rules.limited} time(s) already (Limited)` }
+  }
+  // M9 batch C: team rules that bar a weapon (Concealed Position, Detonate without its marker) and PSYCHIC blocks (Null Rod)
+  const barred = providerWeaponForbidden(state, op, weaponId, kind)
+  if (barred) return { code: 'E_ACTION_RESTRICTED', reason: barred }
+  if (w.type === 'ranged' && isPsychicWeapon(state, weaponId) && !psychicAllowed(state, op)) {
+    return { code: 'E_ACTION_RESTRICTED', reason: `${w.name} is PSYCHIC and cannot be used here` }
   }
   if (kind === 'shoot') {
     if (op.order === 'conceal' && !rules.silent && !providerAny(state, op, 'shootUnderConceal')) {
@@ -994,11 +1001,12 @@ export function attackOf(ctx: Ctx): AttackState {
 /** Inflict damage; `onDamageInflicted` hooks may reduce it. Returns the damage actually dealt. */
 export function inflict(
   ctx: Ctx,
-  o: { targetId: string; attackerId: string; weaponId: string | null; amount: number; source: string },
+  o: { targetId: string; attackerId: string; weaponId: string | null; amount: number; source: string; splash?: boolean },
 ): number {
   const s = ctx.state
   const target = getOp(s, o.targetId)
-  const data = { source: o.source, attackerId: o.attackerId, weaponId: o.weaponId, amount: o.amount }
+  // M9 batch C: `splash` marks x" Devastating damage on an operative that is not the target of the sequence (Void Armour)
+  const data = { source: o.source, attackerId: o.attackerId, weaponId: o.weaponId, amount: o.amount, ...(o.splash ? { splash: true } : {}) }
   runHook('onDamageInflicted', {
     seat: target.seat,
     state: s,

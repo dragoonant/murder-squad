@@ -6,6 +6,7 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { Html, OrbitControls } from '@react-three/drei'
 import { defaultLoadout, expandWeaponRef, type DatacardData } from '@/data'
 import { chosenWeaponIds, dataBundle } from '../game/adapter'
+import { archetypeFor } from '../teams'
 import { teamList } from '../game/defaults'
 import { colors, fontStack } from '../ui/theme'
 import { glbStats } from './glbLoader'
@@ -211,13 +212,15 @@ export function Gallery() {
           const x = (col - (COLS - 1) / 2) * GAP_X
           const z = (row - (rows - 1) / 2) * GAP_Z
           const weaponIds = [...new Set([...card.weapons.fixed.flatMap((r) => expandWeaponRef(r, b.weaponGroups)), ...chosenWeaponIds(card, defaultLoadout(card))])]
-          const body = manifest.bodies[card.figure.archetype]
-          const glb = hasGlbBody(card.figure.archetype, manifest)
+          // M9 batch C: the body for this loadout where the team lists one per loadout
+          const arch = archetypeFor(card.id, card.figure.archetype, weaponIds, b.weaponGroups)
+          const body = manifest.bodies[arch]
+          const glb = hasGlbBody(arch, manifest)
           return (
             <group key={card.id} position={[x, 0, z]}>
               <Figure
                 spec={{
-                  archetype: card.figure.archetype,
+                  archetype: arch,
                   height: Math.round(((card.base / 25.4) * 1.15 + 0.1) * 1000) / 1000,
                   ...baseOfCard(card),
                   major: team.paint.major,
@@ -229,7 +232,7 @@ export function Gallery() {
               {sockets && body?.sockets && <Sockets sockets={body.sockets} />}
               <Html position={[0, 0, 0.75]} center distanceFactor={9} style={{ pointerEvents: 'none' }}>
                 <div data-testid={`gallery-${card.id}`} style={{ font: '600 11px system-ui', color: '#fff', textAlign: 'center', whiteSpace: 'nowrap', textShadow: '0 0 3px #000' }}>
-                  {card.figure.archetype}
+                  {arch}
                   <div style={{ color: glb ? '#6dff9a' : '#ffcf5a', fontWeight: 400 }}>{glb ? 'GLB body' : 'stand-in'}</div>
                 </div>
               </Html>

@@ -1,0 +1,45 @@
+{
+  "id": "kasrkin",
+  "name": "Kasrkin",
+  "factionKeyword": "KASRKIN",
+  "archetypes": [
+    "seek-and-destroy",
+    "security"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "ks.sergeant"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "ks.sergeant"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.3,
+      "s": 0.2,
+      "l": 0.3
+    },
+    "minor": {
+      "h": 0.08,
+      "s": 0.25,
+      "l": 0.55
+    }
+  },
+  "text": "Elite storm troopers from a fallen fortress world: drilled marksmen who pick a battlefield skill each turning point and pour hot-shot fire on anything that moves.",
+  "source": "team-kasrkin.pdf (Apr '26); docs/spec/13-teams.md section 11"
+}

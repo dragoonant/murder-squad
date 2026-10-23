@@ -168,7 +168,23 @@ export const ATTACK_HOOKS = [
   'beforeIncapacitated',
   // M9 batch B: a side has just been rolled, before any re-roll (Omen: the opponent must re-roll 6s); see DiceRolledData
   'diceRolled',
+  // M9 batch C: a fighter has just blocked in the Resolve step (Riposte: a crit block also deals Critical Dmg); see AfterBlockData
+  'afterBlock',
 ] as const
+
+/**
+ * afterBlock (M9 batch C): `operativeId` has just blocked with one of its dice in a fight (strike-or-block step);
+ * `targetId` is its opponent. Runs with `engine`: a handler may inflict damage (attack-common.inflict with a
+ * `strike-*` source, so per-die reductions apply) but must not raise decisions. When the opponent is incapacitated
+ * the fight ends as after a strike.
+ */
+export interface AfterBlockData {
+  /** the blocking die */
+  die: DieKind
+  /** the dice it cancelled (one, or two with a double block) */
+  against: DieKind[]
+  weaponId: string | null
+}
 
 /**
  * diceRolled (M9 batch B): `operativeId` has just rolled `dice` (shoot attack, shoot defence, or one fighter's dice),
@@ -290,6 +306,11 @@ export interface OnDamageInflictedData {
   attackerId: string
   weaponId: string | null
   amount: number
+  /**
+   * M9 batch C: x" Devastating damage on an operative other than the target of the sequence (Void Armour, Blast
+   * Padding, Diuturnal Mantles ignore it); absent otherwise
+   */
+  splash?: boolean
 }
 
 /** beforeStrike: a fight die is about to strike. Mutate `amount` or set `cancel` to waste the strike. */

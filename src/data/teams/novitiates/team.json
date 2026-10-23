@@ -1,0 +1,45 @@
+{
+  "id": "novitiates",
+  "name": "Novitiates",
+  "factionKeyword": "NOVITIATE",
+  "archetypes": [
+    "security",
+    "recon"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "nv.superior"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "nv.superior"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.0,
+      "s": 0.6,
+      "l": 0.3
+    },
+    "minor": {
+      "h": 0.0,
+      "s": 0.0,
+      "l": 0.85
+    }
+  },
+  "text": "Young sisters of battle in training: zealots whose faith, gathered as points through the battle, bends dice to their will.",
+  "source": "team-novitiates.pdf (Aug '26); docs/spec/13-teams.md section 12"
+}

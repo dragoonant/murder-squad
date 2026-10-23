@@ -1,0 +1,45 @@
+{
+  "id": "imperial-navy-breachers",
+  "name": "Imperial Navy Breachers",
+  "factionKeyword": "IMPERIAL NAVY BREACHER",
+  "archetypes": [
+    "seek-and-destroy",
+    "security"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "nb.sergeant-at-arms"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "nb.sergeant-at-arms"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.62,
+      "s": 0.35,
+      "l": 0.25
+    },
+    "minor": {
+      "h": 0.12,
+      "s": 0.6,
+      "l": 0.5
+    }
+  },
+  "text": "Voidship armsmen with shotguns, shields and servo-gadgets, trained to storm a position as a drilled pair and hold it.",
+  "source": "team-imperial-navy-breachers.pdf (Aug '26); docs/spec/13-teams.md section 17"
+}

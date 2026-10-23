@@ -37,7 +37,7 @@ import {
   weaponUnusable,
   type TargetInfo,
 } from './attack-common'
-import { providerAny, providerViewpoints } from './team-rules'
+import { providerAny, providerExtraTargets, providerFixedTargets, providerViewpoints, type FixedTargets } from './team-rules'
 import { enemiesInControlRange } from './measure'
 import { cancelAction, finishAction } from './firefight'
 import { runHook, type ChoiceRequest } from './hooks'
@@ -77,8 +77,24 @@ export function usableRangedWeapons(state: GameState, op: Operative, performed: 
 export function shootableWeapons(state: GameState, op: Operative, performed: string[], ctx?: Ctx): { weaponId: string; targets: TargetInfo[] }[] {
   const out: { weaponId: string; targets: TargetInfo[] }[] = []
   for (const w of usableRangedWeapons(state, op, performed)) {
-    const targets = validTargets(state, op, w, ctx)
+    const targets = weaponTargets(state, op, w, ctx)
     if (targets.length > 0) out.push({ weaponId: w, targets })
+  }
+  return out
+}
+
+/**
+ * M9 batch C: the targets a weapon would shoot: its own fixed targets when a team rule names them (Detonate), else the
+ * valid targets. Fixed targets need no visibility; their statuses are forced when the sequence starts.
+ */
+export function weaponTargets(state: GameState, op: Operative, weaponId: string, ctx?: Ctx, viewpoint?: Operative): TargetInfo[] {
+  const fixed = providerFixedTargets(state, op, weaponId)
+  if (!fixed) return validTargets(state, op, weaponId, ctx, viewpoint)
+  const out: TargetInfo[] = []
+  for (const id of fixed.targets) {
+    const t = state.operatives[id]
+    if (!t || t.status !== 'active' || t.wounds <= 0) continue
+    out.push(targetInfo(state, op, t, ruleSetFor(state, op, weaponId, 'shoot', id, ctx)))
   }
   return out
 }
@@ -92,7 +108,7 @@ export function shootAvailability(state: GameState, op: Operative, activation: A
     return { code: 'E_ACTION_RESTRICTED', reason: anyRanged ? 'no ranged weapon can be used now' : 'the operative has no ranged weapon' }
   }
   for (const w of usable) {
-    if (validTargets(state, op, w).length > 0) return null
+    if (weaponTargets(state, op, w).length > 0) return null
   }
   // a viewpoint a team rule offers (team-rules shootViewpoints: Magnify proxies) counts too, as in raiseWeapon
   for (const w of usable) {
@@ -256,6 +272,12 @@ function raiseTargets(ctx: Ctx): void {
   const a = attackOf(ctx)
   const op = getOp(s, a.operativeId)
   const weaponId = a.weaponId!
+  // M9 batch C: a weapon that picks its own targets (Detonate) raises no target decision
+  const fixed = providerFixedTargets(s, op, weaponId)
+  if (fixed) {
+    chooseFixed(ctx, fixed)
+    return
+  }
   const targets = validTargets(s, op, weaponId, ctx, viewpointOf(s, a))
   if (targets.length === 0) {
     abort(ctx)
@@ -278,6 +300,31 @@ function raiseTargets(ctx: Ctx): void {
   })
 }
 
+/** M9 batch C: shoot the targets a team rule fixed for the weapon (primary first, Blast secondaries around it). */
+function chooseFixed(ctx: Ctx, fixed: FixedTargets): void {
+  const s = ctx.state
+  const a = attackOf(ctx)
+  const op = getOp(s, a.operativeId)
+  const ids = fixed.targets.filter((id) => {
+    const t = s.operatives[id]
+    return !!t && t.status === 'active' && t.wounds > 0
+  })
+  if (ids.length === 0) {
+    abort(ctx)
+    return
+  }
+  a.targets = ids.slice()
+  a.index = 0
+  a.inherit = null
+  a.candidates = []
+  a.fixed = { ...(fixed.noCover ? { noCover: true } : {}), ...(fixed.noObscured ? { noObscured: true } : {}) }
+  const rules = ruleSetFor(s, op, a.weaponId!, 'shoot', ids[0], ctx)
+  if (fixed.blast !== false && rules.blast !== null) {
+    for (const id of blastSecondaries(s, op, getOp(s, ids[0]!), rules.blast)) if (!a.targets.includes(id)) a.targets.push(id)
+  }
+  startTarget(ctx)
+}
+
 function chooseTarget(ctx: Ctx, targetId: string): void {
   const s = ctx.state
   const a = attackOf(ctx)
@@ -289,6 +336,15 @@ function chooseTarget(ctx: Ctx, targetId: string): void {
   a.inherit = null
   if (rules.blast !== null) a.targets.push(...blastSecondaries(s, op, target, rules.blast))
   a.candidates = rules.torrent !== null ? torrentCandidates(s, op, a.weaponId!, targetId, rules.torrent, ctx, viewpointOf(s, a)) : []
+  // M9 batch C: extra primary targets a team rule allows (Salvo), chosen like Torrent targets, up to its maximum
+  delete a.extraMax
+  if (a.candidates.length === 0) {
+    const extra = providerExtraTargets(s, op, a.weaponId!, targetId)
+    if (extra) {
+      a.candidates = extra.candidates.slice()
+      a.extraMax = extra.max
+    }
+  }
   if (a.candidates.length > 0) {
     raiseSecondary(ctx)
     return
@@ -359,6 +415,12 @@ function startTarget(ctx: Ctx): void {
   const target = getOp(s, a.targets[a.index]!)
   const rules = ruleSetFor(s, op, a.weaponId!, 'shoot', target.id, ctx)
   const info = targetInfo(s, op, target, rules, viewpointOf(s, a))
+  // M9 batch C: fixed targets (Detonate) may be barred from cover and obscuring outright
+  if (a.fixed) {
+    const noCover = a.fixed.noCover === true
+    beginRoll(ctx, noCover ? false : info.inCover, a.fixed.noObscured ? false : info.obscured, noCover ? false : info.improvedCover)
+    return
+  }
   if (a.index > 0 && a.inherit) {
     beginRoll(ctx, a.inherit.cover, a.inherit.obscured, a.inherit.improvedCover)
     return
@@ -598,7 +660,7 @@ STEPS.retain = (ctx) => {
     }
     for (const v of victims) {
       for (let i = 0; i < c.crit; i++) {
-        inflict(ctx, { targetId: v, attackerId: op.id, weaponId: weapon.id, amount: rules.devastating.x, source: 'devastating' })
+        inflict(ctx, { targetId: v, attackerId: op.id, weaponId: weapon.id, amount: rules.devastating.x, source: 'devastating', ...(v !== target.id ? { splash: true } : {}) })
       }
     }
   }
@@ -840,7 +902,9 @@ function handleTarget(_state: GameState, action: Action): Handled {
         const a = attackOf(ctx)
         a.targets.push(targetId)
         a.candidates = a.candidates.filter((c) => c !== targetId)
-        if (a.candidates.length > 0) raiseSecondary(ctx)
+        // M9 batch C: Salvo-style extra targets stop at their maximum
+        const full = a.extraMax !== undefined && a.targets.length - 1 >= a.extraMax
+        if (a.candidates.length > 0 && !full) raiseSecondary(ctx)
         else startTarget(ctx)
       },
     }

@@ -35,14 +35,14 @@ import {
 } from './abilities'
 import { smokeActivation, smokeTurningPointEnd } from './core-hooks'
 import { expireEffects, removeEffects } from './effects'
-import { providerAny, providerCanActivate, providerChain, providerCostDelta, providerGate, providerReactions, type ReactionOffer } from './team-rules'
+import { providerActivationBarred, providerAny, providerCanActivate, providerChain, providerCostDelta, providerCounteractAlternatives, providerGate, providerReactions, type ReactionOffer } from './team-rules'
 import { getFrameResume, registerFrameResume, runHook, type ActionDeclaredData } from './hooks'
 import { tokensOnActivationEnd, tokensOnActivationStart, tokensOnTurningPointEnd } from './tokens'
 import { PICK_UP, PLACE } from './markers'
 import { scoreBattleEnd, scoreTurningPointEnd } from './missions'
 import { openPloyWindow } from './ploys'
 import { handleInterrupt, offerInterrupt } from './guard'
-import type { PloyWindowInfo } from './code-hooks'
+import { getCodeHook, type PloyWindowInfo } from './code-hooks'
 import type { Order, TimingWindowId } from './types'
 
 export interface ActionDef {
@@ -187,16 +187,24 @@ export function counteractCandidates(state: GameState, seat: Seat): Operative[] 
   return seatOps(state, seat).filter((o) => !o.ready && canCounteractWithOrder(state, o) && !o.flags.counteractedThisTP)
 }
 
+/**
+ * M9 batch C: the seat's ready operatives that may be activated at all (a team rule may bar one: C.A.T. Unit). A barred
+ * operative stays ready but does not keep the turning point going and counts as expended for counteracting.
+ */
+export function activatableOps(state: GameState, seat: Seat): Operative[] {
+  return readyOps(state, seat).filter((o) => !providerActivationBarred(state, o))
+}
+
 function advance(ctx: Ctx): void {
   const s = ctx.state
   // M9 prep: a chained activation is owed (Group Activation): the same seat activates one of those next
   const chain = s.firefight.chain
   if (chain) {
-    let owed = readyOps(s, chain.seat).filter((o) => chain.ids.includes(o.id))
+    let owed = activatableOps(s, chain.seat).filter((o) => chain.ids.includes(o.id))
     // M9 batch B: an owed operative a rule blocks (System Jam) is skipped while an unblocked ready one exists
     const unblocked = owed.filter((o) => providerCanActivate(s, o))
     if (unblocked.length > 0) owed = unblocked
-    else if (readyOps(s, chain.seat).some((o) => providerCanActivate(s, o))) owed = []
+    else if (activatableOps(s, chain.seat).some((o) => providerCanActivate(s, o))) owed = []
     if (owed.length > 0) {
       s.firefight.turn = chain.seat
       raiseActivate(ctx, chain.seat, owed, [])
@@ -207,13 +215,13 @@ function advance(ctx: Ctx): void {
   for (let i = 0; i < 4; i++) {
     const seat = s.firefight.turn
     const gated = s.firefight.gated ?? []
-    const all = readyOps(s, seat)
+    const all = activatableOps(s, seat)
     // operatives a rule stopped from activating this time (Vision of Madness), unless nothing else is ready
     let mine = all.filter((o) => !gated.includes(o.id)).length > 0 ? all.filter((o) => !gated.includes(o.id)) : all
     // M9 batch B: operatives a rule blocks while another is ready (System Jam); never all of them
     const free = mine.filter((o) => providerCanActivate(s, o))
     if (free.length > 0) mine = free
-    const theirs = readyOps(s, otherSeat(seat))
+    const theirs = activatableOps(s, otherSeat(seat))
     if (mine.length === 0 && theirs.length === 0) {
       endTurningPoint(ctx)
       return
@@ -234,15 +242,17 @@ function advance(ctx: Ctx): void {
       return
     }
     const eligible = counteractCandidates(s, seat)
-    if (eligible.length > 0) {
-      raiseActivate(ctx, seat, [], eligible)
+    // M9 batch C: things a team may do instead of counteracting (Farstalker: change one operative's order)
+    const alternatives = providerCounteractAlternatives(s, seat)
+    if (eligible.length > 0 || alternatives.length > 0) {
+      raiseActivate(ctx, seat, [], eligible, alternatives)
       return
     }
     s.firefight.turn = otherSeat(seat)
   }
 }
 
-function raiseActivate(ctx: Ctx, seat: Seat, ready: Operative[], counter: Operative[]): void {
+function raiseActivate(ctx: Ctx, seat: Seat, ready: Operative[], counter: Operative[], alternatives: ReactionOffer[] = []): void {
   const options: OptionInput[] = [
     ...ready.map((o) => ({
       id: o.id,
@@ -256,12 +266,19 @@ function raiseActivate(ctx: Ctx, seat: Seat, ready: Operative[], counter: Operat
       type: 'firefight.activate' as const,
       payload: { operativeId: o.id, counteract: true },
     })),
+    ...alternatives.map((r, i) => ({
+      id: `alt:${i}`,
+      labelKey: r.labelKey,
+      type: 'firefight.activate' as const,
+      payload: { operativeId: r.operativeId, alternative: i },
+      data: { hook: r.hook, option: r.option, ...(r.data ?? {}) },
+    })),
   ]
   ctx.raise({
     kind: 'firefight.activate',
     seat,
     window: 'firefight.activationEnded',
-    context: { ready: ready.map((o) => o.id), counteract: counter.map((o) => o.id) },
+    context: { ready: ready.map((o) => o.id), counteract: counter.map((o) => o.id), ...(alternatives.length > 0 ? { alternatives: alternatives.length } : {}) },
     options,
     // R-3.2: a player with a ready operative must activate it; otherwise they may skip.
     canPass: ready.length === 0,
@@ -996,6 +1013,15 @@ export function reactionDone(ctx: Ctx): void {
 
 registerFrameResume(REACTION_DONE, (ctx) => reactionDone(ctx))
 
+/**
+ * M9 batch C: a counteract alternative (counteractAlternatives) is finished; the turn passes to the other seat as after
+ * a counteraction. A hook that raised a follow-up decision calls this once that is answered.
+ */
+export function counteractAlternativeDone(ctx: Ctx, seat: Seat): void {
+  ctx.state.firefight.turn = otherSeat(seat)
+  advance(ctx)
+}
+
 // ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
@@ -1012,6 +1038,23 @@ function handleActivate(state: GameState, action: Action): Handled {
   }
   if (action.type !== 'firefight.activate') return reject('E_WRONG_DECISION', 'expected an activation')
   const { operativeId, counteract } = action.payload
+  // M9 batch C: a team's alternative to counteracting (counteractAlternatives); the turn then passes as after one
+  const alt = (action.payload as { alternative?: unknown }).alternative
+  if (alt !== undefined) {
+    const offers = activatableOps(state, action.seat).length === 0 ? providerCounteractAlternatives(state, action.seat) : []
+    const offer = typeof alt === 'number' ? offers[alt] : undefined
+    const hook = offer ? getCodeHook(offer.hook) : undefined
+    if (!offer || !hook?.choice) return reject('E_NOT_AN_OPTION', 'no such alternative to counteracting')
+    return {
+      run(ctx) {
+        const s = ctx.state
+        if (s.firefight.beforeActivationFor) s.firefight.beforeActivationFor = null
+        hook.choice!(ctx, getOp(s, offer.operativeId), offer.option, { alternative: true, ...(offer.data ?? {}) })
+        if (s.pending) return
+        counteractAlternativeDone(ctx, action.seat)
+      },
+    }
+  }
   const op = state.operatives[operativeId]
   const offboard = op?.status === 'reserve' && op.offboard !== undefined && counteract !== true
   if (!op || op.seat !== action.seat || (op.status !== 'active' && !offboard)) {
@@ -1025,7 +1068,7 @@ function handleActivate(state: GameState, action: Action): Handled {
     if (op.ready) return reject('E_ACTION_RESTRICTED', 'only an expended operative can counteract')
     if (!canCounteractWithOrder(state, op)) return reject('E_ACTION_RESTRICTED', 'only an Engage operative can counteract')
     if (op.flags.counteractedThisTP) return reject('E_ACTION_RESTRICTED', 'an operative counteracts once per turning point')
-    if (readyOps(state, action.seat).length > 0) {
+    if (activatableOps(state, action.seat).length > 0) {
       return reject('E_ACTION_RESTRICTED', 'counteract needs every friendly operative expended')
     }
     return {
@@ -1053,6 +1096,7 @@ function handleActivate(state: GameState, action: Action): Handled {
     }
   }
   if (!op.ready) return reject('E_ACTION_RESTRICTED', 'that operative is expended')
+  if (providerActivationBarred(state, op)) return reject('E_ACTION_RESTRICTED', 'a rule stops that operative being activated now')
   return {
     run(ctx) {
       const s = ctx.state

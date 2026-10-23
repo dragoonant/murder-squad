@@ -18,17 +18,34 @@
       "properties": {
         "caps": {
           "type": "array",
-          "description": "M9 batch B: caps counted over every slot: at most `max` operatives that have `keyword` or are one of `from` (at most five SICARIAN operatives, the leader included).",
+          "description": "M9 batch B: caps counted over every slot: at most `max` operatives that have `keyword` or are one of `from` (at most five SICARIAN operatives, the leader included). M9 batch C: or at least `min` of them (at least one SORCERER).",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["max"],
-            "anyOf": [{ "required": ["keyword"] }, { "required": ["from"] }],
+            "allOf": [
+              { "anyOf": [{ "required": ["keyword"] }, { "required": ["from"] }] },
+              { "anyOf": [{ "required": ["max"] }, { "required": ["min"] }] }
+            ],
             "properties": {
               "label": { "type": "string", "minLength": 1 },
               "keyword": { "$ref": "common.schema.json#/$defs/Keyword" },
               "from": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Id" } },
-              "max": { "type": "integer", "minimum": 0 }
+              "max": { "type": "integer", "minimum": 0 },
+              "min": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "requires": {
+          "type": "array",
+          "description": "M9 batch C: the roster may include `id` only if it also includes one of `needs` (a GHEISTSKULL needs a VOID-JAMMER, a C.A.T. UNIT a SURVEYOR).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "needs"],
+            "properties": {
+              "label": { "type": "string", "minLength": 1 },
+              "id": { "$ref": "common.schema.json#/$defs/Id" },
+              "needs": { "type": "array", "minItems": 1, "items": { "$ref": "common.schema.json#/$defs/Id" } }
             }
           }
         },
@@ -121,6 +138,9 @@
           "label": { "type": "string", "minLength": 1 },
           "keywords": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "$ref": "common.schema.json#/$defs/Keyword" } },
           "forKeyword": { "$ref": "common.schema.json#/$defs/Keyword", "description": "Only operatives with this keyword take the pick (default: every operative of the team)." },
+          "unique": { "type": "boolean", "description": "M9 batch C: no two operatives of the roster take the same pick (Boons of Tzeentch)." },
+          "distinctFrom": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/Slug" }, "description": "M9 batch C: other operativeChoices ids the same operative's pick must differ from (two different Custom weapon rules)." },
+          "keyword": { "type": "boolean", "description": "M9 batch C: false makes the pick a tag read by team code, not a keyword (keyword tests ignore it). Default true." },
           "exclude": {
             "type": "array",
             "description": "Keywords these datacards can never take (a BALEFIRE ACOLYTE is never KHORNE).",

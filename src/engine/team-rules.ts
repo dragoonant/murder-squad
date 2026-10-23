@@ -130,11 +130,11 @@ export interface TeamRuleProvider {
   /** extra weapons the operative may fight or retaliate with, e.g. a ranged profile used as melee (Point-Blank Fusillade) */
   extraFightWeapons?(state: GameState, op: Operative, retaliating: boolean): string[]
   /** once per fight sequence, before the first strike or block: who resolves first, owed resolutions, seats that cannot block */
-  fightResolveStart?(state: GameState, attack: AttackState): { first?: Seat; queue?: { seat: Seat; blockOnly?: boolean }[]; noBlock?: Seat[] } | null
+  fightResolveStart?(state: GameState, attack: AttackState): { first?: Seat; queue?: { seat: Seat; blockOnly?: boolean; strikeOnly?: boolean }[]; noBlock?: Seat[] } | null
   /** M9 batch B: how many unresolved enemy successes one block with die `die` of `seat` cancels (Tangle: 2); highest answer wins, default 1 */
   blockCapacity?(state: GameState, attack: AttackState, seat: Seat, die: number): number | null
   /** after `seat` struck or blocked: resolutions owed before the alternation continues (Assassinate's second strike) */
-  afterFightResolution?(state: GameState, attack: AttackState, seat: Seat, op: 'strike' | 'block'): { seat: Seat; blockOnly?: boolean }[] | null
+  afterFightResolution?(state: GameState, attack: AttackState, seat: Seat, op: 'strike' | 'block'): { seat: Seat; blockOnly?: boolean; strikeOnly?: boolean }[] | null
   /** friendly operatives the shooter may use as its viewpoint for this weapon (Magnify proxies); offered as weapon options */
   shootViewpoints?(state: GameState, shooter: Operative, weaponId: string): string[]
   /** extra Stealthy-style cover sources when the operative is shot (Cult Agent): retain one more cover save or one as a crit */
@@ -150,13 +150,80 @@ export interface TeamRuleProvider {
   /**
    * M9 batch B: grenades this operative carries on its own, apart from the team's picks and totals (Hearthkyn
    * Grenadier): weapon ids (frag, krak) and grenade action ability ids (smoke, stun) to uses per battle. The weapons
-   * are added at set-up; the actions still have to be offered (card, extraActions); grenadeSource then pays them
+   * are added at set-up; the actions still have to be offered (card, extraActions); grenadeSource then pays them.
+   * M9 batch C: `tpActions` are allowances per turning point shared by the whole seat, not counted against the team's
+   * picks (Kasrkin Adaptive Equipment: one Smoke and one Stun Grenade per TP for any TROOPER); source 'ownTp'
    */
-  ownGrenades?(state: GameState, op: Operative): { weapons?: Record<string, number>; actions?: Record<string, number> } | null
+  ownGrenades?(state: GameState, op: Operative): { weapons?: Record<string, number>; actions?: Record<string, number>; tpActions?: Record<string, number> } | null
   /** M9 batch B: the operative may FLY in this move action (Jump Pack): set up within its move horizontally, ignoring terrain between */
   canFly?(state: GameState, op: Operative, kind: string): boolean
   /** the operative never triggers this mine (Explosive Traps: friendly Wyrmblade operatives) */
   ignoresMine?(state: GameState, op: Operative, mine: Marker): boolean
+
+  // ---- M9 batch C ----------------------------------------------------------------------------
+  /**
+   * M9 batch C: a reason the operative cannot use this weapon now (Concealed Position after its first Shoot, Detonate
+   * with no Explosives marker, a weapon lent away by Psychic Cabal), or null. Read by attack-common.weaponUnusable, so
+   * Shoot and Fight options, availability and the AI all agree
+   */
+  weaponForbidden?(state: GameState, op: Operative, weaponId: string, kind: 'shoot' | 'fight'): string | null
+  /**
+   * M9 batch C: the operative's PSYCHIC actions, PSYCHIC ranged weapons and PSYCHIC additional rules do not work now
+   * (Novitiate Condemnor Null Rod within 6"). psychic.ts applies it to unique actions and ranged weapons; team files ask
+   * `psychicAllowed` before their own PSYCHIC rules
+   */
+  psychicBlocked?(state: GameState, op: Operative): boolean
+  /** M9 batch C: PSYCHIC actions cannot select the operative and never count it as within their distances (Null Rod) */
+  psychicImmune?(state: GameState, op: Operative): boolean
+  /**
+   * M9 batch C: the weapon chooses its own targets instead of a valid target (Detonate: every operative within 2" of
+   * the Explosives marker; the Gheistskull as the primary target). `targets[0]` is the primary; Blast secondaries are
+   * still added around it. The shooter needs no visibility; the listed flags force the statuses. Empty `targets`: the
+   * weapon cannot be selected
+   */
+  fixedTargets?(state: GameState, shooter: Operative, weaponId: string): FixedTargets | null
+  /**
+   * M9 batch C: after the primary target, up to `max` more primary targets the shooter may add, chosen from
+   * `candidates` (Salvo: a second valid target not within control range of the shooter's friends); each is shot as
+   * its own sequence, like Torrent targets
+   */
+  extraTargets?(state: GameState, shooter: Operative, weaponId: string, primaryId: string): { candidates: string[]; max: number } | null
+  /** M9 batch C: inches added to the move limit of one move kind only (Strike Fast: Reposition +1"; Boost: Charge +2" more); summed */
+  moveLimitDelta?(state: GameState, op: Operative, kind: string): number
+  /** M9 batch C: the FLY distance for this move kind instead of the move limit (Blink Pack: 7"); smallest answer wins */
+  flyLimit?(state: GameState, op: Operative, kind: string): number | null
+  /** M9 batch C: movement the operative can never make (C.A.T. Unit: no climbing, no jumping) */
+  moveRestrictions?(state: GameState, op: Operative): { noClimb?: boolean; noJump?: boolean } | null
+  /**
+   * M9 batch C: the ready operative cannot be activated now and does not stop the turning point from ending (C.A.T.
+   * Unit in an enemy control range or without its Surveyor); unlike `canActivate`, this may leave a seat nothing to
+   * activate
+   */
+  activationBarred?(state: GameState, op: Operative): boolean
+  /**
+   * M9 batch C: things the seat may do instead of counteracting when it is its turn to counteract (Farstalker: change
+   * one operative's order). Offered on the firefight.activate decision as `alt:<n>`; the hook's `choice` runs and the
+   * turn passes as after a counteraction (no operative is marked as having counteracted)
+   */
+  counteractAlternatives?(state: GameState, seat: Seat): ReactionOffer[]
+  /**
+   * M9 batch C: relief for Pick Up Marker (`marker:pickUp`) and MISSION actions (`ability:<id>`): performable with an
+   * enemy in control range (Light Fingers, Mutant Appendage), or needing only to contest the marker (Poach)
+   */
+  markerActionRelief?(state: GameState, op: Operative, actionId: string): { ignoreEnemyControlRange?: boolean; contestSuffices?: boolean } | null
+  /** M9 batch C: the enemies `attacker` may fight, filtered (Bad-tempered: the Hound when it forces itself); never empties */
+  fightTargets?(state: GameState, attacker: Operative, foes: string[]): string[] | null
+}
+
+/** M9 batch C: what `fixedTargets` answers. */
+export interface FixedTargets {
+  /** primary first; every id is shot in its own sequence */
+  targets: string[]
+  /** the targets are never in cover / never obscured (Detonate) */
+  noCover?: boolean
+  noObscured?: boolean
+  /** add Blast secondaries around the primary as usual (default true) */
+  blast?: boolean
 }
 
 const providers = new Map<string, TeamRuleProvider>()
@@ -326,8 +393,8 @@ export function providerFightWeapons(state: GameState, op: Operative, retaliatin
   return collectIds((p) => p.extraFightWeapons?.(state, op, retaliating))
 }
 
-export function providerFightStart(state: GameState, attack: AttackState): { first?: Seat; queue: { seat: Seat; blockOnly?: boolean }[]; noBlock: Seat[] } {
-  const out: { first?: Seat; queue: { seat: Seat; blockOnly?: boolean }[]; noBlock: Seat[] } = { queue: [], noBlock: [] }
+export function providerFightStart(state: GameState, attack: AttackState): { first?: Seat; queue: { seat: Seat; blockOnly?: boolean; strikeOnly?: boolean }[]; noBlock: Seat[] } {
+  const out: { first?: Seat; queue: { seat: Seat; blockOnly?: boolean; strikeOnly?: boolean }[]; noBlock: Seat[] } = { queue: [], noBlock: [] }
   for (const p of providers.values()) {
     const r = p.fightResolveStart?.(state, attack)
     if (!r) continue
@@ -347,8 +414,8 @@ export function providerBlockCapacity(state: GameState, attack: AttackState, sea
   return n
 }
 
-export function providerAfterResolution(state: GameState, attack: AttackState, seat: Seat, op: 'strike' | 'block'): { seat: Seat; blockOnly?: boolean }[] {
-  const out: { seat: Seat; blockOnly?: boolean }[] = []
+export function providerAfterResolution(state: GameState, attack: AttackState, seat: Seat, op: 'strike' | 'block'): { seat: Seat; blockOnly?: boolean; strikeOnly?: boolean }[] {
+  const out: { seat: Seat; blockOnly?: boolean; strikeOnly?: boolean }[] = []
   for (const p of providers.values()) out.push(...(p.afterFightResolution?.(state, attack, seat, op) ?? []))
   return out
 }
@@ -370,13 +437,114 @@ export function providerMoveSurcharge(state: GameState, op: Operative, kind: str
 }
 
 /** M9 batch B: every provider's own-grenade allowances for the operative, merged (largest allowance wins). */
-export function providerOwnGrenades(state: GameState, op: Operative): { weapons: Record<string, number>; actions: Record<string, number> } {
-  const out = { weapons: {} as Record<string, number>, actions: {} as Record<string, number> }
+export function providerOwnGrenades(state: GameState, op: Operative): { weapons: Record<string, number>; actions: Record<string, number>; tpActions: Record<string, number> } {
+  const out = { weapons: {} as Record<string, number>, actions: {} as Record<string, number>, tpActions: {} as Record<string, number> }
   for (const p of providers.values()) {
     const g = p.ownGrenades?.(state, op)
     if (!g) continue
     for (const [k, n] of Object.entries(g.weapons ?? {})) out.weapons[k] = Math.max(out.weapons[k] ?? 0, n)
     for (const [k, n] of Object.entries(g.actions ?? {})) out.actions[k] = Math.max(out.actions[k] ?? 0, n)
+    for (const [k, n] of Object.entries(g.tpActions ?? {})) out.tpActions[k] = Math.max(out.tpActions[k] ?? 0, n)
+  }
+  return out
+}
+
+// ---- M9 batch C aggregators ------------------------------------------------------------------
+
+export function providerWeaponForbidden(state: GameState, op: Operative, weaponId: string, kind: 'shoot' | 'fight'): string | null {
+  for (const p of providers.values()) {
+    const why = p.weaponForbidden?.(state, op, weaponId, kind)
+    if (why) return why
+  }
+  return null
+}
+
+export function providerPsychicBlocked(state: GameState, op: Operative): boolean {
+  for (const p of providers.values()) if (p.psychicBlocked?.(state, op)) return true
+  return false
+}
+
+export function providerPsychicImmune(state: GameState, op: Operative): boolean {
+  for (const p of providers.values()) if (p.psychicImmune?.(state, op)) return true
+  return false
+}
+
+/** The first provider answer for a weapon's own targets, or null (the weapon targets as usual). */
+export function providerFixedTargets(state: GameState, shooter: Operative, weaponId: string): FixedTargets | null {
+  for (const p of providers.values()) {
+    const t = p.fixedTargets?.(state, shooter, weaponId)
+    if (t) return t
+  }
+  return null
+}
+
+/** Extra primary targets (Salvo): candidates merged, the largest `max`. */
+export function providerExtraTargets(state: GameState, shooter: Operative, weaponId: string, primaryId: string): { candidates: string[]; max: number } | null {
+  let out: { candidates: string[]; max: number } | null = null
+  for (const p of providers.values()) {
+    const t = p.extraTargets?.(state, shooter, weaponId, primaryId)
+    if (!t || t.max <= 0) continue
+    if (!out) out = { candidates: [], max: 0 }
+    for (const id of t.candidates) if (id !== primaryId && !out.candidates.includes(id)) out.candidates.push(id)
+    out.max = Math.max(out.max, t.max)
+  }
+  return out && out.candidates.length > 0 ? out : null
+}
+
+export function providerMoveLimitDelta(state: GameState, op: Operative, kind: string): number {
+  let d = 0
+  for (const p of providers.values()) d += p.moveLimitDelta?.(state, op, kind) ?? 0
+  return d
+}
+
+export function providerFlyLimit(state: GameState, op: Operative, kind: string): number | null {
+  let out: number | null = null
+  for (const p of providers.values()) {
+    const n = p.flyLimit?.(state, op, kind)
+    if (n !== null && n !== undefined) out = out === null ? n : Math.min(out, n)
+  }
+  return out
+}
+
+export function providerMoveRestrictions(state: GameState, op: Operative): { noClimb: boolean; noJump: boolean } {
+  const out = { noClimb: false, noJump: false }
+  for (const p of providers.values()) {
+    const r = p.moveRestrictions?.(state, op)
+    if (r?.noClimb) out.noClimb = true
+    if (r?.noJump) out.noJump = true
+  }
+  return out
+}
+
+export function providerActivationBarred(state: GameState, op: Operative): boolean {
+  for (const p of providers.values()) if (p.activationBarred?.(state, op)) return true
+  return false
+}
+
+export function providerCounteractAlternatives(state: GameState, seat: Seat): ReactionOffer[] {
+  const out: ReactionOffer[] = []
+  for (const p of providers.values()) out.push(...(p.counteractAlternatives?.(state, seat) ?? []))
+  return out
+}
+
+export function providerMarkerActionRelief(state: GameState, op: Operative, actionId: string): { ignoreEnemyControlRange: boolean; contestSuffices: boolean } {
+  const out = { ignoreEnemyControlRange: false, contestSuffices: false }
+  for (const p of providers.values()) {
+    const r = p.markerActionRelief?.(state, op, actionId)
+    if (r?.ignoreEnemyControlRange) out.ignoreEnemyControlRange = true
+    if (r?.contestSuffices) out.contestSuffices = true
+  }
+  return out
+}
+
+/** Fight targets after every provider's filter; an answer that would empty the list is ignored. */
+export function providerFightTargets(state: GameState, attacker: Operative, foes: string[]): string[] {
+  let out = [...foes]
+  for (const p of providers.values()) {
+    const f = p.fightTargets?.(state, attacker, out)
+    if (!f) continue
+    const kept = out.filter((id) => f.includes(id))
+    if (kept.length > 0) out = kept
   }
   return out
 }

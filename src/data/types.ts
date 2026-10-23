@@ -351,12 +351,22 @@ export interface SelectionSlot {
   /** M9 prep: at most `max` operatives from `from` together */
   caps?: { label?: string; from: Id[]; max: number }[]
 }
-/** M9 batch B: at most `max` operatives (over every slot) that have `keyword` or are one of `from`. */
+/**
+ * M9 batch B: at most `max` operatives (over every slot) that have `keyword` or are one of `from`. M9 batch C: or at
+ * least `min` of them (Warpcoven: at least one SORCERER); give `max`, `min` or both.
+ */
 export interface TeamCap {
   label?: string
   keyword?: Keyword
   from?: Id[]
-  max: number
+  max?: number
+  min?: number
+}
+/** M9 batch C: the roster may include `id` only if it also includes one of `needs` (a GHEISTSKULL needs a VOID-JAMMER). */
+export interface RosterRequirement {
+  label?: string
+  id: Id
+  needs: Id[]
 }
 /**
  * M9 batch B: at most `max` operatives of the roster carry any of `weapons` (profile or profileGroup ids), or, with
@@ -384,6 +394,12 @@ export interface OperativeChoice {
   keywords: Keyword[]
   forKeyword?: Keyword
   exclude?: { datacards: Id[]; keywords: Keyword[] }[]
+  /** M9 batch C: no two operatives of the roster take the same pick (Boons of Tzeentch) */
+  unique?: boolean
+  /** M9 batch C: the pick must differ from the same operative's picks for these choices (Custom: two different rules) */
+  distinctFrom?: Slug[]
+  /** M9 batch C: false makes the pick a tag for team code instead of a keyword (hasKeyword ignores it); default true */
+  keyword?: boolean
 }
 export interface TeamData {
   id: Id
@@ -396,6 +412,8 @@ export interface TeamData {
     caps?: TeamCap[]
     /** M9 batch B: caps on chosen weapons across the whole roster (one arc rifle, one plasma caliver, one arquebus) */
     loadoutCaps?: LoadoutCap[]
+    /** M9 batch C: datacards that need another datacard on the roster (Gheistskull needs Void-Jammer) */
+    requires?: RosterRequirement[]
   }
   teamChoices?: TeamChoice[]
   /** M9 batch B: per-operative keyword picks made at selection (Marks of Chaos) */

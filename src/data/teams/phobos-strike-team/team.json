@@ -1,0 +1,45 @@
+{
+  "id": "phobos-strike-team",
+  "name": "Phobos Strike Team",
+  "factionKeyword": "PHOBOS STRIKE TEAM",
+  "archetypes": [
+    "infiltration",
+    "recon"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "leader",
+        "label": "Leader",
+        "count": 1,
+        "from": [
+          "ph.infiltrator-sergeant"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "ph.infiltrator-sergeant"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.58,
+      "s": 0.45,
+      "l": 0.3
+    },
+    "minor": {
+      "h": 0.12,
+      "s": 0.15,
+      "l": 0.35
+    }
+  },
+  "text": "Space Marine infiltrators, incursors and reivers: stealthy, scrambling enemy communications and striking from cover.",
+  "source": "team-phobos-strike-team.pdf (Nov '25); docs/spec/13-teams.md section 13"
+}

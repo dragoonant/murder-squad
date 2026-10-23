@@ -294,6 +294,7 @@ export const EVENT_POLICY: Record<GameEvent['type'], 'sound' | 'conditional' | '
   WoundsRegained: 'silent',
   OperativeSetAside: 'silent',
   OperativePickChanged: 'silent',
+  PoolChanged: 'silent',
   OperativeReturned: 'conditional',
   ActivationChained: 'silent',
   ActivationGated: 'silent',

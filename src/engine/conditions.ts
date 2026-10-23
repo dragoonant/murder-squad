@@ -6,6 +6,7 @@ import { distanceBetween, enemiesInControlRange } from './measure'
 import { activeOps, enemiesOf, getOp, otherSeat } from './state'
 import type { Activation, Condition, Effect, GameState, Operative, RuntimeAbility, Seat, TargetSpec } from './types'
 import { providerAny } from './team-rules'
+import { keywordPicks } from './operative-picks'
 
 /** Data action ids use kebab case, the engine camel case. */
 export function normAction(id: string): string {
@@ -19,8 +20,8 @@ export function normAction(id: string): string {
 
 export function hasKeyword(state: GameState, op: Operative, kw: string): boolean {
   if (state.data.datacards[op.datacardId]?.keywords.includes(kw)) return true
-  // M9 batch B: keywords picked at selection (Marks of Chaos) are real keywords
-  if (op.picks) for (const k of Object.values(op.picks)) if (k === kw) return true
+  // M9 batch B: keywords picked at selection (Marks of Chaos) are real keywords; M9 batch C: tag picks are not
+  if (op.picks) for (const k of keywordPicks(state, op)) if (k === kw) return true
   return false
 }
 

@@ -1,0 +1,47 @@
+[
+  {
+    "id": "fk.w.kroot-rifle",
+    "name": "Kroot rifle",
+    "team": "farstalker-kinband",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 3,
+      "crit": 4
+    },
+    "rules": [],
+    "text": "Kroot rifle carried by the Kroot Kill-Broker.",
+    "source": "team-farstalker-kinband.pdf (Jun '26); docs/spec/13-teams.md section 16.3"
+  },
+  {
+    "id": "fk.w.pulse-weapon",
+    "name": "Pulse weapon",
+    "team": "farstalker-kinband",
+    "type": "ranged",
+    "atk": 4,
+    "hit": "4+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [],
+    "text": "Pulse weapon carried by the Kroot Kill-Broker.",
+    "source": "team-farstalker-kinband.pdf (Jun '26); docs/spec/13-teams.md section 16.3"
+  },
+  {
+    "id": "fk.w.ritual-blade",
+    "name": "Ritual blade",
+    "team": "farstalker-kinband",
+    "type": "melee",
+    "atk": 4,
+    "hit": "3+",
+    "dmg": {
+      "normal": 4,
+      "crit": 5
+    },
+    "rules": [],
+    "text": "Ritual blade carried by the Kroot Kill-Broker.",
+    "source": "team-farstalker-kinband.pdf (Jun '26); docs/spec/13-teams.md section 16.3"
+  }
+]

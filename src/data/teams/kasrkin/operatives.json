@@ -1,0 +1,71 @@
+[
+  {
+    "id": "ks.sergeant",
+    "name": "Kasrkin Sergeant",
+    "team": "kasrkin",
+    "stats": {
+      "apl": 3,
+      "move": 6,
+      "save": "4+",
+      "wounds": 9
+    },
+    "base": 28,
+    "keywords": [
+      "KASRKIN",
+      "IMPERIUM",
+      "ASTRA MILITARUM",
+      "LEADER",
+      "SERGEANT"
+    ],
+    "weapons": {
+      "fixed": [],
+      "options": [
+        {
+          "id": "loadout",
+          "label": "Loadout",
+          "sets": [
+            {
+              "id": "bolt-pistol-power-weapon",
+              "name": "Bolt pistol and power weapon",
+              "fixed": [
+                "ks.w.bolt-pistol",
+                "ks.w.power-weapon"
+              ]
+            },
+            {
+              "id": "hot-shot-lasgun-gun-butt",
+              "name": "Hot-shot lasgun and gun butt",
+              "fixed": [
+                "ks.w.hot-shot-lasgun",
+                "ks.w.gun-butt-sergeant"
+              ]
+            },
+            {
+              "id": "hot-shot-laspistol-power-weapon",
+              "name": "Hot-shot laspistol and power weapon",
+              "fixed": [
+                "ks.w.hot-shot-laspistol",
+                "ks.w.power-weapon"
+              ]
+            },
+            {
+              "id": "plasma-pistol-chainsword",
+              "name": "Plasma pistol and chainsword",
+              "fixed": [
+                "ks.wg.plasma-pistol",
+                "ks.w.chainsword"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "ks-sergeant"
+    },
+    "text": "The squad leader: a hardened veteran who can grant an extra battlefield skill and hand one to a single trooper.",
+    "source": "team-kasrkin.pdf (Apr '26); docs/spec/13-teams.md section 11.2"
+  }
+]

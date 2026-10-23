@@ -127,6 +127,8 @@ export type GameEventBody =
   | { type: 'OperativeSetAside'; operativeId: string; kind: string }
   /** M9 batch B: an operative's selection keyword changed (Infernal Pact); `from` is null at set-up */
   | { type: 'OperativePickChanged'; operativeId: string; choiceId: string; from: string | null; to: string; reason: string }
+  // M9 batch C: a team resource pool changed (pools.ts); the event's seat owns the pool
+  | { type: 'PoolChanged'; kind: string; delta: number; value: number; reason: string }
   | { type: 'OperativeReturned'; operativeId: string; pos: { x: number; y: number; z: number }; wounds: number; ready: boolean; kind: string }
   | { type: 'ActivationChained'; fromId: string; operativeIds: string[] }
   | { type: 'ActivationGated'; operativeId: string; by: string }

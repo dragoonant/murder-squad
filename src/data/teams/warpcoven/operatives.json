@@ -1,0 +1,46 @@
+[
+  {
+    "id": "wc.sorcerer-of-destiny",
+    "name": "Sorcerer of Destiny",
+    "team": "warpcoven",
+    "stats": {
+      "apl": 3,
+      "move": 6,
+      "save": "3+",
+      "wounds": 15
+    },
+    "base": 32,
+    "keywords": [
+      "WARPCOVEN",
+      "CHAOS",
+      "HERETIC ASTARTES",
+      "PSYKER",
+      "SORCERER",
+      "DESTINY"
+    ],
+    "weapons": {
+      "fixed": [
+        "wc.w.doombolt",
+        "wc.w.force-stave"
+      ],
+      "options": [
+        {
+          "id": "sidearm",
+          "label": "Sidearm",
+          "from": [
+            "wc.w.inferno-bolt-pistol",
+            "wc.w.prosperine-khopesh",
+            "wc.w.warpflame-pistol"
+          ]
+        }
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "wc-sorcerer-destiny"
+    },
+    "text": "A sorcerer who twists the threads of fate: it shields allies from shots and curses enemies to fumble their best rolls.",
+    "source": "team-warpcoven.pdf (Apr '26); docs/spec/13-teams.md section 15.2"
+  }
+]

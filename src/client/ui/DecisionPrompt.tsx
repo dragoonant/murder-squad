@@ -412,8 +412,16 @@ function ActivateBody({ pending, state }: { pending: PendingDecision; state: Gam
       <Header pending={pending} seat />
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {opts.map((o) => {
-          const p = o.action.payload as { operativeId: string; counteract?: boolean }
+          const p = o.action.payload as { operativeId: string; counteract?: boolean; alternative?: number }
           const op = state.operatives[p.operativeId]
+          // M9 batch C: a team's alternative to counteracting
+          if (p.alternative !== undefined) {
+            return (
+              <Btn key={o.id} data-testid={`alt-${p.alternative}`} onClick={() => choose(o.id)}>
+                {optionLabel(o, state, pending)}
+              </Btn>
+            )
+          }
           return (
             <Btn
               key={o.id}

@@ -2,10 +2,11 @@
 // legal default rosters, first-legal loadouts, equipment candidates.
 import {
   capAwareLoadouts,
-  defaultOperativePicks,
+  defaultRosterPicks,
   enumerateRosters,
   loadoutCapProblems,
   resolveLoadout,
+  rosterPickProblems,
   validateOperativePicks,
   slotCost,
   validateLoadout,
@@ -182,7 +183,8 @@ export function defaultLoadouts(b: DataBundle, team: TeamData, roster: RosterSel
 /** M9 batch B: the first allowed keyword of every operative choice, per operative in flattened roster order. */
 export function defaultPicks(b: DataBundle, team: TeamData, roster: RosterSelection): Record<string, string>[] {
   const fromData = isDataDefault(team, roster) ? (team.defaults?.operativePicks ?? []) : []
-  return flattenRoster(team, roster).map((id, i) => ({ ...defaultOperativePicks(team, datacard(b, id)), ...(fromData[i] ?? {}) }))
+  // M9 batch C: roster-aware, so a `unique` choice (Boons of Tzeentch) defaults to different picks
+  return defaultRosterPicks(team, flattenRoster(team, roster).map((id) => datacard(b, id)), fromData)
 }
 
 /** M9 batch B: the equipment limit for this build (the mission's limit plus a Lugger-style roster bonus). */
@@ -270,14 +272,17 @@ export function buildProblems(b: DataBundle, build: SeatBuild, equipmentLimit: n
   if (!team) return [`unknown team ${build.teamId}`]
   const out: string[] = [...validateRoster(team, build.roster, b.byId as Record<string, DatacardData>).reasons]
   const carried: string[][] = []
-  flattenRoster(team, build.roster).forEach((id, i) => {
-    const card = datacard(b, id)
+  const cards = flattenRoster(team, build.roster).map((id) => datacard(b, id))
+  const picks = (team.operativeChoices ?? []).length > 0 ? defaultRosterPicks(team, cards, build.picks ?? []) : []
+  cards.forEach((card, i) => {
     const problems = validateLoadout(card, build.loadouts[i] ?? {})
     for (const r of problems) out.push(`${card.name}: ${r}`)
     carried.push(problems.length === 0 ? resolveLoadout(card, build.loadouts[i] ?? {}, b.weaponGroups) : [])
     // M9 batch B: per-operative keyword picks (Marks of Chaos); a missing pick takes the first allowed keyword
-    if ((team.operativeChoices ?? []).length > 0) out.push(...validateOperativePicks(team, card, { ...defaultOperativePicks(team, card), ...(build.picks?.[i] ?? {}) }))
+    if ((team.operativeChoices ?? []).length > 0) out.push(...validateOperativePicks(team, card, picks[i]))
   })
+  // M9 batch C: a `unique` choice taken twice across the roster
+  out.push(...rosterPickProblems(team, picks))
   out.push(...loadoutCapProblems(team, carried, b.weaponGroups, (w) => (b.byId[w] as { name?: string } | undefined)?.name ?? w))
   out.push(...validateTeamChoices(team, build.choices ?? {}, b.byId as Record<string, AbilityData>))
   equipmentLimit = equipmentLimitOf(b, build, equipmentLimit)

@@ -2,7 +2,7 @@
 // Mines, Ammo Cache, Razor Wire, Ladders, Portable Barricade, grenades). Names match src/data/code-hooks.json.
 import { registerCodeHook, markFired, type OfferSeed } from './code-hooks'
 import { codeParams, evalCondition } from './conditions'
-import { addEffect, addUse, markUsedTp, usedThisTp, usesOf } from './effects'
+import { addEffect, addTpUse, addUse, markUsedTp, tpUsesOf, usedThisTp, usesOf } from './effects'
 import { cancelAction, finishAction } from './firefight'
 import { placementIssue } from './equipment'
 import { applyAplEffect } from './attack-common'
@@ -11,7 +11,7 @@ import { distanceBetween } from './measure'
 import { dist2, round3 } from './geometry'
 import { discCentres, footprintDistToPolygon, footprintOf, pointGapToFootprint } from './footprint'
 import { providerOwnGrenades } from './team-rules'
-import { controlledBy, newMarkerId } from './markers'
+import { actionMarkers, controlledBy, newMarkerId } from './markers'
 import { markLooted, markSecured, markTransmitting } from './missions'
 import { moveConstraints } from './movement'
 import type { Ctx } from './registry'
@@ -26,8 +26,9 @@ const OBJECTIVE_ACTION = (
   registerCodeHook({
     name,
     action: {
-      offers(state, op): OfferSeed[] {
-        return controlledBy(state, op, (m) => m.kind === 'objective' && filter(state, m, op)).map((m) => ({ key: m.id, params: { markerId: m.id } }))
+      offers(state, op, def): OfferSeed[] {
+        // M9 batch C: a team rule may let contesting the objective suffice (Poach)
+        return actionMarkers(state, op, `ability:${def.id}`, (m) => m.kind === 'objective' && filter(state, m, op)).map((m) => ({ key: m.id, params: { markerId: m.id } }))
       },
       perform(ctx, op, def, params) {
         const m = ctx.state.markers.find((k) => k.id === params.markerId)
@@ -128,14 +129,18 @@ function codeParamsFromEquipment(state: GameState, equipmentId: string, key: str
 // ---------------------------------------------------------------------------
 
 /** M9 batch B: 'own' is a team rule's per-operative allowance (team-rules ownGrenades: Hearthkyn Grenadier) */
-export type GrenadeSource = 'team' | 'taktical' | 'own'
+export type GrenadeSource = 'team' | 'taktical' | 'own' | 'ownTp'
 
 /** Which allowance covers a grenade action for this operative now, or null. Taktical Wot-notz is used first. */
 export function grenadeSource(state: GameState, op: Operative, abilityId: string): GrenadeSource | null {
   const card = state.data.datacards[op.datacardId]
   if (card?.abilities.includes('kom.a.taktical-wot-notz') && !usedThisTp(state, op.seat, `taktical:${abilityId}`)) return 'taktical'
-  const own = providerOwnGrenades(state, op).actions[abilityId] ?? 0
+  const allowance = providerOwnGrenades(state, op)
+  const own = allowance.actions[abilityId] ?? 0
   if (own > 0 && usesOf(state, op.seat, `own:${op.id}:${abilityId}`) < own) return 'own'
+  // M9 batch C: a seat-wide allowance per turning point (Kasrkin Adaptive Equipment), not counted against the picks
+  const perTp = allowance.tpActions[abilityId] ?? 0
+  if (perTp > 0 && tpUsesOf(state, op.seat, `ownTp:${abilityId}`) < perTp) return 'ownTp'
   const picks = state.equipment.picks[op.seat]?.['core.e.utility-grenades'] ?? []
   const total = picks.filter((p) => p === abilityId).length
   if (usesOf(state, op.seat, abilityId) < total) return 'team'
@@ -147,6 +152,7 @@ function spendGrenade(ctx: Ctx, op: Operative, abilityId: string, source: Grenad
     markUsedTp(ctx.state, op.seat, `taktical:${abilityId}`)
     markFired('taktikalWotNotz')
   } else if (source === 'own') addUse(ctx.state, op.seat, `own:${op.id}:${abilityId}`)
+  else if (source === 'ownTp') addTpUse(ctx.state, op.seat, `ownTp:${abilityId}`)
   else addUse(ctx.state, op.seat, abilityId)
 }
 

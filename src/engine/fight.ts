@@ -27,7 +27,7 @@ import {
   weaponOf,
   weaponUnusable,
 } from './attack-common'
-import { providerAfterResolution, providerBlockCapacity, providerFightStart, providerFightWeapons } from './team-rules'
+import { providerAfterResolution, providerBlockCapacity, providerFightStart, providerFightTargets, providerFightWeapons } from './team-rules'
 import { normalBlocksCrit } from './teams/angels-of-death'
 import { cancelAction, finishAction } from './firefight'
 import { runHook } from './hooks'
@@ -110,12 +110,15 @@ export function beginFight(ctx: Ctx): void {
     inherit: null,
     windows: [],
   }
-  const foes = enemiesInControlRange(s, op, op.seat).filter((e) => e.wounds > 0)
-  if (foes.length === 0 || meleeWeapons(s, op).length === 0) {
+  const inCr = enemiesInControlRange(s, op, op.seat).filter((e) => e.wounds > 0)
+  if (inCr.length === 0 || meleeWeapons(s, op).length === 0) {
     s.attack = null
     cancelAction(ctx)
     return
   }
+  // M9 batch C: team rules may narrow the choice (Bad-tempered: the Hound makes itself the one to fight); never empty
+  const allowed = providerFightTargets(s, op, inCr.map((e) => e.id))
+  const foes = inCr.filter((e) => allowed.includes(e.id))
   ctx.raise({
     kind: 'fight.target',
     seat: op.seat,
@@ -538,7 +541,9 @@ STEPS.resolve = (ctx) => {
     const theirBrutal = isBrutal(ctx, theirs, mine.operativeId)
     const duelist = normalBlocksCrit(s, mine.operativeId, theirBrutal)
     const blockOnly = owed?.resume !== undefined && owed.seat === mine.seat && owed.blockOnly === true
-    const noBlock = (f.noBlock ?? []).includes(mine.seat)
+    // M9 batch C: an owed resolution that must be a strike (Stealth Attack)
+    const strikeOnly = owed?.resume !== undefined && owed.seat === mine.seat && owed.strikeOnly === true
+    const noBlock = (f.noBlock ?? []).includes(mine.seat) || strikeOnly
     for (const kind of ['crit', 'normal'] as const) {
       const i = firstOfKind(mine, myIdx, kind)
       if (i === null) continue
@@ -630,12 +635,16 @@ function handleResolve(state: GameState, action: Action): Handled {
         mine.dice[i]!.used = true
         theirs.dice[against]!.used = true
         ctx.emit({ type: 'Blocked', operativeId: mine.operativeId, die: kind === 'crit' ? 'crit' : 'normal', against: tk === 'crit' ? 'crit' : 'normal' }, mine.seat)
+        const cancelled: AttackDie['kind'][] = [tk]
         // M9 batch B: the same die cancels a second success (Tangle)
         if (against2 !== null && theirs.dice[against2] && !theirs.dice[against2]!.used) {
           const tk2 = theirs.dice[against2]!.kind
           theirs.dice[against2]!.used = true
+          cancelled.push(tk2)
           ctx.emit({ type: 'Blocked', operativeId: mine.operativeId, die: kind === 'crit' ? 'crit' : 'normal', against: tk2 === 'crit' ? 'crit' : 'normal' }, mine.seat)
         }
+        // M9 batch C: rules that act on a block (Riposte)
+        runHook('afterBlock', { seat: mine.seat, state: s, engine: ctx, operativeId: mine.operativeId, targetId: theirs.operativeId, ...(mine.weaponId ? { weaponId: mine.weaponId } : {}), data: { die: kind, against: cancelled, weaponId: mine.weaponId } })
       } else {
         strike(ctx, mine, theirs, i)
       }

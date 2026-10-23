@@ -1,0 +1,36 @@
+[
+  {
+    "id": "ph.infiltrator-sergeant",
+    "name": "Infiltrator Sergeant",
+    "team": "phobos-strike-team",
+    "stats": {
+      "apl": 3,
+      "move": 7,
+      "save": "3+",
+      "wounds": 13
+    },
+    "base": 32,
+    "keywords": [
+      "PHOBOS STRIKE TEAM",
+      "IMPERIUM",
+      "ADEPTUS ASTARTES",
+      "LEADER",
+      "INFILTRATOR",
+      "SERGEANT"
+    ],
+    "weapons": {
+      "fixed": [
+        "ph.w.marksman-bolt-carbine",
+        "ph.w.fists"
+      ],
+      "options": []
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "ph-infiltrator-sergeant"
+    },
+    "text": "Leads the strike team with a marksman bolt carbine; once per battle each it can steal the initiative roll or make a firefight ploy free.",
+    "source": "team-phobos-strike-team.pdf (Nov '25); docs/spec/13-teams.md section 13.2"
+  }
+]

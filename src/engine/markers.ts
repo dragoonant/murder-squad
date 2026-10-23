@@ -2,7 +2,7 @@
 // run after every accepted action: control changes, Mines, removals feeding the mission, and the
 // activating operative being removed (R-4.5, R-4.6, R-5.18, R-8.5, R-8.6, M-5.2).
 import { tokensOnRemoval } from './tokens'
-import { providerIgnoresMine } from './team-rules'
+import { providerIgnoresMine, providerMarkerActionRelief } from './team-rules'
 import { markerInControlRange, enemiesInControlRange } from './measure'
 import { bodyOf } from './los'
 import { footprintOf, pointGapToFootprint } from './footprint'
@@ -48,6 +48,16 @@ export function contestedBy(state: GameState, op: Operative): Marker[] {
   return state.markers.filter((m) => markerControl(state, m).contesting[op.seat].includes(op.id))
 }
 
+/**
+ * M9 batch C: markers an action that needs the operative to control them may use: the ones it controls, or the ones
+ * it merely contests when a team rule says contesting suffices for that action (Poach). `actionId` is
+ * `marker:pickUp` or `ability:<id>`.
+ */
+export function actionMarkers(state: GameState, op: Operative, actionId: string, filter?: (m: Marker) => boolean): Marker[] {
+  if (!providerMarkerActionRelief(state, op, actionId).contestSuffices) return controlledBy(state, op, filter)
+  return state.markers.filter((m) => (!filter || filter(m)) && markerControl(state, m).contesting[op.seat].includes(op.id))
+}
+
 /** Markers the operative's team controls and the operative itself contests. */
 export function controlledBy(state: GameState, op: Operative, filter?: (m: Marker) => boolean): Marker[] {
   return state.markers.filter((m) => {
@@ -81,11 +91,13 @@ export function markerOffers(state: GameState, op: Operative, act: Activation | 
     if (!performed.includes(PICK_UP) && !performed.includes(PLACE)) out.push({ id: `${PLACE}:${carrying}`, action: PLACE, markerId: carrying, cost: 1 })
     return out
   }
-  if (inCr || performed.includes(PLACE) || performed.includes(PICK_UP)) return out
+  // M9 batch C: team relief (Light Fingers: an enemy in control range does not stop it; Poach: contesting suffices)
+  const relief = providerMarkerActionRelief(state, op, PICK_UP)
+  if ((inCr && !relief.ignoreEnemyControlRange) || performed.includes(PLACE) || performed.includes(PICK_UP)) return out
   for (const m of state.markers) {
     if (!m.pickable || m.carriedBy) continue
     const c = markerControl(state, m)
-    if (c.controller === op.seat && c.contesting[op.seat].includes(op.id)) {
+    if (c.contesting[op.seat].includes(op.id) && (c.controller === op.seat || relief.contestSuffices)) {
       out.push({ id: `${PICK_UP}:${m.id}`, action: PICK_UP, markerId: m.id, cost: 1 })
     }
   }

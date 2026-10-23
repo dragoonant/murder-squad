@@ -68,6 +68,48 @@ import hkWeapons from './teams/hearthkyn-salvagers/weapons.json'
 import hkAbilities from './teams/hearthkyn-salvagers/abilities.json'
 import hkPloys from './teams/hearthkyn-salvagers/ploys.json'
 import hkEquipment from './teams/hearthkyn-salvagers/equipment.json'
+import ksTeam from './teams/kasrkin/team.json'
+import ksOperatives from './teams/kasrkin/operatives.json'
+import ksWeapons from './teams/kasrkin/weapons.json'
+import ksAbilities from './teams/kasrkin/abilities.json'
+import ksPloys from './teams/kasrkin/ploys.json'
+import ksEquipment from './teams/kasrkin/equipment.json'
+import nvTeam from './teams/novitiates/team.json'
+import nvOperatives from './teams/novitiates/operatives.json'
+import nvWeapons from './teams/novitiates/weapons.json'
+import nvAbilities from './teams/novitiates/abilities.json'
+import nvPloys from './teams/novitiates/ploys.json'
+import nvEquipment from './teams/novitiates/equipment.json'
+import phTeam from './teams/phobos-strike-team/team.json'
+import phOperatives from './teams/phobos-strike-team/operatives.json'
+import phWeapons from './teams/phobos-strike-team/weapons.json'
+import phAbilities from './teams/phobos-strike-team/abilities.json'
+import phPloys from './teams/phobos-strike-team/ploys.json'
+import phEquipment from './teams/phobos-strike-team/equipment.json'
+import cvTeam from './teams/corsair-voidscarred/team.json'
+import cvOperatives from './teams/corsair-voidscarred/operatives.json'
+import cvWeapons from './teams/corsair-voidscarred/weapons.json'
+import cvAbilities from './teams/corsair-voidscarred/abilities.json'
+import cvPloys from './teams/corsair-voidscarred/ploys.json'
+import cvEquipment from './teams/corsair-voidscarred/equipment.json'
+import wcTeam from './teams/warpcoven/team.json'
+import wcOperatives from './teams/warpcoven/operatives.json'
+import wcWeapons from './teams/warpcoven/weapons.json'
+import wcAbilities from './teams/warpcoven/abilities.json'
+import wcPloys from './teams/warpcoven/ploys.json'
+import wcEquipment from './teams/warpcoven/equipment.json'
+import fkTeam from './teams/farstalker-kinband/team.json'
+import fkOperatives from './teams/farstalker-kinband/operatives.json'
+import fkWeapons from './teams/farstalker-kinband/weapons.json'
+import fkAbilities from './teams/farstalker-kinband/abilities.json'
+import fkPloys from './teams/farstalker-kinband/ploys.json'
+import fkEquipment from './teams/farstalker-kinband/equipment.json'
+import nbTeam from './teams/imperial-navy-breachers/team.json'
+import nbOperatives from './teams/imperial-navy-breachers/operatives.json'
+import nbWeapons from './teams/imperial-navy-breachers/weapons.json'
+import nbAbilities from './teams/imperial-navy-breachers/abilities.json'
+import nbPloys from './teams/imperial-navy-breachers/ploys.json'
+import nbEquipment from './teams/imperial-navy-breachers/equipment.json'
 import f17 from './missions/preliminary-ops-secure.json'
 import f18 from './missions/preliminary-ops-loot.json'
 import f19 from './missions/preliminary-ops-transmission.json'
@@ -154,6 +196,48 @@ const FILES: Record<string, unknown> = {
   'teams/hearthkyn-salvagers/abilities.json': hkAbilities,
   'teams/hearthkyn-salvagers/ploys.json': hkPloys,
   'teams/hearthkyn-salvagers/equipment.json': hkEquipment,
+  'teams/kasrkin/team.json': ksTeam,
+  'teams/kasrkin/operatives.json': ksOperatives,
+  'teams/kasrkin/weapons.json': ksWeapons,
+  'teams/kasrkin/abilities.json': ksAbilities,
+  'teams/kasrkin/ploys.json': ksPloys,
+  'teams/kasrkin/equipment.json': ksEquipment,
+  'teams/novitiates/team.json': nvTeam,
+  'teams/novitiates/operatives.json': nvOperatives,
+  'teams/novitiates/weapons.json': nvWeapons,
+  'teams/novitiates/abilities.json': nvAbilities,
+  'teams/novitiates/ploys.json': nvPloys,
+  'teams/novitiates/equipment.json': nvEquipment,
+  'teams/phobos-strike-team/team.json': phTeam,
+  'teams/phobos-strike-team/operatives.json': phOperatives,
+  'teams/phobos-strike-team/weapons.json': phWeapons,
+  'teams/phobos-strike-team/abilities.json': phAbilities,
+  'teams/phobos-strike-team/ploys.json': phPloys,
+  'teams/phobos-strike-team/equipment.json': phEquipment,
+  'teams/corsair-voidscarred/team.json': cvTeam,
+  'teams/corsair-voidscarred/operatives.json': cvOperatives,
+  'teams/corsair-voidscarred/weapons.json': cvWeapons,
+  'teams/corsair-voidscarred/abilities.json': cvAbilities,
+  'teams/corsair-voidscarred/ploys.json': cvPloys,
+  'teams/corsair-voidscarred/equipment.json': cvEquipment,
+  'teams/warpcoven/team.json': wcTeam,
+  'teams/warpcoven/operatives.json': wcOperatives,
+  'teams/warpcoven/weapons.json': wcWeapons,
+  'teams/warpcoven/abilities.json': wcAbilities,
+  'teams/warpcoven/ploys.json': wcPloys,
+  'teams/warpcoven/equipment.json': wcEquipment,
+  'teams/farstalker-kinband/team.json': fkTeam,
+  'teams/farstalker-kinband/operatives.json': fkOperatives,
+  'teams/farstalker-kinband/weapons.json': fkWeapons,
+  'teams/farstalker-kinband/abilities.json': fkAbilities,
+  'teams/farstalker-kinband/ploys.json': fkPloys,
+  'teams/farstalker-kinband/equipment.json': fkEquipment,
+  'teams/imperial-navy-breachers/team.json': nbTeam,
+  'teams/imperial-navy-breachers/operatives.json': nbOperatives,
+  'teams/imperial-navy-breachers/weapons.json': nbWeapons,
+  'teams/imperial-navy-breachers/abilities.json': nbAbilities,
+  'teams/imperial-navy-breachers/ploys.json': nbPloys,
+  'teams/imperial-navy-breachers/equipment.json': nbEquipment,
   'missions/preliminary-ops-secure.json': f17,
   'missions/preliminary-ops-loot.json': f18,
   'missions/preliminary-ops-transmission.json': f19,

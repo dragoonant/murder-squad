@@ -1,0 +1,45 @@
+{
+  "id": "warpcoven",
+  "name": "Warpcoven",
+  "factionKeyword": "WARPCOVEN",
+  "archetypes": [
+    "security",
+    "recon"
+  ],
+  "selection": {
+    "slots": [
+      {
+        "id": "main",
+        "label": "Selections",
+        "count": 1,
+        "from": [
+          "wc.sorcerer-of-destiny"
+        ]
+      }
+    ]
+  },
+  "factionRules": [],
+  "ploys": [],
+  "equipment": [],
+  "playable": false,
+  "defaults": {
+    "roster": [
+      "wc.sorcerer-of-destiny"
+    ],
+    "equipment": []
+  },
+  "paint": {
+    "major": {
+      "h": 0.55,
+      "s": 0.6,
+      "l": 0.3
+    },
+    "minor": {
+      "h": 0.13,
+      "s": 0.7,
+      "l": 0.5
+    }
+  },
+  "text": "Sorcerers of a cursed legion with their soulless armoured automata and beastly bird-headed warriors, each sorcerer blessed with its own boon.",
+  "source": "team-warpcoven.pdf (Apr '26); docs/spec/13-teams.md section 15"
+}

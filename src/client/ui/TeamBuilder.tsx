@@ -24,6 +24,7 @@ import {
 } from '@/data'
 import type { Seat } from '@/engine'
 import { dataBundle, flattenRoster, type SeatBuild } from '../game/adapter'
+import { archetypeFor } from '../teams'
 import { buildProblems, choiceOptions, defaultBuild, defaultEquipmentPicks, equipmentFor, equipmentLimitOf, teamList } from '../game/defaults'
 import { humanize } from '../game/labels'
 import { isRangeRule, weaponReach } from '../game/glossary'
@@ -243,7 +244,7 @@ function Preview({ card, seat, weaponIds, teamId }: { card: DatacardData; seat: 
   const paint = dataBundle().teams[teamId]!.paint
   const h = ENGINE_HEIGHT(card.base)
   const spec = {
-    archetype: card.figure.archetype,
+    archetype: archetypeFor(card.id, card.figure.archetype, weaponIds, dataBundle().weaponGroups),
     height: h,
     ...baseOfCard(card, weaponIds),
     major: paint.major,
@@ -301,7 +302,10 @@ export function TeamBuilder() {
     loadouts.splice(at, 0, defaultLoadout(b.byId[id] as DatacardData))
     // M9 batch B: per-operative keyword picks stay aligned with the flattened roster
     const picks = build.picks ? [...build.picks] : undefined
-    if (picks) picks.splice(at, 0, defaultOperativePicks(team, b.byId[id] as DatacardData))
+    // M9 batch C: a `unique` choice defaults to a pick no other operative holds yet
+    const taken: Record<string, string[]> = {}
+    for (const p of picks ?? []) for (const [k, v] of Object.entries(p ?? {})) (taken[k] ??= []).push(v)
+    if (picks) picks.splice(at, 0, defaultOperativePicks(team, b.byId[id] as DatacardData, taken))
     set({ ...build, roster: { ...build.roster, [slot.id]: [...cur, id] }, loadouts, ...(picks ? { picks } : {}) })
     setSelectedIdx(at)
   }

@@ -138,12 +138,42 @@ export function allowedOperativePicks(choice: OperativeChoice, card: Pick<Dataca
   return choice.keywords.filter((k) => !barred.has(k))
 }
 
-/** The first allowed keyword of every choice that applies to the datacard. */
-export function defaultOperativePicks(team: Pick<TeamData, 'operativeChoices'>, card: Pick<DatacardData, 'id' | 'keywords'>): Record<Slug, Keyword> {
+/**
+ * The first allowed keyword of every choice that applies to the datacard. M9 batch C: skipping keywords other roster
+ * entries already hold for a `unique` choice (`taken`: choice id -> picks) and the card's own picks a `distinctFrom`
+ * names, while another allowed keyword is left.
+ */
+export function defaultOperativePicks(team: Pick<TeamData, 'operativeChoices'>, card: Pick<DatacardData, 'id' | 'keywords'>, taken: Record<Slug, Keyword[]> = {}): Record<Slug, Keyword> {
   const out: Record<Slug, Keyword> = {}
   for (const c of operativeChoicesFor(team, card)) {
-    const first = allowedOperativePicks(c, card)[0]
+    const allowed = allowedOperativePicks(c, card)
+    const free = allowed.find((k) => !(c.unique && (taken[c.id] ?? []).includes(k)) && !(c.distinctFrom ?? []).some((o) => out[o] === k))
+    const first = free ?? allowed[0]
     if (first) out[c.id] = first
+  }
+  return out
+}
+
+/** M9 batch C: default picks for a whole roster in order, keeping `unique` choices apart (explicit picks win). */
+export function defaultRosterPicks(team: Pick<TeamData, 'operativeChoices'>, cards: readonly Pick<DatacardData, 'id' | 'keywords'>[], explicit: readonly (Record<Slug, Keyword> | undefined)[] = []): Record<Slug, Keyword>[] {
+  const taken: Record<Slug, Keyword[]> = {}
+  for (const e of explicit) for (const [k, v] of Object.entries(e ?? {})) (taken[k] ??= []).push(v)
+  return cards.map((card, i) => {
+    const picks = { ...defaultOperativePicks(team, card, taken), ...(explicit[i] ?? {}) }
+    if (!explicit[i]) for (const [k, v] of Object.entries(picks)) (taken[k] ??= []).push(v)
+    else for (const [k, v] of Object.entries(picks)) if (!(k in (explicit[i] ?? {}))) (taken[k] ??= []).push(v)
+    return picks
+  })
+}
+
+/** M9 batch C: roster-wide pick problems: a `unique` choice taken twice across the roster. */
+export function rosterPickProblems(team: Pick<TeamData, 'operativeChoices'>, picks: readonly (Record<Slug, Keyword> | undefined)[]): string[] {
+  const out: string[] = []
+  for (const c of team.operativeChoices ?? []) {
+    if (!c.unique) continue
+    const seen = new Map<Keyword, number>()
+    for (const p of picks) if (p?.[c.id]) seen.set(p[c.id]!, (seen.get(p[c.id]!) ?? 0) + 1)
+    for (const [k, n] of seen) if (n > 1) out.push(`${c.label}: ${k} is taken ${n} times (each at most once)`)
   }
   return out
 }
@@ -156,6 +186,7 @@ export function validateOperativePicks(team: Pick<TeamData, 'operativeChoices'>,
     const pick = picks[c.id]
     if (!pick) reasons.push(`${card.name}: ${c.label} not chosen`)
     else if (!allowedOperativePicks(c, card).includes(pick)) reasons.push(`${card.name}: ${c.label} cannot be ${pick}`)
+    else if ((c.distinctFrom ?? []).some((o) => picks[o] === pick)) reasons.push(`${card.name}: ${c.label} must differ from its other picks (${pick})`)
   }
   for (const key of Object.keys(picks)) if (!applies.some((c) => c.id === key)) reasons.push(`${card.name}: no operative choice "${key}"`)
   return reasons
@@ -177,7 +208,16 @@ export function teamCapProblems(
   const out: string[] = []
   for (const c of team.selection.caps ?? []) {
     const n = ids.filter((id) => (c.from ?? []).includes(id) || (!!c.keyword && (datacards[id]?.keywords ?? []).includes(c.keyword))).length
-    if (n > c.max) out.push(`at most ${c.max} ${c.label ?? c.keyword ?? (c.from ?? []).map((id) => datacards[id]?.name ?? id).join(', ')} (taken ${n})`)
+    const what = c.label ?? c.keyword ?? (c.from ?? []).map((id) => datacards[id]?.name ?? id).join(', ')
+    if (c.max !== undefined && n > c.max) out.push(`at most ${c.max} ${what} (taken ${n})`)
+    // M9 batch C: a minimum (at least one SORCERER)
+    if (c.min !== undefined && n < c.min) out.push(`at least ${c.min} ${what} (taken ${n})`)
+  }
+  // M9 batch C: datacards that need another on the roster (Gheistskull needs Void-Jammer)
+  for (const r of team.selection.requires ?? []) {
+    if (ids.includes(r.id) && !r.needs.some((n) => ids.includes(n))) {
+      out.push(r.label ?? `${datacards[r.id]?.name ?? r.id} needs ${r.needs.map((n) => datacards[n]?.name ?? n).join(' or ')} on the roster`)
+    }
   }
   return out
 }

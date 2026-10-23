@@ -1,0 +1,55 @@
+[
+  {
+    "id": "fk.kill-broker",
+    "name": "Kroot Kill-Broker",
+    "team": "farstalker-kinband",
+    "stats": {
+      "apl": 2,
+      "move": 6,
+      "save": "5+",
+      "wounds": 9
+    },
+    "base": 32,
+    "keywords": [
+      "FARSTALKER KINBAND",
+      "T'AU EMPIRE",
+      "LEADER",
+      "KROOT",
+      "KILL-BROKER"
+    ],
+    "weapons": {
+      "fixed": [],
+      "options": [
+        {
+          "id": "loadout",
+          "label": "Loadout",
+          "sets": [
+            {
+              "id": "kroot-rifle-ritual-blade",
+              "name": "Kroot rifle and ritual blade",
+              "fixed": [
+                "fk.w.kroot-rifle",
+                "fk.w.ritual-blade"
+              ]
+            },
+            {
+              "id": "pulse-weapon-ritual-blade",
+              "name": "Pulse weapon and ritual blade",
+              "fixed": [
+                "fk.w.pulse-weapon",
+                "fk.w.ritual-blade"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "abilities": [],
+    "uniqueActions": [],
+    "figure": {
+      "archetype": "fk-kill-broker"
+    },
+    "text": "The hunt leader: it names a mark each turning point, and each time the mark falls a nearby kinsman grows deadlier.",
+    "source": "team-farstalker-kinband.pdf (Jun '26); docs/spec/13-teams.md section 16.2"
+  }
+]
