@@ -524,7 +524,7 @@ function ActivateBody({ pending, state }: { pending: PendingDecision; state: Gam
       ) : (
         <>
           <div style={{ fontSize: 13, marginBottom: 6 }} data-testid="activate-hint">
-            Choose an operative &mdash; tap a glowing operative on the board
+            Tap a glowing operative on the board to activate it.
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             <Btn data-testid="activate-list-toggle" variant={listOpen ? 'active' : 'base'} aria-expanded={listOpen} onClick={() => setListOpen(!listOpen)}>

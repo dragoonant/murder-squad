@@ -58,7 +58,7 @@ test('phone: drawers, activation bar and shoot prompts fit the screen with 44 px
   // activate prompt: a slim bar, the operatives are picked on the board (the list is only a fallback behind "List")
   const prompt = page.getByTestId('decision-prompt')
   await expectInViewport(page, prompt, 'activate prompt')
-  await expect(page.getByTestId('activate-hint')).toContainText('tap a glowing operative')
+  await expect(page.getByTestId('activate-hint')).toContainText('glowing operative')
   await expect(page.getByTestId('activate-A6')).toHaveCount(0)
   await shot(page, info, 1)
   const problems: string[] = []
