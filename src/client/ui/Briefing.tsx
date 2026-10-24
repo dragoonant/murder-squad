@@ -84,9 +84,9 @@ export function Briefing() {
           <div style={{ fontWeight: 800, marginBottom: 4 }}>Controls</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12 }}>
             <li>Left click: choose, deploy, add a move step, or pick an operative.</li>
-            <li>Right-drag: orbit. Middle-drag or W A S D: pan. Wheel: zoom. Two fingers on touch.</li>
+            <li>Right-drag: orbit. Middle-drag or W A S D: pan. Wheel: zoom.</li>
             <li>Move: click the board for each straight step; each step is rounded up to a whole inch. Enter confirms, Esc cancels.</li>
-            <li>Touch: tap to choose, drag to look around, pinch to zoom; the drawers along the edge open the feed, log, mission and settings.</li>
+            <li>Touch: tap to choose; one finger pans; two fingers pinch to zoom, twist to turn and drag up or down to tilt. Glowing operatives can activate: tap one, then confirm. Every box has a fold button to hide it.</li>
             <li>Every prompt says what it decides; hover (or long-press) a button for its rule.</li>
             <li>
               <KeywordText text="Each activation has 2 AP (APL): the action bar lists what you can do and what each action costs (hover or long-press for the rule). End the activation when you are done." />

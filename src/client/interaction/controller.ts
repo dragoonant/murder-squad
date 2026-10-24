@@ -2,11 +2,12 @@
 // Deploy and move paths are the two continuous decisions; everything else is chosen from the prompt or by
 // clicking an operative. All verdicts come from the engine (`validate`, `planMove`); this file only builds
 // candidate actions.
-import { act, validate, type Action, type GameState, type PendingDecision, type Rejection, type Waypoint } from '@/engine'
+import { act, validate, type Action, type DecisionOption, type GameState, type PendingDecision, type Rejection, type Waypoint } from '@/engine'
 import { markerRadius } from '@/engine/state'
 import { planFly, planMove, type MoveKind, type MovePlan } from '@/engine/movement'
 import { providerCanFly } from '@/engine/team-rules'
 import { humanToAct, useGame } from '../store/game'
+import { getFormFactor } from '../ui/formFactor'
 import { useUi, type Pt } from '../ui/uiStore'
 import { rejectionText } from '../game/labels'
 import { pickDisplaySnapshot, usePresentedStore } from '../presentation/presentedStore'
@@ -297,8 +298,46 @@ export function optionOperative(o: { action: { payload: unknown }; data?: Record
   return null
 }
 
-/** Clicking an operative: choose it when it is an option of the pending decision (activation, shoot/fight target), otherwise just select it for the card. */
-export function clickOperative(id: string): void {
+/** The activation option for an operative at a `firefight.activate` decision: a plain activation first, else its counteract. */
+export function activateOption(pending: PendingDecision | null, id: string): DecisionOption | null {
+  if (!pending || pending.kind !== 'firefight.activate') return null
+  const hits = (pending.options ?? []).filter((o) => (o.action.payload as { operativeId?: string; alternative?: number }).operativeId === id && (o.action.payload as { alternative?: number }).alternative === undefined)
+  return hits.find((o) => !(o.action.payload as { counteract?: boolean }).counteract) ?? hits[0] ?? null
+}
+
+/** The operative waiting for a confirm at the open activate decision, or null (a stale or illegal pick never counts). */
+export function pendingPick(pending: PendingDecision | null = useGame.getState().pending, picked: string | null = useUi.getState().pendingActivate): string | null {
+  return picked && activateOption(pending, picked) ? picked : null
+}
+
+/** Touch: send the activation the player confirmed. Null when there is no pick to confirm. */
+export function confirmActivate(): Rejection | null {
+  const { pending, choose } = useGame.getState()
+  const id = pendingPick(pending)
+  const opt = id ? activateOption(pending, id) : null
+  if (!opt) return null
+  useUi.setState({ pendingActivate: null })
+  return choose(opt.id)
+}
+
+export function cancelActivate(): void {
+  useUi.setState({ pendingActivate: null })
+}
+
+// A pick belongs to one decision: drop it as soon as the open decision changes (or goes away).
+let lastDecision: string | undefined
+useGame.subscribe((g) => {
+  const id = g.pending?.id
+  if (id === lastDecision) return
+  lastDecision = id
+  if (useUi.getState().pendingActivate !== null) useUi.setState({ pendingActivate: null })
+})
+
+/**
+ * Clicking an operative: choose it when it is an option of the pending decision (activation, shoot/fight target), otherwise just select it for the card.
+ * On touch an activation is only picked: the player confirms it in the prompt (`confirmActivate`); tapping another legal operative switches the pick.
+ */
+export function clickOperative(id: string, opts: { touch?: boolean } = {}): void {
   if (useSight.getState().measureOn) {
     const p = usePresentedStore.getState()
     const op = pickDisplaySnapshot(p.snapshots, p.presentedSeq)?.operatives[id]
@@ -310,6 +349,10 @@ export function clickOperative(id: string): void {
   ui.set({ selectedOp: id })
   if (!pending || !humanToAct()) return
   if (pending.kind === 'firefight.activate') {
+    if (opts.touch ?? getFormFactor().touch) {
+      if (activateOption(pending, id)) ui.set({ pendingActivate: id })
+      return
+    }
     const opt = pending.options?.find((o) => {
       const p = o.action.payload as { operativeId?: string; counteract?: boolean }
       return p.operativeId === id && !p.counteract

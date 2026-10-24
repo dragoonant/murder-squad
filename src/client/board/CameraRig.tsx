@@ -1,14 +1,23 @@
-// Orbit camera clamped above the mat: right-drag orbit, middle-drag / WASD pan, wheel zoom; touch is two fingers
-// (one finger belongs to the game): pinch zoom, drag pan, twist turns the view around the board. Left-drag only moves the camera with Alt (orbit) or Shift (pan) held, so a
-// plain left click is always the game's. Presets: home overview, top-down and 45-degree turns left / right, tweened. Exposes the e2e/dev
-// camera API (`project`, `lookAt`, `get`) through cameraApi.
+// Orbit camera clamped above the mat: right-drag orbit, middle-drag / WASD pan, wheel zoom. Left-drag only moves the
+// camera with Alt (orbit) or Shift (pan) held, so a plain left click is always the game's. Touch: ONE finger pans the
+// board over the ground plane (not while the measure tool is open: then the finger belongs to the tool); TWO fingers
+// pinch to zoom, twist to turn the view around the board, and drag the midpoint up / down to tilt (the midpoint's
+// horizontal drag is ignored, twist owns the azimuth). OrbitControls only handles the one-finger pan; the two-finger
+// gesture is ours (touchCamera.ts holds the maths). A one-finger tap must still reach the game, so a finger that stays
+// inside TAP_SLOP does not pan, and the click that ends a drag or a multi-finger gesture is swallowed in the capture
+// phase (createTapGuard) before the board's own click handlers see it. Presets: home overview, top-down and 45-degree turns
+// left / right, tweened. Exposes the e2e/dev camera API (`project`, `lookAt`, `get`) through cameraApi.
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { MathUtils, MOUSE, Vector3 } from 'three'
+import { MathUtils, MOUSE, TOUCH, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import { useSight } from '../interaction/sightStore'
 import { useUi } from '../ui/uiStore'
 import { cameraApi } from './cameraApi'
+import { createTapGuard, TILT_DEADZONE, tiltFromDrag, twoFingerOffset } from './touchCamera'
+
+export { TAP_SLOP, createTapGuard } from './touchCamera'
 
 const HOME_POS: [number, number, number] = [0, 25, 21]
 const TOP_POS: [number, number, number] = [0, 36, 0.01]
@@ -37,6 +46,12 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
   const { camera, gl } = useThree()
   const invalidate = useThree((s) => s.invalidate)
   const preset = useUi((s) => s.cameraPreset)
+  const measureOn = useSight((s) => s.measureOn)
+
+  useEffect(() => {
+    const c = controls.current
+    if (c) (c.touches as { ONE: number; TWO: number }).ONE = measureOn ? -1 : TOUCH.PAN
+  }, [measureOn])
 
   useEffect(() => {
     const c = controls.current
@@ -44,7 +59,9 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
     c.mouseButtons.MIDDLE = MOUSE.PAN
     c.mouseButtons.RIGHT = MOUSE.ROTATE
     c.mouseButtons.LEFT = undefined
-    ;(c.touches as { ONE: number; TWO: number }).ONE = -1
+    // one finger pans (unless the measure tool owns it); the two-finger gesture is ours, so OrbitControls ignores it
+    ;(c.touches as { ONE: number; TWO: number }).ONE = useSight.getState().measureOn ? -1 : TOUCH.PAN
+    ;(c.touches as { ONE: number; TWO: number }).TWO = -1
     const onDown = (e: PointerEvent) => {
       if (e.button !== 0 || !controls.current) return
       controls.current.mouseButtons.LEFT = e.shiftKey ? MOUSE.PAN : e.altKey ? MOUSE.ROTATE : undefined
@@ -55,57 +72,106 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
     }
     c.addEventListener('start', onStart)
 
-    // Two-finger twist: OrbitControls' two-finger mode is dolly + pan, so the turn is added here by spinning the
-    // camera about the target's vertical axis by the change in the angle between the fingers. Twisting clockwise
-    // turns the board clockwise on screen.
+    // Touch gestures, tracked on window in the capture phase so they run before OrbitControls and r3f.
+    //  one finger: stays a tap until it leaves TAP_SLOP (its moves are held back from OrbitControls until then, so a
+    //    tap never nudges the camera under the pick); past that OrbitControls pans, and the click on release is swallowed.
+    //  two fingers: pinch (spread ratio) zooms, twist (finger angle, with a deadzone) turns about the target, and the
+    //    midpoint's vertical drag (with a deadzone) tilts. Horizontal midpoint movement is deliberately unused.
     const el = gl.domElement
+    const guard = createTapGuard()
     const touches = new Map<number, { x: number; y: number }>()
-    let lastAngle: number | null = null
+    let lastAngle = 0
+    let lastDist = 0
+    let lastMidY = 0
     let pending = 0
     let engaged = false
-    const fingerAngle = () => {
-      const [a, b] = [...touches.values()]
-      return Math.atan2(b!.y - a!.y, b!.x - a!.x)
-    }
-    const resetTwist = () => {
-      lastAngle = touches.size === 2 ? fingerAngle() : null
+    let tiltPending = 0
+    let tiltEngaged = false
+    const resetTwo = () => {
+      if (touches.size === 2) {
+        const [a, b] = [...touches.values()] as [{ x: number; y: number }, { x: number; y: number }]
+        lastAngle = Math.atan2(b.y - a.y, b.x - a.x)
+        lastDist = Math.hypot(b.x - a.x, b.y - a.y)
+        lastMidY = (a.y + b.y) / 2
+      }
       pending = 0
       engaged = false
+      tiltPending = 0
+      tiltEngaged = false
     }
     const onTouchDown = (e: PointerEvent) => {
-      if (e.pointerType !== 'touch') return
+      const touch = e.pointerType === 'touch'
+      guard.down(e.pointerId, e.clientX, e.clientY, touch, e.target === el)
+      if (!touch || e.target !== el) return
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY })
-      resetTwist()
+      resetTwo()
     }
     const onTouchMove = (e: PointerEvent) => {
       if (e.pointerType !== 'touch' || !touches.has(e.pointerId)) return
+      guard.move(e.pointerId, e.clientX, e.clientY)
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY })
-      if (touches.size !== 2 || lastAngle === null || !controls.current) return
-      const angle = fingerAngle()
+      if (touches.size === 1) {
+        if (guard.inDeadzone()) e.stopImmediatePropagation()
+        return
+      }
+      if (touches.size !== 2 || !controls.current) return
+      const [a, b] = [...touches.values()] as [{ x: number; y: number }, { x: number; y: number }]
+      const angle = Math.atan2(b.y - a.y, b.x - a.x)
       let d = angle - lastAngle
       if (d > Math.PI) d -= 2 * Math.PI
       if (d < -Math.PI) d += 2 * Math.PI
       lastAngle = angle
-      if (!engaged) {
+      const dist = Math.hypot(b.x - a.x, b.y - a.y)
+      const pinch = lastDist > 0 ? dist / lastDist : 1
+      lastDist = dist
+      const midY = (a.y + b.y) / 2
+      const dMid = midY - lastMidY
+      lastMidY = midY
+      let azimuth = 0
+      if (engaged) azimuth = d
+      else {
         pending += d
-        if (Math.abs(pending) < TWIST_DEADZONE) return
-        engaged = true
-        d = pending
+        if (Math.abs(pending) >= TWIST_DEADZONE) {
+          engaged = true
+          azimuth = pending
+        }
       }
+      let dPhi = 0
+      if (tiltEngaged) dPhi = tiltFromDrag(dMid, el.clientHeight)
+      else {
+        tiltPending += dMid
+        if (Math.abs(tiltPending) >= TILT_DEADZONE) {
+          tiltEngaged = true
+          dPhi = tiltFromDrag(tiltPending, el.clientHeight)
+        }
+      }
+      if (azimuth === 0 && dPhi === 0 && pinch === 1) return
+      const ctl = controls.current
       tween.current = null
-      const t = controls.current.target
-      camera.position.sub(t).applyAxisAngle(UP, d).add(t)
-      controls.current.update()
+      const lim = { minDistance: ctl.minDistance, maxDistance: ctl.maxDistance, minPolar: ctl.minPolarAngle, maxPolar: ctl.maxPolarAngle }
+      const off = twoFingerOffset(camera.position.clone().sub(ctl.target), azimuth, pinch, dPhi, lim)
+      camera.position.copy(ctl.target).add(off)
+      ctl.update()
       invalidate()
     }
     const onTouchUp = (e: PointerEvent) => {
+      guard.up(e.pointerId)
       if (!touches.delete(e.pointerId)) return
-      resetTwist()
+      resetTwo()
     }
-    el.addEventListener('pointerdown', onTouchDown)
-    el.addEventListener('pointermove', onTouchMove)
-    el.addEventListener('pointerup', onTouchUp)
-    el.addEventListener('pointercancel', onTouchUp)
+    // the click that ends a drag or a multi-finger gesture on the board must not select, move or measure
+    const onClick = (e: MouseEvent) => {
+      if (e.target === el && guard.suppressClick()) {
+        e.stopImmediatePropagation()
+        e.preventDefault()
+      }
+    }
+    const cap = { capture: true } as const
+    window.addEventListener('pointerdown', onTouchDown, cap)
+    window.addEventListener('pointermove', onTouchMove, cap)
+    window.addEventListener('pointerup', onTouchUp, cap)
+    window.addEventListener('pointercancel', onTouchUp, cap)
+    window.addEventListener('click', onClick, cap)
 
     c.target.set(0, 0, 1)
     c.update()
@@ -113,10 +179,11 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
     return () => {
       window.removeEventListener('pointerdown', onDown, { capture: true })
       c.removeEventListener('start', onStart)
-      el.removeEventListener('pointerdown', onTouchDown)
-      el.removeEventListener('pointermove', onTouchMove)
-      el.removeEventListener('pointerup', onTouchUp)
-      el.removeEventListener('pointercancel', onTouchUp)
+      window.removeEventListener('pointerdown', onTouchDown, cap)
+      window.removeEventListener('pointermove', onTouchMove, cap)
+      window.removeEventListener('pointerup', onTouchUp, cap)
+      window.removeEventListener('pointercancel', onTouchUp, cap)
+      window.removeEventListener('click', onClick, cap)
     }
   }, [invalidate, camera, gl])
 

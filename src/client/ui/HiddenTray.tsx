@@ -7,6 +7,7 @@ import { clickOperative } from '../interaction/controller'
 import { setAsideWording } from '../teams'
 import { useDisplayState } from '../presentation/presentedStore'
 import { useGame } from '../store/game'
+import { CollapseButton, CollapsedTab, useCollapsed } from './collapse'
 import { Keyword } from './Keyword'
 import { colors, fontStack, panel } from './theme'
 import { Tooltip } from './Tooltip'
@@ -32,19 +33,24 @@ export function HiddenTray() {
   const state = useDisplayState()
   const seats = useGame((g) => g.seats)
   const acting = useGame((g) => g.pending?.seat ?? null)
+  const [collapsed] = useCollapsed('hidden')
   if (!state) return null
   const hidden = trayEntries(state.operatives, viewerSeats(seats, acting))
   if (hidden.length === 0) return null
   const wording = (seat: Seat) => setAsideWording(state.players[seat]?.teamId)
   // one header when every chip reads alike, else the first viewer-owned team's
   const head = wording((hidden.find((h) => !h.theirs) ?? hidden[0]!).op.seat)
+  if (collapsed) return <CollapsedTab id="hidden" title={`${head.term} (${hidden.length})`} style={{ position: 'absolute', top: 62, left: 8, zIndex: 18 }} />
   return (
     <div
       data-testid="hidden-tray"
       style={{ ...panel, position: 'absolute', top: 62, left: 8, padding: '5px 8px', fontFamily: fontStack, fontSize: 12, pointerEvents: 'auto', zIndex: 18, maxWidth: 260 }}
     >
-      <div style={{ color: colors.muted, marginBottom: 3 }}>
-        <Keyword term={head.term} /> {head.trayNote}
+      <div style={{ color: colors.muted, marginBottom: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+        <span>
+          <Keyword term={head.term} /> {head.trayNote}
+        </span>
+        <CollapseButton id="hidden" title={head.term} style={{ flex: '0 0 auto' }} />
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
         {hidden.map(({ op: o, theirs }) => (

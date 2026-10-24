@@ -11,6 +11,8 @@ import { effectiveApl } from '@/engine/state'
 import { dataBundle, engineBundle } from '../game/adapter'
 import { archetypeFor } from '../teams'
 import { animPosition } from '../presentation/animStore'
+import { useSettings } from '../presentation/settings'
+import { useUi } from '../ui/uiStore'
 import { AP_DARK, AP_LIT, ORDER_COLOR, apTip, orderTip, useBoardTip, woundTip, type MarkerTip } from '../ui/markerInfo'
 import { tokenDef } from '../ui/tokenDefs'
 import { tokenTip } from '../ui/tokenInfo'
@@ -20,7 +22,7 @@ import { useGlbInstance } from './glbLoader'
 import { attachmentFor } from './attachmentFor'
 import { HOLDS, SHEATHED, handRight, heaviestHold, holdClassOf, type HoldSpec } from './hold'
 import { modelManifest, pointOf, slugOf, useModelManifest, type BodyEntry, type HoldClass, type ModelManifest, type V3 } from './manifest'
-import { BaseRing, OvalPlinth, isOvalBase, setBakedBaseVisible } from './OvalBase'
+import { BaseRing, OvalPlinth, PulseRing, isOvalBase, setBakedBaseVisible } from './OvalBase'
 import { Procedural, type HslLike } from './Procedural'
 
 export interface FigureSpec {
@@ -431,6 +433,9 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
       g.rotation.y = op.facing
     }
   })
+  // touch: the operative tapped and waiting for the confirm gets the strong pulse
+  const picked = useUi((u) => u.pendingActivate === op.id)
+  const lowGraphics = useSettings((u) => u.lowGraphics)
   const apl = effectiveApl(op)
   const lit = apSpent !== null ? Math.max(0, apl - apSpent) : op.ready ? apl : 0
   const top = op.height
@@ -454,17 +459,10 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
       <group ref={poseRef}>
         <Figure spec={spec} />
       </group>
-      {(selected || hovered || choosable) && (
-        <BaseRing
-          baseRadius={op.baseRadius}
-          ovalHalfAxis={op.ovalHalfAxis}
-          inner={0.08}
-          outer={choosable ? 0.3 : 0.2}
-          color={selected ? '#ffffff' : choosable ? '#ffe066' : '#9aa0b8'}
-          opacity={0.9}
-          y={0.08}
-        />
+      {(selected || hovered) && (
+        <BaseRing baseRadius={op.baseRadius} ovalHalfAxis={op.ovalHalfAxis} inner={0.08} outer={choosable ? 0.3 : 0.2} color={selected ? '#ffffff' : '#9aa0b8'} opacity={0.9} y={0.08} />
       )}
+      {choosable && <PulseRing baseRadius={op.baseRadius} ovalHalfAxis={op.ovalHalfAxis} color={picked ? '#6dff9a' : '#ffe066'} strong={picked} animate={!lowGraphics} />}
       <Billboard position={[0, top + 0.3, 0]} follow>
         <TipArea tip={orderTip(op.order)} w={0.5} h={0.4} y={0.62}>
           <OrderToken order={op.order} />
