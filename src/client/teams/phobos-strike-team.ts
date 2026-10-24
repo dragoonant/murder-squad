@@ -57,23 +57,6 @@ export const PRESENTATION: TeamPresentation = {
     'ph.w.combat-blade': ['ph-w-combat-knife'],
   },
   standIns: [
-    'ph-infiltrator-sergeant',
-    'ph-incursor-sergeant',
-    'ph-reiver-sergeant-pistol-knife',
-    'ph-reiver-sergeant-carbine',
-    'ph-infiltrator-commsman',
-    'ph-infiltrator-helix-adept',
-    'ph-infiltrator-saboteur',
-    'ph-infiltrator-veteran',
-    'ph-infiltrator-voxbreaker',
-    'ph-infiltrator-warrior',
-    'ph-infiltrator-warrior-b',
-    'ph-incursor-marksman',
-    'ph-incursor-minelayer',
-    'ph-incursor-warrior',
-    'ph-incursor-warrior-b',
-    'ph-reiver-warrior-pistol-knife',
-    'ph-reiver-warrior-carbine',
   ],
   // One body per loadout for the Reivers: the pistol-and-knife kit is the card's own archetype, the carbine kit the second body
   loadoutBodies: {

@@ -1,0 +1,20 @@
+ks done: 16
+nv done: 16
+ph done: 17
+cv done: 14
+wc done: 21
+fk done: 14
+nb done: 18
+bl partial: 14 (quota hit, 7 pending)
+ks wired
+ks approved
+nv approved
+ph approved
+nb approved
+bl approved
+wc-rubric approved
+wc-sorcerer approved
+fk-hound approved
+nv wired
+ph wired
+nb wired

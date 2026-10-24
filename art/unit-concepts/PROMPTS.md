@@ -372,6 +372,8 @@ Same method as the first ten teams (one Gemini chat per team, standalone prompts
 
 ### Corsair Voidscarred v2 (15 bodies, prompts in `cv-prompts-gemini.json`)
 
+**Redo 2026-10-24 (owner feedback: all 15 bodies came out about 4-5 heads tall).** Prompts in the JSON were rewritten: the proportion block now comes first ("Chibi super-deformed tabletop miniature: exactly 2.5 heads tall, the head about 40% of total height and as wide as the shoulders, short chunky limbs, oversized hands and feet"), "lean", "slim", "slender", "tall" were removed from the subject (race identity stays in features: ears, beaks, quills, armour) and each prompt is sent with `ks-trooper.png` attached plus "Match exactly the body proportions, head size and finish of the attached figure; only the character changes." The tables below keep the slug and pose line; the full redo text is in the JSON.
+
 | Slug | Pose |
 |---|---|
 | cv-felarch-shuriken-rifle | commanding, one foot forward, blade raised, rifle aimed ahead |
@@ -391,6 +393,8 @@ Same method as the first ten teams (one Gemini chat per team, standalone prompts
 | cv-way-seeker | right hand thrust forward unleashing a crackle of blue lightning, staff held to the side |
 
 ### Warpcoven v2 (21 bodies, prompts in `wc-prompts-gemini.json`)
+
+**Redo 2026-10-24 (owner feedback: the 7 `wc-tzaangor-*` bodies; Rubrics and Sorcerers kept came out about 4-5 heads tall).** Prompts in the JSON were rewritten: the proportion block now comes first ("Chibi super-deformed tabletop miniature: exactly 2.5 heads tall, the head about 40% of total height and as wide as the shoulders, short chunky limbs, oversized hands and feet"), "lean", "slim", "slender", "tall" were removed from the subject (race identity stays in features: ears, beaks, quills, armour) and each prompt is sent with `ks-trooper.png` attached plus "Match exactly the body proportions, head size and finish of the attached figure; only the character changes." The tables below keep the slug and pose line; the full redo text is in the JSON.
 
 | Slug | Pose |
 |---|---|
@@ -417,6 +421,8 @@ Same method as the first ten teams (one Gemini chat per team, standalone prompts
 | wc-tzaangor-warrior-autopistol-chainsword | charging, chainsword raised, autopistol aimed ahead |
 
 ### Farstalker Kinband v2 (15 bodies, prompts in `fk-prompts-gemini.json`)
+
+**Redo 2026-10-24 (owner feedback: the 13 Kroot bodies; the two hounds kept came out about 4-5 heads tall).** Prompts in the JSON were rewritten: the proportion block now comes first ("Chibi super-deformed tabletop miniature: exactly 2.5 heads tall, the head about 40% of total height and as wide as the shoulders, short chunky limbs, oversized hands and feet"), "lean", "slim", "slender", "tall" were removed from the subject (race identity stays in features: ears, beaks, quills, armour) and each prompt is sent with `ks-trooper.png` attached plus "Match exactly the body proportions, head size and finish of the attached figure; only the character changes." The tables below keep the slug and pose line; the full redo text is in the JSON.
 
 | Slug | Pose |
 |---|---|

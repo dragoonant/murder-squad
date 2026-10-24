@@ -114,8 +114,6 @@ export const PRESENTATION: TeamPresentation = {
     'fk-bow-hunter',
     'fk-cold-blood',
     'fk-cut-skin',
-    'fk-hound',
-    'fk-hound-b',
     'fk-long-sight',
     'fk-pistolier',
     'fk-stalker',

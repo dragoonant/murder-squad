@@ -423,6 +423,681 @@
       },
       "weaponsBaked": true
     },
+    "bl-brimstone-grenadier": {
+      "file": "bodies/bl-brimstone-grenadier.glb",
+      "archetype": "bl-brimstone-grenadier",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.346
+        ],
+        "beltR": [
+          -0.404,
+          0.54,
+          -0.213
+        ],
+        "beltL": [
+          0.539,
+          0.54,
+          0.224
+        ],
+        "shoulderR": [
+          -0.468,
+          0.908,
+          -0.225
+        ],
+        "shoulderL": [
+          0.431,
+          0.908,
+          -0.057
+        ],
+        "head": [
+          0.014,
+          1.17,
+          -0.04
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "bl-butcher": {
+      "file": "bodies/bl-butcher.glb",
+      "archetype": "bl-butcher",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.557
+        ],
+        "beltR": [
+          -0.586,
+          0.56,
+          -0.255
+        ],
+        "beltL": [
+          0.75,
+          0.56,
+          -0.228
+        ],
+        "shoulderR": [
+          -0.14,
+          0.945,
+          -0.377
+        ],
+        "shoulderL": [
+          0.581,
+          0.945,
+          -0.272
+        ],
+        "head": [
+          0.287,
+          1.22,
+          -0.186
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "bl-chieftain-autopistol-chainsword": {
+      "file": "bodies/bl-chieftain-autopistol-chainsword.glb",
+      "archetype": "bl-chieftain-autopistol-chainsword",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.405
+        ],
+        "beltR": [
+          -0.537,
+          0.56,
+          -0.162
+        ],
+        "beltL": [
+          0.561,
+          0.56,
+          0.134
+        ],
+        "shoulderR": [
+          -0.021,
+          0.945,
+          -0.102
+        ],
+        "shoulderL": [
+          0.454,
+          0.945,
+          0.312
+        ],
+        "head": [
+          0.25,
+          1.22,
+          0.15
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "bl-chieftain-autopistol-power-weapon": {
+      "file": "bodies/bl-chieftain-autopistol-power-weapon.glb",
+      "archetype": "bl-chieftain-autopistol-power-weapon",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.235
+        ],
+        "beltR": [
+          -0.563,
+          0.56,
+          0.253
+        ],
+        "beltL": [
+          0.643,
+          0.56,
+          -0.062
+        ],
+        "shoulderR": [
+          0.026,
+          0.945,
+          0.042
+        ],
+        "shoulderL": [
+          0.341,
+          0.945,
+          -0.1
+        ],
+        "head": [
+          0.18,
+          1.22,
+          0.011
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "bl-chieftain-bolt-pistol": {
+      "file": "bodies/bl-chieftain-bolt-pistol.glb",
+      "archetype": "bl-chieftain-bolt-pistol",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.465
+        ],
+        "beltR": [
+          -0.558,
+          0.56,
+          0.308
+        ],
+        "beltL": [
+          0.526,
+          0.56,
+          -0.298
+        ],
+        "shoulderR": [
+          -0.234,
+          0.945,
+          -0.127
+        ],
+        "shoulderL": [
+          0.05,
+          0.945,
+          -0.232
+        ],
+        "head": [
+          -0.09,
+          1.22,
+          -0.202
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "bl-chieftain-boltgun": {
+      "file": "bodies/bl-chieftain-boltgun.glb",
+      "archetype": "bl-chieftain-boltgun",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.267
+        ],
+        "beltR": [
+          -0.473,
+          0.56,
+          0.131
+        ],
+        "beltL": [
+          0.216,
+          0.56,
+          0.015
+        ],
+        "shoulderR": [
+          -0.354,
+          0.945,
+          -0.031
+        ],
+        "shoulderL": [
+          -0.016,
+          0.945,
+          0.05
+        ],
+        "head": [
+          -0.211,
+          1.22,
+          -0.002
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "bl-chieftain-plasma-pistol": {
+      "file": "bodies/bl-chieftain-plasma-pistol.glb",
+      "archetype": "bl-chieftain-plasma-pistol",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.432
+        ],
+        "beltR": [
+          -0.207,
+          0.56,
+          -0.319
+        ],
+        "beltL": [
+          0.597,
+          0.56,
+          -0.087
+        ],
+        "shoulderR": [
+          -0.589,
+          0.945,
+          -0.234
+        ],
+        "shoulderL": [
+          0.383,
+          0.945,
+          -0.183
+        ],
+        "head": [
+          0.208,
+          1.22,
+          -0.146
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "bl-commsman": {
+      "file": "bodies/bl-commsman.glb",
+      "archetype": "bl-commsman",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.697,
+          -0.349
+        ],
+        "beltR": [
+          -0.394,
+          0.54,
+          -0.028
+        ],
+        "beltL": [
+          0.326,
+          0.54,
+          -0.028
+        ],
+        "shoulderR": [
+          -0.29,
+          0.907,
+          -0.264
+        ],
+        "shoulderL": [
+          0.146,
+          0.907,
+          -0.185
+        ],
+        "head": [
+          0.136,
+          1.17,
+          -0.319
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "bl-corpseman": {
+      "file": "bodies/bl-corpseman.glb",
+      "archetype": "bl-corpseman",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.502
+        ],
+        "beltR": [
+          -0.386,
+          0.54,
+          0.035
+        ],
+        "beltL": [
+          0.64,
+          0.54,
+          -0.34
+        ],
+        "shoulderR": [
+          -0.139,
+          0.908,
+          -0.193
+        ],
+        "shoulderL": [
+          0.497,
+          0.908,
+          -0.469
+        ],
+        "head": [
+          0.082,
+          1.17,
+          -0.267
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "bl-enforcer": {
+      "file": "bodies/bl-enforcer.glb",
+      "archetype": "bl-enforcer",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.808,
+          -0.156
+        ],
+        "beltR": [
+          -0.381,
+          0.62,
+          0.04
+        ],
+        "beltL": [
+          0.655,
+          0.62,
+          0.151
+        ],
+        "shoulderR": [
+          -0.734,
+          1.058,
+          0.273
+        ],
+        "shoulderL": [
+          0.76,
+          1.058,
+          0.194
+        ],
+        "head": [
+          -0.028,
+          1.37,
+          0.156
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "bl-flenser": {
+      "file": "bodies/bl-flenser.glb",
+      "archetype": "bl-flenser",
+      "heightIn": 1.12,
+      "figureHeightIn": 1.0,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.67,
+          -0.426
+        ],
+        "beltR": [
+          -0.402,
+          0.52,
+          -0.207
+        ],
+        "beltL": [
+          0.546,
+          0.52,
+          -0.053
+        ],
+        "shoulderR": [
+          -0.18,
+          0.87,
+          -0.067
+        ],
+        "shoulderL": [
+          0.432,
+          0.87,
+          0.05
+        ],
+        "head": [
+          0.278,
+          1.12,
+          0.029
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "bl-gunner-flamer": {
+      "file": "bodies/bl-gunner-flamer.glb",
+      "archetype": "bl-gunner-flamer",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.32
+        ],
+        "beltR": [
+          -0.583,
+          0.54,
+          0.041
+        ],
+        "beltL": [
+          0.576,
+          0.54,
+          -0.059
+        ],
+        "shoulderR": [
+          -0.565,
+          0.908,
+          -0.01
+        ],
+        "shoulderL": [
+          0.038,
+          0.908,
+          0.023
+        ],
+        "head": [
+          -0.157,
+          1.17,
+          0.003
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "bl-gunner-grenade-launcher": {
+      "file": "bodies/bl-gunner-grenade-launcher.glb",
+      "archetype": "bl-gunner-grenade-launcher",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.378
+        ],
+        "beltR": [
+          -0.523,
+          0.54,
+          0.22
+        ],
+        "beltL": [
+          0.121,
+          0.54,
+          -0.241
+        ],
+        "shoulderR": [
+          -0.526,
+          0.908,
+          0.041
+        ],
+        "shoulderL": [
+          0.471,
+          0.908,
+          -0.078
+        ],
+        "head": [
+          -0.251,
+          1.17,
+          0.018
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "bl-gunner-meltagun": {
+      "file": "bodies/bl-gunner-meltagun.glb",
+      "archetype": "bl-gunner-meltagun",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.482
+        ],
+        "beltR": [
+          -0.633,
+          0.54,
+          0.548
+        ],
+        "beltL": [
+          0.617,
+          0.54,
+          -0.314
+        ],
+        "shoulderR": [
+          -0.164,
+          0.908,
+          -0.183
+        ],
+        "shoulderL": [
+          0.41,
+          0.908,
+          -0.268
+        ],
+        "head": [
+          0.065,
+          1.17,
+          -0.237
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "fk-hound-b": {
+      "file": "bodies/fk-hound-b.glb",
+      "archetype": "fk-hound-b",
+      "heightIn": 0.97,
+      "figureHeightIn": 0.85,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.588,
+          -0.254
+        ],
+        "beltR": [
+          -0.259,
+          0.46,
+          0.111
+        ],
+        "beltL": [
+          0.814,
+          0.46,
+          -0.056
+        ],
+        "shoulderR": [
+          -0.855,
+          0.758,
+          -0.218
+        ],
+        "shoulderL": [
+          0.622,
+          0.758,
+          -0.006
+        ],
+        "head": [
+          0.13,
+          0.97,
+          0.031
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "fk-hound": {
+      "file": "bodies/fk-hound.glb",
+      "archetype": "fk-hound",
+      "heightIn": 0.97,
+      "figureHeightIn": 0.85,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.588,
+          -0.323
+        ],
+        "beltR": [
+          -0.785,
+          0.46,
+          -0.076
+        ],
+        "beltL": [
+          0.372,
+          0.46,
+          -0.006
+        ],
+        "shoulderR": [
+          -0.657,
+          0.758,
+          -0.134
+        ],
+        "shoulderL": [
+          0.84,
+          0.758,
+          -0.281
+        ],
+        "head": [
+          -0.04,
+          0.97,
+          -0.15
+        ]
+      },
+      "weaponsBaked": true,
+      "variants": [
+        "fk-hound-b"
+      ]
+    },
     "ha-agent-b": {
       "file": "bodies/ha-agent-b.glb",
       "archetype": "ha-agent-b",
@@ -3137,6 +3812,681 @@
       },
       "weaponsBaked": true
     },
+    "ks-combat-medic": {
+      "file": "bodies/ks-combat-medic.glb",
+      "archetype": "ks-combat-medic",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.697,
+          -0.427
+        ],
+        "beltR": [
+          -0.443,
+          0.54,
+          -0.205
+        ],
+        "beltL": [
+          0.527,
+          0.54,
+          0.049
+        ],
+        "shoulderR": [
+          -0.253,
+          0.907,
+          -0.067
+        ],
+        "shoulderL": [
+          0.347,
+          0.907,
+          -0.047
+        ],
+        "head": [
+          -0.082,
+          1.17,
+          -0.042
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ks-demo-trooper": {
+      "file": "bodies/ks-demo-trooper.glb",
+      "archetype": "ks-demo-trooper",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.406
+        ],
+        "beltR": [
+          -0.413,
+          0.54,
+          -0.071
+        ],
+        "beltL": [
+          0.482,
+          0.54,
+          0.166
+        ],
+        "shoulderR": [
+          -0.128,
+          0.908,
+          -0.021
+        ],
+        "shoulderL": [
+          0.313,
+          0.908,
+          -0.148
+        ],
+        "head": [
+          0.133,
+          1.17,
+          0.12
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ks-gunner-flamer": {
+      "file": "bodies/ks-gunner-flamer.glb",
+      "archetype": "ks-gunner-flamer",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.704
+        ],
+        "beltR": [
+          -0.337,
+          0.54,
+          -0.197
+        ],
+        "beltL": [
+          0.327,
+          0.54,
+          -0.529
+        ],
+        "shoulderR": [
+          -0.254,
+          0.908,
+          -0.581
+        ],
+        "shoulderL": [
+          0.254,
+          0.908,
+          -0.573
+        ],
+        "head": [
+          -0.02,
+          1.17,
+          -0.278
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ks-gunner-grenade-launcher": {
+      "file": "bodies/ks-gunner-grenade-launcher.glb",
+      "archetype": "ks-gunner-grenade-launcher",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.331
+        ],
+        "beltR": [
+          -0.121,
+          0.54,
+          -0.206
+        ],
+        "beltL": [
+          0.512,
+          0.54,
+          -0.06
+        ],
+        "shoulderR": [
+          -0.439,
+          0.908,
+          -0.017
+        ],
+        "shoulderL": [
+          0.415,
+          0.908,
+          -0.05
+        ],
+        "head": [
+          -0.355,
+          1.17,
+          0.003
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ks-gunner-meltagun": {
+      "file": "bodies/ks-gunner-meltagun.glb",
+      "archetype": "ks-gunner-meltagun",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.605
+        ],
+        "beltR": [
+          -0.409,
+          0.54,
+          -0.164
+        ],
+        "beltL": [
+          0.387,
+          0.54,
+          -0.253
+        ],
+        "shoulderR": [
+          -0.251,
+          0.908,
+          -0.238
+        ],
+        "shoulderL": [
+          0.163,
+          0.908,
+          -0.182
+        ],
+        "head": [
+          -0.038,
+          1.17,
+          -0.172
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ks-gunner-plasma-gun": {
+      "file": "bodies/ks-gunner-plasma-gun.glb",
+      "archetype": "ks-gunner-plasma-gun",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.289
+        ],
+        "beltR": [
+          -0.492,
+          0.54,
+          0.075
+        ],
+        "beltL": [
+          0.253,
+          0.54,
+          0.029
+        ],
+        "shoulderR": [
+          -0.475,
+          0.908,
+          0.013
+        ],
+        "shoulderL": [
+          0.053,
+          0.908,
+          0.037
+        ],
+        "head": [
+          -0.15,
+          1.17,
+          0.018
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ks-gunner-volley-gun": {
+      "file": "bodies/ks-gunner-volley-gun.glb",
+      "archetype": "ks-gunner-volley-gun",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.319
+        ],
+        "beltR": [
+          -0.559,
+          0.54,
+          0.04
+        ],
+        "beltL": [
+          0.577,
+          0.54,
+          -0.084
+        ],
+        "shoulderR": [
+          -0.599,
+          0.908,
+          -0.085
+        ],
+        "shoulderL": [
+          0.01,
+          0.908,
+          0.013
+        ],
+        "head": [
+          -0.171,
+          1.17,
+          0.006
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ks-recon-trooper": {
+      "file": "bodies/ks-recon-trooper.glb",
+      "archetype": "ks-recon-trooper",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.429
+        ],
+        "beltR": [
+          -0.457,
+          0.54,
+          0.042
+        ],
+        "beltL": [
+          0.445,
+          0.54,
+          -0.288
+        ],
+        "shoulderR": [
+          -0.419,
+          0.908,
+          -0.268
+        ],
+        "shoulderL": [
+          0.166,
+          0.908,
+          -0.163
+        ],
+        "head": [
+          -0.232,
+          1.17,
+          -0.143
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ks-sergeant-bolt-pistol": {
+      "file": "bodies/ks-sergeant-bolt-pistol.glb",
+      "archetype": "ks-sergeant-bolt-pistol",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.723
+        ],
+        "beltR": [
+          -0.366,
+          0.56,
+          -0.335
+        ],
+        "beltL": [
+          0.369,
+          0.56,
+          -0.658
+        ],
+        "shoulderR": [
+          -0.614,
+          0.945,
+          0.647
+        ],
+        "shoulderL": [
+          0.594,
+          0.945,
+          -0.755
+        ],
+        "head": [
+          -0.139,
+          1.22,
+          -0.314
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ks-sergeant-lasgun": {
+      "file": "bodies/ks-sergeant-lasgun.glb",
+      "archetype": "ks-sergeant-lasgun",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.293
+        ],
+        "beltR": [
+          -0.484,
+          0.56,
+          0.116
+        ],
+        "beltL": [
+          0.266,
+          0.56,
+          0.064
+        ],
+        "shoulderR": [
+          -0.314,
+          0.945,
+          0.082
+        ],
+        "shoulderL": [
+          0.136,
+          0.945,
+          0.019
+        ],
+        "head": [
+          -0.096,
+          1.22,
+          0.073
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ks-sergeant-laspistol": {
+      "file": "bodies/ks-sergeant-laspistol.glb",
+      "archetype": "ks-sergeant-laspistol",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.463
+        ],
+        "beltR": [
+          -0.416,
+          0.56,
+          -0.261
+        ],
+        "beltL": [
+          0.31,
+          0.56,
+          -0.186
+        ],
+        "shoulderR": [
+          -0.139,
+          0.945,
+          -0.228
+        ],
+        "shoulderL": [
+          0.452,
+          0.945,
+          0.43
+        ],
+        "head": [
+          0.08,
+          1.22,
+          -0.172
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ks-sergeant-plasma-pistol": {
+      "file": "bodies/ks-sergeant-plasma-pistol.glb",
+      "archetype": "ks-sergeant-plasma-pistol",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.411
+        ],
+        "beltR": [
+          -0.156,
+          0.56,
+          -0.287
+        ],
+        "beltL": [
+          0.307,
+          0.56,
+          -0.267
+        ],
+        "shoulderR": [
+          -0.314,
+          0.945,
+          -0.335
+        ],
+        "shoulderL": [
+          0.234,
+          0.945,
+          -0.176
+        ],
+        "head": [
+          0.042,
+          1.22,
+          -0.329
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ks-sharpshooter": {
+      "file": "bodies/ks-sharpshooter.glb",
+      "archetype": "ks-sharpshooter",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.281
+        ],
+        "beltR": [
+          -0.636,
+          0.54,
+          0.112
+        ],
+        "beltL": [
+          0.081,
+          0.54,
+          -0.035
+        ],
+        "shoulderR": [
+          -0.495,
+          0.908,
+          0.041
+        ],
+        "shoulderL": [
+          0.275,
+          0.908,
+          0.025
+        ],
+        "head": [
+          -0.272,
+          1.17,
+          0.079
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ks-trooper-b": {
+      "file": "bodies/ks-trooper-b.glb",
+      "archetype": "ks-trooper-b",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.697,
+          -0.404
+        ],
+        "beltR": [
+          -0.338,
+          0.54,
+          -0.156
+        ],
+        "beltL": [
+          0.376,
+          0.54,
+          0.49
+        ],
+        "shoulderR": [
+          -0.267,
+          0.907,
+          -0.243
+        ],
+        "shoulderL": [
+          0.114,
+          0.907,
+          -0.12
+        ],
+        "head": [
+          -0.063,
+          1.17,
+          -0.078
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ks-trooper": {
+      "file": "bodies/ks-trooper.glb",
+      "archetype": "ks-trooper",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.279
+        ],
+        "beltR": [
+          -0.417,
+          0.54,
+          0.072
+        ],
+        "beltL": [
+          0.194,
+          0.54,
+          0.122
+        ],
+        "shoulderR": [
+          -0.475,
+          0.908,
+          -0.088
+        ],
+        "shoulderL": [
+          0.011,
+          0.908,
+          0.062
+        ],
+        "head": [
+          -0.177,
+          1.17,
+          0.023
+        ]
+      },
+      "weaponsBaked": true,
+      "variants": [
+        "ks-trooper-b"
+      ]
+    },
+    "ks-vox-trooper": {
+      "file": "bodies/ks-vox-trooper.glb",
+      "archetype": "ks-vox-trooper",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.697,
+          -0.259
+        ],
+        "beltR": [
+          -0.47,
+          0.54,
+          -0.001
+        ],
+        "beltL": [
+          0.144,
+          0.54,
+          -0.032
+        ],
+        "shoulderR": [
+          -0.364,
+          0.907,
+          -0.048
+        ],
+        "shoulderL": [
+          0.032,
+          0.907,
+          0.068
+        ],
+        "head": [
+          -0.301,
+          1.17,
+          -0.032
+        ]
+      },
+      "weaponsBaked": true
+    },
     "lg-anointed": {
       "file": "bodies/lg-anointed.glb",
       "archetype": "lg-anointed",
@@ -3601,6 +4951,1440 @@
       "variants": [
         "lg-warrior-b"
       ]
+    },
+    "nb-armsman-b": {
+      "file": "bodies/nb-armsman-b.glb",
+      "archetype": "nb-armsman-b",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.427
+        ],
+        "beltR": [
+          -0.098,
+          0.54,
+          -0.274
+        ],
+        "beltL": [
+          0.395,
+          0.54,
+          0.201
+        ],
+        "shoulderR": [
+          -0.308,
+          0.908,
+          -0.287
+        ],
+        "shoulderL": [
+          0.271,
+          0.908,
+          -0.193
+        ],
+        "head": [
+          -0.258,
+          1.17,
+          -0.213
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-armsman": {
+      "file": "bodies/nb-armsman.glb",
+      "archetype": "nb-armsman",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.284
+        ],
+        "beltR": [
+          -0.384,
+          0.54,
+          0.031
+        ],
+        "beltL": [
+          0.094,
+          0.54,
+          -0.062
+        ],
+        "shoulderR": [
+          -0.459,
+          0.908,
+          -0.129
+        ],
+        "shoulderL": [
+          0.086,
+          0.908,
+          0.036
+        ],
+        "head": [
+          -0.097,
+          1.17,
+          0.06
+        ]
+      },
+      "weaponsBaked": true,
+      "variants": [
+        "nb-armsman-b"
+      ]
+    },
+    "nb-axejack": {
+      "file": "bodies/nb-axejack.glb",
+      "archetype": "nb-axejack",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.752,
+          -0.404
+        ],
+        "beltR": [
+          -0.307,
+          0.58,
+          0.028
+        ],
+        "beltL": [
+          0.2,
+          0.58,
+          -0.379
+        ],
+        "shoulderR": [
+          -0.218,
+          0.982,
+          -0.165
+        ],
+        "shoulderL": [
+          0.342,
+          0.982,
+          -0.201
+        ],
+        "head": [
+          0.011,
+          1.27,
+          -0.24
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-cat-unit": {
+      "file": "bodies/nb-cat-unit.glb",
+      "archetype": "nb-cat-unit",
+      "heightIn": 0.82,
+      "figureHeightIn": 0.7,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.505,
+          -0.546
+        ],
+        "beltR": [
+          -0.168,
+          0.4,
+          0.184
+        ],
+        "beltL": [
+          0.166,
+          0.4,
+          0.182
+        ],
+        "shoulderR": [
+          -0.207,
+          0.645,
+          0.33
+        ],
+        "shoulderL": [
+          0.207,
+          0.645,
+          0.334
+        ],
+        "head": [
+          -0.007,
+          0.82,
+          0.343
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-endurant": {
+      "file": "bodies/nb-endurant.glb",
+      "archetype": "nb-endurant",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.752,
+          -0.588
+        ],
+        "beltR": [
+          -0.355,
+          0.58,
+          -0.32
+        ],
+        "beltL": [
+          0.437,
+          0.58,
+          0.027
+        ],
+        "shoulderR": [
+          -0.337,
+          0.982,
+          -0.303
+        ],
+        "shoulderL": [
+          0.412,
+          0.982,
+          0.086
+        ],
+        "head": [
+          -0.052,
+          1.27,
+          -0.199
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-gheistskull": {
+      "file": "bodies/nb-gheistskull.glb",
+      "archetype": "nb-gheistskull",
+      "heightIn": 0.92,
+      "figureHeightIn": 0.8,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.56,
+          -0.258
+        ],
+        "beltR": [
+          -0.122,
+          0.44,
+          -0.011
+        ],
+        "beltL": [
+          0.114,
+          0.44,
+          0.002
+        ],
+        "shoulderR": [
+          -0.213,
+          0.72,
+          0.003
+        ],
+        "shoulderL": [
+          0.21,
+          0.72,
+          -0.005
+        ],
+        "head": [
+          -0.001,
+          0.92,
+          0.002
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-grenadier": {
+      "file": "bodies/nb-grenadier.glb",
+      "archetype": "nb-grenadier",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.587
+        ],
+        "beltR": [
+          -0.133,
+          0.54,
+          -0.321
+        ],
+        "beltL": [
+          0.396,
+          0.54,
+          -0.141
+        ],
+        "shoulderR": [
+          -0.53,
+          0.908,
+          -0.256
+        ],
+        "shoulderL": [
+          0.53,
+          0.908,
+          0.497
+        ],
+        "head": [
+          0.121,
+          1.17,
+          -0.219
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-gunner-las-volley": {
+      "file": "bodies/nb-gunner-las-volley.glb",
+      "archetype": "nb-gunner-las-volley",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.697,
+          -0.326
+        ],
+        "beltR": [
+          -0.519,
+          0.54,
+          0.179
+        ],
+        "beltL": [
+          0.141,
+          0.54,
+          0.123
+        ],
+        "shoulderR": [
+          -0.6,
+          0.907,
+          -0.059
+        ],
+        "shoulderL": [
+          0.031,
+          0.907,
+          -0.025
+        ],
+        "head": [
+          -0.164,
+          1.17,
+          -0.011
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-gunner-meltagun": {
+      "file": "bodies/nb-gunner-meltagun.glb",
+      "archetype": "nb-gunner-meltagun",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.522
+        ],
+        "beltR": [
+          -0.3,
+          0.54,
+          -0.18
+        ],
+        "beltL": [
+          0.309,
+          0.54,
+          -0.122
+        ],
+        "shoulderR": [
+          -0.232,
+          0.908,
+          -0.227
+        ],
+        "shoulderL": [
+          0.274,
+          0.908,
+          -0.216
+        ],
+        "head": [
+          -0.001,
+          1.17,
+          -0.16
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-gunner-plasma-gun": {
+      "file": "bodies/nb-gunner-plasma-gun.glb",
+      "archetype": "nb-gunner-plasma-gun",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.294
+        ],
+        "beltR": [
+          -0.432,
+          0.54,
+          -0.001
+        ],
+        "beltL": [
+          0.28,
+          0.54,
+          -0.006
+        ],
+        "shoulderR": [
+          -0.481,
+          0.908,
+          -0.016
+        ],
+        "shoulderL": [
+          0.084,
+          0.908,
+          -0.003
+        ],
+        "head": [
+          -0.115,
+          1.17,
+          0.015
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-hatchcutter": {
+      "file": "bodies/nb-hatchcutter.glb",
+      "archetype": "nb-hatchcutter",
+      "heightIn": 1.27,
+      "figureHeightIn": 1.15,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.752,
+          -0.552
+        ],
+        "beltR": [
+          -0.53,
+          0.58,
+          0.233
+        ],
+        "beltL": [
+          0.18,
+          0.58,
+          -0.095
+        ],
+        "shoulderR": [
+          -0.305,
+          0.982,
+          -0.436
+        ],
+        "shoulderL": [
+          0.502,
+          0.982,
+          0.108
+        ],
+        "head": [
+          0.374,
+          1.27,
+          0.136
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-sergeant-at-arms-autopistol-chainsword": {
+      "file": "bodies/nb-sergeant-at-arms-autopistol-chainsword.glb",
+      "archetype": "nb-sergeant-at-arms-autopistol-chainsword",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.236
+        ],
+        "beltR": [
+          0.05,
+          0.56,
+          -0.059
+        ],
+        "beltL": [
+          0.509,
+          0.56,
+          0.219
+        ],
+        "shoulderR": [
+          0.065,
+          0.945,
+          -0.026
+        ],
+        "shoulderL": [
+          0.382,
+          0.945,
+          0.279
+        ],
+        "head": [
+          0.241,
+          1.22,
+          0.257
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-sergeant-at-arms-autopistol-power-weapon": {
+      "file": "bodies/nb-sergeant-at-arms-autopistol-power-weapon.glb",
+      "archetype": "nb-sergeant-at-arms-autopistol-power-weapon",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.292
+        ],
+        "beltR": [
+          -0.286,
+          0.56,
+          -0.152
+        ],
+        "beltL": [
+          0.595,
+          0.56,
+          0.067
+        ],
+        "shoulderR": [
+          -0.82,
+          0.945,
+          0.381
+        ],
+        "shoulderL": [
+          0.159,
+          0.945,
+          -0.094
+        ],
+        "head": [
+          -0.07,
+          1.22,
+          -0.03
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-sergeant-at-arms-bolt-pistol-chainsword": {
+      "file": "bodies/nb-sergeant-at-arms-bolt-pistol-chainsword.glb",
+      "archetype": "nb-sergeant-at-arms-bolt-pistol-chainsword",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.507
+        ],
+        "beltR": [
+          -0.509,
+          0.56,
+          -0.337
+        ],
+        "beltL": [
+          0.208,
+          0.56,
+          -0.399
+        ],
+        "shoulderR": [
+          -0.551,
+          0.945,
+          0.292
+        ],
+        "shoulderL": [
+          0.531,
+          0.945,
+          -0.219
+        ],
+        "head": [
+          0.017,
+          1.22,
+          -0.14
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-sergeant-at-arms-bolt-pistol-power-weapon": {
+      "file": "bodies/nb-sergeant-at-arms-bolt-pistol-power-weapon.glb",
+      "archetype": "nb-sergeant-at-arms-bolt-pistol-power-weapon",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.363
+        ],
+        "beltR": [
+          -0.34,
+          0.56,
+          -0.279
+        ],
+        "beltL": [
+          0.457,
+          0.56,
+          -0.121
+        ],
+        "shoulderR": [
+          0.023,
+          0.945,
+          -0.078
+        ],
+        "shoulderL": [
+          0.851,
+          0.945,
+          0.475
+        ],
+        "head": [
+          0.267,
+          1.22,
+          -0.027
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-sergeant-at-arms-shotgun-hatchet": {
+      "file": "bodies/nb-sergeant-at-arms-shotgun-hatchet.glb",
+      "archetype": "nb-sergeant-at-arms-shotgun-hatchet",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.342
+        ],
+        "beltR": [
+          -0.329,
+          0.56,
+          -0.249
+        ],
+        "beltL": [
+          0.343,
+          0.56,
+          -0.014
+        ],
+        "shoulderR": [
+          -0.533,
+          0.945,
+          -0.034
+        ],
+        "shoulderL": [
+          0.133,
+          0.945,
+          -0.163
+        ],
+        "head": [
+          -0.521,
+          1.22,
+          0.082
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-surveyor": {
+      "file": "bodies/nb-surveyor.glb",
+      "archetype": "nb-surveyor",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.463
+        ],
+        "beltR": [
+          -0.398,
+          0.54,
+          -0.031
+        ],
+        "beltL": [
+          0.472,
+          0.54,
+          -0.116
+        ],
+        "shoulderR": [
+          -0.111,
+          0.908,
+          -0.113
+        ],
+        "shoulderL": [
+          0.372,
+          0.908,
+          -0.213
+        ],
+        "head": [
+          0.32,
+          1.17,
+          -0.205
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nb-void-jammer": {
+      "file": "bodies/nb-void-jammer.glb",
+      "archetype": "nb-void-jammer",
+      "heightIn": 1.17,
+      "figureHeightIn": 1.05,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.698,
+          -0.359
+        ],
+        "beltR": [
+          -0.332,
+          0.54,
+          -0.084
+        ],
+        "beltL": [
+          0.342,
+          0.54,
+          -0.048
+        ],
+        "shoulderR": [
+          -0.4,
+          0.908,
+          0.008
+        ],
+        "shoulderL": [
+          0.245,
+          0.908,
+          -0.183
+        ],
+        "head": [
+          0.167,
+          1.17,
+          -0.192
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nv-condemnor": {
+      "file": "bodies/nv-condemnor.glb",
+      "archetype": "nv-condemnor",
+      "heightIn": 1.12,
+      "figureHeightIn": 1.0,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.67,
+          -0.466
+        ],
+        "beltR": [
+          -0.634,
+          0.52,
+          -0.422
+        ],
+        "beltL": [
+          0.427,
+          0.52,
+          -0.351
+        ],
+        "shoulderR": [
+          -0.07,
+          0.87,
+          -0.302
+        ],
+        "shoulderL": [
+          0.606,
+          0.87,
+          0.655
+        ],
+        "head": [
+          0.184,
+          1.12,
+          -0.148
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nv-dialogus": {
+      "file": "bodies/nv-dialogus.glb",
+      "archetype": "nv-dialogus",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.353
+        ],
+        "beltR": [
+          -0.293,
+          0.56,
+          -0.084
+        ],
+        "beltL": [
+          0.468,
+          0.56,
+          0.38
+        ],
+        "shoulderR": [
+          -0.458,
+          0.945,
+          -0.018
+        ],
+        "shoulderL": [
+          0.392,
+          0.945,
+          -0.097
+        ],
+        "head": [
+          -0.333,
+          1.22,
+          -0.082
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nv-duellist": {
+      "file": "bodies/nv-duellist.glb",
+      "archetype": "nv-duellist",
+      "heightIn": 1.12,
+      "figureHeightIn": 1.0,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.67,
+          -0.26
+        ],
+        "beltR": [
+          -0.207,
+          0.52,
+          -0.153
+        ],
+        "beltL": [
+          0.608,
+          0.52,
+          -0.097
+        ],
+        "shoulderR": [
+          -0.155,
+          0.87,
+          -0.258
+        ],
+        "shoulderL": [
+          0.348,
+          0.87,
+          -0.172
+        ],
+        "head": [
+          0.091,
+          1.12,
+          -0.082
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nv-exactor": {
+      "file": "bodies/nv-exactor.glb",
+      "archetype": "nv-exactor",
+      "heightIn": 1.12,
+      "figureHeightIn": 1.0,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.67,
+          -0.218
+        ],
+        "beltR": [
+          -0.374,
+          0.52,
+          -0.008
+        ],
+        "beltL": [
+          0.508,
+          0.52,
+          0.046
+        ],
+        "shoulderR": [
+          -0.429,
+          0.87,
+          -0.128
+        ],
+        "shoulderL": [
+          0.364,
+          0.87,
+          -0.146
+        ],
+        "head": [
+          0.028,
+          1.12,
+          -0.147
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nv-hospitaller": {
+      "file": "bodies/nv-hospitaller.glb",
+      "archetype": "nv-hospitaller",
+      "heightIn": 1.12,
+      "figureHeightIn": 1.0,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.67,
+          -0.635
+        ],
+        "beltR": [
+          -0.234,
+          0.52,
+          -0.351
+        ],
+        "beltL": [
+          0.44,
+          0.52,
+          -0.126
+        ],
+        "shoulderR": [
+          -0.482,
+          0.87,
+          -0.254
+        ],
+        "shoulderL": [
+          0.532,
+          0.87,
+          0.413
+        ],
+        "head": [
+          0.097,
+          1.12,
+          -0.13
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nv-militant-autogun": {
+      "file": "bodies/nv-militant-autogun.glb",
+      "archetype": "nv-militant-autogun",
+      "heightIn": 1.12,
+      "figureHeightIn": 1.0,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.67,
+          -0.282
+        ],
+        "beltR": [
+          -0.309,
+          0.52,
+          -0.083
+        ],
+        "beltL": [
+          0.209,
+          0.52,
+          0.221
+        ],
+        "shoulderR": [
+          -0.299,
+          0.87,
+          -0.239
+        ],
+        "shoulderL": [
+          0.323,
+          0.87,
+          0.256
+        ],
+        "head": [
+          -0.074,
+          1.12,
+          -0.011
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nv-militant-autopistol-blade": {
+      "file": "bodies/nv-militant-autopistol-blade.glb",
+      "archetype": "nv-militant-autopistol-blade",
+      "heightIn": 1.12,
+      "figureHeightIn": 1.0,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.67,
+          -0.339
+        ],
+        "beltR": [
+          -0.079,
+          0.52,
+          -0.125
+        ],
+        "beltL": [
+          0.428,
+          0.52,
+          0.159
+        ],
+        "shoulderR": [
+          -0.374,
+          0.87,
+          -0.135
+        ],
+        "shoulderL": [
+          0.308,
+          0.87,
+          0.006
+        ],
+        "head": [
+          -0.422,
+          1.12,
+          -0.073
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nv-penitent": {
+      "file": "bodies/nv-penitent.glb",
+      "archetype": "nv-penitent",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.78,
+          -0.31
+        ],
+        "beltR": [
+          -0.674,
+          0.6,
+          0.263
+        ],
+        "beltL": [
+          0.286,
+          0.6,
+          -0.184
+        ],
+        "shoulderR": [
+          -0.422,
+          1.02,
+          0.052
+        ],
+        "shoulderL": [
+          0.613,
+          1.02,
+          -0.19
+        ],
+        "head": [
+          0.579,
+          1.32,
+          -0.192
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nv-preceptor": {
+      "file": "bodies/nv-preceptor.glb",
+      "archetype": "nv-preceptor",
+      "heightIn": 1.12,
+      "figureHeightIn": 1.0,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.67,
+          -0.137
+        ],
+        "beltR": [
+          -0.099,
+          0.52,
+          0.104
+        ],
+        "beltL": [
+          0.412,
+          0.52,
+          0.075
+        ],
+        "shoulderR": [
+          -0.306,
+          0.87,
+          0.173
+        ],
+        "shoulderL": [
+          0.31,
+          0.87,
+          0.047
+        ],
+        "head": [
+          -0.344,
+          1.12,
+          0.189
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nv-pronatus": {
+      "file": "bodies/nv-pronatus.glb",
+      "archetype": "nv-pronatus",
+      "heightIn": 1.12,
+      "figureHeightIn": 1.0,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.67,
+          -0.557
+        ],
+        "beltR": [
+          -0.294,
+          0.52,
+          -0.139
+        ],
+        "beltL": [
+          0.357,
+          0.52,
+          -0.205
+        ],
+        "shoulderR": [
+          -0.359,
+          0.87,
+          0.473
+        ],
+        "shoulderL": [
+          0.231,
+          0.87,
+          -0.442
+        ],
+        "head": [
+          -0.057,
+          1.12,
+          -0.312
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nv-purgatus-b": {
+      "file": "bodies/nv-purgatus-b.glb",
+      "archetype": "nv-purgatus-b",
+      "heightIn": 1.12,
+      "figureHeightIn": 1.0,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.67,
+          -0.299
+        ],
+        "beltR": [
+          -0.732,
+          0.52,
+          0.064
+        ],
+        "beltL": [
+          0.736,
+          0.52,
+          0.014
+        ],
+        "shoulderR": [
+          -0.753,
+          0.87,
+          0.038
+        ],
+        "shoulderL": [
+          -0.148,
+          0.87,
+          0.057
+        ],
+        "head": [
+          -0.33,
+          1.12,
+          0.062
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nv-purgatus": {
+      "file": "bodies/nv-purgatus.glb",
+      "archetype": "nv-purgatus",
+      "heightIn": 1.12,
+      "figureHeightIn": 1.0,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.67,
+          -0.319
+        ],
+        "beltR": [
+          -0.609,
+          0.52,
+          0.06
+        ],
+        "beltL": [
+          0.566,
+          0.52,
+          0.271
+        ],
+        "shoulderR": [
+          -0.592,
+          0.87,
+          -0.014
+        ],
+        "shoulderL": [
+          0.508,
+          0.87,
+          0.237
+        ],
+        "head": [
+          -0.197,
+          1.12,
+          0.095
+        ]
+      },
+      "weaponsBaked": true,
+      "variants": [
+        "nv-purgatus-b"
+      ]
+    },
+    "nv-reliquarius": {
+      "file": "bodies/nv-reliquarius.glb",
+      "archetype": "nv-reliquarius",
+      "heightIn": 1.47,
+      "figureHeightIn": 1.35,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.863,
+          -0.32
+        ],
+        "beltR": [
+          -0.79,
+          0.66,
+          0.34
+        ],
+        "beltL": [
+          0.548,
+          0.66,
+          -0.091
+        ],
+        "shoulderR": [
+          -0.429,
+          1.133,
+          -0.218
+        ],
+        "shoulderL": [
+          0.276,
+          1.133,
+          -0.092
+        ],
+        "head": [
+          -0.046,
+          1.47,
+          -0.153
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nv-superior-plasma-pistol": {
+      "file": "bodies/nv-superior-plasma-pistol.glb",
+      "archetype": "nv-superior-plasma-pistol",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.358
+        ],
+        "beltR": [
+          -0.345,
+          0.56,
+          -0.096
+        ],
+        "beltL": [
+          0.386,
+          0.56,
+          -0.078
+        ],
+        "shoulderR": [
+          -0.036,
+          0.945,
+          -0.223
+        ],
+        "shoulderL": [
+          0.434,
+          0.945,
+          0.292
+        ],
+        "head": [
+          0.412,
+          1.22,
+          0.491
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nv-superior-relic-bolt-pistol": {
+      "file": "bodies/nv-superior-relic-bolt-pistol.glb",
+      "archetype": "nv-superior-relic-bolt-pistol",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.417
+        ],
+        "beltR": [
+          -0.42,
+          0.56,
+          -0.166
+        ],
+        "beltL": [
+          0.672,
+          0.56,
+          -0.245
+        ],
+        "shoulderR": [
+          0.146,
+          0.945,
+          -0.205
+        ],
+        "shoulderL": [
+          0.624,
+          0.945,
+          -0.125
+        ],
+        "head": [
+          0.4,
+          1.22,
+          -0.062
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "nv-superior-relic-boltgun": {
+      "file": "bodies/nv-superior-relic-boltgun.glb",
+      "archetype": "nv-superior-relic-boltgun",
+      "heightIn": 1.22,
+      "figureHeightIn": 1.1,
+      "baseTopIn": 0.12,
+      "baseMm": 25,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.725,
+          -0.396
+        ],
+        "beltR": [
+          -0.507,
+          0.56,
+          -0.178
+        ],
+        "beltL": [
+          0.463,
+          0.56,
+          -0.044
+        ],
+        "shoulderR": [
+          -0.354,
+          0.945,
+          -0.316
+        ],
+        "shoulderL": [
+          0.063,
+          0.945,
+          -0.319
+        ],
+        "head": [
+          -0.159,
+          1.22,
+          -0.332
+        ]
+      },
+      "weaponsBaked": true
     },
     "pf-assault-grenadier": {
       "file": "bodies/pf-assault-grenadier.glb",
@@ -4358,6 +7142,726 @@
           -0.167,
           1.22,
           0.065
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ph-incursor-marksman": {
+      "file": "bodies/ph-incursor-marksman.glb",
+      "archetype": "ph-incursor-marksman",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.78,
+          -0.422
+        ],
+        "beltR": [
+          -0.719,
+          0.6,
+          0.177
+        ],
+        "beltL": [
+          0.187,
+          0.6,
+          0.103
+        ],
+        "shoulderR": [
+          -0.821,
+          1.02,
+          -0.115
+        ],
+        "shoulderL": [
+          0.399,
+          1.02,
+          0.299
+        ],
+        "head": [
+          -0.324,
+          1.32,
+          0.087
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ph-incursor-minelayer": {
+      "file": "bodies/ph-incursor-minelayer.glb",
+      "archetype": "ph-incursor-minelayer",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.78,
+          -0.748
+        ],
+        "beltR": [
+          -0.402,
+          0.6,
+          -0.165
+        ],
+        "beltL": [
+          0.398,
+          0.6,
+          -0.238
+        ],
+        "shoulderR": [
+          -0.371,
+          1.02,
+          -0.447
+        ],
+        "shoulderL": [
+          0.355,
+          1.02,
+          -0.472
+        ],
+        "head": [
+          -0.02,
+          1.32,
+          -0.179
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ph-incursor-sergeant": {
+      "file": "bodies/ph-incursor-sergeant.glb",
+      "archetype": "ph-incursor-sergeant",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.808,
+          -0.439
+        ],
+        "beltR": [
+          -0.447,
+          0.62,
+          -0.366
+        ],
+        "beltL": [
+          0.364,
+          0.62,
+          -0.114
+        ],
+        "shoulderR": [
+          -0.39,
+          1.058,
+          -0.222
+        ],
+        "shoulderL": [
+          0.408,
+          1.058,
+          -0.174
+        ],
+        "head": [
+          -0.096,
+          1.37,
+          -0.0
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ph-incursor-warrior-b": {
+      "file": "bodies/ph-incursor-warrior-b.glb",
+      "archetype": "ph-incursor-warrior-b",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.78,
+          -0.35
+        ],
+        "beltR": [
+          -0.409,
+          0.6,
+          -0.227
+        ],
+        "beltL": [
+          0.384,
+          0.6,
+          0.097
+        ],
+        "shoulderR": [
+          -0.307,
+          1.02,
+          -0.08
+        ],
+        "shoulderL": [
+          0.516,
+          1.02,
+          -0.115
+        ],
+        "head": [
+          0.043,
+          1.32,
+          0.018
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ph-incursor-warrior": {
+      "file": "bodies/ph-incursor-warrior.glb",
+      "archetype": "ph-incursor-warrior",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.78,
+          -0.438
+        ],
+        "beltR": [
+          -0.414,
+          0.6,
+          -0.347
+        ],
+        "beltL": [
+          0.309,
+          0.6,
+          -0.128
+        ],
+        "shoulderR": [
+          -0.381,
+          1.02,
+          -0.218
+        ],
+        "shoulderL": [
+          0.318,
+          1.02,
+          -0.264
+        ],
+        "head": [
+          -0.132,
+          1.32,
+          -0.095
+        ]
+      },
+      "weaponsBaked": true,
+      "variants": [
+        "ph-incursor-warrior-b"
+      ]
+    },
+    "ph-infiltrator-commsman": {
+      "file": "bodies/ph-infiltrator-commsman.glb",
+      "archetype": "ph-infiltrator-commsman",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.78,
+          -0.318
+        ],
+        "beltR": [
+          -0.345,
+          0.6,
+          0.049
+        ],
+        "beltL": [
+          0.317,
+          0.6,
+          -0.051
+        ],
+        "shoulderR": [
+          -0.259,
+          1.02,
+          -0.163
+        ],
+        "shoulderL": [
+          0.256,
+          1.02,
+          0.098
+        ],
+        "head": [
+          -0.128,
+          1.32,
+          -0.199
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ph-infiltrator-helix-adept": {
+      "file": "bodies/ph-infiltrator-helix-adept.glb",
+      "archetype": "ph-infiltrator-helix-adept",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.78,
+          -0.408
+        ],
+        "beltR": [
+          -0.377,
+          0.6,
+          -0.34
+        ],
+        "beltL": [
+          0.371,
+          0.6,
+          0.126
+        ],
+        "shoulderR": [
+          -0.24,
+          1.02,
+          -0.295
+        ],
+        "shoulderL": [
+          0.352,
+          1.02,
+          -0.101
+        ],
+        "head": [
+          -0.053,
+          1.32,
+          -0.278
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ph-infiltrator-saboteur": {
+      "file": "bodies/ph-infiltrator-saboteur.glb",
+      "archetype": "ph-infiltrator-saboteur",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.78,
+          -0.45
+        ],
+        "beltR": [
+          -0.521,
+          0.6,
+          0.303
+        ],
+        "beltL": [
+          0.631,
+          0.6,
+          -0.084
+        ],
+        "shoulderR": [
+          -0.447,
+          1.02,
+          -0.339
+        ],
+        "shoulderL": [
+          0.423,
+          1.02,
+          -0.567
+        ],
+        "head": [
+          0.164,
+          1.32,
+          -0.157
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ph-infiltrator-sergeant": {
+      "file": "bodies/ph-infiltrator-sergeant.glb",
+      "archetype": "ph-infiltrator-sergeant",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.808,
+          -0.816
+        ],
+        "beltR": [
+          -0.431,
+          0.62,
+          0.265
+        ],
+        "beltL": [
+          0.503,
+          0.62,
+          -0.579
+        ],
+        "shoulderR": [
+          -0.191,
+          1.058,
+          -0.622
+        ],
+        "shoulderL": [
+          0.721,
+          1.058,
+          -0.067
+        ],
+        "head": [
+          0.151,
+          1.37,
+          -0.276
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ph-infiltrator-veteran": {
+      "file": "bodies/ph-infiltrator-veteran.glb",
+      "archetype": "ph-infiltrator-veteran",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.78,
+          -0.666
+        ],
+        "beltR": [
+          -0.419,
+          0.6,
+          0.329
+        ],
+        "beltL": [
+          0.383,
+          0.6,
+          -0.273
+        ],
+        "shoulderR": [
+          -0.249,
+          1.02,
+          -0.314
+        ],
+        "shoulderL": [
+          0.208,
+          1.02,
+          -0.254
+        ],
+        "head": [
+          0.042,
+          1.32,
+          -0.3
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ph-infiltrator-voxbreaker": {
+      "file": "bodies/ph-infiltrator-voxbreaker.glb",
+      "archetype": "ph-infiltrator-voxbreaker",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.78,
+          -0.394
+        ],
+        "beltR": [
+          -0.036,
+          0.6,
+          -0.19
+        ],
+        "beltL": [
+          0.624,
+          0.6,
+          0.238
+        ],
+        "shoulderR": [
+          0.002,
+          1.02,
+          -0.256
+        ],
+        "shoulderL": [
+          0.57,
+          1.02,
+          -0.105
+        ],
+        "head": [
+          0.366,
+          1.32,
+          -0.204
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ph-infiltrator-warrior-b": {
+      "file": "bodies/ph-infiltrator-warrior-b.glb",
+      "archetype": "ph-infiltrator-warrior-b",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.78,
+          -0.604
+        ],
+        "beltR": [
+          -0.509,
+          0.6,
+          -0.496
+        ],
+        "beltL": [
+          0.209,
+          0.6,
+          -0.264
+        ],
+        "shoulderR": [
+          -0.455,
+          1.02,
+          -0.298
+        ],
+        "shoulderL": [
+          0.299,
+          1.02,
+          -0.315
+        ],
+        "head": [
+          -0.191,
+          1.32,
+          -0.09
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ph-infiltrator-warrior": {
+      "file": "bodies/ph-infiltrator-warrior.glb",
+      "archetype": "ph-infiltrator-warrior",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.78,
+          -0.462
+        ],
+        "beltR": [
+          -0.394,
+          0.6,
+          -0.244
+        ],
+        "beltL": [
+          0.369,
+          0.6,
+          -0.263
+        ],
+        "shoulderR": [
+          -0.352,
+          1.02,
+          -0.165
+        ],
+        "shoulderL": [
+          0.306,
+          1.02,
+          -0.167
+        ],
+        "head": [
+          -0.014,
+          1.32,
+          -0.05
+        ]
+      },
+      "weaponsBaked": true,
+      "variants": [
+        "ph-infiltrator-warrior-b"
+      ]
+    },
+    "ph-reiver-sergeant-carbine": {
+      "file": "bodies/ph-reiver-sergeant-carbine.glb",
+      "archetype": "ph-reiver-sergeant-carbine",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.808,
+          -0.204
+        ],
+        "beltR": [
+          -0.589,
+          0.62,
+          0.167
+        ],
+        "beltL": [
+          0.459,
+          0.62,
+          0.403
+        ],
+        "shoulderR": [
+          -0.261,
+          1.058,
+          0.057
+        ],
+        "shoulderL": [
+          0.425,
+          1.058,
+          -0.014
+        ],
+        "head": [
+          -0.128,
+          1.37,
+          -0.127
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ph-reiver-sergeant-pistol-knife": {
+      "file": "bodies/ph-reiver-sergeant-pistol-knife.glb",
+      "archetype": "ph-reiver-sergeant-pistol-knife",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.808,
+          -0.667
+        ],
+        "beltR": [
+          -0.303,
+          0.62,
+          -0.21
+        ],
+        "beltL": [
+          0.643,
+          0.62,
+          -0.45
+        ],
+        "shoulderR": [
+          -0.658,
+          1.058,
+          -0.704
+        ],
+        "shoulderL": [
+          0.598,
+          1.058,
+          -0.826
+        ],
+        "head": [
+          -0.024,
+          1.37,
+          -0.173
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ph-reiver-warrior-carbine": {
+      "file": "bodies/ph-reiver-warrior-carbine.glb",
+      "archetype": "ph-reiver-warrior-carbine",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.78,
+          -0.474
+        ],
+        "beltR": [
+          -0.36,
+          0.6,
+          0.009
+        ],
+        "beltL": [
+          0.454,
+          0.6,
+          0.006
+        ],
+        "shoulderR": [
+          -0.563,
+          1.02,
+          -0.385
+        ],
+        "shoulderL": [
+          0.563,
+          1.02,
+          -0.54
+        ],
+        "head": [
+          0.063,
+          1.32,
+          -0.048
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "ph-reiver-warrior-pistol-knife": {
+      "file": "bodies/ph-reiver-warrior-pistol-knife.glb",
+      "archetype": "ph-reiver-warrior-pistol-knife",
+      "heightIn": 1.32,
+      "figureHeightIn": 1.2,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.78,
+          -0.508
+        ],
+        "beltR": [
+          -0.294,
+          0.6,
+          -0.176
+        ],
+        "beltL": [
+          0.415,
+          0.6,
+          -0.188
+        ],
+        "shoulderR": [
+          -0.5,
+          1.02,
+          0.561
+        ],
+        "shoulderL": [
+          0.491,
+          1.02,
+          -0.57
+        ],
+        "head": [
+          -0.051,
+          1.32,
+          -0.152
         ]
       },
       "weaponsBaked": true
@@ -5163,6 +8667,597 @@
           0.119,
           1.27,
           0.057
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "wc-rubric-marine-gunner-soulreaper-cannon": {
+      "file": "bodies/wc-rubric-marine-gunner-soulreaper-cannon.glb",
+      "archetype": "wc-rubric-marine-gunner-soulreaper-cannon",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.807,
+          -0.825
+        ],
+        "beltR": [
+          -0.472,
+          0.62,
+          -0.161
+        ],
+        "beltL": [
+          0.482,
+          0.62,
+          -0.371
+        ],
+        "shoulderR": [
+          -0.222,
+          1.057,
+          -0.407
+        ],
+        "shoulderL": [
+          0.161,
+          1.057,
+          -0.411
+        ],
+        "head": [
+          -0.035,
+          1.37,
+          -0.195
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "wc-rubric-marine-gunner-warpflamer": {
+      "file": "bodies/wc-rubric-marine-gunner-warpflamer.glb",
+      "archetype": "wc-rubric-marine-gunner-warpflamer",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.808,
+          -0.949
+        ],
+        "beltR": [
+          -0.429,
+          0.62,
+          -0.709
+        ],
+        "beltL": [
+          0.474,
+          0.62,
+          -0.661
+        ],
+        "shoulderR": [
+          -0.137,
+          1.058,
+          -0.515
+        ],
+        "shoulderL": [
+          0.419,
+          1.058,
+          -0.642
+        ],
+        "head": [
+          0.039,
+          1.37,
+          -0.46
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "wc-rubric-marine-icon-bearer": {
+      "file": "bodies/wc-rubric-marine-icon-bearer.glb",
+      "archetype": "wc-rubric-marine-icon-bearer",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.808,
+          -0.731
+        ],
+        "beltR": [
+          -0.604,
+          0.62,
+          0.205
+        ],
+        "beltL": [
+          0.532,
+          0.62,
+          -0.563
+        ],
+        "shoulderR": [
+          -0.291,
+          1.058,
+          -0.305
+        ],
+        "shoulderL": [
+          0.633,
+          1.058,
+          -0.568
+        ],
+        "head": [
+          0.304,
+          1.37,
+          -0.562
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "wc-rubric-marine-warrior-b": {
+      "file": "bodies/wc-rubric-marine-warrior-b.glb",
+      "archetype": "wc-rubric-marine-warrior-b",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.808,
+          -0.422
+        ],
+        "beltR": [
+          -0.382,
+          0.62,
+          -0.083
+        ],
+        "beltL": [
+          0.469,
+          0.62,
+          0.36
+        ],
+        "shoulderR": [
+          -0.194,
+          1.058,
+          -0.277
+        ],
+        "shoulderL": [
+          0.296,
+          1.058,
+          -0.283
+        ],
+        "head": [
+          0.061,
+          1.37,
+          -0.154
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "wc-rubric-marine-warrior": {
+      "file": "bodies/wc-rubric-marine-warrior.glb",
+      "archetype": "wc-rubric-marine-warrior",
+      "heightIn": 1.37,
+      "figureHeightIn": 1.25,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.808,
+          -0.409
+        ],
+        "beltR": [
+          -0.61,
+          0.62,
+          0.252
+        ],
+        "beltL": [
+          0.638,
+          0.62,
+          0.324
+        ],
+        "shoulderR": [
+          -0.373,
+          1.058,
+          -0.208
+        ],
+        "shoulderL": [
+          0.234,
+          1.058,
+          -0.364
+        ],
+        "head": [
+          -0.091,
+          1.37,
+          -0.033
+        ]
+      },
+      "weaponsBaked": true,
+      "variants": [
+        "wc-rubric-marine-warrior-b"
+      ]
+    },
+    "wc-sorcerer-destiny-inferno-pistol": {
+      "file": "bodies/wc-sorcerer-destiny-inferno-pistol.glb",
+      "archetype": "wc-sorcerer-destiny-inferno-pistol",
+      "heightIn": 1.42,
+      "figureHeightIn": 1.3,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.835,
+          -0.609
+        ],
+        "beltR": [
+          -0.454,
+          0.64,
+          -0.063
+        ],
+        "beltL": [
+          0.519,
+          0.64,
+          0.165
+        ],
+        "shoulderR": [
+          -0.282,
+          1.095,
+          -0.177
+        ],
+        "shoulderL": [
+          0.69,
+          1.095,
+          -0.125
+        ],
+        "head": [
+          0.112,
+          1.42,
+          -0.205
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "wc-sorcerer-destiny-khopesh": {
+      "file": "bodies/wc-sorcerer-destiny-khopesh.glb",
+      "archetype": "wc-sorcerer-destiny-khopesh",
+      "heightIn": 1.42,
+      "figureHeightIn": 1.3,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.835,
+          -0.435
+        ],
+        "beltR": [
+          -0.425,
+          0.64,
+          -0.049
+        ],
+        "beltL": [
+          0.635,
+          0.64,
+          0.198
+        ],
+        "shoulderR": [
+          -0.77,
+          1.095,
+          0.298
+        ],
+        "shoulderL": [
+          0.69,
+          1.095,
+          0.426
+        ],
+        "head": [
+          0.662,
+          1.42,
+          0.543
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "wc-sorcerer-destiny-warpflame-pistol": {
+      "file": "bodies/wc-sorcerer-destiny-warpflame-pistol.glb",
+      "archetype": "wc-sorcerer-destiny-warpflame-pistol",
+      "heightIn": 1.42,
+      "figureHeightIn": 1.3,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.835,
+          -0.472
+        ],
+        "beltR": [
+          -0.543,
+          0.64,
+          0.375
+        ],
+        "beltL": [
+          0.449,
+          0.64,
+          -0.178
+        ],
+        "shoulderR": [
+          -0.24,
+          1.095,
+          -0.139
+        ],
+        "shoulderL": [
+          0.627,
+          1.095,
+          -0.112
+        ],
+        "head": [
+          0.401,
+          1.42,
+          -0.078
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "wc-sorcerer-tempyrion-inferno-pistol": {
+      "file": "bodies/wc-sorcerer-tempyrion-inferno-pistol.glb",
+      "archetype": "wc-sorcerer-tempyrion-inferno-pistol",
+      "heightIn": 1.42,
+      "figureHeightIn": 1.3,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.835,
+          -0.586
+        ],
+        "beltR": [
+          -0.797,
+          0.64,
+          -0.294
+        ],
+        "beltL": [
+          0.529,
+          0.64,
+          -0.081
+        ],
+        "shoulderR": [
+          -0.639,
+          1.095,
+          -0.394
+        ],
+        "shoulderL": [
+          0.367,
+          1.095,
+          -0.179
+        ],
+        "head": [
+          0.161,
+          1.42,
+          -0.206
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "wc-sorcerer-tempyrion-khopesh": {
+      "file": "bodies/wc-sorcerer-tempyrion-khopesh.glb",
+      "archetype": "wc-sorcerer-tempyrion-khopesh",
+      "heightIn": 1.42,
+      "figureHeightIn": 1.3,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.835,
+          -0.296
+        ],
+        "beltR": [
+          -0.501,
+          0.64,
+          0.019
+        ],
+        "beltL": [
+          0.828,
+          0.64,
+          0.227
+        ],
+        "shoulderR": [
+          -0.93,
+          1.095,
+          0.483
+        ],
+        "shoulderL": [
+          0.928,
+          1.095,
+          0.407
+        ],
+        "head": [
+          0.083,
+          1.42,
+          -0.06
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "wc-sorcerer-tempyrion-warpflame-pistol": {
+      "file": "bodies/wc-sorcerer-tempyrion-warpflame-pistol.glb",
+      "archetype": "wc-sorcerer-tempyrion-warpflame-pistol",
+      "heightIn": 1.42,
+      "figureHeightIn": 1.3,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.835,
+          -0.338
+        ],
+        "beltR": [
+          -0.536,
+          0.64,
+          -0.12
+        ],
+        "beltL": [
+          0.764,
+          0.64,
+          -0.153
+        ],
+        "shoulderR": [
+          -0.82,
+          1.095,
+          0.457
+        ],
+        "shoulderL": [
+          0.842,
+          1.095,
+          -0.094
+        ],
+        "head": [
+          -0.184,
+          1.42,
+          -0.141
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "wc-sorcerer-warpfire-inferno-pistol": {
+      "file": "bodies/wc-sorcerer-warpfire-inferno-pistol.glb",
+      "archetype": "wc-sorcerer-warpfire-inferno-pistol",
+      "heightIn": 1.42,
+      "figureHeightIn": 1.3,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.835,
+          -0.301
+        ],
+        "beltR": [
+          -0.452,
+          0.64,
+          0.052
+        ],
+        "beltL": [
+          0.543,
+          0.64,
+          -0.243
+        ],
+        "shoulderR": [
+          -0.428,
+          1.095,
+          -0.215
+        ],
+        "shoulderL": [
+          0.633,
+          1.095,
+          -0.073
+        ],
+        "head": [
+          0.652,
+          1.42,
+          -0.114
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "wc-sorcerer-warpfire-khopesh": {
+      "file": "bodies/wc-sorcerer-warpfire-khopesh.glb",
+      "archetype": "wc-sorcerer-warpfire-khopesh",
+      "heightIn": 1.42,
+      "figureHeightIn": 1.3,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.835,
+          -0.115
+        ],
+        "beltR": [
+          -0.847,
+          0.64,
+          0.216
+        ],
+        "beltL": [
+          0.723,
+          0.64,
+          0.011
+        ],
+        "shoulderR": [
+          -0.08,
+          1.095,
+          -0.005
+        ],
+        "shoulderL": [
+          0.604,
+          1.095,
+          0.165
+        ],
+        "head": [
+          0.649,
+          1.42,
+          0.169
+        ]
+      },
+      "weaponsBaked": true
+    },
+    "wc-sorcerer-warpfire-warpflame-pistol": {
+      "file": "bodies/wc-sorcerer-warpfire-warpflame-pistol.glb",
+      "archetype": "wc-sorcerer-warpfire-warpflame-pistol",
+      "heightIn": 1.42,
+      "figureHeightIn": 1.3,
+      "baseTopIn": 0.12,
+      "baseMm": 32,
+      "measured": true,
+      "sockets": {
+        "back": [
+          0.0,
+          0.835,
+          -0.464
+        ],
+        "beltR": [
+          -0.562,
+          0.64,
+          0.334
+        ],
+        "beltL": [
+          0.71,
+          0.64,
+          -0.105
+        ],
+        "shoulderR": [
+          -0.411,
+          1.095,
+          -0.226
+        ],
+        "shoulderL": [
+          0.571,
+          1.095,
+          -0.077
+        ],
+        "head": [
+          0.262,
+          1.42,
+          -0.135
         ]
       },
       "weaponsBaked": true

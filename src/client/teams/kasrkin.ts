@@ -120,22 +120,6 @@ export const PRESENTATION: TeamPresentation = {
   },
   standIns: [
     'ks-sergeant',
-    'ks-sergeant-bolt-pistol',
-    'ks-sergeant-lasgun',
-    'ks-sergeant-laspistol',
-    'ks-sergeant-plasma-pistol',
-    'ks-combat-medic',
-    'ks-demo-trooper',
-    'ks-gunner-flamer',
-    'ks-gunner-grenade-launcher',
-    'ks-gunner-volley-gun',
-    'ks-gunner-meltagun',
-    'ks-gunner-plasma-gun',
-    'ks-recon-trooper',
-    'ks-sharpshooter',
-    'ks-trooper',
-    'ks-trooper-b',
-    'ks-vox-trooper',
   ],
   // Keywords and rule terms in our own wording (game/glossary.ts merges them over the generic fallbacks).
   glossary: [

@@ -18,6 +18,21 @@ const TEAMS = {
   ha: { name: 'figures-hand-of-the-archon', teamId: 'handofthearchon', att: 'att-ha' },
   hc: { name: 'figures-hunter-clade', teamId: 'hunterclade', att: 'att-hc' },
   hk: { name: 'figures-hearthkyn-salvagers', teamId: 'hearthkynsalvagers', att: 'att-hk' },
+  // M10 v2 bodies (batches C and D): the screenshot is v2-<prefix>.png, no attachment page
+  ks: { name: 'v2-ks', teamId: 'kasrkin' },
+  nv: { name: 'v2-nv', teamId: 'novitiates' },
+  ph: { name: 'v2-ph', teamId: 'phobosstriketeam' },
+  cv: { name: 'v2-cv', teamId: 'corsairvoidscarred' },
+  wc: { name: 'v2-wc', teamId: 'warpcoven' },
+  fk: { name: 'v2-fk', teamId: 'farstalkerkinband' },
+  nb: { name: 'v2-nb', teamId: 'imperialnavybreachers' },
+  bl: { name: 'v2-bl', teamId: 'blooded' },
+  fg: { name: 'v2-fg', teamId: 'fellgorravagers' },
+  cc: { name: 'v2-cc', teamId: 'chaoscult' },
+  gm: { name: 'v2-gm', teamId: 'goremongers' },
+  ss: { name: 'v2-ss', teamId: 'scoutsquad' },
+  ta: { name: 'v2-ta', teamId: 'tempestusaquilons' },
+  ex: { name: 'v2-ex', teamId: 'exactionsquad' },
 }
 const out = 'tools/out/screens'
 mkdirSync(out, { recursive: true })
