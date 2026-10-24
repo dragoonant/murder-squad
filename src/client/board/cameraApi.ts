@@ -20,6 +20,14 @@ export interface CameraApi {
   flyTo(view: CameraView, ms: number): Promise<boolean>
   /** a view looking at (x, z) from the current azimuth and tilt at `distance` (clamped to the camera limits) */
   focusView(x: number, z: number, distance: number): CameraView
+  /**
+   * The shot camera: `true` relaxes the camera limits (minimum distance, tilt, target above the ground) so a
+   * third-person view fits, `false` restores them. Any camera input from the player ends it by itself.
+   * Optional so a stand-in camera (tests) can leave it out.
+   */
+  cinematic?(on: boolean): void
+  /** True from `cinematic(true)` until `cinematic(false)` or the player's own camera input took over. */
+  cinematicActive?(): boolean
 }
 
 export const cameraApi: { current: CameraApi | null } = { current: null }

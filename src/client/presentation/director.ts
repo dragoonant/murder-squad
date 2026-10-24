@@ -19,7 +19,9 @@ import { clearFx, clearOverrides, setControlOverride, setWoundOverride, spawnFx 
 import { setPresentationIdle } from './idleStore'
 import { cameraApi, type CameraView } from '../board/cameraApi'
 import { deployBeats, deployTimes, DEPLOY_FOCUS_DISTANCE, returnView, viewsDiffer, zoneFocus } from './deployCamera'
-import { catchUpPresented, setPresentedSeq } from './presentedStore'
+import { catchUpPresented, setPresentedSeq, usePresentedStore } from './presentedStore'
+import { setShotShooter } from './shotStore'
+import { cinematicOn, closeupViewClear, shotTimes, shoulderViewClear, volleyBeat, type Body } from './shotCamera'
 import { speedFactor, useSettings } from './settings'
 import { finalKinds, heldItemOf, holdVerdict, planLandings, rerollKinds, type DieKind } from './heldVolley'
 
@@ -481,6 +483,86 @@ interface HeldVolley {
 
 let heldVolley: HeldVolley | null = null
 
+// ---------------------------------------------------------------- the shot camera
+//
+// While a Shoot action fires, the camera leaves the player's view for an over-the-shoulder shot behind the shooter,
+// closes on the target when a die gets through, and flies back once the action is over (ShootEnded, or the end of
+// the batch if the action is cut short by a decision). One cinematic spans every volley of the action, so a weapon
+// with secondary targets returns once. The camera rig drops it the moment the player touches the camera.
+
+interface Cine {
+  /** the player's view, taken when the cinematic began */
+  saved: CameraView
+}
+let cine: Cine | null = null
+/** The player took the camera during this Shoot action: no new cinematic until the action is over. */
+let cineDeclined = false
+
+/**
+ * The camera beats stretch a batch past the presented cursor's stall guard (PRESENTED_STALL_MS), which would show the
+ * result and the next prompt mid-flight. Re-arming it from the cursor's own value restarts the guard without moving
+ * the cursor, so each camera beat gets a fresh window and a real stall is still caught.
+ */
+const petStall = (): void => setPresentedSeq(usePresentedStore.getState().presentedSeq)
+
+const bodyOf = (op: Operative): Body => ({ x: op.pos.x, y: op.pos.y, z: op.pos.z, height: op.height })
+
+/** The cinematic is still ours: not ended, and the player has not taken the camera. */
+function cineAlive(): boolean {
+  if (!cine) return false
+  const cam = cameraApi.current
+  if (!cam || cam.cinematicActive?.() === false) {
+    cine = null
+    cineDeclined = true
+    setShotShooter(null)
+    cam?.cinematic?.(false)
+    return false
+  }
+  return true
+}
+
+/** Flies the cinematic camera; a cancelled flight (the player moved the camera) drops the rest of the cinematic. */
+async function cineFly(view: CameraView, ms: number): Promise<boolean> {
+  const cam = cameraApi.current
+  if (!cam || !cineAlive()) return false
+  const arrived = await cam.flyTo(view, ms)
+  petStall()
+  if (!arrived) {
+    cine = null
+    cineDeclined = true
+    setShotShooter(null)
+    cam.cinematic?.(false)
+    return false
+  }
+  return cineAlive()
+}
+
+/** Back to the player's view, then the camera limits return. Safe when no cinematic runs. */
+async function cineEnd(gen: number): Promise<void> {
+  const c = cine
+  cineDeclined = false
+  if (!c) return
+  cine = null
+  setShotShooter(null) // the shooter's markers return as the camera heads back
+  const cam = cameraApi.current
+  if (!cam) return
+  try {
+    if (gen === generation && cam.cinematicActive?.() !== false) {
+      petStall()
+      await cam.flyTo(c.saved, shotTimes(speedFactor(useSettings.getState().animSpeed)).back)
+    }
+  } finally {
+    cam.cinematic?.(false)
+  }
+}
+
+function cineReset(): void {
+  if (cine) cameraApi.current?.cinematic?.(false)
+  setShotShooter(null)
+  cine = null
+  cineDeclined = false
+}
+
 /** Longest the director waits for a volley's tracers to land before playing what is left. */
 const VOLLEY_WAIT_MAX_MS = 3800
 /** Pause after the last landing, before whatever comes next. */
@@ -533,18 +615,45 @@ async function fireHeldVolley(gen: number): Promise<void> {
       console.warn('[presentation] failed to play save shimmer', err)
     }
   }
+  const who = lookup(h.state, h.shooterId)
+  const target = lookup(h.state, h.targetId)
+  const camOn = !!who && !!target && plan.shots.length > 0 && !cineDeclined && cinematicOn(useSettings.getState().cinematicShots, f, !!cameraApi.current)
+  const times = shotTimes(f)
+  let closeup: Promise<boolean> | null = null
+  /** the first die that gets through sends the camera in on the target */
+  const startCloseup = (): void => {
+    if (closeup || !who || !target || !camOn || gen !== generation || !cineAlive()) return
+    closeup = cineFly(closeupViewClear(h.state.map, bodyOf(who), bodyOf(target)), times.closeup).catch(() => false)
+  }
   const land = (die: number): void => {
     if (landed.has(die) || gen !== generation) return
     landed.add(die)
     const s = plan.shots[die]
     if (!s) return
     if (s.outcome === 'blocked') shimmer(1)
-    else if (s.outcome === 'damage') s.items.forEach(playItem)
+    else if (s.outcome === 'damage') {
+      s.items.forEach(playItem)
+      startCloseup()
+    }
   }
 
-  const who = lookup(h.state, h.shooterId)
-  const target = lookup(h.state, h.targetId)
   let volleyed = false
+  if (camOn && who && target && gen === generation) {
+    // over the shoulder first; the shooter turns to the target while the camera swings round behind
+    try {
+      const cam = cameraApi.current!
+      if (!cine) {
+        cine = { saved: cam.snapshot() }
+        cam.cinematic?.(true)
+      }
+      petStall()
+      setShotShooter(who.id)
+      faceToward(who, target, times.shoulder + 700)
+      await cineFly(shoulderViewClear(h.state.map, bodyOf(who), bodyOf(target)), times.shoulder)
+    } catch (err) {
+      console.warn('[presentation] failed to frame the shot', err)
+    }
+  }
   if (f > 0 && who && target && plan.shots.length > 0 && gen === generation) {
     try {
       let remaining = plan.shots.length
@@ -555,6 +664,9 @@ async function fireHeldVolley(gen: number): Promise<void> {
         land(die)
         if (--remaining === 0) allLanded()
       })
+      // the close-up starts early enough to arrive as the first damaging tracer lands, so the hit and the fall are both seen
+      const firstHit = plan.shots.find((x) => x.outcome === 'damage')
+      if (camOn && firstHit) setTimeout(startCloseup, Math.max(0, Math.round((info.impacts[firstHit.die] ?? info.first) * 1000) - times.closeup))
       faceToward(who, target, 700 + 1000 * info.duration)
       triggerCue(who.id, 'shoot', performance.now(), 'beat')
       volleyed = true
@@ -567,10 +679,26 @@ async function fireHeldVolley(gen: number): Promise<void> {
   plan.shots.forEach((s) => land(s.die))
   shimmer(plan.orphanBlocked)
   plan.orphanItems.forEach(playItem)
+  if (volleyBeat(plan) === 'closeup') startCloseup() // damage that no tracer carried
   await Promise.all(running)
   if (volleyed && gen === generation) {
     if (items.some((it) => it.kind === 'down')) await sleep(Math.round(450 * f))
     await sleep(Math.round(VOLLEY_SETTLE_MS * f))
+  }
+  if (camOn && gen === generation) {
+    try {
+      // something got through: stay on the target long enough to read the wound or the fall; nothing did: a short beat on the shoulder view
+      if (closeup) {
+        if (await closeup) {
+          petStall()
+          await sleep(times.hold)
+        }
+      } else await sleep(times.beat)
+      petStall()
+      cineAlive() // notices a player who moved the camera during the hold
+    } catch (err) {
+      console.warn('[presentation] shot camera hold failed', err)
+    }
   }
 }
 
@@ -610,7 +738,20 @@ async function deployTrip(b: Batch, visits: { x: number; z: number }[], gen: num
   if (gen === generation) await cam.flyTo(back, t.fly)
 }
 
+/** Plays one batch; the shot camera, if this batch started it, always goes back to the player's view before control returns. */
 async function playBatch(b: Batch, gen: number): Promise<void> {
+  try {
+    await playBatchBody(b, gen)
+  } finally {
+    try {
+      await cineEnd(gen)
+    } catch (err) {
+      console.warn('[presentation] shot camera return failed', err)
+    }
+  }
+}
+
+async function playBatchBody(b: Batch, gen: number): Promise<void> {
   const beats = deployBeats(b.events, b.state.phase, { perspective, botSeats, factor: speedFactor(useSettings.getState().animSpeed) })
   const visits: { x: number; z: number }[] = []
   for (const [i, ev] of b.events.entries()) {
@@ -631,6 +772,7 @@ async function playBatch(b: Batch, gen: number): Promise<void> {
     }
     // Move events keep the old position on screen while they play; every other event is shown as it plays.
     await playEvent(ev, b.state, gen)
+    if (ev.type === 'ShootEnded') await cineEnd(gen) // the whole action is over: back to the player's view, once
     const beat = beats.find((x) => x.index === i)?.beat
     if (beat?.kind === 'record') lastPlayerView = cameraApi.current?.snapshot() ?? lastPlayerView
     else if (beat?.kind === 'visit') visits.push({ x: beat.x, z: beat.z })
@@ -686,6 +828,7 @@ export function resetDirector(): void {
   generation++
   queue.length = 0
   heldVolley = null
+  cineReset()
   running = false
   mode = null
   fight = null

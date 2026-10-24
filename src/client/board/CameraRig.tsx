@@ -48,6 +48,10 @@ interface Tween {
 const PRESET_MS = 450
 const MIN_DIST = 5
 const MAX_DIST = 58
+/** Limits while the shot camera is active: a third-person view sits a few inches from its subject, level with a head. */
+const CINE_MIN_DIST = 0.6
+const MAX_POLAR = Math.PI / 2.05
+const CINE_MAX_POLAR = Math.PI * 0.98
 
 export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
   const controls = useRef<OrbitControlsImpl | null>(null)
@@ -61,6 +65,27 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
   }
   const setTweenRef = useRef(setTween)
   setTweenRef.current = setTween
+  /**
+   * The shot camera (see cameraApi.cinematic): while on, the minimum distance, the tilt limit and the ground-height
+   * clamp of the target are relaxed. Anything that moves the camera for the player calls `takeOver`, which restores
+   * the limits and drops the cinematic (the camera stays where it is; the director sees `cinematicActive` go false).
+   */
+  const cine = useRef(false)
+  const setCine = (on: boolean) => {
+    cine.current = on
+    const c = controls.current
+    if (!c) return
+    c.minDistance = on ? CINE_MIN_DIST : MIN_DIST
+    c.maxPolarAngle = on ? CINE_MAX_POLAR : MAX_POLAR
+  }
+  const setCineRef = useRef(setCine)
+  setCineRef.current = setCine
+  const takeOver = () => {
+    if (cine.current) setCineRef.current(false)
+    setTweenRef.current(null)
+  }
+  const takeOverRef = useRef(takeOver)
+  takeOverRef.current = takeOver
   const { camera, gl } = useThree()
   const invalidate = useThree((s) => s.invalidate)
   const preset = useUi((s) => s.cameraPreset)
@@ -85,7 +110,7 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
       controls.current.mouseButtons.LEFT = e.shiftKey ? MOUSE.PAN : e.altKey ? MOUSE.ROTATE : undefined
     }
     window.addEventListener('pointerdown', onDown, { capture: true })
-    const onStart = () => setTweenRef.current(null)
+    const onStart = () => takeOverRef.current()
     c.addEventListener('start', onStart)
 
     // Touch gestures, tracked on window in the capture phase so they run before OrbitControls and r3f.
@@ -163,7 +188,7 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
       }
       if (azimuth === 0 && dPhi === 0 && pinch === 1) return
       const ctl = controls.current
-      setTweenRef.current(null)
+      takeOverRef.current()
       const lim = { minDistance: ctl.minDistance, maxDistance: ctl.maxDistance, minPolar: ctl.minPolarAngle, maxPolar: ctl.maxPolarAngle }
       const off = twoFingerOffset(camera.position.clone().sub(ctl.target), azimuth, pinch, dPhi, lim)
       camera.position.copy(ctl.target).add(off)
@@ -207,6 +232,7 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
     if (!preset) return
     const c = controls.current
     if (!c) return
+    if (cine.current) setCineRef.current(false)
     if (preset.id === 'left' || preset.id === 'right') {
       // turn about the current target, keeping height and distance; 'right' turns the board clockwise on screen
       const turn = preset.id === 'left' ? -TURN_STEP : TURN_STEP
@@ -246,7 +272,7 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
       const k = e.key.toLowerCase()
       if (k in PAN_KEYS) {
         keys.current.add(k)
-        setTweenRef.current(null)
+        takeOverRef.current()
         invalidate()
       }
     }
@@ -270,7 +296,7 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
       lookAt(x, z, distance) {
         const c = controls.current
         if (!c) return
-        setTweenRef.current(null)
+        takeOverRef.current()
         const dir = camera.position.clone().sub(c.target)
         dir.y = Math.max(dir.y, 0.1)
         dir.normalize().multiplyScalar(MathUtils.clamp(distance, 4, 60))
@@ -295,6 +321,10 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
         dir.normalize().multiplyScalar(MathUtils.clamp(distance, MIN_DIST, MAX_DIST))
         return { position: [x + dir.x, dir.y, z + dir.z], target: [x, 0, z] }
       },
+      cinematic(on) {
+        setCineRef.current(on)
+      },
+      cinematicActive: () => cine.current,
       flyTo(view, ms) {
         const c = controls.current
         if (!c) return Promise.resolve(false)
@@ -326,6 +356,7 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
       },
     }
     return () => {
+      setCineRef.current(false)
       setTweenRef.current(null)
       cameraApi.current = null
     }
@@ -366,7 +397,7 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
     }
     c.target.x = MathUtils.clamp(c.target.x, -halfX - MARGIN, halfX + MARGIN)
     c.target.z = MathUtils.clamp(c.target.z, -halfZ - MARGIN, halfZ + MARGIN)
-    c.target.y = 0
+    if (!cine.current) c.target.y = 0
     c.update()
   })
 
@@ -378,7 +409,7 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
       minDistance={MIN_DIST}
       maxDistance={MAX_DIST}
       minPolarAngle={MathUtils.degToRad(4)}
-      maxPolarAngle={Math.PI / 2.05}
+      maxPolarAngle={MAX_POLAR}
       screenSpacePanning={false}
     />
   )

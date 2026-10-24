@@ -435,6 +435,7 @@ function AudioControls() {
 export function SettingsPanel() {
   const speed = useSettings((s) => s.animSpeed)
   const low = useSettings((s) => s.lowGraphics)
+  const cinematic = useSettings((s) => s.cinematicShots)
   const drawer = useUi((s) => s.drawer)
   const state = useGame((g) => g.state)
   const touch = useFormFactor().touch
@@ -457,6 +458,10 @@ export function SettingsPanel() {
       <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginBottom: 10 }}>
         <input data-testid="low-graphics" type="checkbox" checked={low} onChange={(e) => useSettings.getState().setLowGraphics(e.target.checked)} />
         Low graphics (no shadows, smaller mat texture)
+      </label>
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginBottom: 10 }}>
+        <input data-testid="cinematic-toggle" type="checkbox" checked={cinematic} onChange={(e) => useSettings.getState().setCinematicShots(e.target.checked)} />
+        Cinematic shooting camera
       </label>
       <div style={{ fontSize: 12, marginBottom: 4 }}>Camera</div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>

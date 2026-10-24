@@ -12,6 +12,7 @@ import { dataBundle, engineBundle } from '../game/adapter'
 import { archetypeFor } from '../teams'
 import { animPosition } from '../presentation/animStore'
 import { useSettings } from '../presentation/settings'
+import { useShotStore } from '../presentation/shotStore'
 import { useUi } from '../ui/uiStore'
 import { AP_DARK, AP_LIT, ORDER_COLOR, apTip, orderTip, useBoardTip, woundTip, type MarkerTip } from '../ui/markerInfo'
 import { tokenDef } from '../ui/tokenDefs'
@@ -436,6 +437,8 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
   // touch: the operative tapped and waiting for the confirm gets the strong pulse
   const picked = useUi((u) => u.pendingActivate === op.id)
   const lowGraphics = useSettings((u) => u.lowGraphics)
+  // the shot camera sits right behind the shooter: its overhead markers would fill the frame
+  const markersHidden = useShotStore((u) => u.hideMarkersOf === op.id)
   const apl = effectiveApl(op)
   const lit = apSpent !== null ? Math.max(0, apl - apSpent) : op.ready ? apl : 0
   const top = op.height
@@ -463,6 +466,7 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
         <BaseRing baseRadius={op.baseRadius} ovalHalfAxis={op.ovalHalfAxis} inner={0.08} outer={choosable ? 0.3 : 0.2} color={selected ? '#ffffff' : '#9aa0b8'} opacity={0.9} y={0.08} />
       )}
       {choosable && <PulseRing baseRadius={op.baseRadius} ovalHalfAxis={op.ovalHalfAxis} color={picked ? '#6dff9a' : '#ffe066'} strong={picked} animate={!lowGraphics} />}
+      {!markersHidden && (
       <Billboard position={[0, top + 0.3, 0]} follow>
         <TipArea tip={orderTip(op.order)} w={0.5} h={0.4} y={0.62}>
           <OrderToken order={op.order} />
@@ -481,7 +485,8 @@ export function BattleOperative({ op, apSpent, selected, hovered, choosable, onS
           </group>
         ))}
       </Billboard>
-      {(selected || hovered) && (
+      )}
+      {(selected || hovered) && !markersHidden && (
         <Html position={[0, top + 1.25, 0]} center zIndexRange={[10, 0]} distanceFactor={14} style={{ pointerEvents: 'none' }}>
           <div style={{ background: 'rgba(8,8,14,0.85)', color: '#fff', font: '600 11px system-ui', padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap' }}>
             {op.id} {op.name} {op.wounds}/{op.maxWounds}
