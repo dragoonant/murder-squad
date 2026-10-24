@@ -14,7 +14,9 @@ import { MathUtils, MOUSE, TOUCH, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { useSight } from '../interaction/sightStore'
 import { useUi } from '../ui/uiStore'
-import { cameraApi } from './cameraApi'
+import { setDirectorBotSeats } from '../presentation/director'
+import { useGame } from '../store/game'
+import { cameraApi, type CameraView } from './cameraApi'
 import { createTapGuard, TILT_DEADZONE, tiltFromDrag, twoFingerOffset } from './touchCamera'
 
 export { TAP_SLOP, createTapGuard } from './touchCamera'
@@ -37,12 +39,28 @@ interface Tween {
   toT: Vector3
   /** set for a turn: fromP swings about the target by this many radians instead of lerping to toP */
   turn?: number
+  /** duration in ms (default PRESET_MS) */
+  ms?: number
+  /** resolves a flyTo: true when the tween arrived, false when something else took the camera */
+  done?: (arrived: boolean) => void
 }
+
+const PRESET_MS = 450
+const MIN_DIST = 5
+const MAX_DIST = 58
 
 export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
   const controls = useRef<OrbitControlsImpl | null>(null)
   const tween = useRef<Tween | null>(null)
   const keys = useRef(new Set<string>())
+  /** every write to the tween goes through here: a running flyTo is told it was cancelled (the player always wins) */
+  const setTween = (next: Tween | null) => {
+    const prev = tween.current
+    tween.current = next
+    if (prev && prev !== next) prev.done?.(false)
+  }
+  const setTweenRef = useRef(setTween)
+  setTweenRef.current = setTween
   const { camera, gl } = useThree()
   const invalidate = useThree((s) => s.invalidate)
   const preset = useUi((s) => s.cameraPreset)
@@ -67,9 +85,7 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
       controls.current.mouseButtons.LEFT = e.shiftKey ? MOUSE.PAN : e.altKey ? MOUSE.ROTATE : undefined
     }
     window.addEventListener('pointerdown', onDown, { capture: true })
-    const onStart = () => {
-      tween.current = null
-    }
+    const onStart = () => setTweenRef.current(null)
     c.addEventListener('start', onStart)
 
     // Touch gestures, tracked on window in the capture phase so they run before OrbitControls and r3f.
@@ -147,7 +163,7 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
       }
       if (azimuth === 0 && dPhi === 0 && pinch === 1) return
       const ctl = controls.current
-      tween.current = null
+      setTweenRef.current(null)
       const lim = { minDistance: ctl.minDistance, maxDistance: ctl.maxDistance, minPolar: ctl.minPolarAngle, maxPolar: ctl.maxPolarAngle }
       const off = twoFingerOffset(camera.position.clone().sub(ctl.target), azimuth, pinch, dPhi, lim)
       camera.position.copy(ctl.target).add(off)
@@ -195,20 +211,30 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
       // turn about the current target, keeping height and distance; 'right' turns the board clockwise on screen
       const turn = preset.id === 'left' ? -TURN_STEP : TURN_STEP
       const toP = camera.position.clone()
-      tween.current = { t0: performance.now(), fromP: camera.position.clone(), toP, fromT: c.target.clone(), toT: c.target.clone(), turn }
+      setTweenRef.current({ t0: performance.now(), fromP: camera.position.clone(), toP, fromT: c.target.clone(), toT: c.target.clone(), turn })
       invalidate()
       return
     }
     const pos = preset.id === 'top' ? TOP_POS : HOME_POS
-    tween.current = {
+    setTweenRef.current({
       t0: performance.now(),
       fromP: camera.position.clone(),
       toP: new Vector3(...pos),
       fromT: c.target.clone(),
       toT: new Vector3(0, 0, preset.id === 'top' ? 0 : 1),
-    }
+    })
     invalidate()
   }, [preset, camera, invalidate])
+
+  // the director needs to know which seats are bots (it visits their deployments); the store cannot call it from here
+  useEffect(() => {
+    const push = () => {
+      const seats = useGame.getState().seats
+      setDirectorBotSeats((['A', 'B'] as const).filter((x) => seats[x] === 'bot'))
+    }
+    push()
+    return useGame.subscribe(push)
+  }, [])
 
   useEffect(() => {
     const typing = (e: KeyboardEvent) => {
@@ -220,7 +246,7 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
       const k = e.key.toLowerCase()
       if (k in PAN_KEYS) {
         keys.current.add(k)
-        tween.current = null
+        setTweenRef.current(null)
         invalidate()
       }
     }
@@ -244,7 +270,7 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
       lookAt(x, z, distance) {
         const c = controls.current
         if (!c) return
-        tween.current = null
+        setTweenRef.current(null)
         const dir = camera.position.clone().sub(c.target)
         dir.y = Math.max(dir.y, 0.1)
         dir.normalize().multiplyScalar(MathUtils.clamp(distance, 4, 60))
@@ -258,8 +284,49 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
         return { x: c?.target.x ?? 0, z: c?.target.z ?? 0, distance: c ? c.getDistance() : camera.position.length() }
       },
       repaint: () => invalidate(),
+      snapshot() {
+        const t = controls.current?.target ?? new Vector3(0, 0, 1)
+        return { position: [camera.position.x, camera.position.y, camera.position.z], target: [t.x, t.y, t.z] }
+      },
+      focusView(x, z, distance) {
+        const t = controls.current?.target ?? new Vector3(0, 0, 1)
+        const dir = camera.position.clone().sub(t)
+        dir.y = Math.max(dir.y, 0.1)
+        dir.normalize().multiplyScalar(MathUtils.clamp(distance, MIN_DIST, MAX_DIST))
+        return { position: [x + dir.x, dir.y, z + dir.z], target: [x, 0, z] }
+      },
+      flyTo(view, ms) {
+        const c = controls.current
+        if (!c) return Promise.resolve(false)
+        return new Promise<boolean>((resolve) => {
+          const toP = new Vector3(...view.position)
+          const toT = new Vector3(...view.target)
+          let settled = false
+          let guard: ReturnType<typeof setTimeout> | null = null
+          const finish = (arrived: boolean) => {
+            if (settled) return
+            settled = true
+            if (guard !== null) clearTimeout(guard)
+            resolve(arrived)
+          }
+          const tw: Tween = { t0: performance.now(), fromP: camera.position.clone(), toP, fromT: c.target.clone(), toT, ms: Math.max(1, ms), done: finish }
+          setTweenRef.current(tw)
+          // a hidden tab stops animation frames: land the tween anyway so the presentation never waits on it
+          guard = setTimeout(() => {
+            if (settled || tween.current !== tw) return
+            camera.position.copy(toP)
+            c.target.copy(toT)
+            c.update()
+            tween.current = null
+            finish(true)
+            invalidate()
+          }, Math.max(1, ms) + 800)
+          invalidate()
+        })
+      },
     }
     return () => {
+      setTweenRef.current(null)
       cameraApi.current = null
     }
   }, [camera, gl, invalidate])
@@ -272,12 +339,15 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
     if (!c) return
     const tw = tween.current
     if (tw) {
-      const f = Math.min(1, (performance.now() - tw.t0) / 450)
+      const f = Math.min(1, (performance.now() - tw.t0) / (tw.ms ?? PRESET_MS))
       const e = f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2
       if (tw.turn !== undefined) camera.position.copy(tw.fromP).sub(tw.fromT).applyAxisAngle(UP, tw.turn * e).add(tw.fromT)
       else camera.position.lerpVectors(tw.fromP, tw.toP, e)
       c.target.lerpVectors(tw.fromT, tw.toT, e)
-      if (f >= 1) tween.current = null
+      if (f >= 1) {
+        tween.current = null
+        tw.done?.(true)
+      }
       state.invalidate()
     }
     if (keys.current.size) {
@@ -305,8 +375,8 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
       ref={controls}
       makeDefault
       enableDamping={false}
-      minDistance={5}
-      maxDistance={58}
+      minDistance={MIN_DIST}
+      maxDistance={MAX_DIST}
       minPolarAngle={MathUtils.degToRad(4)}
       maxPolarAngle={Math.PI / 2.05}
       screenSpacePanning={false}

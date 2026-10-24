@@ -71,6 +71,7 @@ Fan game: 3D Warhammer 40,000: Kill Team (2024 edition, mechanics 1:1, our own p
 | Collapsible text boxes | every on-screen text box has a drawer button that folds it to a title pill (`src/client/ui/collapse.tsx`, persisted per browser); a new decision always opens unfolded | owner 2026-10-24; the phone screen was crowded, and a folded prompt must never hide a required choice |
 | Activating on touch | on touch devices the operative is picked on the board: activatable operatives pulse, a tap makes a pending pick and a slim bar asks to confirm it; the old list stays behind a List button. Desktop keeps the list and direct click (pulse added) | owner 2026-10-24; the list box covered the middle of the board, and a mouse click is precise enough not to need a confirm |
 | HUD corner on touch | on touch devices the HUD buttons move to a toolbar row under the bar on the left and the top-right corner is kept clear | owner 2026-10-24; a system overlay covers the top-right corner on the owner's device and safe-area insets do not report it |
+| Camera on bot deployments | during set-up the camera flies to each operative the bot sets up, holds, then returns to the view the player had at their last deployment (or frames their own drop zone if they have not deployed yet); skipped at instant speed and in hot-seat; any camera input from the player cancels the flight | owner 2026-10-24; the player should see where each enemy operative lands without losing their own view |
 
 ## Architecture
 ```

@@ -1,10 +1,25 @@
 // Camera hooks for e2e tests and dev tools (window.__ms.camera). Filled in by CameraRig while mounted.
+/** An exact camera pose: where the camera sits and what it looks at (world inches). */
+export interface CameraView {
+  position: [number, number, number]
+  target: [number, number, number]
+}
+
 export interface CameraApi {
   /** world point (inches) -> page pixel */
   project(x: number, y: number, z: number): { x: number; y: number }
   lookAt(x: number, z: number, distance: number): void
   get(): { x: number; z: number; distance: number }
   repaint(): void
+  /** the exact current pose */
+  snapshot(): CameraView
+  /**
+   * Eased tween to `view` over `ms`. Resolves true when it arrived and false when it was cancelled (any user camera
+   * input, a preset or another flyTo), so the director never fights the player.
+   */
+  flyTo(view: CameraView, ms: number): Promise<boolean>
+  /** a view looking at (x, z) from the current azimuth and tilt at `distance` (clamped to the camera limits) */
+  focusView(x: number, z: number, distance: number): CameraView
 }
 
 export const cameraApi: { current: CameraApi | null } = { current: null }

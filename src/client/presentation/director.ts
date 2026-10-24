@@ -17,6 +17,8 @@ import { holdAnnouncement, clearAnnouncement } from './announceStore'
 import { pushDice, pushFeed, pushToast } from './feedStore'
 import { clearFx, clearOverrides, setControlOverride, setWoundOverride, spawnFx } from './fxStore'
 import { setPresentationIdle } from './idleStore'
+import { cameraApi, type CameraView } from '../board/cameraApi'
+import { deployBeats, deployTimes, DEPLOY_FOCUS_DISTANCE, returnView, viewsDiffer, zoneFocus } from './deployCamera'
 import { catchUpPresented, setPresentedSeq } from './presentedStore'
 import { speedFactor, useSettings } from './settings'
 import { finalKinds, heldItemOf, holdVerdict, planLandings, rerollKinds, type DieKind } from './heldVolley'
@@ -37,6 +39,15 @@ let perspective: Seat | null = null
 export function setDirectorPerspective(seat: Seat | null): void {
   perspective = seat
 }
+
+/** Seats played by a bot (the CameraRig keeps this current from the store; the director must not import the store). */
+let botSeats: Seat[] = []
+export function setDirectorBotSeats(seats: readonly Seat[]): void {
+  botSeats = [...seats]
+}
+
+/** The camera pose the player had when they last deployed an operative this game (where a bot-deploy visit returns to). */
+let lastPlayerView: CameraView | null = null
 
 /** What the attack in progress is (the same dice events serve Shoot and Fight). */
 let mode: SoundContext['mode'] = null
@@ -571,8 +582,38 @@ async function safeFire(gen: number): Promise<void> {
   }
 }
 
+/**
+ * A bot deployed in the Setup phase: fly to each new figure, hold so it is seen landing, then fly back once to the
+ * player's last deploy view (or their drop zone). The presented cursor moves as the camera arrives, so the figure
+ * appears under the camera. Any player camera input ends the trip at once (flyTo reports it, or the pose differs
+ * after the hold), leaving the camera wherever the player put it.
+ */
+async function deployTrip(b: Batch, visits: { x: number; z: number }[], gen: number): Promise<void> {
+  const cam = cameraApi.current
+  if (!cam || visits.length === 0) return
+  const t = deployTimes(speedFactor(useSettings.getState().animSpeed))
+  const zf = zoneFocus(b.state, perspective)
+  const back = returnView(lastPlayerView, zf ? cam.focusView(zf.x, zf.z, zf.distance) : null, cam.snapshot())
+  let shown = false
+  for (const v of visits) {
+    if (gen !== generation) return
+    if (!(await cam.flyTo(cam.focusView(v.x, v.z, DEPLOY_FOCUS_DISTANCE), t.fly))) return
+    if (!shown) {
+      shown = true
+      setPresentedSeq(b.seq)
+      requestRepaint()
+    }
+    const arrived = cam.snapshot()
+    await sleep(t.hold)
+    if (gen !== generation || viewsDiffer(arrived, cam.snapshot())) return
+  }
+  if (gen === generation) await cam.flyTo(back, t.fly)
+}
+
 async function playBatch(b: Batch, gen: number): Promise<void> {
-  for (const ev of b.events) {
+  const beats = deployBeats(b.events, b.state.phase, { perspective, botSeats, factor: speedFactor(useSettings.getState().animSpeed) })
+  const visits: { x: number; z: number }[] = []
+  for (const [i, ev] of b.events.entries()) {
     if (gen !== generation) return
     if (heldVolley) {
       const h = heldVolley
@@ -590,9 +631,19 @@ async function playBatch(b: Batch, gen: number): Promise<void> {
     }
     // Move events keep the old position on screen while they play; every other event is shown as it plays.
     await playEvent(ev, b.state, gen)
+    const beat = beats.find((x) => x.index === i)?.beat
+    if (beat?.kind === 'record') lastPlayerView = cameraApi.current?.snapshot() ?? lastPlayerView
+    else if (beat?.kind === 'visit') visits.push({ x: beat.x, z: beat.z })
   }
   // The batch ended with the target's damage held: a decision is waiting on it, so the volley fires now.
   if (heldVolley && heldVolley.held.length > 0 && gen === generation) await safeFire(gen)
+  if (visits.length > 0 && gen === generation) {
+    try {
+      await deployTrip(b, visits, gen)
+    } catch (err) {
+      console.warn('[presentation] deploy camera failed', err)
+    }
+  }
 }
 
 async function run(): Promise<void> {
@@ -640,6 +691,7 @@ export function resetDirector(): void {
   fight = null
   shot = null
   lastHit.clear()
+  lastPlayerView = null
   strikeIndex = 0
   strikeHandled = false
   clearCues()
