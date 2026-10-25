@@ -18,3 +18,44 @@ fk-hound approved
 nv wired
 ph wired
 nb wired
+cv first ok
+cv redone
+wc first ok
+wc-tzaangor redone
+fk first ok
+fk redone
+bl first ok
+bl done: 21
+fg first ok
+fg done: 15
+cc first ok
+cc done: 12
+gm first ok
+gm done: 9
+ss first ok
+ss done: 14
+ta first ok
+ta done: 15
+ex first ok
+ex partial: 8 (quota hit, 7 pending, resets 14:34 HST)
+cv approved (except cv-kurnathi: redo, still ~4 heads)
+wc-tzaangor approved
+fk approved
+fg approved
+cc approved
+gm approved
+ss approved
+ta approved
+ex approved (8 so far; remaining 7 need the per-image gate)
+bl approved (all 21)
+bl wired
+wc wired
+fk wired
+fg wired
+cc wired
+gm wired
+ss wired
+cv-kurnathi redone
+ex done: 15
+cv-kurnathi approved
+ex approved (all 15)
