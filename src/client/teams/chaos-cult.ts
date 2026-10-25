@@ -67,19 +67,7 @@ export const PRESENTATION: TeamPresentation = {
     'cc.w.hideous-mutations': ['cc-w-hideous-mutations'],
   },
   standIns: [
-    'cc-cult-demagogue',
-    'cc-blessed-blade',
-    'cc-blessed-blade-b',
-    'cc-iconarch',
-    'cc-mindwitch',
-    'cc-devotee',
-    'cc-devotee-b',
-    'cc-devotee-c',
     // the mutation stages: the Devotee's two later forms
-    'cc-mutant',
-    'cc-mutant-b',
-    'cc-torment',
-    'cc-torment-b',
   ],
   // wording for the options of ploys and reactions whose param is a gift, a pick or a spot rather than an operative
   ployParams: {

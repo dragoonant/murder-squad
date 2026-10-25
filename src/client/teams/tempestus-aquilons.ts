@@ -134,21 +134,6 @@ export const PRESENTATION: TeamPresentation = {
   },
   standIns: [
     'ta-tempestor',
-    'ta-tempestor-laspistol-power-weapon',
-    'ta-tempestor-relic-bolt-pistol-chainsword',
-    'ta-tempestor-lascarbine',
-    'ta-servo-sentry-flamer',
-    'ta-servo-sentry-grenade-launcher',
-    'ta-servo-sentry-volley-gun',
-    'ta-grenadier',
-    'ta-gunfighter',
-    'ta-gunner-melta-carbine',
-    'ta-gunner-plasma-carbine',
-    'ta-marksman',
-    'ta-precursor',
-    'ta-trooper',
-    'ta-trooper-b',
-    'ta-trooper-c',
   ],
   // Drop Insertion sets whole batches aside "above"; LAND brings an operative down near a Drop marker
   setAside: {

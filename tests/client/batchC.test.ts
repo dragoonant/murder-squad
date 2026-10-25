@@ -1,6 +1,8 @@
 // The client side of the seven batch C teams (Kasrkin, Novitiates, Phobos Strike Team, Corsair Voidscarred, Warpcoven,
 // Farstalker Kinband, Imperial Navy Breachers): builder legality (default, full and randomised builds), token looks and
 // wording, the glossary corrections the rules verifiers asked for, the Faith pool chip and the ploy option labels.
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { dataBundle, flattenRoster } from '@/client/game/adapter'
 import { buildProblems, defaultBuild, equipmentLimitOf, fullBuild, randomBuildLoadouts, resolveMission } from '@/client/game/defaults'
@@ -38,7 +40,8 @@ describe('batch C: builder', () => {
   const b = dataBundle()
   const limit = b.missions[resolveMission(b, 'secure').id]!.equipmentLimit
 
-  it('BC-C-001 the default and the full build of every batch C team are legal and show stand-ins in the preview', () => {
+  it('BC-C-001 the default and the full build of every batch C team are legal and show a GLB body or a stand-in in the preview', () => {
+    const manifest = JSON.parse(readFileSync(resolve(__dirname, '../../public/assets/models/manifest.json'), 'utf8')) as { bodies: Record<string, unknown> }
     for (const t of BATCH_C) {
       const team = b.teams[t]!
       for (const build of [defaultBuild(b, team), fullBuild(b, team)]) {
@@ -46,10 +49,10 @@ describe('batch C: builder', () => {
         for (const id of flattenRoster(team, build.roster)) {
           const card = b.byId[id] as DatacardData
           expect(card.figure?.archetype, `${t} ${id}`).toBeTruthy()
+          expect(!!manifest.bodies[card.figure.archetype] || STAND_INS.has(card.figure.archetype), `${t} ${id} has neither a body nor a stand-in`).toBe(true)
         }
       }
     }
-    expect(STAND_INS.size).toBeGreaterThan(50)
   })
 
   it('BC-C-002 randomised loadouts keep every batch C build legal (caps and exclusions hold)', () => {

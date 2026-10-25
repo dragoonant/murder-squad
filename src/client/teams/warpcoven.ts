@@ -131,15 +131,8 @@ export const PRESENTATION: TeamPresentation = {
     'wc-sorcerer-warpfire',
     'wc-rubric-marine-gunner',
     'wc-tzaangor-champion',
-    'wc-tzaangor-champion-greataxe',
-    'wc-tzaangor-champion-greatblade',
-    'wc-tzaangor-horn-bearer',
-    'wc-tzaangor-icon-bearer',
     'wc-tzaangor-warrior',
     'wc-tzaangor-warrior-b',
-    'wc-tzaangor-warrior-blades',
-    'wc-tzaangor-warrior-blade-shield',
-    'wc-tzaangor-warrior-autopistol-chainsword',
   ],
   // Keywords and rule terms in our own wording (game/glossary.ts merges them over the generic fallbacks). The shared
   // keywords other traitor teams also carry are worded for all of them, because a team entry replaces the generic one.

@@ -93,20 +93,6 @@ export const PRESENTATION: TeamPresentation = {
   },
   standIns: [
     'ss-sergeant',
-    'ss-sergeant-astartes-shotgun',
-    'ss-sergeant-boltgun',
-    'ss-sergeant-bolt-pistol-chainsword',
-    'ss-heavy-gunner-heavy-bolter',
-    'ss-heavy-gunner-missile-launcher',
-    'ss-hunter',
-    'ss-sniper',
-    'ss-tracker',
-    'ss-warrior-shotgun',
-    'ss-warrior-shotgun-b',
-    'ss-warrior-boltgun',
-    'ss-warrior-boltgun-b',
-    'ss-warrior-bolt-pistol-blade',
-    'ss-warrior-bolt-pistol-blade-b',
   ],
   // Keywords, markers and rule terms in our own wording (game/glossary.ts merges them over the generic fallbacks). The role
   // keywords other teams share (SERGEANT, HEAVY GUNNER, TRACKER) are left to their entries; the abilities explain the Scout versions.

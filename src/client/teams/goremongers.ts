@@ -79,15 +79,6 @@ export const PRESENTATION: TeamPresentation = {
   // every Goremonger datacard has a single fixed loadout, so no datacard needs a body per loadout
   loadoutBodies: {},
   standIns: [
-    'gm-blood-herald',
-    'gm-aspirant',
-    'gm-aspirant-b',
-    'gm-aspirant-c',
-    'gm-bloodtaker',
-    'gm-impaler',
-    'gm-inciter',
-    'gm-skullclaimer',
-    'gm-stalker',
   ],
   // Keywords and rule terms in our own wording (game/glossary.ts merges them over the generic fallbacks).
   glossary: [

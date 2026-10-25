@@ -186,12 +186,5 @@ export const PRESENTATION: TeamPresentation = {
   },
   standIns: [
     'bl-chieftain',
-    'bl-gunner-plasma-gun',
-    'bl-ogryn',
-    'bl-sharpshooter',
-    'bl-thug',
-    'bl-trench-sweeper',
-    'bl-trooper',
-    'bl-trooper-b',
   ],
 }

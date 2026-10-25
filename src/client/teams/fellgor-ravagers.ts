@@ -99,21 +99,6 @@ export const PRESENTATION: TeamPresentation = {
   },
   standIns: [
     'fg-ironhorn',
-    'fg-ironhorn-corrupted-pistol-chainsword',
-    'fg-ironhorn-plasma-pistol-bludgeon',
-    'fg-deathknell',
-    'fg-fluxbray',
-    'fg-gnarlscar',
-    'fg-gorehorn',
-    'fg-herd-goad',
-    'fg-mangler',
-    'fg-shaman',
-    'fg-toxhorn',
-    'fg-vandal',
-    'fg-warrior-bludgeon',
-    'fg-warrior-bludgeon-b',
-    'fg-warrior-cleaver',
-    'fg-warrior-cleaver-b',
   ],
   // Keywords and rule terms in our own wording (game/glossary.ts merges them over the generic fallbacks).
   glossary: [

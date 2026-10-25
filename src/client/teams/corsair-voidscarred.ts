@@ -118,21 +118,6 @@ export const PRESENTATION: TeamPresentation = {
   },
   standIns: [
     'cv-felarch',
-    'cv-felarch-shuriken-rifle',
-    'cv-felarch-neuro-disruptor',
-    'cv-fate-dealer',
-    'cv-gunner-blaster',
-    'cv-gunner-shredder',
-    'cv-heavy-gunner-shuriken-cannon',
-    'cv-heavy-gunner-wraithcannon',
-    'cv-kurnathi',
-    'cv-kurnite-hunter',
-    'cv-shade-runner',
-    'cv-soul-weaver',
-    'cv-starstorm-duellist',
-    'cv-warrior-pistol-power-weapon',
-    'cv-warrior-rifle-fists',
-    'cv-way-seeker',
   ],
   // Keywords and tokens in our own wording (game/glossary.ts merges them over the generic fallbacks).
   glossary: [

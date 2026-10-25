@@ -116,23 +116,8 @@ export const PRESENTATION: TeamPresentation = {
   },
   standIns: [
     'ex-proctor-exactant',
-    'ex-proctor-exactant-combat-shotgun-baton',
-    'ex-proctor-exactant-shotpistol-maul-shield',
-    'ex-castigator',
-    'ex-chirurgant',
-    'ex-cyber-mastiff',
-    'ex-gunner-grenade-launcher',
-    'ex-gunner-heavy-stubber',
-    'ex-gunner-webber',
-    'ex-leashmaster',
-    'ex-malocator',
-    'ex-marksman',
-    'ex-revelatum',
-    'ex-subductor',
     'ex-subductor-b',
-    'ex-vigilant',
     'ex-vigilant-b',
-    'ex-vox-signifier',
   ],
   // wording of the mastiff's two patterns (Attack Pattern gambit params)
   ployParams: {
