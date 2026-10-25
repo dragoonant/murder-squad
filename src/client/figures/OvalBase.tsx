@@ -3,8 +3,9 @@
 // client draws the same footprint as an ellipse whose semi-axes are the base radius (across) and the base radius plus
 // `ovalHalfAxis` (along the facing). Everything is drawn in the operative's local frame (+Z = facing), so a wrapper
 // group rotated by the facing is all a caller needs; round bases keep the plain disc and ring.
-import { useMemo } from 'react'
-import { DoubleSide, ExtrudeGeometry, Path, Shape, type Mesh, type Object3D } from 'three'
+import { useEffect, useMemo, useRef, type Ref } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
+import { DoubleSide, ExtrudeGeometry, Path, Shape, type Group, type Mesh, type MeshBasicMaterial, type Object3D } from 'three'
 
 /** Semi-axes of the base: x across the facing, z along it. */
 export function baseAxes(baseRadius: number, ovalHalfAxis?: number): { rx: number; rz: number } {
@@ -38,6 +39,7 @@ export function BaseRing({
   y = 0,
   solid = false,
   depthWrite = true,
+  materialRef,
 }: {
   baseRadius: number
   ovalHalfAxis?: number
@@ -49,16 +51,70 @@ export function BaseRing({
   /** draw a filled ellipse out to `outer` instead of a ring */
   solid?: boolean
   depthWrite?: boolean
+  /** lets a caller animate the material (see PulseRing) */
+  materialRef?: Ref<MeshBasicMaterial>
 }) {
   const { rx, rz } = baseAxes(baseRadius, ovalHalfAxis)
   const oval = isOvalBase(ovalHalfAxis)
   const shape = useMemo(() => (oval ? ellipseShape(rx + outer, rz + outer, solid ? 0 : Math.max(0.01, rx + inner), solid ? 0 : Math.max(0.01, rz + inner)) : null), [oval, rx, rz, inner, outer, solid])
-  const material = <meshBasicMaterial color={color} transparent={opacity < 1} opacity={opacity} side={DoubleSide} depthWrite={depthWrite} />
+  const material = <meshBasicMaterial ref={materialRef} color={color} transparent={opacity < 1} opacity={opacity} side={DoubleSide} depthWrite={depthWrite} />
   return (
     <mesh position={[0, y, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       {shape ? <shapeGeometry args={[shape, 48]} /> : solid ? <circleGeometry args={[baseRadius + outer, 36]} /> : <ringGeometry args={[Math.max(0.01, baseRadius + inner), baseRadius + outer, 36]} />}
       {material}
     </mesh>
+  )
+}
+
+/** Period of the "you can pick this one" pulse, in seconds. */
+export const PULSE_SECONDS = 1.2
+const PULSE_FRAME_MS = 50
+
+/** 0..1..0 over one pulse period; `ms` is a performance.now() reading. */
+export function pulsePhase(ms: number, period = PULSE_SECONDS): number {
+  return 0.5 - 0.5 * Math.cos(((ms / 1000) % period) / period * Math.PI * 2)
+}
+
+/**
+ * A ring around a base that breathes (scale and opacity, about 1.2 s) to say "this one can be picked". The board draws on
+ * demand, so while it pulses it asks for the next frame itself; `animate` false (low graphics) draws it still and bright
+ * and never asks for frames.
+ */
+export function PulseRing({
+  baseRadius,
+  ovalHalfAxis,
+  color,
+  strong = false,
+  animate = true,
+  y = 0.1,
+}: {
+  baseRadius: number
+  ovalHalfAxis?: number
+  color: string
+  /** the pending pick: a wider, stronger pulse */
+  strong?: boolean
+  animate?: boolean
+  y?: number
+}) {
+  const group = useRef<Group>(null)
+  const mat = useRef<MeshBasicMaterial>(null)
+  // the board draws on demand: ask for a frame about 20 times a second while pulsing (not every refresh), and not at all when still
+  const invalidate = useThree((s) => s.invalidate)
+  useEffect(() => {
+    if (!animate) return
+    const t = setInterval(invalidate, PULSE_FRAME_MS)
+    return () => clearInterval(t)
+  }, [animate, invalidate])
+  useFrame(() => {
+    if (!animate) return
+    const k = pulsePhase(performance.now())
+    group.current?.scale.set(1 + (strong ? 0.2 : 0.14) * k, 1, 1 + (strong ? 0.2 : 0.14) * k)
+    if (mat.current) mat.current.opacity = (strong ? 0.6 : 0.4) + (strong ? 0.4 : 0.5) * k
+  })
+  return (
+    <group ref={group}>
+      <BaseRing baseRadius={baseRadius} ovalHalfAxis={ovalHalfAxis} inner={0.06} outer={strong ? 0.42 : 0.32} color={color} opacity={0.9} y={y} materialRef={mat} depthWrite={false} />
+    </group>
   )
 }
 

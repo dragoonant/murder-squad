@@ -26,6 +26,11 @@ import { TokenChips } from './TokenChips'
 import { tokenDef } from './tokenDefs'
 import { useUi, type DrawerId } from './uiStore'
 import { Btn, Die, Dot, Muted, seatColor } from './widgets'
+import { CollapseButton, CollapsedTab, useCollapsed } from './collapse'
+import { OVERLAY_H } from './hudLayout'
+
+/** Right-edge drawers start below the HUD; on touch also below the system overlay in the top-right corner. */
+const drawerTop = (touch: boolean): number => (touch ? OVERLAY_H : 60)
 
 const drawerStyle: CSSProperties = {
   ...panel,
@@ -51,14 +56,19 @@ const drawerStyle: CSSProperties = {
 const floatStyle: CSSProperties = { ...panel, padding: 10, boxSizing: 'border-box', pointerEvents: 'auto', fontFamily: fontStack, overflowY: 'auto', display: 'flex', flexDirection: 'column' }
 export const scrollFill: CSSProperties = { flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }
 
-/** One panel: a drawer on compact, a floating box on desktop. `open` is the desktop visibility. */
-export function PanelBox({ id, title, testId, open, children, style }: { id: DrawerId; title: string; testId: string; open: boolean; children: ReactNode; style?: CSSProperties }) {
-  const compact = useFormFactor().compact
+/**
+ * One panel: a drawer on compact, a floating box on desktop. `open` is the desktop visibility (the HUD toggle).
+ * On desktop the header carries a collapse button that folds the box to a title pill on its own `side` of the
+ * screen; on compact the drawer already has Close, so no second control. Folding never touches game input.
+ */
+export function PanelBox({ id, title, testId, open, children, style, side = 'left' }: { id: DrawerId; title: string; testId: string; open: boolean; children: ReactNode; style?: CSSProperties; side?: 'left' | 'right' }) {
+  const { compact, touch } = useFormFactor()
   const drawer = useUi((s) => s.drawer)
+  const [collapsed] = useCollapsed(id)
   if (compact) {
     if (drawer !== id) return null
     return (
-      <div data-testid={testId} className="ms-touch" style={drawerStyle}>
+      <div data-testid={testId} className="ms-touch" style={{ ...drawerStyle, top: drawerTop(touch) }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flex: '0 0 auto' }}>
           <b>{title}</b>
           <Btn onClick={() => useUi.setState({ drawer: null })}>
@@ -70,9 +80,13 @@ export function PanelBox({ id, title, testId, open, children, style }: { id: Dra
     )
   }
   if (!open) return null
+  if (collapsed) return <CollapsedTab id={id} title={title} style={{ alignSelf: side === 'right' ? 'flex-end' : 'flex-start', flex: '0 0 auto', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} />
   return (
     <div data-testid={testId} style={{ ...floatStyle, ...style }}>
-      <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 6, flex: '0 0 auto' }}>{title}</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 6, flex: '0 0 auto' }}>
+        <span style={{ fontWeight: 800, fontSize: 13, minWidth: 0 }}>{title}</span>
+        <CollapseButton id={id} title={title} />
+      </div>
       {children}
     </div>
   )
@@ -103,6 +117,7 @@ export function OperativeCard({ docked }: { docked?: boolean }) {
   const id = selected ?? hover
   const op = id && state ? state.operatives[id] : null
   const compactDrawer = useFormFactor().compact
+  const [collapsed] = useCollapsed('card')
   if (!state || !op) return null
   const card = dataBundle().byId[op.datacardId] as DatacardData | undefined
   const weapons = op.weapons.map((w) => state.data.weapons[w]).filter(Boolean)
@@ -120,6 +135,7 @@ export function OperativeCard({ docked }: { docked?: boolean }) {
         <Dot seat={op.seat} />
         <b style={{ fontSize: 14 }}>{op.name}</b>
         <span style={{ color: colors.muted, fontSize: 12 }}>{op.id}</span>
+        <CollapseButton id="card" title="operative card" style={{ marginLeft: 'auto' }} />
       </div>
       <div style={{ fontSize: 12, display: 'flex', flexWrap: 'wrap', gap: '2px 12px', marginBottom: 6 }}>
         <Tooltip title={ot.title} body={ot.body}>
@@ -223,18 +239,23 @@ export function OperativeCard({ docked }: { docked?: boolean }) {
   )
   if (compactDrawer) {
     if (docked) return null
-    // one line between the HUD and the prompt sheet: it never covers a control
+    // one line between the HUD and the prompt sheet: it never covers a control (only the fold button takes taps)
+    if (collapsed) return <CollapsedTab id="card" title={op.name} style={{ position: 'absolute', top: 62, right: 8, zIndex: 20, maxWidth: 'calc(100% - 16px)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} />
     return (
       <div
         data-testid="operative-card"
         data-op={op.id}
-        style={{ ...floatStyle, position: 'absolute', top: 62, right: 8, padding: '3px 10px', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: 'calc(100% - 16px)', zIndex: 20, pointerEvents: 'none' }}
+        style={{ ...floatStyle, position: 'absolute', top: 62, right: 8, padding: '3px 6px 3px 10px', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: 'calc(100% - 16px)', zIndex: 20, pointerEvents: 'none', flexDirection: 'row', alignItems: 'center', gap: 6 }}
       >
-        <Dot seat={op.seat} />
-        <b>{op.name}</b> <span style={{ color: colors.muted }}>{op.id}</span> &middot; W <b>{op.wounds}/{op.maxWounds}</b> &middot; Save <b>{op.save}+</b> &middot; <OrderGlyph order={op.order} /> {humanize(op.order)} {op.ready ? '' : '(expended)'}{(op.tokens ?? []).some((t) => t.count > 0) ? ` · ${(op.tokens ?? []).filter((t) => t.count > 0).map((t) => `${tokenDef(t.kind).label}${t.count > 1 ? ` x${t.count}` : ''}`).join(', ')}` : ''}
+        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <Dot seat={op.seat} />
+          <b>{op.name}</b> <span style={{ color: colors.muted }}>{op.id}</span> &middot; W <b>{op.wounds}/{op.maxWounds}</b> &middot; Save <b>{op.save}+</b> &middot; <OrderGlyph order={op.order} /> {humanize(op.order)} {op.ready ? '' : '(expended)'}{(op.tokens ?? []).some((t) => t.count > 0) ? ` · ${(op.tokens ?? []).filter((t) => t.count > 0).map((t) => `${tokenDef(t.kind).label}${t.count > 1 ? ` x${t.count}` : ''}`).join(', ')}` : ''}
+        </span>
+        <CollapseButton id="card" title="operative card" style={{ pointerEvents: 'auto', flex: '0 0 auto' }} />
       </div>
     )
   }
+  if (collapsed) return <CollapsedTab id="card" title={op.name} style={docked ? { alignSelf: 'flex-end', flex: '0 0 auto', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : { position: 'absolute', top: 66, right: 8, zIndex: 20 }} />
   return (
     <div style={docked ? { ...floatStyle, width: '100%', maxHeight: '38vh', flex: '0 1 auto' } : { ...floatStyle, position: 'absolute', top: 66, right: 8, width: 290, maxHeight: '50vh', zIndex: 20 }}>
       {body}
@@ -289,7 +310,7 @@ export function DiceLog() {
   const dice = useFeedStore((s) => s.dice)
   const panels = useUi((s) => s.panels)
   return (
-    <PanelBox id="log" title="Dice log" testId="dice-log-panel" open={panels.log} style={{ maxHeight: '24vh' }}>
+    <PanelBox id="log" title="Dice log" testId="dice-log-panel" open={panels.log} side="right" style={{ maxHeight: '24vh' }}>
       <div data-testid="dice-log" style={{ ...scrollFill, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {dice.length === 0 && <Muted>No rolls yet.</Muted>}
         {dice.slice(-30).map((d) => (
@@ -414,11 +435,13 @@ function AudioControls() {
 export function SettingsPanel() {
   const speed = useSettings((s) => s.animSpeed)
   const low = useSettings((s) => s.lowGraphics)
+  const cinematic = useSettings((s) => s.cinematicShots)
   const drawer = useUi((s) => s.drawer)
   const state = useGame((g) => g.state)
+  const touch = useFormFactor().touch
   if (drawer !== 'settings') return null
   return (
-    <div data-testid="settings-panel" className="ms-touch" style={{ ...drawerStyle, top: 60, zIndex: 60 }}>
+    <div data-testid="settings-panel" className="ms-touch" style={{ ...drawerStyle, top: drawerTop(touch), zIndex: 60 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <b>Settings</b>
         <Btn onClick={() => useUi.setState({ drawer: null })}>Close</Btn>
@@ -436,6 +459,10 @@ export function SettingsPanel() {
         <input data-testid="low-graphics" type="checkbox" checked={low} onChange={(e) => useSettings.getState().setLowGraphics(e.target.checked)} />
         Low graphics (no shadows, smaller mat texture)
       </label>
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginBottom: 10 }}>
+        <input data-testid="cinematic-toggle" type="checkbox" checked={cinematic} onChange={(e) => useSettings.getState().setCinematicShots(e.target.checked)} />
+        Cinematic shooting camera
+      </label>
       <div style={{ fontSize: 12, marginBottom: 4 }}>Camera</div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
         <Btn onClick={() => useUi.getState().requestCamera('home')}>Overview</Btn>
@@ -443,7 +470,7 @@ export function SettingsPanel() {
         <Btn data-testid="cam-turn-left" aria-label="Turn view left" onClick={() => useUi.getState().requestCamera('left')}>⟲ Turn</Btn>
         <Btn data-testid="cam-turn-right" aria-label="Turn view right" onClick={() => useUi.getState().requestCamera('right')}>Turn ⟳</Btn>
       </div>
-      <Muted style={{ marginBottom: 10 }}>Right-drag orbit, middle-drag or WASD pan, wheel zoom. Touch: two fingers pinch to zoom, drag to pan, twist to turn.</Muted>
+      <Muted style={{ marginBottom: 10 }}>Right-drag orbit, middle-drag or WASD pan, wheel zoom. Touch: one finger pans; two fingers pinch to zoom, twist to turn, drag up or down to tilt.</Muted>
       <div style={{ display: 'flex', gap: 6 }}>
         <Btn
           data-testid="btn-resign"

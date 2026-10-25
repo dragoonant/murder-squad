@@ -19,6 +19,8 @@ interface UiState {
   hoverOption: string | null
   hoverSpot: string | null
   deployOp: string | null
+  /** touch: the operative tapped on the board at a `firefight.activate` decision, waiting for the player's confirm */
+  pendingActivate: string | null
   waypoints: Waypoint[]
   jumpNext: boolean
   /** oval bases: the facing (radians) the base turns to at the end of a move or is set up at; null keeps the engine's default */
@@ -48,6 +50,7 @@ export const useUi = create<UiState>((set) => ({
   hoverOption: null,
   hoverSpot: null,
   deployOp: null,
+  pendingActivate: null,
   waypoints: [],
   jumpNext: false,
   facing: null,

@@ -255,7 +255,8 @@ test.describe('phone', () => {
     page.on('pageerror', (e) => errors.push(e.message))
     await startBattle(page, '?scenario=shoot-cover&speed=instant&ff=compact')
     await page.waitForFunction(() => window.__ms!.settled())
-    // pick the shooter, open the move prompt
+    // pick the shooter (touch: the operative list sits behind the List button), open the move prompt
+    await page.getByTestId('activate-list-toggle').tap()
     await page.getByTestId('activate-A6').tap()
     await page.getByTestId('order-engage').tap()
     await page.getByTestId('act-reposition').tap()
