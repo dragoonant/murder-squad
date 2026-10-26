@@ -10,6 +10,7 @@ import { BaseRing, FrontMark } from '../figures/OvalBase'
 import { bearingTo, deployChoice, optionOperative, moveReach, placedMarkerRadius, previewMove, snapStep, spotOptions } from './controller'
 import { useUi, type Pt } from '../ui/uiStore'
 import { MoveConfirm } from './MoveConfirm'
+import { unlistedShootNotes } from './sightlines'
 
 const KIND_COLOR: Record<string, string> = { walk: '#ffffff', climb: '#ff9f43', drop: '#2ee6c8', jump: '#ff5ce1' }
 
@@ -138,11 +139,15 @@ const BADGE_COLOR: Record<string, string> = {
   obscured: '#c58cff',
   choice: '#c58cff',
   unseen: '#8a8f9f',
+  blocked: '#ff8a80',
 }
 
 /** Above every enemy while a target is being chosen: the engine's verdict badge, expected damage and kill odds. */
 export function TargetBadges({ state, pending }: { state: GameState; pending: PendingDecision }) {
   const hover = useUi((s) => s.hoverOp)
+  // the sight evaluation is the costly part: once per decision, not per hover
+  const unlisted = useMemo(() => (pending.kind === 'shoot.target' && pending.context.secondary !== true ? unlistedTargets(state, pending) : []), [state, pending])
+  const notes = useMemo(() => (unlisted.length > 0 ? unlistedShootNotes(state, String(pending.context.operativeId), unlisted.map((u) => u.id)) : new Map<string, { visible: boolean; reason: string }>()), [state, pending, unlisted])
   if (pending.kind !== 'shoot.target' && pending.kind !== 'fight.target') return null
   if (pending.context.secondary === true) return null
   const listed = new Set<string>()
@@ -160,7 +165,12 @@ export function TargetBadges({ state, pending }: { state: GameState; pending: Pe
     }
   }
   if (pending.kind === 'shoot.target') {
-    for (const u of unlistedTargets(state, pending)) labels.push({ id: u.id, text: 'not visible', color: BADGE_COLOR.unseen! })
+    // an enemy the shooter CAN see but the engine does not list is "visible · can't shoot" with the short engine reason;
+    // only one the shooter cannot see at all is "not visible"
+    for (const u of unlisted) {
+      const n = notes.get(u.id)
+      labels.push(n?.visible ? { id: u.id, text: `visible · can't shoot${n.reason ? ` (${n.reason})` : ''}`, color: BADGE_COLOR.blocked! } : { id: u.id, text: 'not visible', color: BADGE_COLOR.unseen! })
+    }
   }
   return (
     <group>

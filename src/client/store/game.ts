@@ -28,12 +28,14 @@ import { AiWorkerClient } from '../bot/aiWorkerClient'
 import { getBotTier, type BotTier } from '../bot/botTier'
 import { clearAnims } from '../presentation/animStore'
 import { enqueueBatch, resetDirector, setDirectorPerspective } from '../presentation/director'
-import { clearFeed, clearToasts, pushToast } from '../presentation/feedStore'
+import { clearFeed, clearToasts, pushFeed, pushToast } from '../presentation/feedStore'
 import { waitForPresentationIdle } from '../presentation/idleStore'
 import { isAnnouncementHolding } from '../presentation/announceStore'
 import { pushSnapshot, resetPresentation, usePresentedStore } from '../presentation/presentedStore'
 import { speedFactor, useSettings } from '../presentation/settings'
 import type { SeatMode } from '../params'
+import { QUICK_PLOYS, quickWindowVerdict } from '../game/quickPloys'
+import { useUi } from '../ui/uiStore'
 import { clearSave, SAVE_ENVELOPE_VERSION, SAVE_KIND, writeSave, type SaveEnvelope } from './saveGame'
 
 export interface GameMeta {
@@ -101,6 +103,8 @@ let watchdog: ReturnType<typeof setInterval> | null = null
 let watchId: string | null = null
 let watchSince = 0
 let rejectionNonce = 0
+/** the turning point (per seat) whose auto-passed quick-ploy note is already in the feed, so the note shows once, not every action */
+const quickNoted: Record<Seat, number> = { A: -1, B: -1 }
 
 function sleep(ms: number): Promise<void> {
   return ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve()
@@ -150,7 +154,36 @@ export const useGame = create<GameStore>((set, get) => {
     }
   }
 
+  /**
+   * Quick ploys (Adjust Doctrine; game/quickPloys.ts): a human's optional before/after-action window that offers only
+   * those passes itself, through the ordinary step path, unless the player armed the action-bar button. True when it did.
+   */
+  function autoPassQuickWindow(): boolean {
+    const { pending, seats, state } = get()
+    if (!pending || !state || state.phase === 'ended') return false
+    const ui = useUi.getState()
+    // an armed button belongs to one activation: the next activation starts clean
+    if (pending.kind === 'firefight.activate' && ui.armedPloy) useUi.setState({ armedPloy: null })
+    if (seats[pending.seat] !== 'human') return false
+    const verdict = quickWindowVerdict(pending, useUi.getState().armedPloy)
+    if (verdict === 'armed') {
+      // the one-shot is spent: this window opens normally
+      useUi.setState({ armedPloy: null })
+      return false
+    }
+    if (verdict !== 'pass') return false
+    const first = QUICK_PLOYS[(pending.options![0]!.action.payload as { ployId: string }).ployId]
+    const r = get().dispatch({ type: 'pass', seat: pending.seat, decisionId: pending.id, payload: {} })
+    if (r) return false
+    if (first && quickNoted[pending.seat] !== state.turningPoint) {
+      quickNoted[pending.seat] = state.turningPoint
+      pushFeed(state.seq, pending.seat, `${first.name} stays off the prompt: use its button on the action bar when you want it.`)
+    }
+    return true
+  }
+
   function scheduleBot(): void {
+    if (autoPassQuickWindow()) return
     const { pending, seats, state } = get()
     if (!pending || !state || state.phase === 'ended' || seats[pending.seat] !== 'bot') return
     const id = pending.id
@@ -247,6 +280,8 @@ export const useGame = create<GameStore>((set, get) => {
 
     newGame(opts) {
       generation++
+      useUi.setState({ armedPloy: null })
+      quickNoted.A = quickNoted.B = -1
       if (botTimer) clearTimeout(botTimer)
       resetDirector()
       clearAnims()
@@ -298,6 +333,8 @@ export const useGame = create<GameStore>((set, get) => {
       // replay first: if it is rejected or the hash differs this throws before anything on screen or in the store changes
       const r = engineLoad(env.file, engineBundle())
       const { meta: m } = env
+      useUi.setState({ armedPloy: null })
+      quickNoted.A = quickNoted.B = -1
       const mission = b.missions[m.missionId]
       if (!mission) throw new Error(`unknown mission: ${m.missionId}`)
       generation++
@@ -369,6 +406,7 @@ export const useGame = create<GameStore>((set, get) => {
 
     reset() {
       generation++
+      useUi.setState({ armedPloy: null })
       if (botTimer) clearTimeout(botTimer)
       resetDirector()
       clearAnims()

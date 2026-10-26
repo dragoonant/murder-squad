@@ -431,3 +431,35 @@ export function operativeGap(state: GameState, aId: string, bId: string): number
   const b = state.operatives[bId]
   return a && b ? baseDistance3D(bodyOf(a), bodyOf(b)) : 0
 }
+
+// ---------------------------------------------------------------- target-picking badges
+
+/** A short form of a sight reason for a badge: the "can't shoot:" lead dropped, the first clause only, cut to `max` characters. */
+export function shortSightReason(reason: string | null, max = 44): string {
+  if (!reason) return ''
+  const first = (reason.replace(/^can't shoot:\s*/i, '').split(/;| \(/)[0] ?? '').trim()
+  return first.length > max ? `${first.slice(0, max - 1).trimEnd()}…` : first
+}
+
+/**
+ * What the target-picking badges say about an enemy the engine did NOT list as a Shoot target: whether the shooter can see
+ * it at all (engine visibility through `evaluateSight`) and, when it can, the short engine reason it cannot be shot
+ * (`shootBlockers` and the `validTargets` checks, composed in sightlines). Enemies the evaluation does not know are absent.
+ */
+export function unlistedShootNotes(state: GameState, opId: string, enemyIds: string[]): Map<string, { visible: boolean; reason: string }> {
+  const out = new Map<string, { visible: boolean; reason: string }>()
+  const op = state.operatives[opId]
+  if (!op || enemyIds.length === 0) return out
+  const act = state.firefight.activation
+  let ev: SightEval
+  try {
+    ev = evaluateSight(state, { opId, at: { ...op.pos }, performed: act && act.operativeId === opId ? act.performed : [] })
+  } catch {
+    return out
+  }
+  for (const id of enemyIds) {
+    const e = ev.entries.find((x) => x.id === id)
+    if (e) out.set(id, { visible: e.visible, reason: shortSightReason(e.reason) })
+  }
+  return out
+}

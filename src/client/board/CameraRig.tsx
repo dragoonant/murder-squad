@@ -5,7 +5,10 @@
 // horizontal drag is ignored, twist owns the azimuth). OrbitControls only handles the one-finger pan; the two-finger
 // gesture is ours (touchCamera.ts holds the maths). A one-finger tap must still reach the game, so a finger that stays
 // inside TAP_SLOP does not pan, and the click that ends a drag or a multi-finger gesture is swallowed in the capture
-// phase (createTapGuard) before the board's own click handlers see it. Presets: home overview, top-down and 45-degree turns
+// phase (createTapGuard) before the board's own click handlers see it. While a human move.path is open, a finger that LANDS inside
+// the move area (controller.moveTouchArea, the range the preview draws) does not pan at all: it drives the hover preview like a
+// mouse, a tap still adds a step, and lifting after a drag adds none (the guard swallows that click); a finger that lands
+// outside pans as always. Presets: home overview, top-down and 45-degree turns
 // left / right, tweened. Exposes the e2e/dev camera API (`project`, `lookAt`, `get`) through cameraApi.
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
@@ -17,7 +20,8 @@ import { useUi } from '../ui/uiStore'
 import { setDirectorBotSeats } from '../presentation/director'
 import { useGame } from '../store/game'
 import { cameraApi, type CameraView } from './cameraApi'
-import { createTapGuard, TILT_DEADZONE, tiltFromDrag, twoFingerOffset } from './touchCamera'
+import { moveTouchArea } from '../interaction/controller'
+import { createTapGuard, groundHit, startsInArea, TILT_DEADZONE, tiltFromDrag, twoFingerOffset } from './touchCamera'
 
 export { TAP_SLOP, createTapGuard } from './touchCamera'
 
@@ -140,10 +144,20 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
       tiltPending = 0
       tiltEngaged = false
     }
+    // a one-finger gesture that started inside the move area: OrbitControls is told to ignore one finger until all are up
+    let locked = false
+    const oneFinger = () => ((c.touches as { ONE: number; TWO: number }).ONE = useSight.getState().measureOn ? -1 : TOUCH.PAN)
     const onTouchDown = (e: PointerEvent) => {
       const touch = e.pointerType === 'touch'
       guard.down(e.pointerId, e.clientX, e.clientY, touch, e.target === el)
       if (!touch || e.target !== el) return
+      if (touches.size === 0) {
+        const area = moveTouchArea()
+        const r = el.getBoundingClientRect()
+        const pt = area && r.width > 0 && r.height > 0 ? groundHit(camera, ((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1), area.y) : null
+        locked = startsInArea(area, pt)
+        if (locked) (c.touches as { ONE: number; TWO: number }).ONE = -1
+      }
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY })
       resetTwo()
     }
@@ -152,7 +166,8 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
       guard.move(e.pointerId, e.clientX, e.clientY)
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY })
       if (touches.size === 1) {
-        if (guard.inDeadzone()) e.stopImmediatePropagation()
+        // a locked finger keeps feeding the board (the hover preview follows it); a free one waits out the tap slop
+        if (!locked && guard.inDeadzone()) e.stopImmediatePropagation()
         return
       }
       if (touches.size !== 2 || !controls.current) return
@@ -198,6 +213,10 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
     const onTouchUp = (e: PointerEvent) => {
       guard.up(e.pointerId)
       if (!touches.delete(e.pointerId)) return
+      if (touches.size === 0 && locked) {
+        locked = false
+        oneFinger()
+      }
       resetTwo()
     }
     // the click that ends a drag or a multi-finger gesture on the board must not select, move or measure
@@ -225,6 +244,7 @@ export function CameraRig({ halfX, halfZ }: { halfX: number; halfZ: number }) {
       window.removeEventListener('pointerup', onTouchUp, cap)
       window.removeEventListener('pointercancel', onTouchUp, cap)
       window.removeEventListener('click', onClick, cap)
+      if (locked) oneFinger()
     }
   }, [invalidate, camera, gl])
 

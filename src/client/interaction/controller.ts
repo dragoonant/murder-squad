@@ -11,6 +11,7 @@ import { getFormFactor } from '../ui/formFactor'
 import { useUi, type Pt } from '../ui/uiStore'
 import { rejectionText } from '../game/labels'
 import { pickDisplaySnapshot, usePresentedStore } from '../presentation/presentedStore'
+import type { TouchArea } from '../board/touchCamera'
 import { useSight } from './sightStore'
 
 const MOVE_KINDS: MoveKind[] = ['reposition', 'dash', 'fallBack', 'charge']
@@ -82,6 +83,22 @@ export function moveReach(state: GameState, pending: PendingDecision, waypoints:
     points.push({ x: centre.x + Math.sin(b) * left, z: centre.z + Math.cos(b) * left })
   }
   return { centre, left, points }
+}
+
+/**
+ * The ground disc a one-finger touch must not pan from: exactly the movement range the move preview draws (`moveReach`,
+ * the inches left around the end of the planned path, or around the operative before the first step), while a human
+ * `move.path` is open and settled. Null otherwise (no decision, a bot's move, the jump step where the overlay hides the
+ * range, or the measure tool owning the finger), and then the finger pans as before.
+ */
+export function moveTouchArea(): TouchArea | null {
+  const { pending, state } = useGame.getState()
+  const ui = useUi.getState()
+  if (!pending || !state || pending.kind !== 'move.path' || !humanToAct() || ui.jumpNext || useSight.getState().measureOn) return null
+  const p = usePresentedStore.getState()
+  if (p.presentedSeq < p.latestSeq) return null
+  const reach = moveReach(state, pending, ui.waypoints, ui.facing, ui.fly)
+  return reach ? { x: reach.centre.x, z: reach.centre.z, y: reach.centre.y, r: reach.left } : null
 }
 
 /**

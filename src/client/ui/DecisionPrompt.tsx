@@ -7,6 +7,7 @@ import * as firefight from '@/engine/firefight'
 import { effectiveApl } from '@/engine/state'
 import { ACTION_HELP, ACTION_LABEL, ACTION_ORDER_FALLBACK, contextFacts, decisionInfo, humanize, opName, optionDetail, optionLabel, ORDER_HELP, SEAT_NAME } from '../game/labels'
 import { abilityActions, markerActionLabel } from '../game/promptLabels'
+import { quickPloyButtons } from '../game/quickPloys'
 import { setAsideWording } from '../teams'
 import { AbilityChoiceBody, EquipBody, GuardBody, MarkerPlaceBody, ObjectiveBody, PloyBody } from './GamePrompts'
 import { BlockBody, CoverSaveBody, FightResolveBody, FightTargetBody, FightWeaponBody, RerollBody, ShootTargetBody, ShootWeaponBody } from './AttackPrompts'
@@ -588,7 +589,9 @@ const FALLBACK_ORDER = ACTION_ORDER_FALLBACK
 
 function ActionBody({ pending, state }: { pending: PendingDecision; state: GameState }) {
   const choose = useGame((g) => g.choose)
-  const compact = useFormFactor().compact
+  const ff = useFormFactor()
+  const compact = ff.compact
+  const armed = useUi((u) => u.armedPloy)
   const ctx = pending.context as { operativeId?: string; apl?: number; apSpent?: number; apRemaining?: number; counteract?: boolean; performed?: string[] }
   const op = ctx.operativeId ? state.operatives[ctx.operativeId] : undefined
   const activation = state.firefight.activation
@@ -645,6 +648,11 @@ function ActionBody({ pending, state }: { pending: PendingDecision; state: GameS
     )
   }
   const end = byAction.get('end')
+  // optional before/after-action ploys (Adjust Doctrine) have no prompt of their own for a human: the engine's offers for this
+  // moment become small buttons here, and pressing one arms the NEXT ploy window to open instead of passing itself
+  const quick = quickPloyButtons(state, pending)
+  // touch has no hover: an unavailable Shoot says why right under the bar
+  const shootWhy = ff.touch && !byAction.get('shoot') && known.includes('shoot') ? reasonFor('shoot') : null
   return (
     <>
       {!compact && <Header pending={pending} seat />}
@@ -677,6 +685,35 @@ function ActionBody({ pending, state }: { pending: PendingDecision; state: GameS
           </Btn>
         )}
       </div>
+      {shootWhy && (
+        <div data-testid="shoot-why" style={{ marginTop: 4, fontSize: 12, color: '#ff8a80' }}>
+          <b>{ACTION_LABEL.shoot ?? 'Shoot'}</b> unavailable: <KeywordText text={shootWhy} />
+        </div>
+      )}
+      {quick.length > 0 && (
+        <div data-testid="quick-ploys" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+          {quick.map((q) => {
+            const on = armed?.ployId === q.ployId && armed.seat === pending.seat
+            return (
+              <Tooltip
+                key={q.ployId}
+                title={`${q.name} · ${q.cost} CP`}
+                body={on ? 'Armed: the next ploy window opens so you can use it. Press again to disarm.' : 'Opens the ploy window after your next action so you can use it. Until then these windows pass themselves.'}
+              >
+                <Btn
+                  data-testid={`quick-${q.ployId}`}
+                  aria-pressed={on}
+                  variant={on ? 'active' : 'base'}
+                  style={{ minHeight: ff.touch ? 44 : undefined, padding: '4px 10px', fontSize: 12 }}
+                  onClick={() => useUi.setState({ armedPloy: on ? null : { ployId: q.ployId, seat: pending.seat } })}
+                >
+                  {q.name} · {q.cost} CP{on ? ' · armed' : ''}
+                </Btn>
+              </Tooltip>
+            )
+          })}
+        </div>
+      )}
       {(abilities.length > 0 || markerOpts.length > 0) && (
         <div style={{ marginTop: 8 }}>
           <div style={{ fontSize: 11, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 3 }}>

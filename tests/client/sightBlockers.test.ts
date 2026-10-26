@@ -6,7 +6,7 @@ import { createGame, legalActions, step, view, type Activation, type Action, typ
 import { buildScenario } from '@/client/dev/scenarios'
 import { buildGameSetup, dataBundle, engineBundle } from '@/client/game/adapter'
 import { fullBuild, resolveLayout, resolveMission, resolveTeam } from '@/client/game/defaults'
-import { evaluateSight } from '@/client/interaction/sightlines'
+import { evaluateSight, shortSightReason, unlistedShootNotes } from '@/client/interaction/sightlines'
 import { actionAvailability } from '@/engine/firefight'
 import { shootBlockers } from '@/engine/shoot'
 import { cloneState } from '@/engine/state'
@@ -165,3 +165,19 @@ function engineTargets(s: GameState): Set<string> {
   }
   return out
 }
+
+describe('target-picking badges (SIGHT-007)', () => {
+  it('SIGHT-007 a visible enemy the engine will not list is "visible" with a short reason; an unseen one is not visible', () => {
+    const s = sniperState()
+    activate(s, { apSpent: 1, performed: ['reposition'] })
+    const notes = unlistedShootNotes(s, SNIPER, ['B11'])
+    const n = notes.get('B11')!
+    expect(n.visible).toBe(true)
+    expect(n.reason.length).toBeGreaterThan(0)
+    expect(n.reason.length).toBeLessThanOrEqual(44)
+    expect(n.reason).not.toMatch(/^can't shoot/)
+    expect(shortSightReason("can't shoot: Bolt sniper rifle is Heavy (Dash only); beyond the range")).toBe('Bolt sniper rifle is Heavy')
+    expect(shortSightReason(null)).toBe('')
+    expect(unlistedShootNotes(s, SNIPER, []).size).toBe(0)
+  })
+})

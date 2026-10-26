@@ -1,7 +1,7 @@
 // Transient UI state shared by the DOM overlay and the 3D interaction layer: selection, hover, the deploy
 // pick, the move path being planned, open panels. Never holds engine truth; resets when a decision changes.
 import { create } from 'zustand'
-import type { Waypoint } from '@/engine'
+import type { Seat, Waypoint } from '@/engine'
 
 export interface Pt {
   x: number
@@ -21,6 +21,8 @@ interface UiState {
   deployOp: string | null
   /** touch: the operative tapped on the board at a `firefight.activate` decision, waiting for the player's confirm */
   pendingActivate: string | null
+  /** a quick ploy (Adjust Doctrine) the player armed from the action bar: that seat's next window offering it opens instead of passing itself */
+  armedPloy: { ployId: string; seat: Seat } | null
   waypoints: Waypoint[]
   jumpNext: boolean
   /** oval bases: the facing (radians) the base turns to at the end of a move or is set up at; null keeps the engine's default */
@@ -51,6 +53,7 @@ export const useUi = create<UiState>((set) => ({
   hoverSpot: null,
   deployOp: null,
   pendingActivate: null,
+  armedPloy: null,
   waypoints: [],
   jumpNext: false,
   facing: null,
