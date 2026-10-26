@@ -8,6 +8,7 @@ import type { SeatMode, UrlParams } from '../params'
 import { getBotTier, setBotTier, type BotTier } from '../bot/botTier'
 import { getMatPref, setMatPref } from '../board/mats'
 import { useGame, type NewGameOptions } from './game'
+import { clearSave, DISCARD_MESSAGE, readSave, summarize, type DiscardReason, type SaveSummary } from './saveGame'
 
 export type Screen = 'start' | 'builder' | 'briefing' | 'battle'
 
@@ -32,6 +33,23 @@ export interface Session {
   /** the briefing was opened from the Start screen's How to play link (scroll to Controls, Back returns to Start) */
   howTo: boolean
   openHowTo(): void
+  /** the game in progress kept on this device (Continue card), or null */
+  savedGame: SaveSummary | null
+  /** shown on the Start screen after a save had to be thrown away */
+  saveNotice: string | null
+  /** a new game was asked for while a save exists: waiting for the player to confirm replacing it */
+  confirmReplace: boolean
+  /** re-read the stored save: fills `savedGame`, or discards a bad one and sets `saveNotice` */
+  refreshSave(): void
+  /** open the saved game; false (save cleared, notice set) when it cannot be restored exactly */
+  continueSaved(): boolean
+  /** start the battle, but ask first when a save would be replaced */
+  requestLaunch(): void
+  confirmLaunch(): void
+  cancelLaunch(): void
+  /** give up the game in progress: clears the save and returns to the Start screen */
+  abandonGame(): void
+  dismissSaveNotice(): void
   setScreen(s: Screen): void
   setSeat(seat: Seat, mode: SeatMode): void
   setSeed(seed: string): void
@@ -66,9 +84,70 @@ function initial(): Pick<Session, 'seats' | 'seed' | 'missionId' | 'layoutId' | 
   }
 }
 
+/** Check the stored save; a bad one is cleared here so the Start screen is never left pointing at it. */
+function inspectSave(): { savedGame: SaveSummary | null; saveNotice: string | null } {
+  const r = readSave()
+  if (r.status === 'ok') {
+    try {
+      return { savedGame: summarize(r.env), saveNotice: null }
+    } catch {
+      clearSave()
+      return { savedGame: null, saveNotice: DISCARD_MESSAGE.outdated }
+    }
+  }
+  if (r.status === 'bad') {
+    clearSave()
+    return { savedGame: null, saveNotice: DISCARD_MESSAGE[r.reason] }
+  }
+  return { savedGame: null, saveNotice: null }
+}
+
 export const useSession = create<Session>((set, get) => ({
   screen: 'start',
   ...initial(),
+  ...inspectSave(),
+  confirmReplace: false,
+  refreshSave() {
+    const found = inspectSave()
+    // keep an earlier notice until the player dismisses it or starts something
+    set((s) => ({ savedGame: found.savedGame, saveNotice: found.saveNotice ?? s.saveNotice }))
+  },
+  continueSaved() {
+    const r = readSave()
+    if (r.status !== 'ok') {
+      clearSave()
+      set({ savedGame: null, saveNotice: DISCARD_MESSAGE[r.status === 'bad' ? r.reason : 'outdated'] })
+      return false
+    }
+    const { env } = r
+    try {
+      useGame.getState().restore(env)
+    } catch (e) {
+      console.warn('[save] could not restore, discarding', e)
+      const reason: DiscardReason = 'outdated'
+      clearSave()
+      set({ savedGame: null, saveNotice: DISCARD_MESSAGE[reason] })
+      return false
+    }
+    const m = env.meta
+    set({ seats: { ...m.seats }, seed: m.seed, missionId: m.missionId, layoutId: m.layoutId, builds: m.builds, botTier: m.botTier, saveNotice: null, confirmReplace: false, screen: 'battle' })
+    return true
+  },
+  requestLaunch() {
+    if (get().savedGame) set({ confirmReplace: true })
+    else get().launch()
+  },
+  confirmLaunch() {
+    set({ confirmReplace: false })
+    get().launch()
+  },
+  cancelLaunch: () => set({ confirmReplace: false }),
+  abandonGame() {
+    clearSave()
+    useGame.getState().reset()
+    set({ screen: 'start', savedGame: null, saveNotice: null, confirmReplace: false, howTo: false })
+  },
+  dismissSaveNotice: () => set({ saveNotice: null }),
   setManualPlacement: (manualPlacement) => set({ manualPlacement }),
   botTier: getBotTier(),
   setBotTier: (botTier) => {
@@ -106,7 +185,8 @@ export const useSession = create<Session>((set, get) => ({
       botTier: s.botTier,
       ...(prepare ? { prepare } : {}),
     })
-    set({ screen: 'battle' })
+    set({ screen: 'battle', saveNotice: null, confirmReplace: false })
+    get().refreshSave()
   },
   swapSeats() {
     const s = get()
@@ -118,6 +198,8 @@ export const useSession = create<Session>((set, get) => ({
   backToMenu() {
     useGame.getState().reset()
     set({ screen: 'start' })
+    // the game in progress stays saved: the Start screen offers Continue
+    get().refreshSave()
   },
 }))
 

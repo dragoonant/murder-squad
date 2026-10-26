@@ -1,7 +1,7 @@
 // Side panels of the battle screen: operative card, event feed, dice log, mission panel, settings. On the
 // compact (phone) layout they become right-edge drawers opened from the HUD menu; on desktop they stack in
 // two columns. All numbers are read from the DISPLAY state.
-import { useCallback, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { DatacardData } from '@/data'
 import type { Order, Seat } from '@/engine'
 import { effectiveApl } from '@/engine/state'
@@ -487,6 +487,33 @@ export function SettingsPanel() {
           Quit to menu
         </Btn>
       </div>
+      <AbandonGame />
+    </div>
+  )
+}
+
+/** Throw the game in progress away (its save too). Two taps, so a stray tap never loses a game. */
+function AbandonGame() {
+  const [sure, setSure] = useState(false)
+  const state = useGame((g) => g.state)
+  if (!state || state.phase === 'ended') return null
+  return (
+    <div style={{ marginTop: 8 }}>
+      <Muted style={{ marginBottom: 4 }}>Quit to menu keeps your game so you can continue it later. Abandon deletes it.</Muted>
+      {sure ? (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <Btn data-testid="btn-abandon-confirm" variant="danger" onClick={() => useSession.getState().abandonGame()}>
+            Yes, abandon it
+          </Btn>
+          <Btn data-testid="btn-abandon-cancel" onClick={() => setSure(false)}>
+            Keep playing
+          </Btn>
+        </div>
+      ) : (
+        <Btn data-testid="btn-abandon" variant="danger" onClick={() => setSure(true)}>
+          Abandon game
+        </Btn>
+      )}
     </div>
   )
 }

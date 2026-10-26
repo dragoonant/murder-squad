@@ -105,11 +105,31 @@ export function Briefing() {
           <Btn data-testid="briefing-back" onClick={() => s.setScreen(s.howTo ? 'start' : 'builder')}>
             Back
           </Btn>
-          <Btn data-testid="briefing-start" variant="primary" style={{ padding: '10px 22px', fontSize: 15 }} disabled={problems.length > 0} onClick={() => s.launch()}>
+          <Btn data-testid="briefing-start" variant="primary" style={{ padding: '10px 22px', fontSize: 15 }} disabled={problems.length > 0} onClick={() => s.requestLaunch()}>
             Deploy
           </Btn>
         </div>
       </div>
+      {s.confirmReplace && (
+        <div role="alertdialog" aria-modal="true" aria-labelledby="replace-title" data-testid="replace-save-dialog" style={{ position: 'fixed', inset: 0, background: 'rgba(5,5,10,0.78)', display: 'grid', placeItems: 'center', zIndex: 100, padding: 16 }}>
+          <div style={{ ...panel, width: 'min(420px, 100%)', padding: 18 }}>
+            <div id="replace-title" style={{ fontWeight: 800, fontSize: 17, marginBottom: 6 }}>
+              Replace your saved game?
+            </div>
+            <Muted style={{ marginBottom: 14, fontSize: 13 }}>
+              Only one game is kept on this device. Starting a new battle deletes the one you have in progress{s.savedGame ? ` (${s.savedGame.teamA} vs ${s.savedGame.teamB}, ${s.savedGame.progress.toLowerCase()})` : ''}.
+            </Muted>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Btn data-testid="replace-save-confirm" variant="danger" style={{ minHeight: 44 }} onClick={() => s.confirmLaunch()}>
+                Replace it and deploy
+              </Btn>
+              <Btn data-testid="replace-save-cancel" variant="primary" style={{ minHeight: 44 }} onClick={() => s.cancelLaunch()}>
+                Keep my game
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
