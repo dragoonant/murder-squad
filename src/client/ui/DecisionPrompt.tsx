@@ -10,7 +10,7 @@ import { abilityActions, markerActionLabel } from '../game/promptLabels'
 import { setAsideWording } from '../teams'
 import { AbilityChoiceBody, EquipBody, GuardBody, MarkerPlaceBody, ObjectiveBody, PloyBody } from './GamePrompts'
 import { BlockBody, CoverSaveBody, FightResolveBody, FightTargetBody, FightWeaponBody, RerollBody, ShootTargetBody, ShootWeaponBody } from './AttackPrompts'
-import { activateOption, bearingTo, canFlyNow, cancelActivate, cancelPath, confirmActivate, confirmPath, deployAction, deployChoice, facingTowardEnemy, optionOperative, pendingPick, previewMove, turnedBy } from '../interaction/controller'
+import { activateOption, bearingTo, canFlyNow, cancelActivate, cancelPath, confirmActivate, confirmPath, deployAction, deployChoice, facingTowardEnemy, optionOperative, pendingPick, previewMove, turnedBy, undoPathStep } from '../interaction/controller'
 import { useSettled } from '../presentation/presentedStore'
 import { useGame } from '../store/game'
 import { BottomSheet } from './BottomSheet'
@@ -337,6 +337,7 @@ function MoveBody({ pending, state }: { pending: PendingDecision; state: GameSta
       if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT')) return
       if (e.key === 'Escape') cancelPath()
       if (e.key === 'Enter') confirmPath()
+      if (e.key === 'Backspace' && undoPathStep()) e.preventDefault()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

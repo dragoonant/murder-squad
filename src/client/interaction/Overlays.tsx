@@ -9,6 +9,7 @@ import { fightTargetCard, pct, targetCard, unlistedTargets } from '../game/promp
 import { BaseRing, FrontMark } from '../figures/OvalBase'
 import { bearingTo, deployChoice, optionOperative, moveReach, placedMarkerRadius, previewMove, snapStep, spotOptions } from './controller'
 import { useUi, type Pt } from '../ui/uiStore'
+import { MoveConfirm } from './MoveConfirm'
 
 const KIND_COLOR: Record<string, string> = { walk: '#ffffff', climb: '#ff9f43', drop: '#2ee6c8', jump: '#ff5ce1' }
 
@@ -123,6 +124,7 @@ export function MovePreviewLayer({ state, pending }: { state: GameState; pending
           />
         </>
       )}
+      <MoveConfirm state={state} pending={pending} />
     </group>
   )
 }

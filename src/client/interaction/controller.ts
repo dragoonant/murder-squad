@@ -391,3 +391,52 @@ export function cancelPath(): void {
   useUi.getState().resetPath()
   if (pending?.kind === 'move.path' && pending.canPass) dispatch(act.pass(pending))
 }
+
+/** Undo the last planned step of the move being laid; true when a step was removed. */
+export function undoPathStep(): boolean {
+  const { pending } = useGame.getState()
+  const ui = useUi.getState()
+  if (pending?.kind !== 'move.path' || ui.waypoints.length === 0) return false
+  useUi.setState({ waypoints: ui.waypoints.slice(0, -1), jumpNext: false })
+  return true
+}
+
+/** The red X of the on-board move buttons: undo the last step, or with nothing planned cancel the move (as the prompt's Cancel does). */
+export function undoOrCancelPath(): 'undo' | 'cancel' | null {
+  if (useGame.getState().pending?.kind !== 'move.path') return null
+  if (undoPathStep()) return 'undo'
+  cancelPath()
+  return 'cancel'
+}
+
+/** What the green check / red X floating by the mover show. Null unless a human seat has a `move.path` open. */
+export interface MoveButtons {
+  /** the check confirms: the engine accepts the planned path (same legality as the prompt's Confirm) */
+  okEnabled: boolean
+  /** inches left after the planned path (engine plan), null when the path is empty or not allowed */
+  left: number | null
+  /** what the X does now: undo the last step, or (no steps) cancel the move */
+  x: 'undo' | 'cancel'
+  /** a move with nothing planned can only be cancelled when the engine lets the action be passed */
+  xEnabled: boolean
+  /** where the buttons hang: the planned end, else the last clicked point, else the mover */
+  anchor: { x: number; y: number; z: number }
+}
+
+export function moveButtons(state: GameState, pending: PendingDecision | null, ui: { waypoints: Waypoint[]; facing: number | null; fly: boolean } = useUi.getState()): MoveButtons | null {
+  if (!pending || pending.kind !== 'move.path' || !humanToAct()) return null
+  const op = pending.constraints?.operativeId ? state.operatives[pending.constraints.operativeId] : undefined
+  if (!op) return null
+  const turn = op.ovalHalfAxis && ui.facing !== null ? ui.facing : null
+  const plan = previewMove(state, pending, ui.waypoints, turn, ui.fly).plan
+  const last = ui.waypoints[ui.waypoints.length - 1]
+  const anchor = plan ? plan.end : last ? { x: last.x, y: last.y ?? op.pos.y, z: last.z } : op.pos
+  const undo = ui.waypoints.length > 0
+  return {
+    okEnabled: !!plan,
+    left: plan ? plan.maxInches - plan.cost : null,
+    x: undo ? 'undo' : 'cancel',
+    xEnabled: undo || pending.canPass === true,
+    anchor: { x: anchor.x, y: anchor.y, z: anchor.z },
+  }
+}
