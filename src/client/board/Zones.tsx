@@ -35,6 +35,16 @@ const SEAT = { A: colors.playerA, B: colors.playerB }
 export function Zones({ state, deployRegion, hoverZone }: { state: GameState; deployRegion: Polygon | null; hoverZone: string | null }) {
   const meta = state.map.meta ?? null
   const inSetup = state.phase === 'setup'
+  // drei's <Line> disposes its material whenever `points` changes identity; a fresh array every render recompiled
+  // the dashed line shader on every presented event (the only dashed line on the board, so its program was freed)
+  // (keyed by value: a snapshot may carry a copied map)
+  const c = meta?.centreline
+  const ck = c ? `${c.a.x},${c.a.z},${c.b.x},${c.b.z}` : ''
+  const centrePts = useMemo<[number, number, number][] | null>(() => {
+    if (!ck) return null
+    const [ax, az, bx, bz] = ck.split(',').map(Number) as [number, number, number, number]
+    return [[ax, 0.045, az], [bx, 0.045, bz]]
+  }, [ck])
   const owner = (zoneId: string) => (['A', 'B'] as const).find((s) => state.players[s].dropZoneId === zoneId) ?? null
   return (
     <group>
@@ -56,12 +66,9 @@ export function Zones({ state, deployRegion, hoverZone }: { state: GameState; de
           <PolyLine poly={meta.territories[1]!} color={colors.playerB} y={0.05} width={1} opacity={0.35} />
         </>
       )}
-      {meta && (
+      {centrePts && (
         <Line
-          points={[
-            [meta.centreline.a.x, 0.045, meta.centreline.a.z],
-            [meta.centreline.b.x, 0.045, meta.centreline.b.z],
-          ]}
+          points={centrePts}
           color="#cfd6e4"
           lineWidth={1}
           dashed
