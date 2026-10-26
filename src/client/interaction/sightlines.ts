@@ -3,12 +3,12 @@
 // `targetInfo`, `validTargets`, `expectedDamage`, distances and control range); this file only evaluates them
 // for a HYPOTHETICAL position of one operative (a shallow state copy with that operative moved), exactly as the
 // engine would see it after the move. Nothing here writes engine state.
-import type { GameState, Operative, Order, Vec3 } from '@/engine'
+import type { Activation, GameState, Operative, Order, Vec3 } from '@/engine'
 import { parseRules, ruleSetFor, targetInfo, validTargets, type RuleSet, type TargetInfo } from '@/engine/attack-common'
 import { baseDistance3D, bodyOf, headPoint, visible } from '@/engine/los'
 import { distanceBetween, enemiesInControlRange, isWithin } from '@/engine/measure'
 import { expectedDamage, verdictFor } from '@/engine/query'
-import { usableRangedWeapons } from '@/engine/shoot'
+import { shootBlockers, usableRangedWeapons, type ShootBlockers } from '@/engine/shoot'
 import { enemiesOf } from '@/engine/state'
 
 // ---------------------------------------------------------------- hypothetical positions
@@ -73,6 +73,8 @@ export interface SightEval {
   noWeapon: boolean
   /** enemies whose control range the spot is inside */
   inControlRangeOf: string[]
+  /** the engine's reason the operative cannot take a Shoot action here at all (Conceal, control range, AP), or null */
+  shootBlocked: string | null
 }
 
 function midPoint(o: { pos: Vec3; height: number }): Vec3 {
@@ -87,26 +89,71 @@ function rangedOf(state: GameState, op: Operative): string[] {
   return op.weapons.filter((w) => state.data.weapons[w]?.type === 'ranged')
 }
 
-/** Why an enemy is not a legal Shoot target, mirroring the checks of `validTargets` in order. */
-function whyNot(state: GameState, me: Operative, e: Operative, info: TargetInfo, rules: RuleSet, hasWeapon: boolean): string {
-  if (!hasWeapon) return 'no usable ranged weapon here'
-  if (rules.range !== null && !isWithin(bodyOf(me), bodyOf(e), rules.range)) return `beyond ${rules.range}″ range`
-  if (enemiesInControlRange(state, e, e.seat).length > 0) return 'locked in combat with a friend'
-  if (!info.verdict.visible) return 'not visible'
-  if (info.coverBlocks) return 'concealed in cover: cannot be targeted'
-  return 'not a legal target'
+/** The operative's activation as it would stand at the subject (planned move performed and paid), or null. */
+function activationAt(state: GameState, subj: SightSubject): Activation | null {
+  const act = state.firefight.activation
+  if (!act || act.operativeId !== subj.opId || act.stage !== 'action') return null
+  const staged = subj.performed.length > act.performed.length && act.declared
+  const paid = staged && !act.counteract && !act.frame && !act.declared!.free ? act.declared!.cost : 0
+  return { ...act, performed: subj.performed, apSpent: act.apSpent + paid, declared: null }
+}
+
+const rangeText = (r: number | null): string => (r === null ? 'unlimited' : `${r}″`)
+
+/**
+ * SIGHT-001: why a visible enemy is not a legal Shoot target, from the engine's shooter-side reasons (`shootBlockers`)
+ * and the checks of `validTargets`, judged per ranged weapon so a short-ranged sidearm never speaks for a weapon with
+ * unlimited range. Weapons that cannot fire here are named with their engine reason.
+ */
+function whyNot(state: GameState, me: Operative, e: Operative, blockers: ShootBlockers, usable: string[]): string {
+  // one line per weapon: the profiles of one weapon (executioner / hyperfrag / mortis) share their reason
+  const groups = new Set<string>()
+  const off: string[] = []
+  for (const w of blockers.weapons) {
+    if (!w.reason || usable.includes(w.weaponId)) continue
+    const group = state.data.weapons[w.weaponId]?.profileGroup ?? w.weaponId
+    if (groups.has(group)) continue
+    groups.add(group)
+    const def = state.data.weapons[w.weaponId]
+    off.push(def?.profileGroup ? w.reason.replace(w.name, w.name.replace(/ \([^)]*\)$/, '')) : w.reason)
+  }
+  if (usable.length === 0 && off.length > 0) return `can't shoot: ${off.join('; ')}`
+  if (blockers.action) return `can't shoot: ${blockers.action}`
+  if (usable.length === 0) return "can't shoot: no ranged weapon"
+  // a target-side check that fails for every usable weapon, in validTargets order
+  if (enemiesInControlRange(state, e, e.seat).length > 0) return 'within control range of a friendly operative: not a valid target'
+  const per = usable.map((w) => {
+    const rules = ruleSetFor(state, me, w, 'shoot')
+    const name = (state.data.weapons[w]?.name ?? w).replace(/ \([^)]*\)$/, '')
+    if (rules.range !== null && !isWithin(bodyOf(me), bodyOf(e), rules.range)) return { name, why: 'range' as const, range: rules.range }
+    const info = targetInfo(state, me, e, rules)
+    if (!info.verdict.visible) return { name, why: 'unseen' as const, range: rules.range }
+    if (info.coverBlocks) return { name, why: 'cover' as const, range: rules.range }
+    return { name, why: 'other' as const, range: rules.range }
+  })
+  const extra = off.length > 0 ? ` (${off.join('; ')})` : ''
+  if (per.some((p) => p.why === 'cover')) return `concealed in cover: not a valid target${extra}`
+  if (per.every((p) => p.why === 'range')) {
+    const beyond = `beyond the range of ${[...new Set(per.map((p) => `${p.name} (${rangeText(p.range)})`))].join(', ')}`
+    // the weapon that would reach is the news: name it first, the short-ranged one after
+    return off.length > 0 ? `can't shoot: ${off.join('; ')}; ${beyond}` : beyond
+  }
+  if (per.some((p) => p.why === 'unseen')) return `not visible${extra}`
+  return `not a valid target${extra}`
 }
 
 /** Visible / in cover / obscured / not visible, validity and expected damage of every enemy, from `subj.at`. */
 export function evaluateSight(state: GameState, subj: SightSubject): SightEval {
   const base = state.operatives[subj.opId]
-  const none = (name: string, order: Order): SightEval => ({ opId: subj.opId, name, at: subj.at, order, entries: [], weapons: [], concealLocked: false, noWeapon: true, inControlRangeOf: [] })
+  const none = (name: string, order: Order): SightEval => ({ opId: subj.opId, name, at: subj.at, order, entries: [], weapons: [], concealLocked: false, noWeapon: true, inControlRangeOf: [], shootBlocked: null })
   if (!base || base.status !== 'active') return none(base?.name ?? subj.opId, base?.order ?? 'engage')
   let hyp = hypothetical(state, subj.opId, subj.at)
   let me = hyp.operatives[subj.opId]!
   let weapons = usableRangedWeapons(hyp, me, subj.performed)
   let concealLocked = false
-  if (weapons.length === 0 && me.order === 'conceal') {
+  // mid-activation the order is fixed, so the Engage assumption is only for an operative that has not chosen yet
+  const activation = activationAt(state, subj)
+  if (weapons.length === 0 && me.order === 'conceal' && !activation) {
     const alt = hypothetical(state, subj.opId, subj.at, 'engage')
     const altWeapons = usableRangedWeapons(alt, alt.operatives[subj.opId]!, subj.performed)
     if (altWeapons.length > 0) {
@@ -116,11 +163,15 @@ export function evaluateSight(state: GameState, subj: SightSubject): SightEval {
       concealLocked = true
     }
   }
+  const blockers = shootBlockers(hyp, me, activation)
+  // SIGHT-001: a weapon the engine would not offer (ASTARTES repeat AP) is no shot either
+  weapons = weapons.filter((w) => !blockers.weapons.some((b) => b.weaponId === w && b.reason))
+  const shootBlocked = blockers.action
   const verdictWeapon = weapons[0] ?? rangedOf(hyp, me)[0]
   const rules: RuleSet = verdictWeapon ? ruleSetFor(hyp, me, verdictWeapon, 'shoot') : parseRules([])
   const enemies = enemiesOf(hyp, me).filter((e) => e.wounds > 0)
   const validBy = new Map<string, Map<string, TargetInfo>>()
-  for (const w of weapons) {
+  for (const w of shootBlocked ? [] : weapons) {
     const m = new Map<string, TargetInfo>()
     for (const t of validTargets(hyp, me, w)) if (hyp.operatives[t.id] && hyp.operatives[t.id]!.seat !== me.seat) m.set(t.id, t)
     validBy.set(w, m)
@@ -154,7 +205,7 @@ export function evaluateSight(state: GameState, subj: SightSubject): SightEval {
       forcedChoice: best ? best.forced : info.verdict.forcedChoice,
       valid,
       status,
-      reason: valid ? null : whyNot(hyp, me, e, info, rules, weapons.length > 0),
+      reason: valid ? null : whyNot(hyp, me, e, blockers, weapons),
       weaponId: best?.weaponId ?? null,
       weaponName: weaponName(hyp, best?.weaponId ?? null),
       expected: best ? best.mean : null,
@@ -174,6 +225,7 @@ export function evaluateSight(state: GameState, subj: SightSubject): SightEval {
     concealLocked,
     noWeapon: weapons.length === 0,
     inControlRangeOf: enemiesInControlRange(hyp, me, me.seat).map((o) => o.id),
+    shootBlocked,
   }
 }
 

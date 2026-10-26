@@ -1118,3 +1118,12 @@ SIM-007 | R-8.1 | After every action no two bases overlap and none lies outside 
 SIM-008 | R-8.x kill op, R-3.4 | VP falls only by the kill op VP a returning operative takes back; a Conceal shooter firing a non-Silent weapon without a viewpoint or team rule is flagged.
 SIM-009 | R-4.x forced moves | The MOVE invariant exempts forced moves (pushes, Timesplinter) that end in an enemy control range.
 SIM-010 | sim coverage | `--teams real` gives every playable team at least min(4, floor(2 * games / teams)) of any 40 games (24 teams: 3), never against itself.
+
+## SIGHT - sight readout vs the engine's Shoot
+
+SIGHT-001 | R-10.9, R-10.14 | A visible enemy the operative cannot shoot names the weapon that would reach it: after a Reposition the Heavy (Dash only) bolt sniper rifle's reason leads, the bolt pistol's 8" range follows; one line per weapon, not per profile.
+SIGHT-002 | R-4.7, T-AOD ASTARTES | A second Shoot whose only targeted weapon is a repeated bolt sniper rifle / heavy bolter with too little AP for the 1 AP surcharge is not offered (E_NO_AP naming the weapon), and the sight readout shows no shot.
+SIGHT-003 | R-3.4 | Mid-activation on Conceal the readout no longer assumes Engage: with no Silent weapon usable every visible enemy is "can't shoot" with the per-weapon reasons.
+SIGHT-004 | R-4.7 | In an enemy control range every visible enemy reads "can't shoot" with the engine's own reason.
+SIGHT-005 | query | `shoot.shootBlockers` gives the Shoot action's shooter-side rejection (not "no valid target") and each ranged profile's reason or null, with its range.
+SIGHT-006 | sampled games | At every Eliminator Sniper action pick in sampled AI games, a sight row is a shot exactly when the engine offers that enemy as a Shoot target.

@@ -39,7 +39,7 @@ import {
 } from './attack-common'
 import { providerAny, providerExtraTargets, providerFixedTargets, providerViewpoints, type FixedTargets } from './team-rules'
 import { enemiesInControlRange } from './measure'
-import { cancelAction, finishAction } from './firefight'
+import { actionAvailability, cancelAction, finishAction } from './firefight'
 import { runHook, type ChoiceRequest } from './hooks'
 import { distanceBetween } from './measure'
 import { bodyOf, visible } from './los'
@@ -107,17 +107,65 @@ export function shootAvailability(state: GameState, op: Operative, activation: A
     const anyRanged = op.weapons.some((w) => state.data.weapons[w]?.type === 'ranged')
     return { code: 'E_ACTION_RESTRICTED', reason: anyRanged ? 'no ranged weapon can be used now' : 'the operative has no ranged weapon' }
   }
-  for (const w of usable) {
+  // SIGHT-001: a weapon whose ASTARTES repeat surcharge cannot be paid is not offered by raiseWeapon either, so a Shoot
+  // with only such weapons would be cancelled on the spot; it is unavailable instead, with the reason
+  const affordable = activation ? usable.filter((w) => surchargeAffordable(state, op, activation, w)) : usable
+  if (affordable.length === 0) {
+    return { code: 'E_NO_AP', reason: repeatApReason(state, op, activation!, usable[0]!) }
+  }
+  for (const w of affordable) {
     if (weaponTargets(state, op, w).length > 0) return null
   }
   // a viewpoint a team rule offers (team-rules shootViewpoints: Magnify proxies) counts too, as in raiseWeapon
-  for (const w of usable) {
+  for (const w of affordable) {
     for (const vpId of providerViewpoints(state, op, w)) {
       const vp = state.operatives[vpId]
       if (vp && vp.status === 'active' && validTargets(state, op, w, undefined, vp).length > 0) return null
     }
   }
+  // the weapon that would have a target is the one whose repeat cannot be paid: say that, not "no valid target"
+  const pricey = usable.find((w) => !affordable.includes(w) && weaponTargets(state, op, w).length > 0)
+  if (pricey) return { code: 'E_NO_AP', reason: repeatApReason(state, op, activation!, pricey) }
   return { code: 'E_INVALID_TARGET', reason: 'no valid target for any usable weapon' }
+}
+
+function repeatApReason(state: GameState, op: Operative, act: Activation, weaponId: string): string {
+  const extra = surchargeFor(state, op, act, weaponId)
+  const left = Math.max(0, effectiveApl(op) - act.apSpent)
+  const name = state.data.weapons[weaponId]?.name ?? weaponId
+  return `a second Shoot with the ${name} costs ${1 + extra} AP and only ${left} remain`
+}
+
+export interface ShootBlockers {
+  /** why the operative cannot take a Shoot action at all now (order, control range, AP, repeats), or null */
+  action: string | null
+  /** each ranged weapon of the operative: why it cannot fire in a Shoot now, or null when it can */
+  weapons: { weaponId: string; name: string; range: number | null; reason: string | null }[]
+}
+
+/**
+ * SIGHT-001 (additive query for the UI): the shooter-side reasons a Shoot is barred, so a sight readout that sees an
+ * enemy can say why it cannot be shot. Target-side reasons (no valid target) are left to the caller, which names
+ * them per enemy. `activation` is the operative's activation (performed, AP spent) or null for a pure rules check.
+ */
+export function shootBlockers(state: GameState, op: Operative, activation: Activation | null): ShootBlockers {
+  let action: string | null = null
+  try {
+    const rej = actionAvailability(state, op, 'shoot', activation)
+    if (rej && rej.code !== 'E_INVALID_TARGET') action = rej.reason
+  } catch {
+    /* a hypothetical the engine cannot judge: leave it to the per-weapon reasons */
+  }
+  const performed = activation?.performed ?? []
+  const weapons = op.weapons
+    .filter((w) => state.data.weapons[w]?.type === 'ranged')
+    .map((w) => {
+      const def = state.data.weapons[w]!
+      const unusable = weaponUnusable(state, op, w, performed, 'shoot')
+      const reason = unusable ? unusable.reason : activation && !surchargeAffordable(state, op, activation, w) ? repeatApReason(state, op, activation, w) : null
+      return { weaponId: w, name: def.name, range: ruleSetFor(state, op, w, 'shoot').range, reason }
+    })
+  return { action, weapons }
 }
 
 // ---------------------------------------------------------------------------

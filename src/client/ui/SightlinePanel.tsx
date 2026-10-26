@@ -178,7 +178,13 @@ function Body({ d, compact }: { d: SightData; compact: boolean }) {
             <KeywordText text="On Conceal only Silent weapons may fire: odds assume Engage." />
           </Muted>
         )}
-        {sight.noWeapon && !sight.concealLocked && <Muted>No ranged weapon can be used from here.</Muted>}
+        {sight.shootBlocked ? (
+          <div data-testid="sight-cant-shoot" style={{ fontSize: 12, color: '#ffb347' }}>
+            <KeywordText text={`Can't shoot here: ${sight.shootBlocked}.`} keywords={false} />
+          </div>
+        ) : (
+          sight.noWeapon && !sight.concealLocked && <Muted>No ranged weapon can be used from here (each enemy row says why).</Muted>
+        )}
         {sight.inControlRangeOf.length > 0 && (
           <Muted>
             <KeywordText text={`Inside the control range of ${sight.inControlRangeOf.join(', ')}.`} keywords={false} />

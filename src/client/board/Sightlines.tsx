@@ -34,7 +34,7 @@ export function sightLabel(e: SightEntry): string {
     case 'obscured':
       return `${e.inCover ? 'cover+obscured' : 'obscured'}${dmg}`
     case 'blocked':
-      return e.reason?.startsWith('concealed') ? 'concealed: no shot' : 'no shot'
+      return 'visible · no shot'
     default:
       return 'not visible'
   }
@@ -197,6 +197,11 @@ export function SightlineLayer() {
                 style={{ background: 'rgba(8,8,14,0.9)', font: '700 11px system-ui', padding: '2px 7px', borderRadius: 5, whiteSpace: 'nowrap', border: `1px solid ${color}88`, textAlign: 'center' }}
               >
                 {e && <div style={{ color }}>{sightLabel(e)}</div>}
+                {e && e.status === 'blocked' && e.reason && (
+                  <div data-testid={`sight-why-${id}`} style={{ color: '#d8dbe6', font: '600 10px system-ui', whiteSpace: 'normal', width: 'max-content', maxWidth: 210 }}>
+                    {e.reason}
+                  </div>
+                )}
                 {threatOn && t && (
                   <div data-testid={`threat-badge-${id}`} style={{ color: THREAT_COLOR }}>
                     hits you {t.expected.toFixed(1)} if Engage · {tc ? tc.expected.toFixed(1) : '0'} if Conceal

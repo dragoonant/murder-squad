@@ -283,8 +283,10 @@ export function weaponUnusable(
     if (rules.heavy) {
       const moved = performed.filter((a) => MOVE_ACTIONS.includes(a))
       const allowed = rules.heavy.only
-      if (moved.some((m) => m !== allowed)) {
-        return { code: 'E_ACTION_RESTRICTED', reason: `${w.name} is Heavy and the operative moved` }
+      const bad = moved.find((m) => m !== allowed)
+      if (bad) {
+        const kind = allowed ? `Heavy (${allowed[0]!.toUpperCase() + allowed.slice(1)} only)` : 'Heavy'
+        return { code: 'E_ACTION_RESTRICTED', reason: `${w.name} is ${kind} and the operative already moved (${bad === 'fallBack' ? 'Fall Back' : bad}) this activation` }
       }
     }
   }
