@@ -46,6 +46,13 @@ MOVE-010 | R-4.9 | Guard is rejected with Conceal or in an enemy CR, and ends on
 MOVE-011 | R-4.10 | A guard interrupt happens once per enemy activation after an action, gives a free Fight or Shoot with any target, and bars that operative from counteracting.
 MOVE-012 | R-4.11 | A point-blank shot targets an enemy in the guard's CR, worsens Hit by 1, and the guard cannot retaliate until the end of the interrupted activation.
 MOVE-013 | R-4.9, R-10.9 | Heavy weapons do not prevent Guard; an operative that moved can still go on guard and use a Heavy weapon at an interrupt.
+MOVE-ROUTE-001 | R-4.1, R-12.1 | The route planner (`src/ai/nav3d.ts`) goes around terrain on the floor; `planMove` accepts the route at the reported cost.
+MOVE-ROUTE-002 | R-12.2, R-12.3 | A rooftop target gets a climb route priced as the engine prices it (Dash gets none); a drop back down pays only beyond the free 2".
+MOVE-ROUTE-003 | R-4.1 | A target beyond the move reports too-far with the engine's price of the best route (above the limit) and no path.
+MOVE-ROUTE-004 | R-4.1 | A Reposition route never enters the control range of a lone enemy.
+MOVE-ROUTE-005 | R-12.1 | A tapped spot ends the route exactly, or snaps to the nearest placeable spot within 1".
+MOVE-ROUTE-006 | R-12.4 | A gap between Vantage roofs more than 2" up is jumped rather than dropped and climbed.
+MOVE-ROUTE-007 | R-4.1 | On a real killzone every returned route is engine-legal at its price, within the per-tap time budget.
 
 ## SHOOT - shoot sequence
 

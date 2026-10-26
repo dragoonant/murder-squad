@@ -144,6 +144,8 @@ export function planMove(
    * operative's own control-range limits (R-4.1) do not apply; it must still end where it can be placed
    */
   forced = false,
+  /** route planning: price the path without the move limit (every other rule still applies); `maxInches` stays the real limit */
+  unlimited = false,
 ): PlanResult {
   const wps = parseWaypoints(raw)
   if (!wps) return fail('E_SCHEMA', `a path is 1 to ${MAX_WAYPOINTS} waypoints with numeric x and z`)
@@ -429,7 +431,7 @@ export function planMove(
     segments.push({ from: { ...cur }, to: next, length: round3(len), cost: segCost, kind: kindOfSegment })
     if (len > EPS && !oval) facing = bearing(cur, next)
     cur = next
-    if (horizCost + accCost > maxInches + EPS) {
+    if (!unlimited && horizCost + accCost > maxInches + EPS) {
       return fail('E_OUT_OF_RANGE', `the move costs more than ${maxInches}"`, { cost: horizCost + accCost, maxInches })
     }
   }
@@ -463,7 +465,7 @@ export function planMove(
   // M9 prep: team rules may add to (or cancel extras of) a move's cost (Grav-inhibitor)
   const surcharge = providerMoveSurcharge(state, op, kind, segments.map((sg) => sg.to), { horizontal: horizCost, accessible: accCost, climb: climbCost, drop: Math.max(0, dropCost), obstructing: obsCost, climbs: [...climbs] })
   const total = horizCost + accCost + climbCost + Math.max(0, dropCost) + surcharge + rotation
-  if (total > maxInches + EPS) {
+  if (!unlimited && total > maxInches + EPS) {
     return fail('E_OUT_OF_RANGE', `the move costs ${total}" but only ${maxInches}" is allowed`, {
       cost: total,
       maxInches,
@@ -501,6 +503,22 @@ export function planMove(
     maxInches,
     breakdown: { horizontal: horizCost, accessible: accCost, climb: climbCost, drop: Math.max(0, dropCost), obstructing: obsCost, climbs: [...climbs], ...(rotation > 0 ? { rotation: round3(rotation) } : {}) },
   }
+}
+
+/**
+ * Route planning query: the engine's price for a path whatever the move limit (a tapped spot beyond reach reports what
+ * it would cost). Every other rule of `planMove` applies; `ok: true` with `cost > maxInches` means "legal but too far".
+ */
+export function priceMove(
+  state: GameState,
+  op: Operative,
+  kind: MoveKind,
+  raw: unknown,
+  counteract = false,
+  limitOverride?: number,
+  endWithinCrOf?: string,
+): PlanResult {
+  return planMove(state, op, kind, raw, counteract, limitOverride, endWithinCrOf, undefined, false, true)
 }
 
 /**
