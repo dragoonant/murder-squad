@@ -4,11 +4,12 @@
 // candidate actions.
 import { act, validate, type Action, type DecisionOption, type GameState, type PendingDecision, type Rejection, type Waypoint } from '@/engine'
 import { markerRadius } from '@/engine/state'
-import { planFly, planMove, type MoveKind, type MovePlan } from '@/engine/movement'
+import { MAX_WAYPOINTS, moveLimit, planFly, planMove, priceMove, type MoveKind, type MovePlan } from '@/engine/movement'
+import { planRoute, warmRoutes } from '../../ai/nav3d'
 import { providerCanFly } from '@/engine/team-rules'
 import { humanToAct, useGame } from '../store/game'
 import { getFormFactor } from '../ui/formFactor'
-import { useUi, type Pt } from '../ui/uiStore'
+import { useUi, type Pt, type RouteHover } from '../ui/uiStore'
 import { rejectionText } from '../game/labels'
 import { pickDisplaySnapshot, usePresentedStore } from '../presentation/presentedStore'
 import type { TouchArea } from '../board/touchCamera'
@@ -234,13 +235,195 @@ export function placedMarkerRadius(state: GameState, pending: PendingDecision): 
   return markerRadius({ kind: 'equipment' })
 }
 
+// ---------------------------------------------------------------- routed move steps
+
+/** Shift held at the last pointer or key event: a click then lays one straight step instead of a routed path. */
+let shiftDown = false
+if (typeof window !== 'undefined') {
+  const mark = (e: PointerEvent | KeyboardEvent) => {
+    shiftDown = e.shiftKey
+  }
+  for (const t of ['pointerdown', 'pointermove', 'keydown', 'keyup'] as const) window.addEventListener(t, mark as EventListener, true)
+}
+
+/** Does the next board click lay a straight step (Shift, the touch Straight toggle, Jump next, FLY) rather than a route? */
+export function straightMode(ui: { straight: boolean; jumpNext: boolean; fly: boolean } = useUi.getState()): boolean {
+  return shiftDown || ui.straight || ui.jumpNext || ui.fly
+}
+
+export type RouteLeg =
+  | { ok: true; leg: Waypoint[]; plan: MovePlan }
+  | { ok: false; reason: 'too-far'; needed: number; left: number; leg: Waypoint[] }
+  | { ok: false; reason: 'unreachable' }
+
+/** The operative standing at the end of the planned path (cached, so repeated taps reuse the planner's caches). */
+const ghosts = new WeakMap<GameState, Map<string, GameState>>()
+function ghostAt(state: GameState, opId: string, end: { x: number; y: number; z: number }, facing: number): GameState {
+  let byKey = ghosts.get(state)
+  if (!byKey) ghosts.set(state, (byKey = new Map()))
+  const key = `${opId}|${end.x},${end.y},${end.z}|${facing}`
+  let g = byKey.get(key)
+  if (!g) {
+    const op = state.operatives[opId]!
+    g = { ...state, operatives: { ...state.operatives, [opId]: { ...op, pos: { ...end }, facing } } }
+    byKey.set(key, g)
+  }
+  return g
+}
+
+/**
+ * The cheapest legal route (`planRoute`) from the end of the planned path to a board point, priced by the engine as part
+ * of the whole move. `enemyId`: a Charge aimed at that enemy, ending at the closest legal spot in its control range.
+ * Null when routing does not apply (no move decision, or the planned path so far cannot be extended).
+ */
+export function routeLeg(state: GameState, pending: PendingDecision, waypoints: Waypoint[], target: Pt, facing: number | null = null, enemyId?: string, withPath = false): RouteLeg | null {
+  const c = pending.constraints
+  if (!c?.operativeId || !isMoveKind(c.kind)) return null
+  const op = state.operatives[c.operativeId]
+  if (!op) return null
+  const kind = c.kind
+  const counteract = c.counteract === true
+  const turn = op.ovalHalfAxis && facing !== null ? facing : undefined
+  const total = c.maxInches ?? moveLimit(op, kind, counteract, state)
+  let from = state
+  let used = 0
+  if (waypoints.length > 0) {
+    // the path so far as terrain and placement see it (its control-range verdict belongs to the whole move)
+    const base = planMove(state, op, kind, waypoints, counteract, 999, undefined, undefined, true)
+    if (!base.ok) return null
+    used = base.cost
+    from = ghostAt(state, op.id, base.end, base.facing)
+  }
+  const left = Math.max(0, total - used)
+  const endWithin = c.mustEndInControlRangeOfId ?? enemyId
+  const targets: Pt[] = [target]
+  if (enemyId) {
+    const e = state.operatives[enemyId]
+    const me = from.operatives[op.id]!
+    if (!e) return null
+    targets.length = 0
+    const d = e.baseRadius + (e.ovalHalfAxis ?? 0) + op.baseRadius + 0.4
+    const toward = Math.atan2(me.pos.x - e.pos.x, me.pos.z - e.pos.z)
+    for (const k of [0, 1, -1, 2, -2, 3, -3, 4]) {
+      const a = toward + (k * Math.PI) / 4
+      targets.push({ x: e.pos.x + Math.sin(a) * d, y: e.pos.y, z: e.pos.z + Math.cos(a) * d })
+    }
+  }
+  let best: { leg: Waypoint[]; plan: MovePlan } | null = null
+  let far: { needed: number; leg: Waypoint[] } | null = null
+  for (const t of targets) {
+    const r = planRoute(from, op.id, kind, t, { counteract, limitOverride: left, endWithinCrOf: endWithin, allowFly: false, snapRadius: enemyId ? 0.75 : 1, withPath })
+    if (r.ok) {
+      const all = [...waypoints, ...r.waypoints]
+      if (all.length > MAX_WAYPOINTS) continue
+      const plan = planMove(state, op, kind, all, counteract, c.maxInches, c.mustEndInControlRangeOfId, turn)
+      if (plan.ok) {
+        if (!best || plan.cost < best.plan.cost) best = { leg: r.waypoints, plan }
+      } else if (plan.rejection.code === 'E_OUT_OF_RANGE') {
+        const priced = priceMove(state, op, kind, all, counteract, c.maxInches, c.mustEndInControlRangeOfId)
+        if (priced.ok && (!far || priced.cost - used < far.needed)) far = { needed: priced.cost - used, leg: r.waypoints }
+      }
+    } else if (r.reason === 'too-far' && (!far || r.needed < far.needed)) far = { needed: r.needed, leg: r.path ?? [] }
+    if (best && !enemyId) break
+  }
+  if (best) return { ok: true, leg: best.leg, plan: best.plan }
+  if (far) return { ok: false, reason: 'too-far', needed: far.needed, left, leg: far.leg }
+  return { ok: false, reason: 'unreachable' }
+}
+
+/** What the note by the move buttons says after a tap the router could not plan. Numbers are the engine's. */
+export function routeNoteText(r: RouteLeg): string | null {
+  if (r.ok) return null
+  return r.reason === 'too-far' ? `Needs ${r.needed}″, only ${r.left}″ left` : 'No legal route there'
+}
+
+/** Append a routed leg as one undo unit, or leave the path as it is and say why. True when the path grew. */
+function applyLeg(r: RouteLeg): boolean {
+  const ui = useUi.getState()
+  if (!r.ok) {
+    useUi.setState({ routeNote: routeNoteText(r) })
+    return false
+  }
+  useUi.setState({ waypoints: [...ui.waypoints, ...r.leg], legStarts: [...ui.legStarts.filter((i) => i < ui.waypoints.length), ui.waypoints.length], routeNote: null, routeHover: null, jumpNext: false })
+  return true
+}
+
+/** Tap an enemy during a Charge: route into its control range (the closest legal spot). True when the tap was used. */
+export function chargeAt(enemyId: string): boolean {
+  const { pending, state } = useGame.getState()
+  const ui = useUi.getState()
+  if (!pending || !state || pending.kind !== 'move.path' || !humanToAct() || pending.constraints?.kind !== 'charge' || ui.fly) return false
+  const e = state.operatives[enemyId]
+  const op = state.operatives[pending.constraints.operativeId ?? '']
+  if (!e || !op || e.seat === op.seat) return false
+  const turn = ui.facing !== null && op.ovalHalfAxis ? ui.facing : null
+  const r = routeLeg(state, pending, ui.waypoints, { x: e.pos.x, y: e.pos.y, z: e.pos.z }, turn, enemyId)
+  if (!r) return false
+  applyLeg(r)
+  return true
+}
+
+/** Build the router's grids for the mover while the browser is idle, so the first tap answers fast on a phone. */
+let warmedFor: string | undefined
+useGame.subscribe((g) => {
+  const p = g.pending
+  if (!p || p.kind !== 'move.path' || p.id === warmedFor || !g.state) return
+  warmedFor = p.id
+  const id = p.constraints?.operativeId
+  const st = g.state
+  if (!id || !humanToAct()) return
+  const run = () => {
+    try {
+      warmRoutes(st, id)
+    } catch {
+      // only a speed-up: the first tap builds them anyway
+    }
+  }
+  const ric = (globalThis as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback
+  if (ric) ric(run, { timeout: 1500 })
+  else setTimeout(run, 50)
+})
+
+/** The routed hover preview, planned at most once per animation frame for the latest hovered point. */
+let hoverQueued: Pt | null = null
+let hoverFrame = false
+export function routeHoverFor(state: GameState, pending: PendingDecision, ui: { waypoints: Waypoint[]; facing: number | null }, pt: Pt): RouteHover {
+  const op = state.operatives[pending.constraints?.operativeId ?? '']
+  const turn = ui.facing !== null && op?.ovalHalfAxis ? ui.facing : null
+  const r = routeLeg(state, pending, ui.waypoints, pt, turn, undefined, true)
+  if (!r) return { at: pt, leg: [], ok: false, text: 'No legal route there' }
+  if (r.ok) return { at: pt, leg: r.leg, ok: true, text: `total ${r.plan.cost}/${r.plan.maxInches}″` }
+  return { at: pt, leg: r.reason === 'too-far' ? r.leg : [], ok: false, text: r.reason === 'too-far' ? `needs ${r.needed}″ (${r.left}″ left)` : 'No legal route there' }
+}
+
+function queueRouteHover(pt: Pt): void {
+  hoverQueued = pt
+  if (hoverFrame) return
+  hoverFrame = true
+  const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (f: () => void) => setTimeout(f, 16)
+  raf(() => {
+    hoverFrame = false
+    const at = hoverQueued
+    hoverQueued = null
+    const { pending, state } = useGame.getState()
+    const ui = useUi.getState()
+    if (!at || !pending || !state || pending.kind !== 'move.path' || !humanToAct() || straightMode(ui) || !ui.hover) return
+    useUi.setState({ routeHover: routeHoverFor(state, pending, ui, at) })
+  })
+}
+
 export function hoverPoint(pt: Pt | null): void {
   const ui = useUi.getState()
   if (!pt) {
-    if (ui.hover || ui.hoverSpot) ui.set({ hover: null, hoverNote: null, hoverSpot: null })
+    if (ui.hover || ui.hoverSpot || ui.routeHover) ui.set({ hover: null, hoverNote: null, hoverSpot: null, routeHover: null })
     return
   }
   const { pending, state } = useGame.getState()
+  if (pending?.kind === 'move.path' && state && humanToAct()) {
+    if (straightMode(ui)) {
+      if (ui.routeHover) useUi.setState({ routeHover: null })
+    } else queueRouteHover(pt)
+  }
   let note: { ok: boolean; text: string } | null = null
   if (pending?.kind === 'setup.deploy' && state && humanToAct()) {
     const id = deployChoice(pending, ui.deployOp)
@@ -262,7 +445,7 @@ export function hoverPoint(pt: Pt | null): void {
   useUi.setState({ hover: pt, hoverNote: note, hoverSpot: spot ?? (ui.hoverSpot === 'suggestion' ? 'suggestion' : null) })
 }
 
-export function clickPoint(pt: Pt): void {
+export function clickPoint(pt: Pt, opts: { straight?: boolean } = {}): void {
   // the measure tool takes every board click (read-only: it never reaches the engine, even between decisions or on a bot turn)
   if (useSight.getState().measureOn) {
     useSight.getState().measureClick({ x: round(pt.x), y: pt.y, z: round(pt.z) })
@@ -297,9 +480,17 @@ export function clickPoint(pt: Pt): void {
       useUi.setState({ waypoints: [wp] })
       return
     }
-    if (ui.jumpNext) wp.jump = true
     const turn = ui.facing !== null && state.operatives[pending.constraints?.operativeId ?? '']?.ovalHalfAxis ? ui.facing : null
-    useUi.setState({ waypoints: [...ui.waypoints, snapStep(state, pending, ui.waypoints, wp, turn)], jumpNext: false })
+    // a tap routes the cheapest legal path there, around and over terrain; Shift / Straight / Jump next lay one straight step
+    if (!(opts.straight ?? straightMode(ui))) {
+      const r = routeLeg(state, pending, ui.waypoints, pt, turn)
+      if (r) {
+        applyLeg(r)
+        return
+      }
+    }
+    if (ui.jumpNext) wp.jump = true
+    useUi.setState({ waypoints: [...ui.waypoints, snapStep(state, pending, ui.waypoints, wp, turn)], legStarts: [...ui.legStarts.filter((i) => i < ui.waypoints.length), ui.waypoints.length], jumpNext: false, routeNote: null, routeHover: null })
     return
   }
   ui.set({ selectedOp: null })
@@ -363,6 +554,8 @@ export function clickOperative(id: string, opts: { touch?: boolean } = {}): void
   }
   const { pending, choose } = useGame.getState()
   const ui = useUi.getState()
+  // a Charge being laid: tapping an enemy routes into its control range
+  if (pending?.kind === 'move.path' && chargeAt(id)) return
   ui.set({ selectedOp: id })
   if (!pending || !humanToAct()) return
   if (pending.kind === 'firefight.activate') {
@@ -414,7 +607,10 @@ export function undoPathStep(): boolean {
   const { pending } = useGame.getState()
   const ui = useUi.getState()
   if (pending?.kind !== 'move.path' || ui.waypoints.length === 0) return false
-  useUi.setState({ waypoints: ui.waypoints.slice(0, -1), jumpNext: false })
+  // a routed leg is one unit: remove all of it
+  const starts = ui.legStarts.filter((i) => i < ui.waypoints.length)
+  const from = starts.length > 0 ? starts[starts.length - 1]! : ui.waypoints.length - 1
+  useUi.setState({ waypoints: ui.waypoints.slice(0, from), legStarts: starts.slice(0, -1), jumpNext: false, routeNote: null, routeHover: null })
   return true
 }
 

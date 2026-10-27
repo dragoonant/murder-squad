@@ -52,11 +52,13 @@ export interface RouteOpts {
   snapRadius?: number
   /** consider a FLY set-up when the operative can FLY (default true) */
   allowFly?: boolean
+  /** a too-far answer also carries the priced path (for a hover preview drawn as out of reach) */
+  withPath?: boolean
 }
 
 export type RouteResult =
   | { ok: true; waypoints: Waypoint[]; cost: number; limit: number; end: Vec3; fly?: boolean }
-  | { ok: false; reason: 'too-far'; needed: number; limit: number }
+  | { ok: false; reason: 'too-far'; needed: number; limit: number; path?: Waypoint[] }
   | { ok: false; reason: 'unreachable' }
 
 // ---------------------------------------------------------------------------
@@ -1082,7 +1084,7 @@ export function planRoute(state: GameState, opId: string, kind: MoveKind, target
   const exempt = kind === 'charge' && chargeFromControlRange(state, op) ? enemiesOf(state, op).filter((e) => inControlRange(state, bodyOf(op), bodyOf(e))).map((e) => e.id) : []
   const posKey = `${op.id}|${kind}|${round3(op.pos.x)},${round3(op.pos.y)},${round3(op.pos.z)}`
   const tried = new Set<string>()
-  const found: { best: Ok | null; tooFar: number | null } = { best: null, tooFar: null }
+  const found: { best: Ok | null; tooFar: number | null; farPath: Waypoint[] | null } = { best: null, tooFar: null, farPath: null }
 
   const consider = (wps: Waypoint[]): void => {
     const key = JSON.stringify(wps)
@@ -1095,7 +1097,10 @@ export function planRoute(state: GameState, opId: string, kind: MoveKind, target
     }
     if (plan.rejection.code === 'E_OUT_OF_RANGE') {
       const priced = priceMove(state, op, kind, wps, counteract, opts.limitOverride, opts.endWithinCrOf)
-      if (priced.ok && priced.cost > limit + EPS) found.tooFar = found.tooFar === null ? priced.cost : Math.min(found.tooFar, priced.cost)
+      if (priced.ok && priced.cost > limit + EPS && (found.tooFar === null || priced.cost < found.tooFar)) {
+        found.tooFar = priced.cost
+        found.farPath = wps
+      }
     }
   }
 
@@ -1163,7 +1168,7 @@ export function planRoute(state: GameState, opId: string, kind: MoveKind, target
   if (walk && fly) return fly.cost < walk.cost ? fly : walk
   if (walk) return walk
   if (fly) return fly
-  if (found.tooFar !== null) return { ok: false, reason: 'too-far', needed: found.tooFar, limit }
+  if (found.tooFar !== null) return { ok: false, reason: 'too-far', needed: found.tooFar, limit, ...(opts.withPath && found.farPath ? { path: found.farPath } : {}) }
   return { ok: false, reason: 'unreachable' }
 }
 

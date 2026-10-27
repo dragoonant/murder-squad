@@ -58,7 +58,7 @@ const KIND_TITLE: Record<string, { title: string; hint: string }> = {
   'firefight.activate': { title: 'Choose an operative', hint: 'Pick a ready operative to activate (click it on the board or choose below).' },
   'firefight.order': { title: 'Give an order', hint: 'Choose Engage or Conceal for this activation.' },
   'firefight.action': { title: 'Choose an action', hint: 'Spend AP on actions, or end the activation.' },
-  'move.path': { title: 'Plan the move', hint: 'Click the board to lay straight-line steps. Each step is rounded up to a whole inch.' },
+  'move.path': { title: 'Plan the move', hint: 'Tap where the operative should go: the cheapest legal route is planned around and over terrain. Each straight step is rounded up to a whole inch.' },
   'shoot.weapon': { title: 'Choose a weapon', hint: 'Pick the ranged weapon to shoot with.' },
   'shoot.target': { title: 'Choose a target', hint: 'Pick a valid enemy target.' },
   'shoot.coverSave': { title: 'Cover save', hint: 'Keep a cover save without rolling, or roll all your defence dice.' },

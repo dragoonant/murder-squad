@@ -327,6 +327,9 @@ function MoveBody({ pending, state }: { pending: PendingDecision; state: GameSta
   const jumpNext = useUi((s) => s.jumpNext)
   const facing = useUi((s) => s.facing)
   const fly = useUi((s) => s.fly)
+  const straight = useUi((s) => s.straight)
+  const routeNote = useUi((s) => s.routeNote)
+  const touch = useFormFactor().touch
   const canFly = canFlyNow(state, pending)
   const c = pending.constraints
   const op = c?.operativeId ? state.operatives[c.operativeId] : null
@@ -366,6 +369,11 @@ function MoveBody({ pending, state }: { pending: PendingDecision; state: GameSta
           ))}
         </div>
       )}
+      {routeNote && (
+        <div data-testid="move-route-note" style={{ color: '#ffb74d', fontSize: 12, margin: '2px 0 4px' }}>
+          {routeNote}
+        </div>
+      )}
       {!plan && preview.rejection && (
         <div data-testid="move-reason" style={{ color: '#ff8a80', fontSize: 12, margin: '2px 0 4px' }}>
           {preview.rejection.reason}
@@ -396,13 +404,19 @@ function MoveBody({ pending, state }: { pending: PendingDecision; state: GameSta
         />
       ) : null}
       <Muted style={{ marginBottom: 8 }}>
-        <KeywordText text="Each straight step is rounded up to a whole inch. Click ground for flat steps, click a Vantage platform to climb, click ground beside a tower to drop. Use Jump for a leap across a gap." />
+        <KeywordText
+          text={
+            touch
+              ? 'Tap a spot (ground or a Vantage platform) and the cheapest legal route there is laid around and over terrain; each straight step is rounded up to a whole inch. Turn on Straight to lay one straight step per tap. Use Jump for a leap across a gap.'
+              : 'Click a spot (ground or a Vantage platform) and the cheapest legal route there is laid around and over terrain; each straight step is rounded up to a whole inch. Shift-click lays one straight step. Use Jump for a leap across a gap.'
+          }
+        />
       </Muted>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         <Btn data-testid="move-confirm" variant="primary" disabled={!plan} onClick={() => confirmPath()}>
           Confirm move
         </Btn>
-        <Btn data-testid="move-undo" disabled={waypoints.length === 0} onClick={() => useUi.setState({ waypoints: waypoints.slice(0, -1) })}>
+        <Btn data-testid="move-undo" disabled={waypoints.length === 0} onClick={() => undoPathStep()}>
           Undo step
         </Btn>
         <Btn data-testid="move-clear" disabled={waypoints.length === 0} onClick={() => useUi.getState().resetPath()}>
@@ -412,6 +426,13 @@ function MoveBody({ pending, state }: { pending: PendingDecision; state: GameSta
           <Tooltip title="Fly" body="Jump pack: instead of walking, set the operative up again anywhere within its move, measured in a straight line. Terrain in between, climbs and drops cost nothing. Click the board to choose the spot.">
             <Btn data-testid="move-fly" variant={fly ? 'active' : 'base'} onClick={() => useUi.setState({ fly: !fly, waypoints: [] })}>
               Fly
+            </Btn>
+          </Tooltip>
+        )}
+        {touch && (
+          <Tooltip title="Straight" body="Each tap lays one straight step from the end of the path instead of a route around terrain.">
+            <Btn data-testid="move-straight" variant={straight ? 'active' : 'base'} onClick={() => useUi.setState({ straight: !straight, routeHover: null })}>
+              Straight
             </Btn>
           </Tooltip>
         )}
@@ -792,7 +813,7 @@ export function DecisionPrompt() {
   useEffect(() => {
     // a new decision always opens the prompt again, so a required choice is never hidden
     if (id !== undefined && useCollapse.getState().collapsed.prompt) useCollapse.getState().setCollapsed('prompt', false)
-    useUi.setState({ waypoints: [], jumpNext: false, facing: null, fly: false, deployOp: null, pendingActivate: null, hoverNote: null, hoverZone: null, hoverOp: null, hoverOption: null, hoverSpot: null })
+    useUi.setState({ waypoints: [], legStarts: [], routeNote: null, routeHover: null, jumpNext: false, facing: null, fly: false, deployOp: null, pendingActivate: null, hoverNote: null, hoverZone: null, hoverOp: null, hoverOption: null, hoverSpot: null })
   }, [id])
   if (!pending || !state || state.phase === 'ended') return null
   if (!settled) return <Waiting text="..." />

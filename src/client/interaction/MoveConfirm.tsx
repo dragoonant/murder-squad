@@ -59,6 +59,7 @@ export function MoveConfirm({ state, pending }: { state: GameState; pending: Pen
   const waypoints = useUi((s) => s.waypoints)
   const facing = useUi((s) => s.facing)
   const fly = useUi((s) => s.fly)
+  const note = useUi((s) => s.routeNote)
   const { touch } = useFormFactor()
   const b = moveButtons(state, pending, { waypoints, facing, fly })
   if (!b) return null
@@ -94,6 +95,15 @@ export function MoveConfirm({ state, pending }: { state: GameState; pending: Pen
             style={{ whiteSpace: 'nowrap', background: 'rgba(8,8,14,0.85)', color: colors.text, font: `700 11px ${fontStack}`, padding: '1px 5px', borderRadius: 4, pointerEvents: 'none' }}
           >
             {b.left}″ left
+          </span>
+        )}
+        {note && (
+          <span
+            data-testid="move-route-toast"
+            role="status"
+            style={{ whiteSpace: 'nowrap', background: 'rgba(60,20,10,0.92)', color: '#ffcc80', font: `700 12px ${fontStack}`, padding: '2px 7px', borderRadius: 4, border: '1px solid #ff8a6588', pointerEvents: 'none' }}
+          >
+            {note}
           </span>
         )}
       </div>

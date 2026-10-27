@@ -9,6 +9,15 @@ export interface Pt {
   y: number
 }
 
+export interface RouteHover {
+  /** the hovered spot this preview was planned for */
+  at: Pt
+  /** the routed leg after the planned path (empty when there is none) */
+  leg: Waypoint[]
+  ok: boolean
+  text: string
+}
+
 export type DrawerId = 'feed' | 'log' | 'mission' | 'settings' | 'card'
 
 interface UiState {
@@ -24,6 +33,14 @@ interface UiState {
   /** a quick ploy (Adjust Doctrine) the player armed from the action bar: that seat's next window offering it opens instead of passing itself */
   armedPloy: { ployId: string; seat: Seat } | null
   waypoints: Waypoint[]
+  /** where each undo unit of the planned path starts (a routed leg of several waypoints is one unit) */
+  legStarts: number[]
+  /** the note by the move buttons after a tap the router could not plan ("Needs 8″, only 6″ left") */
+  routeNote: string | null
+  /** the routed preview to the hovered spot: the path after the planned one, and the engine's verdict */
+  routeHover: RouteHover | null
+  /** touch: taps add one straight step instead of a routed path (Shift-click on desktop) */
+  straight: boolean
   jumpNext: boolean
   /** oval bases: the facing (radians) the base turns to at the end of a move or is set up at; null keeps the engine's default */
   facing: number | null
@@ -55,6 +72,10 @@ export const useUi = create<UiState>((set) => ({
   pendingActivate: null,
   armedPloy: null,
   waypoints: [],
+  legStarts: [],
+  routeNote: null,
+  routeHover: null,
+  straight: false,
   jumpNext: false,
   facing: null,
   fly: false,
@@ -66,6 +87,6 @@ export const useUi = create<UiState>((set) => ({
   set: (p) => set(p),
   togglePanel: (k) => set((s) => ({ panels: { ...s.panels, [k]: !s.panels[k] } })),
   toggleDrawer: (id) => set((s) => ({ drawer: s.drawer === id ? null : id })),
-  resetPath: () => set({ waypoints: [], jumpNext: false, facing: null, fly: false }),
+  resetPath: () => set({ waypoints: [], legStarts: [], routeNote: null, routeHover: null, jumpNext: false, facing: null, fly: false }),
   requestCamera: (id) => set((s) => ({ cameraPreset: { id, nonce: (s.cameraPreset?.nonce ?? 0) + 1 } })),
 }))

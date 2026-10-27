@@ -53,6 +53,8 @@ export function MovePreviewLayer({ state, pending }: { state: GameState; pending
   const jumpNext = useUi((s) => s.jumpNext)
   const turn = useUi((s) => s.facing)
   const fly = useUi((s) => s.fly)
+  const routeHover = useUi((s) => s.routeHover)
+  const straight = useUi((s) => s.straight)
   const opId = pending.constraints?.operativeId
   const op = opId ? state.operatives[opId] : null
   const committed = useMemo(() => previewMove(state, pending, waypoints, turn, fly), [state, pending, waypoints, turn, fly])
@@ -64,12 +66,14 @@ export function MovePreviewLayer({ state, pending }: { state: GameState; pending
     sh.closePath()
     return sh
   }, [reach])
+  // a routed preview replaces the straight what-if step unless the next click lays a straight step
+  const routed = routeHover !== null && !straight && !jumpNext && !fly
   const whatIf = useMemo(() => {
-    if (!hover) return null
+    if (!hover || routed) return null
     const raw: Waypoint = { x: hover.x, z: hover.z, y: hover.y, ...(jumpNext ? { jump: true } : {}) }
     const wp = fly ? raw : snapStep(state, pending, waypoints, raw, turn)
     return { at: { x: wp.x, y: hover.y, z: wp.z }, ...previewMove(state, pending, fly ? [wp] : [...waypoints, wp], turn, fly) }
-  }, [state, pending, waypoints, hover, jumpNext, turn, fly])
+  }, [state, pending, waypoints, hover, jumpNext, turn, fly, routed])
   if (!op) return null
   const start: [number, number, number] = [op.pos.x, op.pos.y + 0.12, op.pos.z]
   const segs = committed.plan?.segments ?? []
@@ -108,6 +112,23 @@ export function MovePreviewLayer({ state, pending }: { state: GameState; pending
       ) : last ? (
         <Ghost x={last.x} y={last.y ?? 0} z={last.z} r={op.baseRadius} ok={false} oval={op.ovalHalfAxis} facing={turn ?? op.facing} />
       ) : null}
+      {hover && routed && routeHover && (
+        <>
+          {routeHover.leg.length > 0 && (
+            <Line
+              points={[lastPt, ...routeHover.leg.map((w) => [w.x, (w.y ?? op.pos.y) + 0.12, w.z] as [number, number, number])]}
+              color={routeHover.ok ? '#6dff9a' : '#ff5a4f'}
+              lineWidth={2}
+              dashed
+              dashSize={0.3}
+              gapSize={0.2}
+              transparent
+              opacity={routeHover.ok ? 1 : 0.7}
+            />
+          )}
+          <Label at={[routeHover.at.x, routeHover.at.y + 1.1, routeHover.at.z]} text={routeHover.text} color={routeHover.ok ? '#6dff9a' : '#ff8a80'} />
+        </>
+      )}
       {hover && whatIf && (
         <>
           <Line
